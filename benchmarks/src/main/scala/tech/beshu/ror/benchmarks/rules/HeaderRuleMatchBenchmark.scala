@@ -21,10 +21,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.Decision
 import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersAndRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.orders.*
+import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
 import tech.beshu.ror.syntax.*
 
@@ -50,23 +50,26 @@ class HeaderRuleMatchBenchmark {
 
   @Setup(Level.Trial)
   def setup(): Unit = {
-    val required = (0 until requirements)
-      .map(i => AccessRequirement.MustBePresent(Header(Header.Name(nes(s"X-Required-$i")), nes(s"allowed-$i-*"))))
-      .toList
-    rule = new HeadersAndRule(HeadersAndRule.Settings(NonEmptySet.of(required.head, required.tail*)))
-
-    // Filler headers first; the headers satisfying the requirements come last, so scans are full.
-    val filler = (0 until math.max(0, 20 - requirements)).map(i => Header(Header.Name(nes(s"X-Filler-$i")), nes(s"value-$i")))
-    val matching = (0 until requirements).map(i => Header(Header.Name(nes(s"X-Required-$i")), nes(s"allowed-$i-x")))
-    blockContext = new NonIndexRequestContext((filler ++ matching).toCovariantSet).initialBlockContext(noBlock)
-
-    require(
-      rule.check(blockContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]],
-      "expected the headers rule to match"
-    )
+    rule = createHeadersRule()
+    blockContext = createBlockContext()
+    assertRulePermitted(rule.check(blockContext).runSyncUnsafe())
   }
 
   @Benchmark
   def matchPath(bh: Blackhole): Unit =
     bh.consume(rule.check(blockContext).runSyncUnsafe())
+
+  private def createHeadersRule(): HeadersAndRule = {
+    val required = (0 until requirements)
+      .map(idx => AccessRequirement.MustBePresent(Header(Header.Name(nes(s"X-Required-$idx")), nes(s"allowed-$idx-*"))))
+      .toList
+    new HeadersAndRule(HeadersAndRule.Settings(NonEmptySet.of(required.head, required.tail*)))
+  }
+
+  private def createBlockContext(): GeneralNonIndexRequestBlockContext = {
+    // Filler headers first; the headers satisfying the requirements come last, so scans are full.
+    val filler = (0 until math.max(0, 20 - requirements)).map(idx => Header(Header.Name(nes(s"X-Filler-$idx")), nes(s"value-$idx")))
+    val matching = (0 until requirements).map(idx => Header(Header.Name(nes(s"X-Required-$idx")), nes(s"allowed-$idx-x")))
+    new NonIndexRequestContext((filler ++ matching).toCovariantSet).initialBlockContext(noBlock)
+  }
 }

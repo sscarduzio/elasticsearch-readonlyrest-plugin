@@ -3,9 +3,9 @@
 # Each entry binds a KPI id to one benchmark method (with pinned @Param values) and a metric
 # (us_op = microseconds/op from JMH avgt; b_op = allocated bytes/op from `-prof gc`). The `gate`
 # field documents which gate WOULD enforce the KPI if the parked CI tooling is revived (branch
-# parked/perf-nightly-tools, see benchmarks/README.md) — no gate is live today. The only live
-# tooling is `:benchmarks:verifyKpis`, which checks every `benchmark:` entry here (and every
-# ci-smoke.txt regex) still resolves to a compiled @Benchmark method.
+# parked/perf-nightly-tools, see benchmarks/README.md) — no gate is live today. Live tooling:
+# `:benchmarks:jmhSmoke` runs every tier-1 entry below, and `:benchmarks:verifyKpis` checks that
+# every `benchmark:` entry still resolves to a compiled @Benchmark method.
 # Field calibration: realistic worst case is ~100 blocks / ~100 groups, so tier-1 KPIs pin the
 # canonical size at field max; the @Param axes around them make scaling curvature visible.
 

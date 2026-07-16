@@ -47,26 +47,11 @@ class GlobPatternsMatcherBenchmark {
 
   @Setup(Level.Trial)
   def setup(): Unit = {
-    def patternsOf(n: Int) = (0 until n).map(i => s"index-$i-*")
-    fewCaseSensitive = PatternsMatcher.create[String](patternsOf(fewPatterns))(using Matchable.caseSensitiveStringMatchable)
-    manyCaseSensitive = PatternsMatcher.create[String](patternsOf(manyPatterns))(using Matchable.caseSensitiveStringMatchable)
-    manyCaseInsensitive = PatternsMatcher.create[String](patternsOf(manyPatterns))(using Matchable.caseInsensitiveStringMatchable)
-
-    // ~30% of candidates match a prefix; ~70% miss and scan all buckets.
-    val rnd = new Random(1234)
-    candidates = Array.tabulate(2000) { _ =>
-      if (rnd.nextInt(100) < 30) s"index-${rnd.nextInt(manyPatterns)}-${rnd.nextInt(1000)}"
-      else s"unrelated-${rnd.nextInt(100000)}"
-    }
+    fewCaseSensitive = createMatcher(fewPatterns, Matchable.caseSensitiveStringMatchable)
+    manyCaseSensitive = createMatcher(manyPatterns, Matchable.caseSensitiveStringMatchable)
+    manyCaseInsensitive = createMatcher(manyPatterns, Matchable.caseInsensitiveStringMatchable)
+    candidates = createCandidates()
     candidatesList = candidates.toList
-  }
-
-  private def matchAll(matcher: PatternsMatcher[String], bh: Blackhole): Unit = {
-    var i = 0
-    while (i < candidates.length) {
-      bh.consume(matcher.`match`(candidates(i)))
-      i += 1
-    }
   }
 
   @Benchmark
@@ -81,4 +66,19 @@ class GlobPatternsMatcherBenchmark {
   @Benchmark
   def filterAll_manyPatterns_caseSensitive(bh: Blackhole): Unit =
     bh.consume(manyCaseSensitive.filter(candidatesList))
+
+  private def createMatcher(patternCount: Int, matchable: Matchable[String]): PatternsMatcher[String] =
+    PatternsMatcher.create[String]((0 until patternCount).map(idx => s"index-$idx-*"))(using matchable)
+
+  // ~30% of candidates match a prefix; ~70% miss and scan all buckets.
+  private def createCandidates(): Array[String] = {
+    val rnd = new Random(1234)
+    Array.tabulate(2000) { _ =>
+      if (rnd.nextInt(100) < 30) s"index-${rnd.nextInt(manyPatterns)}-${rnd.nextInt(1000)}"
+      else s"unrelated-${rnd.nextInt(100000)}"
+    }
+  }
+
+  private def matchAll(matcher: PatternsMatcher[String], bh: Blackhole): Unit =
+    candidates.foreach(candidate => bh.consume(matcher.`match`(candidate)))
 }

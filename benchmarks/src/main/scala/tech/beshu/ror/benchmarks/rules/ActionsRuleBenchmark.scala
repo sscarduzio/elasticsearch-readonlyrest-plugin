@@ -21,10 +21,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.Decision
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.orders.*
+import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
 
 import java.util.concurrent.TimeUnit
@@ -47,15 +47,11 @@ class ActionsRuleBenchmark {
 
   @Setup(Level.Trial)
   def setup(): Unit = {
-    val actions = (1 to 9).map(i => Action(s"indices:admin/custom-$i/*")).toList :+ searchAction
-    rule = new ActionsRule(ActionsRule.Settings(NonEmptySet.of(actions.head, actions.tail*)))
-
-    val headers = realisticHeaders(Credentials(User.Id(nes("user1")), PlainTextSecret(nes("pass1"))))
-    matchingContext = new NonIndexRequestContext(headers).initialBlockContext(noBlock)
-    missingContext = new NonIndexRequestContext(headers, Action("cluster:monitor/health")).initialBlockContext(noBlock)
-
-    require(rule.check(matchingContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]], "expected match")
-    require(rule.check(missingContext).runSyncUnsafe().isInstanceOf[Decision.Denied[?]], "expected miss")
+    rule = createActionsRule()
+    matchingContext = createBlockContext(searchAction)
+    missingContext = createBlockContext(Action("cluster:monitor/health"))
+    assertRulePermitted(rule.check(matchingContext).runSyncUnsafe())
+    assertRuleDenied(rule.check(missingContext).runSyncUnsafe())
   }
 
   @Benchmark
@@ -65,4 +61,13 @@ class ActionsRuleBenchmark {
   @Benchmark
   def actionMissed(bh: Blackhole): Unit =
     bh.consume(rule.check(missingContext).runSyncUnsafe())
+
+  private def createActionsRule(): ActionsRule = {
+    val actions = (1 to 9).map(idx => Action(s"indices:admin/custom-$idx/*")).toList :+ searchAction
+    new ActionsRule(ActionsRule.Settings(NonEmptySet.of(actions.head, actions.tail*)))
+  }
+
+  private def createBlockContext(action: Action): GeneralNonIndexRequestBlockContext =
+    new NonIndexRequestContext(realisticHeaders(createCredentials("user1", "pass1")), action)
+      .initialBlockContext(noBlock)
 }

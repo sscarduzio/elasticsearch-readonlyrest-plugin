@@ -16,18 +16,18 @@
  */
 package tech.beshu.ror.benchmarks.rules
 
-import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.{JwtBuilder, Jwts}
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global
 import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.Decision
 import tech.beshu.ror.accesscontrol.blocks.definitions.{AuthenticationJwtDef, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.json.JsonPath
@@ -52,7 +52,32 @@ class JwtVerificationBenchmark {
   private var hmacContext: GeneralNonIndexRequestBlockContext = scala.compiletime.uninitialized
   private var rsaContext: GeneralNonIndexRequestBlockContext = scala.compiletime.uninitialized
 
-  private def ruleOf(checkMethod: SignatureCheckMethod): JwtAuthenticationRule =
+  @Setup(Level.Trial)
+  def setup(): Unit = {
+    val hmacRawKey = new Array[Byte](32)
+    new SecureRandom().nextBytes(hmacRawKey)
+    val generator = KeyPairGenerator.getInstance("RSA")
+    generator.initialize(2048)
+    val rsaKeyPair: KeyPair = generator.generateKeyPair()
+
+    hmacRule = createJwtRule(SignatureCheckMethod.Hmac(hmacRawKey))
+    rsaRule = createJwtRule(SignatureCheckMethod.Rsa(rsaKeyPair.getPublic))
+    hmacContext = createBlockContext(createSignedToken(_.signWith(Keys.hmacShaKeyFor(hmacRawKey))))
+    rsaContext = createBlockContext(createSignedToken(_.signWith(rsaKeyPair.getPrivate)))
+
+    assertRulePermitted(hmacRule.check(hmacContext).runSyncUnsafe())
+    assertRulePermitted(rsaRule.check(rsaContext).runSyncUnsafe())
+  }
+
+  @Benchmark
+  def hmac256(bh: Blackhole): Unit =
+    bh.consume(hmacRule.check(hmacContext).runSyncUnsafe())
+
+  @Benchmark
+  def rsa2048(bh: Blackhole): Unit =
+    bh.consume(rsaRule.check(rsaContext).runSyncUnsafe())
+
+  private def createJwtRule(checkMethod: SignatureCheckMethod): JwtAuthenticationRule =
     new JwtAuthenticationRule(
       JwtAuthenticationRule.Settings(AuthenticationJwtDef(
         JwtDef.Name(nes("benchmark-jwt")),
@@ -63,37 +88,12 @@ class JwtVerificationBenchmark {
       CaseSensitivity.Enabled
     )
 
-  private def contextOf(token: String): GeneralNonIndexRequestBlockContext = {
-    val headers = (1 to 18).map(i => Header(Header.Name(nes(s"X-Filler-$i")), nes(s"value-$i"))).toCovariantSet +
+  private def createSignedToken(sign: JwtBuilder => JwtBuilder): String =
+    sign(Jwts.builder().subject("user1").claim("groups", "g1,g2")).compact()
+
+  private def createBlockContext(token: String): GeneralNonIndexRequestBlockContext = {
+    val headers = (1 to 18).map(idx => Header(Header.Name(nes(s"X-Filler-$idx")), nes(s"value-$idx"))).toCovariantSet +
       Header(Header.Name.authorization, nes(s"Bearer $token"))
     new NonIndexRequestContext(headers).initialBlockContext(noBlock)
   }
-
-  @Setup(Level.Trial)
-  def setup(): Unit = {
-    val hmacRawKey = new Array[Byte](32)
-    new SecureRandom().nextBytes(hmacRawKey)
-    val generator = KeyPairGenerator.getInstance("RSA")
-    generator.initialize(2048)
-    val rsaKeyPair: KeyPair = generator.generateKeyPair()
-
-    val hmacToken = Jwts.builder().subject("user1").claim("groups", "g1,g2").signWith(Keys.hmacShaKeyFor(hmacRawKey)).compact()
-    val rsaToken = Jwts.builder().subject("user1").claim("groups", "g1,g2").signWith(rsaKeyPair.getPrivate).compact()
-
-    hmacRule = ruleOf(SignatureCheckMethod.Hmac(hmacRawKey))
-    rsaRule = ruleOf(SignatureCheckMethod.Rsa(rsaKeyPair.getPublic))
-    hmacContext = contextOf(hmacToken)
-    rsaContext = contextOf(rsaToken)
-
-    require(hmacRule.check(hmacContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]], "expected HMAC auth to pass")
-    require(rsaRule.check(rsaContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]], "expected RSA auth to pass")
-  }
-
-  @Benchmark
-  def hmac256(bh: Blackhole): Unit =
-    bh.consume(hmacRule.check(hmacContext).runSyncUnsafe())
-
-  @Benchmark
-  def rsa2048(bh: Blackhole): Unit =
-    bh.consume(rsaRule.check(rsaContext).runSyncUnsafe())
 }

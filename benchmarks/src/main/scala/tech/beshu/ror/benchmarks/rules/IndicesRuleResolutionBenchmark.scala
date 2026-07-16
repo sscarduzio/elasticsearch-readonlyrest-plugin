@@ -21,21 +21,22 @@ import monix.execution.Scheduler.Implicits.global
 import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.Decision
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.orders.*
+import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
 import tech.beshu.ror.syntax.*
 
 import java.util.concurrent.TimeUnit
 
 /**
- * Tier-1 KPI: one `indices` rule check on the match path — statically configured glob patterns
- * vs concrete requested indices that all match (read request, empty-cluster ES stub).
+ * Tier-1 KPI: one `indices` rule check. `matchPath` = statically configured glob patterns vs
+ * concrete requested indices that all match. `wildcardExpansionPath` = a requested `logs-app-*`
+ * that must expand against the cluster's index list (the production hot path for wildcard requests).
  */
 @State(Scope.Thread)
 @BenchmarkMode(Array(Mode.AverageTime))
@@ -53,45 +54,50 @@ class IndicesRuleResolutionBenchmark {
 
   private var rule: IndicesRule = scala.compiletime.uninitialized
   private var blockContext: GeneralIndexRequestBlockContext = scala.compiletime.uninitialized
+  private var wildcardBlockContext: GeneralIndexRequestBlockContext = scala.compiletime.uninitialized
 
   @Setup(Level.Trial)
   def setup(): Unit = {
-    val configured = (0 until patterns)
-      .map(j => AlreadyResolved(NonEmptyList.one(ClusterIndexName.fromString(s"logs-app-$j-*").get)): RuntimeMultiResolvableVariable[ClusterIndexName])
-      .toList
-    rule = new IndicesRule(
-      IndicesRule.Settings(NonEmptySet.of(configured.head, configured.tail*), mustInvolveIndices = false),
-      RandomBasedUniqueIdentifierGenerator
-    )
-
-    val requested = (0 until requestedIndices)
-      .map(j => RequestedIndex(ClusterIndexName.fromString(s"logs-app-${j % patterns}-day-$j").get, excluded = false))
-      .toCovariantSet
-    val context = new IndexRequestContext(
-      realisticHeaders(Credentials(User.Id(nes("user1")), PlainTextSecret(nes("pass1")))),
-      requested
-    )
-    blockContext = context.initialBlockContext(noBlock)
-    require(
-      rule.check(blockContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]],
-      "expected the indices rule to match all requested indices"
-    )
+    rule = createIndicesRule()
+    blockContext = createConcreteNamesBlockContext()
+    wildcardBlockContext = createWildcardBlockContext()
+    assertRulePermitted(rule.check(blockContext).runSyncUnsafe())
+    assertRulePermitted(rule.check(wildcardBlockContext).runSyncUnsafe())
   }
 
   @Benchmark
   def matchPath(bh: Blackhole): Unit =
     bh.consume(rule.check(blockContext).runSyncUnsafe())
 
-  // Wildcard variant: requested `logs-app-*` must EXPAND against the cluster's real index list —
-  // the production hot path for wildcard requests (the concrete-name variant above never touches it).
-  private var wildcardBlockContext: GeneralIndexRequestBlockContext = scala.compiletime.uninitialized
+  @Benchmark
+  def wildcardExpansionPath(bh: Blackhole): Unit =
+    bh.consume(rule.check(wildcardBlockContext).runSyncUnsafe())
 
-  @Setup(Level.Trial)
-  def setupWildcard(): Unit = {
+  private def createIndicesRule(): IndicesRule = {
+    val configured = (0 until patterns)
+      .map(idx => AlreadyResolved(NonEmptyList.one(ClusterIndexName.fromString(s"logs-app-$idx-*").get)): RuntimeMultiResolvableVariable[ClusterIndexName])
+      .toList
+    new IndicesRule(
+      IndicesRule.Settings(NonEmptySet.of(configured.head, configured.tail*), mustInvolveIndices = false),
+      RandomBasedUniqueIdentifierGenerator
+    )
+  }
+
+  // Concrete (non-wildcard) requested indices; resolution never touches the cluster state.
+  private def createConcreteNamesBlockContext(): GeneralIndexRequestBlockContext = {
+    val requested = (0 until requestedIndices)
+      .map(idx => RequestedIndex(ClusterIndexName.fromString(s"logs-app-${idx % patterns}-day-$idx").get, excluded = false))
+      .toCovariantSet
+    new IndexRequestContext(realisticHeaders(createCredentials("user1", "pass1")), requested)
+      .initialBlockContext(noBlock)
+  }
+
+  // Requested `logs-app-*` must EXPAND against a 200-index cluster (allIndicesAndAliases).
+  private def createWildcardBlockContext(): GeneralIndexRequestBlockContext = {
     val clusterIndices = (0 until 200)
-      .map { j =>
+      .map { idx =>
         new FullLocalIndexWithAliases(
-          IndexName.Full(nes(s"logs-app-${j % patterns}-day-$j")),
+          IndexName.Full(nes(s"logs-app-${idx % patterns}-day-$idx")),
           IndexAttribute.Opened,
           Set.empty
         )
@@ -99,19 +105,10 @@ class IndicesRuleResolutionBenchmark {
       .toCovariantSet
     val wildcardRequested =
       Set(RequestedIndex(ClusterIndexName.fromString("logs-app-*").get, excluded = false))
-    val context = new IndexRequestContext(
-      realisticHeaders(Credentials(User.Id(nes("user1")), PlainTextSecret(nes("pass1")))),
+    new IndexRequestContext(
+      realisticHeaders(createCredentials("user1", "pass1")),
       wildcardRequested,
       esServicesWithIndices(clusterIndices)
-    )
-    wildcardBlockContext = context.initialBlockContext(noBlock)
-    require(
-      rule.check(wildcardBlockContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]],
-      "expected the indices rule to permit the wildcard request after expansion"
-    )
+    ).initialBlockContext(noBlock)
   }
-
-  @Benchmark
-  def wildcardExpansionPath(bh: Blackhole): Unit =
-    bh.consume(rule.check(wildcardBlockContext).runSyncUnsafe())
 }

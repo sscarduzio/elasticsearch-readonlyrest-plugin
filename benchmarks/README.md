@@ -8,8 +8,8 @@ actual code, not a re-implementation. They are **absolute KPI benchmarks**: they
 the current code does, which is exactly what makes optimizations (and regressions) visible when
 runs are compared.
 
-This module is **manually-run tooling** — it is not wired into any CI gate. (A PR gate + nightly
-time-series design was prototyped and parked; see *Parked CI legs* below.)
+This module is **manually-run tooling** — it is not wired into any CI gate. (An automated
+version was built and shelved; see *The automated version (shelved)* below.)
 
 ## Running
 
@@ -23,7 +23,7 @@ time-series design was prototyped and parked; see *Parked CI legs* below.)
 # include the GC profiler to see allocation rate (B/op)
 ./gradlew :benchmarks:jmh -PjmhArgs="ActionsRule -prof gc"
 
-# the smoke subset (ci-smoke.txt regexes at canonical KPI sizes, with -prof gc):
+# the smoke subset (the tier-1 KPIs from kpis.yml, at canonical sizes, with -prof gc):
 # the recommended quick before/after check for a perf-relevant PR (~5-8 min)
 ./gradlew :benchmarks:jmhSmoke
 ```
@@ -47,9 +47,10 @@ benchmarks/
 │   │              JwtVerification
 │   ├── matchers/  GlobPatternsMatcher
 │   ├── domain/    HeaderNameEq (production Set[Header].find), BasicAuthDecode
-│   └── support/   BenchmarkSupport (request/ES-stub scaffolding, production types only)
-├── kpis.yml       # the elected KPIs — the reviewed contract of what we track (21 KPI ids)
-└── ci-smoke.txt   # JMH include regexes for the smoke subset
+│   └── support/   BenchmarkSupport (request/ES-stub scaffolding, production types only),
+│                  BenchmarkAclUtils (shared ACL-object creation + assertion helpers)
+└── kpis.yml       # the elected KPIs — the reviewed contract of what we track (21 KPI ids);
+                   # jmhSmoke runs its tier-1 entries, verifyKpis guards it against renames
 ```
 
 ## The KPI manifest
@@ -85,17 +86,17 @@ plus one guard task):
 2. **Reviewer side:** on a perf-relevant PR with no numbers, ask for them. That ask is the
    entire enforcement mechanism today.
 
-3. **Adding/renaming a benchmark:** update `kpis.yml` (and `ci-smoke.txt` if it's a tier-1
-   smoke KPI) in the same commit. `./gradlew :benchmarks:verifyKpis` (also run automatically
-   by `jmhSmoke`) fails on any manifest entry that no longer resolves to a compiled
-   `@Benchmark` method — the manifests can't silently rot.
+3. **Adding/renaming a benchmark:** update `kpis.yml` in the same commit (tier-1 entries are
+   automatically part of the smoke subset). `./gradlew :benchmarks:verifyKpis` (also run
+   automatically by `jmhSmoke`) fails on any manifest entry that no longer resolves to a
+   compiled `@Benchmark` method — the manifest can't silently rot.
 
 4. **Optimization PRs** may carry `oldPath_*` replica methods as review evidence; prune them
    at merge (see Conventions).
 
 5. **Escalation:** if perf-relevant PRs become frequent enough that the manual habit strains,
-   revive the parked CI legs (see below) — preferring the existing Grafana/Prometheus stack
-   over the bespoke git-DB time series.
+   revive the shelved automated version (see below) — preferring the existing
+   Grafana/Prometheus stack over its custom storage.
 
 ## Conventions
 
@@ -107,18 +108,26 @@ plus one guard task):
   both a concrete-name variant and a wildcard-expansion variant (the wildcard path is the
   production hot path for `logs-*`-style requests).
 
-## Parked CI legs
+## The automated version (shelved)
 
-A full perf-regression CI design (PR-level advisory allocation gate, nightly full runs on a
-pinned self-hosted agent, git-orphan-branch time series, MAD judge, static dashboard) was
-implemented and then **parked** on the `parked/perf-nightly-tools` branch: it depends on a
-pinned self-hosted agent that does not currently exist, and an adversarial design review found
-the judge/baseline mechanics need rework (rolling-median self-normalization, series-reset
-laundering, silent alert chain) before the signal is trustworthy.
+We already built an automated version of this: a CI gate that compared allocation numbers on
+every PR, plus a nightly run that recorded all KPIs over time and raised an alert when a number
+drifted. It is not in use. The code lives on the `parked/perf-nightly-tools` branch.
 
-Before reviving it: seed a pinned agent, fix the judge findings on that branch, and first
-evaluate pushing the KPI series into the existing Grafana/Prometheus stack instead of the
-bespoke git-DB + dashboard.
+Why it is shelved:
+
+- The nightly run needs a dedicated, always-identical machine to produce comparable numbers,
+  and we do not have one.
+- A design review found that its alerting logic could not be trusted yet: a slow regression
+  would gradually become the "normal" baseline, and a benchmark rename silently restarted its
+  history — so a real regression could pass unnoticed.
+
+What has to happen before anyone revives it:
+
+1. Set up a dedicated benchmark machine.
+2. Fix the alerting logic on the parked branch (the review findings are documented there).
+3. First check whether the existing Grafana/Prometheus stack can store and chart the KPI
+   series — that would replace the custom storage and dashboard the parked branch carries.
 
 ## How it is wired
 
@@ -128,8 +137,8 @@ JMH Gradle plugin:
 1. `jmhGenerate` runs JMH's ASM bytecode generator over the compiled `@Benchmark` classes
    (works with Scala bytecode) to produce the JMH infrastructure.
 2. `jmhCompileGenerated` compiles the generated Java.
-3. `jmh` runs `org.openjdk.jmh.Main`; `jmhSmoke` runs the `ci-smoke.txt` subset with `-prof gc`
-   and writes raw JSON to `build/jmh/smoke-raw.json`.
+3. `jmh` runs `org.openjdk.jmh.Main`; `jmhSmoke` runs the tier-1 KPI subset (parsed from
+   `kpis.yml`) with `-prof gc` and writes raw JSON to `build/jmh/smoke-raw.json`.
 
 Because nothing here applies a Gradle plugin, having this module in the build cannot affect
 configuration of the rest of the project — any issue only surfaces when the tasks are run.

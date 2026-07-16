@@ -20,6 +20,7 @@ import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContext.basicAuth
+import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.createCredentials
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
 import tech.beshu.ror.syntax.*
 
@@ -43,16 +44,12 @@ class BasicAuthDecodeBenchmark {
 
   @Setup(Level.Trial)
   def setup(): Unit = {
-    headers = realisticHeaders(Credentials(User.Id(nes("admin")), PlainTextSecret(nes("secret-password"))))
+    headers = realisticHeaders(createCredentials("admin", "secret-password"))
   }
 
   @Benchmark
   def decodePerRequest(bh: Blackhole): Unit = {
     val context = new NonIndexRequestContext(headers)
-    var i = 0
-    while (i < authBlocksPerRequest) {
-      bh.consume(context.basicAuth)
-      i += 1
-    }
+    (1 to authBlocksPerRequest).foreach(_ => bh.consume(context.basicAuth))
   }
 }

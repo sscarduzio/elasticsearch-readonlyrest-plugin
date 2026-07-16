@@ -21,13 +21,13 @@ import monix.execution.Scheduler.Implicits.global
 import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.Decision
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.orders.*
+import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
 import tech.beshu.ror.syntax.*
 
@@ -53,15 +53,25 @@ class RuleStaticResolutionBenchmark {
 
   @Setup(Level.Trial)
   def setup(): Unit = {
-    val allowed = (0 until configuredPatterns)
-      .map(i => AlreadyResolved(NonEmptyList.one(RepositoryName.from(s"backup-$i-*").get)): RuntimeMultiResolvableVariable[RepositoryName])
-      .toList
-    rule = new RepositoriesRule(RepositoriesRule.Settings(NonEmptySet.of(allowed.head, allowed.tail*)))
+    rule = createRepositoriesRule()
+    blockContext = createBlockContext()
+    assertRulePermitted(rule.check(blockContext).runSyncUnsafe())
+  }
 
-    val context = new NonIndexRequestContext(
-      realisticHeaders(Credentials(User.Id(nes("user1")), PlainTextSecret(nes("pass1"))))
-    )
-    blockContext = RepositoryRequestBlockContext(
+  @Benchmark
+  def matchPath(bh: Blackhole): Unit =
+    bh.consume(rule.check(blockContext).runSyncUnsafe())
+
+  private def createRepositoriesRule(): RepositoriesRule = {
+    val allowed = (0 until configuredPatterns)
+      .map(idx => AlreadyResolved(NonEmptyList.one(RepositoryName.from(s"backup-$idx-*").get)): RuntimeMultiResolvableVariable[RepositoryName])
+      .toList
+    new RepositoriesRule(RepositoriesRule.Settings(NonEmptySet.of(allowed.head, allowed.tail*)))
+  }
+
+  private def createBlockContext(): RepositoryRequestBlockContext = {
+    val context = new NonIndexRequestContext(realisticHeaders(createCredentials("user1", "pass1")))
+    RepositoryRequestBlockContext(
       block = noBlock,
       requestContext = context,
       blockMetadata = BlockMetadata.from(context),
@@ -69,13 +79,5 @@ class RuleStaticResolutionBenchmark {
       responseTransformations = List.empty,
       repositories = Set(RepositoryName.from("backup-0-daily").get)
     )
-    require(
-      rule.check(blockContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]],
-      "expected the repositories rule to match"
-    )
   }
-
-  @Benchmark
-  def matchPath(bh: Blackhole): Unit =
-    bh.consume(rule.check(blockContext).runSyncUnsafe())
 }

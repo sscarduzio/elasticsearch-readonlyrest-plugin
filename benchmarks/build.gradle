@@ -57,9 +57,9 @@ ext {
 
 dependencies {
     implementation project(':core')
-    implementation group: 'org.scala-lang',   name: 'scala3-library_3',         version: '3.3.7'
-    implementation group: 'org.openjdk.jmh',   name: 'jmh-core',                 version: jmhVersion
-    implementation group: 'org.openjdk.jmh',   name: 'jmh-generator-bytecode',   version: jmhVersion
+    implementation group: 'org.openjdk.jmh',  name: 'jmh-core',                version: jmhVersion
+    implementation group: 'org.openjdk.jmh',  name: 'jmh-generator-bytecode',  version: jmhVersion
+    implementation group: 'org.scala-lang',   name: 'scala3-library_3',        version: '3.3.7'
 }
 
 tasks.withType(ScalaCompile).configureEach {
@@ -125,22 +125,17 @@ tasks.register('jmh', JavaExec) {
     }
 }
 
-// Drift guard: every benchmark named in kpis.yml / ci-smoke.txt must resolve to a real
-// compiled @Benchmark class+method, so a rename can't silently rot the manifests.
+// Drift guard: every benchmark named in kpis.yml must resolve to a real compiled
+// @Benchmark class+method, so a rename can't silently rot the manifest.
 tasks.register('verifyKpis') {
     group = 'benchmark'
-    description = 'Verifies kpis.yml and ci-smoke.txt entries resolve to existing benchmark methods'
+    description = 'Verifies kpis.yml entries resolve to existing benchmark methods'
     dependsOn tasks.named('classes'), sourceSets.main.runtimeClasspath
     doLast {
         def targets = [] as Set  // list of [fqcn, method, source-file]
         file('kpis.yml').readLines().each { line ->
             def m = line =~ /^\s*benchmark:\s*([\w.]+)\.(\w+)/
             if (m) targets << [m[0][1], m[0][2], 'kpis.yml']
-        }
-        file('ci-smoke.txt').readLines()*.trim().findAll { it && !it.startsWith('#') }.each { rx ->
-            def literal = rx.replace('\\.', '.')
-            def cut = literal.lastIndexOf('.')
-            targets << [literal.take(cut), literal.drop(cut + 1), 'ci-smoke.txt']
         }
         def loader = new URLClassLoader(sourceSets.main.runtimeClasspath.files.collect { it.toURI().toURL() } as URL[], (ClassLoader) null)
         def missing = targets.findAll { fqcn, method, src ->
@@ -161,21 +156,36 @@ tasks.register('verifyKpis') {
 
 def smokeRaw    = layout.buildDirectory.file("jmh/smoke-raw.json")
 
-// 4) PR smoke subset: ci-smoke.txt regexes at the kpis.yml canonical @Param sizes, with -prof gc.
+// Tier-1 benchmark methods parsed from kpis.yml — the single reviewed manifest; its flat
+// line format needs no YAML library. Deduped: .time/.alloc KPI pairs share one method.
+def tier1BenchmarksFromKpisYml = {
+    def entries = []
+    def current = null
+    file('kpis.yml').readLines().each { line ->
+        def m
+        if ((m = line =~ /^\s*-\s*id:/)) { if (current != null) entries << current; current = [:] }
+        else if (current != null && (m = line =~ /^\s*tier:\s*(\d+)/)) current.tier = m[0][1] as Integer
+        else if (current != null && (m = line =~ /^\s*benchmark:\s*(\S+)/)) current.benchmark = m[0][1]
+    }
+    if (current != null) entries << current
+    entries.findAll { it.tier == 1 && it.benchmark }
+            .collect { it.benchmark.replaceAll(/\{[^}]*\}$/, '') }  // drop the pinned {param=...} suffix
+            .unique()
+}
+
+// 4) PR smoke subset: the kpis.yml tier-1 benchmarks at their canonical @Param sizes, with -prof gc.
 tasks.register('jmhSmoke', JavaExec) {
     group = 'benchmark'
-    description = 'Runs the smoke benchmark subset (ci-smoke.txt) with -prof gc, JSON to build/jmh'
+    description = 'Runs the tier-1 KPI benchmarks (from kpis.yml) with -prof gc, JSON to build/jmh'
     dependsOn 'jmhCompileGenerated', 'verifyKpis'
     mainClass = 'org.openjdk.jmh.Main'
     classpath = files(jmhGenClasses, jmhGenRes) + sourceSets.main.runtimeClasspath
-    // Read ci-smoke.txt and assemble args at EXECUTION time (doFirst), not configuration time —
-    // otherwise a missing ci-smoke.txt would FileNotFoundException every ./gradlew in :benchmarks,
-    // not just an actual jmhSmoke run.
+    // Parse kpis.yml and assemble args at EXECUTION time (doFirst), not configuration time —
+    // otherwise a missing kpis.yml would fail every ./gradlew in :benchmarks, not just jmhSmoke.
     doFirst {
         smokeRaw.get().asFile.parentFile.mkdirs()
-        def regexes = file('ci-smoke.txt').readLines()
-                .collect { it.trim() }
-                .findAll { it && !it.startsWith('#') }
+        // Dots escaped so a JMH regex can't accidentally glob across a package separator.
+        def regexes = tier1BenchmarksFromKpisYml().collect { it.replace('.', '\\.') }
         args = regexes + [
                 '-p', 'blocks=100', '-p', 'patterns=100', '-p', 'requestedIndices=50',
                 '-p', 'configuredGroups=100', '-p', 'userGroups=100',

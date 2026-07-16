@@ -16,24 +16,13 @@
  */
 package tech.beshu.ror.benchmarks.rules
 
-import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
 import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.Decision
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{AnyOfGroupsRule, AuthKeyRule}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic}
-import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.Group
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.AnyOfGroupsRule
+import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.concurrent.TimeUnit
 
@@ -58,43 +47,18 @@ class GroupsRuleBenchmark {
   private var rule: AnyOfGroupsRule = scala.compiletime.uninitialized
   private var blockContext: GeneralNonIndexRequestBlockContext = scala.compiletime.uninitialized
 
-  private def groupId(j: Int): GroupId = GroupId(nes(s"dept-$j"))
-
   @Setup(Level.Trial)
   def setup(): Unit = {
-    val permittedGroupIds = UniqueNonEmptyList.unsafeFrom(
-      (0 until configuredGroups)
-        .map(j => AlreadyResolved(NonEmptyList.one(groupId(j): GroupIdLike)): RuntimeMultiResolvableVariable[GroupIdLike])
-    )
-    val userDef = UserDef(
-      usernames = UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id(nes("user1"))))),
-      mode = UserDef.Mode.WithoutGroupsMapping(
-        new AuthKeyRule(
-          BasicAuthenticationRule.Settings(Credentials(User.Id(nes("user1")), PlainTextSecret(nes("pass1")))),
-          CaseSensitivity.Enabled,
-          Impersonation.Disabled
-        ),
-        UniqueNonEmptyList.unsafeFrom((0 until userGroups).map(j => Group.from(groupId(j))))
-      )
-    )
-    rule = new AnyOfGroupsRule(
-      BaseGroupsRule.Settings(
-        new RuntimeResolvableGroupsLogic.Simple[GroupsLogic.AnyOf](permittedGroupIds),
-        NonEmptyList.one(userDef)
-      )
-    )(CaseSensitivity.Enabled)
-
-    val context = new NonIndexRequestContext(
-      realisticHeaders(Credentials(User.Id(nes("user1")), PlainTextSecret(nes("pass1"))))
-    )
-    blockContext = context.initialBlockContext(noBlock)
-    require(
-      rule.check(blockContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]],
-      "expected the groups rule to match"
-    )
+    rule = createAnyOfGroupsRule("user1", "pass1", configuredGroups, userGroups)
+    blockContext = createBlockContext()
+    assertRulePermitted(rule.check(blockContext).runSyncUnsafe())
   }
 
   @Benchmark
   def matchPath(bh: Blackhole): Unit =
     bh.consume(rule.check(blockContext).runSyncUnsafe())
+
+  private def createBlockContext(): GeneralNonIndexRequestBlockContext =
+    new NonIndexRequestContext(realisticHeaders(createCredentials("user1", "pass1")))
+      .initialBlockContext(noBlock)
 }
