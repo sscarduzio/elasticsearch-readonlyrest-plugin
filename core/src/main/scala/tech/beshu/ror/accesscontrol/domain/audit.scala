@@ -210,3 +210,12 @@ final case class RorAuditLoggerName(value: NonEmptyString)
 object RorAuditLoggerName {
   val default: RorAuditLoggerName = RorAuditLoggerName(nes("readonlyrest_audit"))
 }
+
+final case class SinkName(value: String) extends AnyVal
+
+object SinkName {
+  val defaultAclLog: SinkName = SinkName("default_acl_log")
+  val defaultIndexStorage: SinkName = SinkName("default_audit_index")
+
+  def random(): SinkName = SinkName(java.util.UUID.randomUUID().toString)
+}

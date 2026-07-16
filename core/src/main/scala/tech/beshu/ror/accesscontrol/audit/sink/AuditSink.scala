@@ -17,17 +17,16 @@
 package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
-import org.apache.logging.log4j.{LogManager, Logger}
-import tech.beshu.ror.accesscontrol.audit.AuditSerializer
-import tech.beshu.ror.accesscontrol.domain.{RorAuditLoggerName, SinkName}
+import tech.beshu.ror.accesscontrol.domain.{RequestId, SinkName}
+import tech.beshu.ror.audit.AuditResponseContext
 
-private[audit] final class LogBasedAuditSink(
-    sinkName: SinkName,
-    serializer: AuditSerializer,
-    loggerName: RorAuditLoggerName
-) extends TextBasedAuditSink(sinkName, serializer) {
+trait AuditSink {
+  def name: SinkName
 
-  override protected val logger: Logger = LogManager.getLogger(loggerName.value.value)
+  def submit(event: AuditResponseContext)(
+      implicit requestId: RequestId
+  ): Task[Unit]
 
-  override def close(): Task[Unit] = Task.unit
+  def close(): Task[Unit]
+
 }

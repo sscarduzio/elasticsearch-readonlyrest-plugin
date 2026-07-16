@@ -114,6 +114,9 @@ class EnabledAccessControlList(
       }
     }
 
+  def withBlockTransformation(f: Block => Block): AccessControlList =
+    new EnabledAccessControlList(blocks.map(f), staticContext)
+
   private def deniedResultFrom[B <: BlockContext](blocksHistory: Vector[BlockHistory[B]]): RegularRequestResult[B] = {
     val denialCauses = denialCausesFrom(blocksHistory)
     val noImpersonation = !impersonationRelatedCauseExists(denialCauses)

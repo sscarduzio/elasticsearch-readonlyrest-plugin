@@ -22,6 +22,7 @@ import org.gradle.tooling.GradleConnector
 
 import java.io.File as JFile
 import java.nio.file.Paths
+import scala.collection.mutable
 import scala.util.Try
 
 object RorPluginGradleProject {
@@ -47,6 +48,10 @@ object RorPluginGradleProject {
       .filter(_.matches("^es\\d+x$"))
       .toList
 
+  // Memoizes the assembled plugin so it is built+verified at most once per (module, ES version):
+  // the ZIP is identical for every node that needs it, but assembling it is expensive.
+  private val assembledByModuleAndVersion = mutable.Map.empty[String, JFile]
+
 }
 
 class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
@@ -62,21 +67,28 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
       .create(RorPluginGradleProject.getRootProject)
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
-  def assemble: Option[JFile] = {
+  def assemble: Option[JFile] = RorPluginGradleProject.synchronized {
+    val key = s"$moduleName:$getModuleESVersion"
+    RorPluginGradleProject.assembledByModuleAndVersion
+      .get(key)
+      .orElse {
+        val plugin = reusedOrBuiltPlugin()
+        plugin.foreach(RorPluginGradleProject.assembledByModuleAndVersion.put(key, _))
+        plugin
+      }
+  }
+
+  // Shard workers (ROR_REUSE_ASSEMBLED=1, set by ShardedGradlewTest) reuse the zip the parent's
+  // prebuild already built AND bytecode-verified, instead of re-running a nested gradle build
+  // (~90s per shard, and concurrent nested builds contend on gradle's project lock). Opt-in only:
+  // a plain local `gradlew integration-tests:test` still always verifies + rebuilds.
+  private def reusedOrBuiltPlugin(): Option[JFile] = {
     val plugin = new JFile(project, "build/distributions/" + pluginName)
-    // Shard workers (ROR_REUSE_ASSEMBLED=1, set by ShardedGradlewTest) reuse the zip the parent's
-    // prebuild already built instead of re-running a nested gradle build (~90s per shard, and
-    // concurrent nested builds contend on gradle's project lock). Opt-in only: a plain local
-    // `gradlew integration-tests:test` still always rebuilds, so dev freshness is unchanged.
     if (sys.env.get("ROR_REUSE_ASSEMBLED").contains("1") && plugin.exists) {
       logger.info(s"Reusing already-assembled ROR for module $moduleName: ${plugin.getName}")
       Some(plugin)
     } else {
-      logger.info(s"Assembling ROR in module $moduleName")
-      runTask(moduleName + ":buildRorPluginZip")
-      logger.info(s"Finished assembling ROR in module $moduleName")
-      if (!plugin.exists) None
-      else Some(plugin)
+      buildPlugin()
     }
   }
 
@@ -84,6 +96,17 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     Option(System.getProperty("esVersion"))
       .filter(_ => isExplicitlyTargetedModule)
       .getOrElse(newestSupportedEsVersion)
+
+  private def buildPlugin(): Option[JFile] = {
+    logger.info(s"Assembling ROR in module $moduleName")
+    logger.info(s"Verifying repackage bytecode safety for module $moduleName (ES $getModuleESVersion)")
+    runTask(moduleName + ":verifyRepackageBytecode", List(s"-PverifyEsVersion=$getModuleESVersion"))
+    runTask(moduleName + ":buildRorPluginZip")
+    val plugin = new JFile(project, "build/distributions/" + pluginName)
+    logger.info(s"Finished assembling ROR in module $moduleName")
+    if (!plugin.exists) None
+    else Some(plugin)
+  }
 
   private def newestSupportedEsVersion: String =
     esProjectProperties
@@ -101,7 +124,7 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
   private def pluginName =
     s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion.zip"
 
-  private def runTask(task: String): Unit = {
+  private def runTask(task: String, extraArgs: List[String] = Nil): Unit = {
     // Cross-process mutex: K sharded test JVMs (IT_PARALLELISM > 1) share this workspace, and their
     // nested Tooling-API builds (prebuild + runtime container assembles) race Gradle's own project
     // locks to death. Serialize every nested build across processes; an up-to-date nested build holds
@@ -116,14 +139,14 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     var lock: java.nio.channels.FileLock = null
     try {
       lock = channel.lock()
-      doRunTask(task)
+      doRunTask(task, extraArgs)
     } finally {
       try if (lock != null) lock.release()
       finally channel.close()
     }
   }
 
-  private def doRunTask(task: String): Unit = {
+  private def doRunTask(task: String, extraArgs: List[String]): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)
     // On CI the toolchains image bakes the Gradle distribution + dependency cache into GRADLE_USER_HOME
     // and marks it with a `.ror-ci-baked` sentinel (written by ci/toolchains/JdkToolchains.Dockerfile only after the
@@ -139,8 +162,8 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     val connect = Try(connector.connect())
     val result = connect.map { c =>
       val args =
-        if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")).map(v => s"-PesVersion=$v").toList
-        else Nil
+        (if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")).map(v => s"-PesVersion=$v").toList
+         else Nil) ++ extraArgs
       val build = c.newBuild().forTasks(task)
       (if (args.nonEmpty) build.withArguments(args*) else build).run()
     }
