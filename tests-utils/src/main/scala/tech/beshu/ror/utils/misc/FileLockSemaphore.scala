@@ -29,6 +29,11 @@ import scala.util.{Failure, Success, Try, Using}
  * construction, and is self-healing — if a holder crashes or is OOM-killed, its lock dies
  * with the process and the slot frees itself.
  *
+ * Polling is inherent to the N-slot shape: a process cannot OS-block on "any of N files"
+ * at once, so waiters retry [[FileChannel.tryLock]] over the slots. For a single named
+ * mutex use [[FileLocks.withExclusiveLock]] instead — its blocking `lock()` wakes the
+ * waiter immediately, with no poll latency.
+ *
  * A permit is a [[FileLockSemaphore.Slot]]; release it in a `finally`.
  */
 final class FileLockSemaphore(permits: Int, slotDir: Path, slotFilePrefix: String) extends LazyLogging {
