@@ -31,74 +31,13 @@ variables:
   # container jobs and never leak to the bare Windows jobs (which use a workspace-local GRADLE_USER_HOME).
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
 
-trigger:
-  # Coalesce rapid pushes into one run (Azure has no auto-cancel for branch runs).
-  batch: true
-  branches:
-    include:
-      - master
-      - develop
-      - 'epic/*'
-      - '*/epic/*'
-  tags:
-    exclude:
-      - '*'
-  paths:
-    # Azure path filters DO support wildcards, but the old patterns were too shallow to cover deep
-    # paths: `*.md` matches a single segment (root-level .md only), `*/*/*.md` matches exactly two
-    # dir levels — so `.claude/skills/<name>/SKILL.md` (three levels) fell through — and `.claude`
-    # had no exclusion at all, so markdown/skill-only changes still triggered CI. Exclude the whole
-    # docs/skills trees by prefix plus the root-level markdown docs. Code changes elsewhere still run.
-    # NOTE: the root-level *.md entries are an explicit list (a `*.md` glob would only match root level
-    # anyway in Azure path filters) — keep it in sync if you add a new root-level markdown doc.
-    exclude:
-      - docs
-      - .claude
-      - README.md
-      - CONTRIBUTING.md
-      - SECURITY.md
-      - LICENSE.md
-      - CLAUDE.md
-      - development.md
+# CI has moved to GitHub Actions (.github/workflows/ci.yml) on Ubicloud/GitHub-hosted runners.
+# Azure triggers are DISABLED; this pipeline remains manually runnable as a fallback until deletion.
+trigger: none
 
-pr:
-  # A new commit cancels the prior in-progress PR run instead of stacking another
-  # full run on the queue (GitHub default; set explicitly so it is version-controlled).
-  autoCancel: true
-  branches:
-    include:
-      - master
-      - develop
-      - 'epic/*'
-      - '*/epic/*'
-  paths:
-    # Azure path filters DO support wildcards, but the old patterns were too shallow to cover deep
-    # paths: `*.md` matches a single segment (root-level .md only), `*/*/*.md` matches exactly two
-    # dir levels — so `.claude/skills/<name>/SKILL.md` (three levels) fell through — and `.claude`
-    # had no exclusion at all, so markdown/skill-only changes still triggered CI. Exclude the whole
-    # docs/skills trees by prefix plus the root-level markdown docs. Code changes elsewhere still run.
-    # NOTE: the root-level *.md entries are an explicit list (a `*.md` glob would only match root level
-    # anyway in Azure path filters) — keep it in sync if you add a new root-level markdown doc.
-    exclude:
-      - docs
-      - .claude
-      - README.md
-      - CONTRIBUTING.md
-      - SECURITY.md
-      - LICENSE.md
-      - CLAUDE.md
-      - development.md
+pr: none
 
-# Scheduled rebuild of the CI toolchains image (BUILD_TOOLCHAINS_IMAGE only; every other stage is
-# gated on Build.Reason != 'Schedule'). Keeps the baked Gradle cache fresh without manual action:
-# a dep bumped during the week falls back to the network until the next rebuild closes the gap.
-schedules:
-  - cron: '0 3 * * 1'
-    displayName: 'Weekly CI toolchains image rebuild'
-    branches:
-      include:
-        - develop
-    always: true
+# (weekly toolchains-image rebuild now lives in the GitHub Actions workflow's schedule)
 
 parameters:
   - name: actionToPerform

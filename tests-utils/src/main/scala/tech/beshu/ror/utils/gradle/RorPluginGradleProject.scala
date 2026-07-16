@@ -19,6 +19,7 @@ package tech.beshu.ror.utils.gradle
 import better.files.*
 import com.typesafe.scalalogging.LazyLogging
 import org.gradle.tooling.GradleConnector
+import tech.beshu.ror.utils.misc.FileLocks
 
 import java.io.File as JFile
 import java.nio.file.Paths
@@ -72,10 +73,24 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     RorPluginGradleProject.assembledByModuleAndVersion
       .get(key)
       .orElse {
-        val plugin = buildPlugin()
+        val plugin = reusedOrBuiltPlugin()
         plugin.foreach(RorPluginGradleProject.assembledByModuleAndVersion.put(key, _))
         plugin
       }
+  }
+
+  // Shard workers (ROR_REUSE_ASSEMBLED=1, set by ShardedGradlewTest) reuse the zip the parent's
+  // prebuild already built AND bytecode-verified, instead of re-running a nested gradle build
+  // (~90s per shard, and concurrent nested builds contend on gradle's project lock). Opt-in only:
+  // a plain local `gradlew integration-tests:test` still always verifies + rebuilds.
+  private def reusedOrBuiltPlugin(): Option[JFile] = {
+    val plugin = new JFile(project, "build/distributions/" + pluginName)
+    if (sys.env.get("ROR_REUSE_ASSEMBLED").contains("1") && plugin.exists) {
+      logger.info(s"Reusing already-assembled ROR for module $moduleName: ${plugin.getName}")
+      Some(plugin)
+    } else {
+      buildPlugin()
+    }
   }
 
   def getModuleESVersion: String =
@@ -111,6 +126,17 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion.zip"
 
   private def runTask(task: String, extraArgs: List[String] = Nil): Unit = {
+    // Cross-process mutex: K sharded test JVMs (IT_PARALLELISM > 1) share this workspace, and their
+    // nested Tooling-API builds (prebuild + runtime container assembles) race Gradle's own project
+    // locks to death. Serialize every nested build across processes; an up-to-date nested build holds
+    // the lock only briefly. ponytail: one global lock — per-module locks if contention ever matters.
+    val lockFile = new JFile(RorPluginGradleProject.getRootProject, ".ror-nested-gradle.lock")
+    FileLocks.withExclusiveLock(lockFile.toPath) {
+      doRunTask(task, extraArgs)
+    }
+  }
+
+  private def doRunTask(task: String, extraArgs: List[String]): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)
     // On CI the toolchains image bakes the Gradle distribution + dependency cache into GRADLE_USER_HOME
     // and marks it with a `.ror-ci-baked` sentinel (written by ci/toolchains/JdkToolchains.Dockerfile only after the

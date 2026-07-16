@@ -124,9 +124,9 @@ function tag {
   echo "Tagging as $GIT_TAG"
   git config --global push.default matching
   git config --global user.email "support@readonlyrest.com"
-  git config --global user.name "Azure Pipeline"
+  git config --global user.name "CI"
   # -f overwrites any stale local tag from a previous failed push attempt
-  git tag -fa "$GIT_TAG" -m "Generated tag from Azure Pipeline build $TRAVIS_BUILD_NUMBER"
+  git tag -fa "$GIT_TAG" -m "Generated tag from CI build $TRAVIS_BUILD_NUMBER"
   git push origin "$GIT_TAG"
   return 0
 }

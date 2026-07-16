@@ -51,15 +51,16 @@ public abstract class ShardedGradlewTest extends DefaultTask {
   public void runShards() {
     int shardCount = shardCountValue();
     File projectDir = getProject().getRootProject().getProjectDir();
-    File gradlew = new File(projectDir, "gradlew");
     File logDir =
         new File(getProject().getLayout().getBuildDirectory().getAsFile().get(), "sharded-logs");
 
     ParallelProcessRunner runner = new ParallelProcessRunner(projectDir);
 
     for (int i = 0; i < shardCount; i++) {
-      List<String> cmd = new ArrayList<>();
-      cmd.add(gradlew.getAbsolutePath());
+      // Platform-correct wrapper invocation lives in GradlewCommand (cmd.exe /c on Windows).
+      // ProcessHandle.descendants().destroyForcibly() in ParallelProcessRunner is cross-platform,
+      // so cancellation reaping works the same on both OSes.
+      List<String> cmd = new ArrayList<>(GradlewCommand.forHost(projectDir));
       cmd.add("--no-daemon"); // mandatory for descendant-tree integrity (see class javadoc)
       cmd.add("integration-tests:test");
       cmd.add("-PesModule=" + esModuleValue());
@@ -69,6 +70,16 @@ public abstract class ShardedGradlewTest extends DefaultTask {
       }
       cmd.add("-PshardCount=" + shardCount);
       cmd.add("-PshardIndex=" + i);
+      // Child daemons only orchestrate one 512m test-worker JVM + docker containers; without this
+      // they inherit gradle.properties' -Xmx6144m, reserving ~6GB x K on a 16GB runner — the real
+      // memory ceiling behind the k=5/k=6 host-OOM deaths, not Elasticsearch itself.
+      cmd.add("-Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=512m");
+      // THIS task's dependsOn already ran prebuildEsImage once, before any shard spawned. The
+      // child's own prebuildEsImage dependency is NOT a cache hit: it launches a nested Tooling-API
+      // build ("Assembling ROR ...") and K concurrent nested builds in one workspace race each
+      // other to death. Exclude it — shards consume the image the parent prebuilt.
+      cmd.add("-x");
+      cmd.add("integration-tests:prebuildEsImage");
 
       File shardLog = new File(logDir, "shard-" + i + ".log");
       runner.addCommand(cmd, shardLog);

@@ -19,19 +19,25 @@ package tech.beshu.ror.utils.containers
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.windows.WindowsPseudoWiremockContainer
-import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
+import tech.beshu.ror.utils.misc.{OsUtils, RorShard}
 
 object Wiremock {
 
   def create(mappings: List[String], portWhenRunningOnWindows: Int = 8080): WiremockContainer = {
     OsUtils.currentOs match {
       case CurrentOs.Windows =>
+        // Per-shard port window (RorShard): sharded Windows runs share one host, and two shards
+        // starting wiremock-backed suites concurrently raced for the same fixed port ("Failed to
+        // bind to /0.0.0.0:8080"). originalPort moves too — on Windows it is what gets substituted
+        // into readonlyrest.yml placeholders (RorSettingsAdjuster), and providePort is what test
+        // clients dial; all three must agree on the shifted port.
+        val shardedPort = RorShard.shardedBasePort(portWhenRunningOnWindows)
         new WiremockContainer(
-          container = new WindowsPseudoWiremockContainer(portWhenRunningOnWindows, mappings),
+          container = new WindowsPseudoWiremockContainer(shardedPort, mappings),
           host = "localhost",
-          portProvider = () => portWhenRunningOnWindows,
-          originalPort = portWhenRunningOnWindows,
+          portProvider = () => shardedPort,
+          originalPort = shardedPort,
         )
       case CurrentOs.OtherThanWindows =>
         val container = new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))

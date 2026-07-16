@@ -25,6 +25,7 @@ repositories {
 }
 
 dependencies {
+    implementation localGroovy() // groovy-json for SuiteSharder.timingsFrom
     implementation group: 'com.star-zero.gradle',                         name: 'githook',                                 version: '1.2.1'
     implementation group: 'org.ow2.asm',                                  name: 'asm-tree',                                version: '9.7'
     implementation group: 'org.ow2.asm',                                  name: 'asm-util',                                version: '9.7'

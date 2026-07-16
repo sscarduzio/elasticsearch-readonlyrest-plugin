@@ -56,8 +56,9 @@ def baseForCompile = (verifyRequest instanceof FullVerification) ? verifyRequest
         : (verifyRequest instanceof CompileOnlyVerification) ? verifyRequest.version
         : null
 
-def gradlew = new File(rootDir,
-        org.gradle.internal.os.OperatingSystem.current().windows ? 'gradlew.bat' : 'gradlew').path
+// Platform-correct wrapper invocation (cmd.exe /c + gradlew.bat on Windows) — shared with
+// ShardedGradlewTest via GradlewCommand.
+def gradlew = tech.beshu.ror.buildbase.GradlewCommand.forHost(rootDir)
 
 // Each version is compiled in its OWN nested `./gradlew` invocation, with `clean` first and `--no-build-cache`,
 // then its jar is stashed OUTSIDE the module build dir. All of this is load-bearing because the Scala
@@ -81,8 +82,8 @@ def compileBaseTask = baseForCompile == null ? null : tasks.register("repackageC
     group = 'verification'
     description = "Compiles ${project.name} at its base ES ${baseForCompile} (for the repackage bytecode check)"
     workingDir = rootDir
-    commandLine gradlew, ":${project.name}:clean", ":${project.name}:toJar",
-            "--no-build-cache", "-PbaselineEsVersion=${baseForCompile}"
+    commandLine(gradlew + [":${project.name}:clean", ":${project.name}:toJar",
+            "--no-build-cache", "-PbaselineEsVersion=${baseForCompile}"])
     doLast {
         def produced = buildLibsJar(baseForCompile)
         if (!produced.exists()) throw new GradleException("expected jar not produced: ${produced}")
@@ -97,8 +98,8 @@ def verifyDiffTask = verifyRequest instanceof FullVerification ? { ->
         group = 'verification'
         description = "Recompiles ${project.name} at ES ${verifyRequest.targetVersion} to compare its bytecode against the base"
         workingDir = rootDir
-        commandLine gradlew, ":${project.name}:clean", ":${project.name}:toJar",
-                "--no-build-cache", "-PbaselineEsVersion=${verifyRequest.targetVersion}"
+        commandLine(gradlew + [":${project.name}:clean", ":${project.name}:toJar",
+                "--no-build-cache", "-PbaselineEsVersion=${verifyRequest.targetVersion}"])
         // Runs after the base compile has stashed its jar, so this compile's `clean` can't remove it.
         dependsOn compileBaseTask
         doLast {
@@ -165,7 +166,7 @@ def perGroupVerifyTasks = EsVersions.groupNewest(project).collect { ver ->
         group = 'verification'
         description = "Verifies ES ${ver} of ${project.name} repackages from its base"
         workingDir = rootDir
-        commandLine gradlew, ":${project.name}:verifyRepackageBytecode", "-PverifyEsVersion=${ver}"
+        commandLine(gradlew + [":${project.name}:verifyRepackageBytecode", "-PverifyEsVersion=${ver}"])
     }
 }
 
