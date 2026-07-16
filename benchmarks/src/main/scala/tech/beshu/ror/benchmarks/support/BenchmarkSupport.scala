@@ -36,8 +36,13 @@ import tech.beshu.ror.syntax.*
 import java.time.Instant
 
 /**
- * Shared request scaffolding for the KPI benchmarks. Only production types are used here,
- * so every benchmark measures the real per-request entry points of `core`.
+ * Shared request scaffolding for the KPI benchmarks: the fake WORLD the benchmarks run in
+ * (request contexts, ES-cluster stubs, realistic header shapes). Only production types are
+ * used here, so every benchmark measures the real per-request entry points of `core`.
+ *
+ * Deliberately separate from [[BenchmarkAclUtils]], which builds the production ACL objects
+ * UNDER measurement (rules, blocks, ACLs) and asserts on their decisions — one file per axis
+ * instead of a single util grab-bag.
  */
 object BenchmarkSupport {
 

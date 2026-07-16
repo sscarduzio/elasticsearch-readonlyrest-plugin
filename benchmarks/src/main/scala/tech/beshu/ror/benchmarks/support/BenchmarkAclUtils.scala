@@ -39,8 +39,13 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 /**
- * ACL-object creation and assertion helpers shared by the benchmark setup code,
- * so each benchmark class reads as: setup -> benchmarks -> its own private utils.
+ * Builders for the production ACL objects UNDER measurement (rules, blocks, whole ACLs) plus
+ * decision assertions, shared by the benchmark setup code so each benchmark class reads as:
+ * setup -> benchmarks -> its own private utils.
+ *
+ * Deliberately separate from [[BenchmarkSupport]], which provides the fake world the
+ * benchmarks run in (request contexts, ES stubs) — one file per axis instead of a single
+ * util grab-bag.
  */
 object BenchmarkAclUtils {
 
