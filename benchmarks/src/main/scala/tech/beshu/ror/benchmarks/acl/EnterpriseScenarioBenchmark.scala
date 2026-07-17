@@ -88,7 +88,7 @@ class EnterpriseScenarioBenchmark {
       createHeadersRule()
     )
     // .sorted = production RuleOrdering (what Block.createFrom applies); validation is config-time-only.
-    new Block(Block.Name(s"block$blockIndex"), Block.Policy.Allow, Block.Verbosity.Info, Block.Audit.Enabled, rules.sorted)
+    new Block(Block.Name(s"block$blockIndex"), Block.Policy.Allow, rules.sorted, Block.Audit.Enabled())
   }
 
   private def createIndicesRule(): IndicesRule = {
