@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.http.{HeadersAndRule, MethodsRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.http.{BaseHeaderRule, HeadersAndRule, MethodsRule}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
@@ -79,7 +79,7 @@ class AclEvaluationBenchmark {
       createAuthKeyRule(s"user$blockIndex", s"pass$blockIndex"),
       new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))),
       new ActionsRule(ActionsRule.Settings(NonEmptySet.one(searchAction))),
-      new HeadersAndRule(HeadersAndRule.Settings(NonEmptySet.one(
+      new HeadersAndRule(BaseHeaderRule.Settings(NonEmptySet.one(
         AccessRequirement.MustBePresent(Header(Header.Name(nes("X-Custom-1")), nes("value-1")))
       )))
     )

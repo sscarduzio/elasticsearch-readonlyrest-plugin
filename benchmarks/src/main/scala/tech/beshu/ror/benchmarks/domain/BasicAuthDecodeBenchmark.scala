@@ -19,7 +19,6 @@ package tech.beshu.ror.benchmarks.domain
 import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.request.RequestContext.basicAuth
 import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.createCredentials
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
 import tech.beshu.ror.syntax.*

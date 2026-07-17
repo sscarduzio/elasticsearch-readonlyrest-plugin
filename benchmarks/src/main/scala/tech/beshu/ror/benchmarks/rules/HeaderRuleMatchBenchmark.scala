@@ -21,7 +21,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersAndRule
+import tech.beshu.ror.accesscontrol.blocks.rules.http.{BaseHeaderRule, HeadersAndRule}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
@@ -63,7 +63,7 @@ class HeaderRuleMatchBenchmark {
     val required = (0 until requirements)
       .map(idx => AccessRequirement.MustBePresent(Header(Header.Name(nes(s"X-Required-$idx")), nes(s"allowed-$idx-*"))))
       .toList
-    new HeadersAndRule(HeadersAndRule.Settings(NonEmptySet.of(required.head, required.tail*)))
+    new HeadersAndRule(BaseHeaderRule.Settings(NonEmptySet.of(required.head, required.tail*)))
   }
 
   private def createBlockContext(): GeneralNonIndexRequestBlockContext = {

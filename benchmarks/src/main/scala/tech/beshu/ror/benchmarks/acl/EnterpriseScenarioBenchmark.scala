@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
-import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersAndRule
+import tech.beshu.ror.accesscontrol.blocks.rules.http.{BaseHeaderRule, HeadersAndRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.*
@@ -106,7 +106,7 @@ class EnterpriseScenarioBenchmark {
     )))
 
   private def createHeadersRule(): HeadersAndRule =
-    new HeadersAndRule(HeadersAndRule.Settings(NonEmptySet.of(
+    new HeadersAndRule(BaseHeaderRule.Settings(NonEmptySet.of(
       AccessRequirement.MustBePresent(Header(Header.Name(nes("X-Custom-1")), nes("value-1"))),
       AccessRequirement.MustBePresent(Header(Header.Name(nes("X-Filler-1")), nes("value-1")))
     )))
