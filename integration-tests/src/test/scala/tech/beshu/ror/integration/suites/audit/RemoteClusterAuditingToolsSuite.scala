@@ -187,7 +187,7 @@ class RemoteClusterAuditingToolsSuite
           // so the reload fails despite the ignored connectivity check
           response.forceFailure(
             s"Unable to configure audit output using a data stream in remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. " +
-              s"Details: [Unable to determine if data stream audit_data_stream exists., Unable to determine if data stream audit_data_stream exists.]"
+              s"Details: [Unable to determine if data stream audit_data_stream exists.]"
           )
         } else {
           // the index output is created lazily, so with the connectivity check ignored the reload succeeds

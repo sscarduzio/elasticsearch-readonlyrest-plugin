@@ -412,7 +412,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     val mockedService = mock[DataStreamBasedAuditSinkService]
     (() => mockedService.dataStreamCreator)
       .expects()
-      .returns(Resource.pure(AuditDataStreamCreator.local(mockedDataStreamService)))
+      .returns(Resource.pure(AuditDataStreamCreator(mockedDataStreamService)))
 
     mockedService
   }

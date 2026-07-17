@@ -18,7 +18,6 @@ package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
 import cats.effect.Resource
-import cats.implicits.*
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import monix.eval.Task
 import org.apache.http.HttpHost
@@ -140,17 +139,9 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
   }
 
   private def createAuditSinkCreator(hosts: NonEmptyList[HttpHost], remoteCluster: AuditCluster.RemoteAuditCluster) = {
-    hosts
-      .map { host =>
-        Resource.make(Task.delay(createRestClient(remoteCluster, NonEmptyList.one(host))))(client =>
-          Task.delay(client.close())
-        )
-      }
-      .sequence
-      .map {
-        _.map(client => new RestClientDataStreamService(client))
-      }
-      .map(AuditDataStreamCreator.remote(_))
+    Resource
+      .make(Task.delay(createRestClient(remoteCluster, hosts)))(client => Task.delay(client.close()))
+      .map(client => AuditDataStreamCreator(new RestClientDataStreamService(client)))
   }
 
   private def createService(

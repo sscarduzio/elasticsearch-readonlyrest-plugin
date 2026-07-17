@@ -113,7 +113,7 @@ final class NodeClientBasedAuditSinkService(
   override val dataStreamCreator: Resource[Task, AuditDataStreamCreator] = {
     Resource
       .pure[Task, DataStreamService](new EsDataStreamService(client, jsonParserFactory))
-      .map(AuditDataStreamCreator.local)
+      .map(AuditDataStreamCreator.apply)
   }
 
 }

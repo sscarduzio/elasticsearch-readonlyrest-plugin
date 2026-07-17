@@ -2249,7 +2249,7 @@ class ReadonlyRestStartingTests
     (() => dataStreamAuditSink.dataStreamCreator)
       .expects()
       .once()
-      .returns(Resource.pure(AuditDataStreamCreator.local(dataStreamService)))
+      .returns(Resource.pure(AuditDataStreamCreator(dataStreamService)))
     if (close) {
       (() => dataStreamAuditSink.close())
         .expects()

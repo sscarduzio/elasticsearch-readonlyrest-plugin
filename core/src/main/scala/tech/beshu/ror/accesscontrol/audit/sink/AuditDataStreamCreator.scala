@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.audit.sink
 
 import cats.data.Validated.Valid
 import cats.data.{NonEmptyList, Validated}
-import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator.ErrorMessage
@@ -32,16 +31,10 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.concurrent.TimeUnit
 
-final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) extends RequestIdAwareLogging {
+final class AuditDataStreamCreator(service: DataStreamService) extends RequestIdAwareLogging {
 
   def createIfNotExists(dataStreamName: RorAuditDataStream): Task[Either[NonEmptyList[ErrorMessage], Unit]] = {
-    services.toList
-      .map(createIfNotExists(_, dataStreamName))
-      .sequence
-      .map { results =>
-        val (errors, _) = results.map(_.toEither).separate
-        NonEmptyList.fromList(errors).toLeft(())
-      }
+    createIfNotExists(service, dataStreamName).map(_.toEither.left.map(NonEmptyList.one))
   }
 
   private def createIfNotExists(
@@ -162,11 +155,8 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) ex
 
 object AuditDataStreamCreator {
 
-  def local(service: DataStreamService): AuditDataStreamCreator =
-    new AuditDataStreamCreator(NonEmptyList.one(service))
-
-  def remote(services: NonEmptyList[DataStreamService]): AuditDataStreamCreator =
-    new AuditDataStreamCreator(services)
+  def apply(service: DataStreamService): AuditDataStreamCreator =
+    new AuditDataStreamCreator(service)
 
   final case class ErrorMessage(message: String) extends AnyVal
 }

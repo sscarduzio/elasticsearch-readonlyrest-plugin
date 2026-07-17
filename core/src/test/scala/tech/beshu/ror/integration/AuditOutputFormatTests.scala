@@ -274,7 +274,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       .returning(Task.now(true))
 
     override def dataStreamCreator: Resource[Task, AuditDataStreamCreator] = Resource.pure {
-      AuditDataStreamCreator(NonEmptyList.one(mockedDataStreamService))
+      AuditDataStreamCreator(mockedDataStreamService)
     }
 
   }
