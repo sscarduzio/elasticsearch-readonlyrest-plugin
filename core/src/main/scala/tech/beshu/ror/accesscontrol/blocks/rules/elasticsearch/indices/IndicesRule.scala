@@ -49,7 +49,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
 import tech.beshu.ror.syntax.*
 
 class IndicesRule(override val settings: Settings, override val identifierGenerator: UniqueIdentifierGenerator)
@@ -60,6 +60,12 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
   import IndicesRule.*
 
   override val name: Rule.Name = IndicesRule.Name.name
+
+  // Optimization: when the allowed indices are pre-resolved, split them and build the matchers once
+  // instead of per request.
+  private val staticAllowedIndices: Option[AllowedClusterIndices] =
+    resolveAllIfPreResolved(settings.allowedIndices.toNonEmptyList)
+      .map(indices => new AllowedClusterIndices(indices.toList.toCovariantSet))
 
   override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     BlockContextUpdater[B] match {
@@ -89,19 +95,14 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     if (matchAll) {
       Task.now(Permitted(blockContext))
     } else {
-      val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
-      processIndices(
-        blockContext.requestContext,
-        allAllowedIndices,
-        blockContext.indices,
-        kibanaIndexFrom(blockContext)
-      )
+      val allowedIndices = allowedIndicesFor(blockContext)
+      processIndices(blockContext.requestContext, allowedIndices, blockContext.indices, kibanaIndexFrom(blockContext))
         .map {
           case ProcessResult.Ok(filteredIndices) =>
-            val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allAllowedIndices)
-            Permitted(blockContext.withIndices(filteredIndices, allAllowedIndices).withClusters(allowedClusters))
+            val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allowedIndices)
+            Permitted(blockContext.withIndices(filteredIndices, allowedIndices.all).withClusters(allowedClusters))
           case ProcessResult.Failed.IndexNotFound =>
-            val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allAllowedIndices)
+            val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allowedIndices)
             Denied(Cause.IndexNotFound(allowedClusters))
           case ProcessResult.Failed.Other =>
             reject()
@@ -118,7 +119,7 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
       import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks.*
       def atLeastOneFound(indices: List[Indices]) = indices.exists(_.isInstanceOf[Indices.Found])
 
-      val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
+      val allowedIndices = allowedIndicesFor(blockContext)
       blockContext.indexPacks
         .foldLeft(Task.now(List.empty[Indices].asRight[Unit])) { case (acc, pack) =>
           acc.flatMap {
@@ -127,7 +128,7 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
                 case Indices.Found(indices) =>
                   processIndices(
                     blockContext.requestContext,
-                    resolvedAllowedIndices,
+                    allowedIndices,
                     indices,
                     kibanaIndexFrom(blockContext)
                   ) map {
@@ -147,7 +148,7 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
           case Right(_)                                   =>
             Denied(
               Cause.IndexNotFound(
-                getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
+                getAllowedClusterNames(blockContext.requestContext, allowedIndices)
               )
             )
           case Left(_) => reject()
@@ -159,17 +160,17 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     if (matchAll) {
       Task.now(Permitted(blockContext))
     } else {
-      val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
+      val allowedIndices = allowedIndicesFor(blockContext)
       for {
         indicesResult <- processIndices(
           blockContext.requestContext,
-          resolvedAllowedIndices,
+          allowedIndices,
           blockContext.indices,
           kibanaIndexFrom(blockContext)
         )
         aliasesResult <- processIndices(
           blockContext.requestContext,
-          resolvedAllowedIndices,
+          allowedIndices,
           blockContext.aliases,
           kibanaIndexFrom(blockContext)
         )
@@ -180,7 +181,7 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
           case (ProcessResult.Failed.IndexNotFound, _) =>
             Denied(
               Cause.IndexNotFound(
-                getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
+                getAllowedClusterNames(blockContext.requestContext, allowedIndices)
               )
             )
           case (ProcessResult.Failed.Other, _) =>
@@ -211,23 +212,19 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     else processIndicesRequest(blockContext)
   }
 
-  private def getAllowedClusterNames(
-      requestContext: RequestContext,
-      allAllowedIndices: Set[ClusterIndexName]
-  ): Set[ClusterName.Full] = {
-    given RequestId = requestContext.id.toRequestId
-    def isLocalClusterAllowed: Boolean = allAllowedIndices.exists {
-      case ClusterIndexName.Local(_)     => true
-      case ClusterIndexName.Remote(_, _) => false
+  private def allowedIndicesFor(blockContext: BlockContext): AllowedClusterIndices =
+    staticAllowedIndices.getOrElse {
+      new AllowedClusterIndices(resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet)
     }
 
-    val clusterNamesFromIndices = allAllowedIndices.flatMap {
-      case ClusterIndexName.Local(_)           => None
-      case ClusterIndexName.Remote(_, cluster) => Some(cluster)
-    }
-    val matcher = PatternsMatcher.create(clusterNamesFromIndices)
-    val allowedRemoteClusters = matcher.filter(requestContext.esServices.clusterService.allRemoteClusterNames)
-    allowedRemoteClusters ++ Option.when(isLocalClusterAllowed)(ClusterName.Full.local).toCovariantSet
+  private def getAllowedClusterNames(
+      requestContext: RequestContext,
+      allowedIndices: AllowedClusterIndices
+  ): Set[ClusterName.Full] = {
+    given RequestId = requestContext.id.toRequestId
+    val allowedRemoteClusters =
+      allowedIndices.remoteClusterNamesMatcher.filter(requestContext.esServices.clusterService.allRemoteClusterNames)
+    allowedRemoteClusters ++ Option.when(allowedIndices.isLocalClusterAllowed)(ClusterName.Full.local).toCovariantSet
   }
 
   private def kibanaIndexFrom(blockContext: BlockContext) = {
@@ -252,6 +249,27 @@ object IndicesRule {
       allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
       mustInvolveIndices: Boolean
   )
+
+  // Allowed indices pre-split into local/remote with lazily compiled matchers: built once at rule
+  // construction for a static config, or per request when runtime variables are involved.
+  private[indices] final class AllowedClusterIndices(val all: Set[ClusterIndexName]) {
+
+    val (remote, local) = {
+      val remoteIndices = Set.newBuilder[ClusterIndexName.Remote]
+      val localIndices = Set.newBuilder[ClusterIndexName.Local]
+      all.foreach {
+        case localIndex: ClusterIndexName.Local   => localIndices += localIndex
+        case remoteIndex: ClusterIndexName.Remote => remoteIndices += remoteIndex
+      }
+      (remoteIndices.result(), localIndices.result())
+    }
+
+    lazy val localMatcher: PatternsMatcher[ClusterIndexName.Local] = PatternsMatcher.create(local)
+    lazy val remoteMatcher: PatternsMatcher[ClusterIndexName.Remote] = PatternsMatcher.create(remote)
+    lazy val remoteClusterNamesMatcher: PatternsMatcher[ClusterName] = PatternsMatcher.create(remote.map(_.cluster))
+
+    def isLocalClusterAllowed: Boolean = local.nonEmpty
+  }
 
   private[indices] sealed trait ProcessResult
 

@@ -76,6 +76,16 @@ trait RequestContext {
   lazy val isReadOnlyRequest: Boolean =
     RequestContext.readActionPatternsMatcher.`match`(action)
 
+  // Computed once per request: Base64-decoding the credentials per block would be redundant.
+  lazy val basicAuth: Option[BasicAuth] = {
+    implicit val requestId: RequestId = id.toRequestId
+    restRequest.allHeaders
+      .to(LazyList)
+      .map(BasicAuth.fromHeader)
+      .find(_.isDefined)
+      .flatten
+  }
+
   def isCompositeRequest: Boolean
 
   def isAllowedForDLS: Boolean
@@ -208,15 +218,6 @@ object RequestContext extends RequestIdAwareLogging {
             .flatMap(_.split(",").headOption)
             .flatMap(Address.from)
         }
-    }
-
-    def basicAuth: Option[BasicAuth] = {
-      implicit val requestId: RequestId = requestContext.id.toRequestId
-      requestContext.restRequest.allHeaders
-        .to(LazyList)
-        .map(BasicAuth.fromHeader)
-        .find(_.isDefined)
-        .flatten
     }
 
     def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)

@@ -43,7 +43,7 @@ object LoggedUser {
 }
 
 object User {
-  final case class Id(value: NonEmptyString)
+  final case class Id(value: NonEmptyString) extends EagerHashCode
 
   object Id {
 
@@ -73,13 +73,13 @@ sealed abstract class Pattern[T](val value: T)
 
 final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
 
-final case class Group(id: GroupId, name: GroupName)
+final case class Group(id: GroupId, name: GroupName) extends EagerHashCode
 
 object Group {
   def from(id: GroupId): Group = Group(id, GroupName.from(id))
 }
 
-final case class GroupName(value: NonEmptyString)
+final case class GroupName(value: NonEmptyString) extends EagerHashCode
 
 object GroupName {
   def from(id: GroupId): GroupName = GroupName(id.value)
@@ -88,7 +88,7 @@ object GroupName {
 sealed trait GroupIdLike
 
 object GroupIdLike {
-  final case class GroupId(value: NonEmptyString) extends GroupIdLike
+  final case class GroupId(value: NonEmptyString) extends GroupIdLike with EagerHashCode
 
   object GroupId {
     implicit val eq: Eq[GroupId] = Eq.by(_.value.value)
