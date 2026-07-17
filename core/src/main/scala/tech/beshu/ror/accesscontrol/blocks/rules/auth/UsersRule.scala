@@ -27,11 +27,16 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
 
 class UsersRule(val settings: Settings, implicit val userIdCaseSensitivity: CaseSensitivity) extends RegularRule {
 
   override val name: Rule.Name = UsersRule.Name.name
+
+  // Optimization: when the user ids are pre-resolved, build the matcher once instead of per request.
+  private val staticUserIdsMatcher: Option[PatternsMatcher[User.Id]] =
+    resolveAllIfPreResolved(settings.userIds.toNonEmptyList)
+      .map(userIds => PatternsMatcher.create(userIds.toList.toSet))
 
   override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.blockMetadata.loggedUser match {
@@ -41,9 +46,11 @@ class UsersRule(val settings: Settings, implicit val userIdCaseSensitivity: Case
   }
 
   private def matchUser[B <: BlockContext](user: LoggedUser, blockContext: B): Decision[B] = {
-    val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, blockContext).toSet
+    val matcher = staticUserIdsMatcher.getOrElse {
+      PatternsMatcher.create(resolveAll(settings.userIds.toNonEmptyList, blockContext).toSet)
+    }
     Decision.permit(`with` = blockContext)(
-      when = PatternsMatcher.create(resolvedIds).`match`(user.id)
+      when = matcher.`match`(user.id)
     )
   }
 

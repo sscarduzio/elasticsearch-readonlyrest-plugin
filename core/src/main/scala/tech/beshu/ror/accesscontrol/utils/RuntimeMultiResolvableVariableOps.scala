@@ -17,8 +17,13 @@
 package tech.beshu.ror.accesscontrol.utils
 
 import cats.data.NonEmptyList
+import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
 
 object RuntimeMultiResolvableVariableOps {
 
@@ -31,5 +36,16 @@ object RuntimeMultiResolvableVariableOps {
         }
       }
   }
+
+  // Returns Some only if ALL variables are AlreadyResolved; a single ToBeResolved entry yields None,
+  // which makes the caller fall back to full per-request resolution. This all-or-nothing contract is
+  // intentional: a config mixing static and dynamic values cannot be pre-resolved once at construction.
+  def resolveAllIfPreResolved[T](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]]): Option[NonEmptyList[T]] =
+    variables
+      .traverse {
+        case AlreadyResolved(values) => Some(values)
+        case ToBeResolved(_)         => None
+      }
+      .map(_.flatten)
 
 }

@@ -20,7 +20,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.http.{HeadersAndRule, HeadersOrRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.http.{BaseHeaderRule, HeadersAndRule, HeadersOrRule}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
@@ -38,7 +38,7 @@ class HeadersAndRuleDecoder(
     DecoderHelpers
       .decodeStringLikeOrNonEmptySetE(headerAccessRequirementFromString)
       .map { requirements =>
-        RuleDefinition.create(new HeadersAndRule(HeadersAndRule.Settings(requirements)))
+        RuleDefinition.create(new HeadersAndRule(BaseHeaderRule.Settings(requirements)))
       }
   }
 
@@ -50,7 +50,7 @@ object HeadersOrRuleDecoder extends RuleBaseDecoderWithoutAssociatedFields[Heade
     DecoderHelpers
       .decodeStringLikeOrNonEmptySetE(headerAccessRequirementFromString)
       .map { requirements =>
-        RuleDefinition.create(new HeadersOrRule(HeadersOrRule.Settings(requirements)))
+        RuleDefinition.create(new HeadersOrRule(BaseHeaderRule.Settings(requirements)))
       }
   }
 

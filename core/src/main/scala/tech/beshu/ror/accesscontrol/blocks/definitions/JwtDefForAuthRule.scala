@@ -18,6 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
+import io.jsonwebtoken.security.Keys
+import io.jsonwebtoken.{JwtParser, Jwts}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Jwt}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
@@ -32,6 +34,15 @@ sealed trait JwtDef extends Item {
 
   def authorizationTokenDef: AuthorizationTokenDef
   def checkMethod: SignatureCheckMethod
+
+  // jjwt parsers are immutable and thread-safe, so build once per definition instead of per request.
+  lazy val parser: JwtParser = checkMethod match {
+    case SignatureCheckMethod.NoCheck(_)   => Jwts.parser().unsecured().build()
+    case SignatureCheckMethod.Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
+    case SignatureCheckMethod.Rsa(pubKey)  => Jwts.parser().verifyWith(pubKey).build()
+    case SignatureCheckMethod.Ec(pubKey)   => Jwts.parser().verifyWith(pubKey).build()
+  }
+
 }
 
 object JwtDef {

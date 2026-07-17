@@ -17,13 +17,12 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import cats.Show
-import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersAndRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.http.BaseHeaderRule.{CompiledHeaderRequirementMatcher, Settings}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
-import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -31,7 +30,7 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 /**
   * We match headers in a way that the header name is case-insensitive, and the header value is case-sensitive
   **/
-class HeadersAndRule(val settings: Settings) extends BaseHeaderRule with RequestIdAwareLogging {
+class HeadersAndRule(settings: Settings) extends BaseHeaderRule(settings) with RequestIdAwareLogging {
 
   override val name: Rule.Name = HeadersAndRule.Name.name
 
@@ -39,23 +38,22 @@ class HeadersAndRule(val settings: Settings) extends BaseHeaderRule with Request
     Decision.permit(`with` = blockContext)(
       when = {
         val requestHeaders = blockContext.requestContext.restRequest.allHeaders
-        settings.headerAccessRequirements
-          .forall { headerAccessRequirement =>
-            val result = isFulfilled(headerAccessRequirement, requestHeaders)
-            if (!result) logAccessRequirementNotFulfilled(headerAccessRequirement, blockContext.requestContext)
-            result
-          }
+        settings.compiledRequirements.forall { requirement =>
+          val result = requirement.isFulfilledBy(requestHeaders)
+          if (!result) logAccessRequirementNotFulfilled(requirement, blockContext.requestContext)
+          result
+        }
       }
     )
   }
 
   private def logAccessRequirementNotFulfilled(
-      accessRequirement: AccessRequirement[Header],
+      requirement: CompiledHeaderRequirementMatcher,
       requestContext: RequestContext
   ): Unit = {
     implicit val headerShowImplicit: Show[Header] = headerShow
     implicit val requestContextImpl: RequestContext = requestContext
-    logger.debug(s"Request headers don't fulfil given header access requirement: ${accessRequirement.show}")
+    logger.debug(s"Request headers don't fulfil given header access requirement: ${requirement.accessRequirement.show}")
   }
 
 }
@@ -69,7 +67,5 @@ object HeadersAndRule {
   case object DeprecatedName extends RuleName[HeadersAndRule] {
     override val name = Rule.Name("headers")
   }
-
-  final case class Settings(headerAccessRequirements: NonEmptySet[AccessRequirement[Header]])
 
 }
