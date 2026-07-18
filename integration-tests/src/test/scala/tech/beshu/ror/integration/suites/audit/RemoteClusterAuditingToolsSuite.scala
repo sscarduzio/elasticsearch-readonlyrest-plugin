@@ -238,6 +238,43 @@ class RemoteClusterAuditingToolsSuite
       .forceOkStatus()
   }
 
+  // Proves the audit pipeline recovered after a network re-enable: a probe event sent while the
+  // sink client still holds every node in dead-host backoff is dropped outright, so each attempt
+  // sends a FRESH probe request and briefly polls for its entry. Probe entries are throwaway —
+  // the caller truncates the sinks right after.
+  private def waitUntilAuditSinkRecovers(): Unit = {
+    val deadline = System.currentTimeMillis() + 180 * 1000L
+    val perProbeWaitMillis = 10 * 1000L
+
+    @scala.annotation.tailrec
+    def entryVisibleInAllSinks(traceId: String, probeDeadline: Long): Boolean = {
+      val landed = adminAuditManagers.values.forall { managers =>
+        managers.toList.forall { manager =>
+          findAuditEntriesWithTraceId(manager.getEntries.force().jsons, traceId).nonEmpty
+        }
+      }
+      if (landed) true
+      else if (System.currentTimeMillis() >= probeDeadline) false
+      else {
+        Thread.sleep(500)
+        entryVisibleInAllSinks(traceId, probeDeadline)
+      }
+    }
+
+    @scala.annotation.tailrec
+    def loop(): Unit = {
+      val probeTraceId = queryTweeterIndexWithRandomTraceId(times = 1).head
+      if (!entryVisibleInAllSinks(probeTraceId, System.currentTimeMillis() + perProbeWaitMillis)) {
+        if (System.currentTimeMillis() >= deadline) {
+          fail("Audit sink did not recover within 180s of re-enabling the network")
+        }
+        loop()
+      }
+    }
+
+    loop()
+  }
+
   private def sendTracedRequest(prefix: String): String = {
     val traceId = s"$prefix-${UUID.randomUUID()}"
     val indexManager = new IndexManager(

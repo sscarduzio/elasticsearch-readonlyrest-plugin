@@ -42,8 +42,8 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
                    |
                    |""".stripMargin,
           assertion = rule => {
-            rule.settings.headerAccessRequirements should be(
-              NonEmptySet.one(
+            rule.settings.headerAccessRequirements.toList should be(
+              List(
                 requiredHeaderFrom("X-Some-Header" -> "one")
               )
             )
@@ -66,7 +66,7 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
               requiredHeaderFrom("X-Some-Header1" -> "one"),
               requiredHeaderFrom("X-Some-Header2" -> "two")
             )
-            rule.settings.headerAccessRequirements should be(headers)
+            rule.settings.headerAccessRequirements.toList.toSet should be(headers.toSortedSet)
           }
         )
       }
@@ -82,8 +82,8 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
                    |
                    |""".stripMargin,
           assertion = rule => {
-            rule.settings.headerAccessRequirements should be(
-              NonEmptySet.one(
+            rule.settings.headerAccessRequirements.toList should be(
+              List(
                 requiredHeaderFrom("X-Some-Header" -> "one")
               )
             )
@@ -106,7 +106,7 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
               forbiddenHeaderFrom("X-Some-Header1" -> "one"),
               forbiddenHeaderFrom("X-Some-Header2" -> "two")
             )
-            rule.settings.headerAccessRequirements should be(headers)
+            rule.settings.headerAccessRequirements.toList.toSet should be(headers.toSortedSet)
           }
         )
       }

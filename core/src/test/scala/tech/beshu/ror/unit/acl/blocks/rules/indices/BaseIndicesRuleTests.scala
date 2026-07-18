@@ -143,6 +143,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
     if (isMatched) {
       inside(result) { case Permitted(blockContext: GeneralIndexRequestBlockContext) =>
         assertBlockContext(blockContext)(
+          loggedUser = blockContext.blockMetadata.loggedUser,
           indices = filteredRequestedIndices,
           kibanaPolicy = blockContext.blockMetadata.kibanaPolicy
         )

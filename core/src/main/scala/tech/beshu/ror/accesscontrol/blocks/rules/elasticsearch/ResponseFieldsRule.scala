@@ -24,27 +24,35 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRul
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision, FilteredResponseFields}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.*
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ResponseFieldsRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = ResponseFieldsRule.Name.name
 
+  // Optimization: when the response fields are pre-resolved, build the filtering once instead of per request.
+  private val staticResponseFiltering: Option[FilteredResponseFields] =
+    resolveAllIfPreResolved(settings.responseFields.toNonEmptyList)
+      // resolved values are a NonEmptyList, so the unique set is never empty — no Option to thread
+      .map(fields => filteredResponseFieldsFrom(UniqueNonEmptyList.fromNonEmptyList(fields)))
+
   override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
-    val maybeResolvedFields = resolveAll(settings.responseFields.toNonEmptyList, blockContext)
-    UniqueNonEmptyList.from(maybeResolvedFields) match {
-      case Some(resolvedFields) =>
-        Decision.Permitted(
-          blockContext.withAddedResponseTransformation(
-            FilteredResponseFields(ResponseFieldsRestrictions(resolvedFields, settings.accessMode))
-          )
-        )
+    val maybeResponseFiltering = staticResponseFiltering.orElse {
+      UniqueNonEmptyList
+        .from(resolveAll(settings.responseFields.toNonEmptyList, blockContext))
+        .map(filteredResponseFieldsFrom)
+    }
+    maybeResponseFiltering match {
+      case Some(responseFiltering) =>
+        Decision.Permitted(blockContext.withAddedResponseTransformation(responseFiltering))
       case None =>
         Decision.Denied(Cause.NotAuthorized)
     }
   }
 
+  private def filteredResponseFieldsFrom(resolvedFields: UniqueNonEmptyList[ResponseField]) =
+    FilteredResponseFields(ResponseFieldsRestrictions(resolvedFields, settings.accessMode))
 }
 
 object ResponseFieldsRule {

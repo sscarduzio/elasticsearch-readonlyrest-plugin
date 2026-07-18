@@ -21,7 +21,10 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditingConfig
+import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities, LoggingContext}
+import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorSettingsIndex}
@@ -237,11 +240,11 @@ class ReadonlyRest(
       .map { auditingTool =>
         val decoratedCore = Core(
           accessControl = new AccessControlListLoggingDecorator(
-            underlying = core.accessControl,
+            underlying = core.accessControl.withBlockTransformation(_.withResolvedAuditSinks(auditingTool.sinks)),
             auditingTool = auditingTool
           ),
           dependencies = core.dependencies,
-          auditingSettings = core.auditingSettings
+          auditingConfig = core.auditingConfig
         )
         new Engine(
           core = decoratedCore,
@@ -366,14 +369,14 @@ object ReadonlyRest {
   final class Engine private[boot] (
       val core: Core,
       engineResources: EngineResources,
-      auditingTool: Option[AuditingTool]
+      auditingTool: AuditingTool
   )(
       implicit scheduler: Scheduler
   ) {
 
     private[ror] def shutdown(): Unit = {
       engineResources.release().runAsyncAndForget
-      auditingTool.foreach(_.close().runAsyncAndForget)
+      auditingTool.close().runAsyncAndForget
     }
 
   }

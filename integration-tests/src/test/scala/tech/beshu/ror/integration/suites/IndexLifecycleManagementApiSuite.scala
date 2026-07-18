@@ -114,79 +114,91 @@ class IndexLifecycleManagementApiSuite
           val index = "dynamic1"
           createIndexWithAppliedMergedPolicy(index)
 
-          val result = dev3IndexLifecycleManager.moveToLifecycleStep(
-            index,
-            currentStep = ujson.read(s"""
-                                        |{
-                                        |  "phase": "new",
-                                        |  "action": "complete",
-                                        |  "name": "complete"
-                                        |}
+          // ILM assigns the index's initial step asynchronously; retry until ES has caught up
+          // (a fixed-order call races the background ILM task and intermittently gets 400).
+          eventually {
+            val result = dev3IndexLifecycleManager.moveToLifecycleStep(
+              index,
+              currentStep = ujson.read(s"""
+                                          |{
+                                          |  "phase": "new",
+                                          |  "action": "complete",
+                                          |  "name": "complete"
+                                          |}
                """.stripMargin),
-            nextStep = ujson.read(
-              s"""
-                 |{
-                 |  "phase": "warm",
-                 |  "action": "forcemerge",
-                 |  "name": "forcemerge"
-                 |}
+              nextStep = ujson.read(
+                s"""
+                   |{
+                   |  "phase": "warm",
+                   |  "action": "forcemerge",
+                   |  "name": "forcemerge"
+                   |}
                """.stripMargin
+              )
             )
-          )
 
-          result should have statusCode 200
+            result should have statusCode 200
+          }
         }
         "user has access to requested index (through configured wildcard)" in {
           val index = "dynamic_1"
           createIndexWithAppliedMergedPolicy(index)
 
-          val result = dev3IndexLifecycleManager.moveToLifecycleStep(
-            index,
-            currentStep = ujson.read(s"""
-                                        |{
-                                        |  "phase": "new",
-                                        |  "action": "complete",
-                                        |  "name": "complete"
-                                        |}
+          // ILM assigns the index's initial step asynchronously; retry until ES has caught up
+          // (a fixed-order call races the background ILM task and intermittently gets 400).
+          eventually {
+            val result = dev3IndexLifecycleManager.moveToLifecycleStep(
+              index,
+              currentStep = ujson.read(s"""
+                                          |{
+                                          |  "phase": "new",
+                                          |  "action": "complete",
+                                          |  "name": "complete"
+                                          |}
                """.stripMargin),
-            nextStep = ujson.read(
-              s"""
-                 |{
-                 |  "phase": "warm",
-                 |  "action": "forcemerge",
-                 |  "name": "forcemerge"
-                 |}
+              nextStep = ujson.read(
+                s"""
+                   |{
+                   |  "phase": "warm",
+                   |  "action": "forcemerge",
+                   |  "name": "forcemerge"
+                   |}
                """.stripMargin
+              )
             )
-          )
 
-          result should have statusCode 200
+            result should have statusCode 200
+          }
         }
         "no indices rule was used" in {
           val index = "dynamic_2"
           createIndexWithAppliedMergedPolicy(index)
 
-          val result = adminIndexLifecycleManager.moveToLifecycleStep(
-            index = "dynamic_2",
-            currentStep = ujson.read(s"""
-                                        |{
-                                        |  "phase": "new",
-                                        |  "action": "complete",
-                                        |  "name": "complete"
-                                        |}
+          // ILM assigns the index's initial step asynchronously; retry until ES has caught up
+          // (a fixed-order call races the background ILM task and intermittently gets 400).
+          eventually {
+            val result = adminIndexLifecycleManager.moveToLifecycleStep(
+              index = "dynamic_2",
+              currentStep = ujson.read(s"""
+                                          |{
+                                          |  "phase": "new",
+                                          |  "action": "complete",
+                                          |  "name": "complete"
+                                          |}
                """.stripMargin),
-            nextStep = ujson.read(
-              s"""
-                 |{
-                 |  "phase": "warm",
-                 |  "action": "forcemerge",
-                 |  "name": "forcemerge"
-                 |}
+              nextStep = ujson.read(
+                s"""
+                   |{
+                   |  "phase": "warm",
+                   |  "action": "forcemerge",
+                   |  "name": "forcemerge"
+                   |}
                """.stripMargin
+              )
             )
-          )
 
-          result should have statusCode 200
+            result should have statusCode 200
+          }
         }
       }
       "be forbidden" when {

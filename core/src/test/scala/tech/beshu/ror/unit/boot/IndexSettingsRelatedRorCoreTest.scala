@@ -221,7 +221,17 @@ class IndexSettingsRelatedRorCoreTest
         settings == rawRorSettings
       })
       .once()
-      .returns(Task.now(Right(new CoreCreationResult(Core(mockAccessControl, RorDependencies.noOp, None), None))))
+      .returns(
+        Task.now(
+          Right(
+            Core(
+              mockAccessControl,
+              RorDependencies.noOp,
+              AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+            )
+          )
+        )
+      )
     mockedCoreFactory
   }
 
@@ -297,6 +307,10 @@ class IndexSettingsRelatedRorCoreTest
       .expects()
       .anyNumberOfTimes()
       .returns("ENABLED")
+    (mockedAccessControl.withBlockTransformation _)
+      .expects(*)
+      .anyNumberOfTimes()
+      .returns(mockedAccessControl)
     mockedAccessControl
   }
 

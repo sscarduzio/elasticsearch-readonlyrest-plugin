@@ -92,7 +92,7 @@ object TemplateOperation {
   final case class DeletingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern]) extends TemplateOperation
 }
 
-final case class TemplateName(value: NonEmptyString)
+final case class TemplateName(value: NonEmptyString) extends EagerHashCode
 
 object TemplateName {
 
@@ -103,7 +103,7 @@ object TemplateName {
   implicit val eqTemplateName: Eq[TemplateName] = Eq.fromUniversalEquals
 }
 
-final case class TemplateNamePattern(value: NonEmptyString) {
+final case class TemplateNamePattern(value: NonEmptyString) extends EagerHashCode {
   private lazy val matcher = TemplateNamePatternMatcher.create(Set(this))
 
   def matches(templateName: TemplateName): Boolean = matcher.`match`(templateName)

@@ -81,30 +81,48 @@ test {
 
     // SHARDING: shardCount=1 runs everything; K>1 partitions suites by name-hash mod K (disjoint cover).
     // Forks can't split the scalatest engine (gradle#8632), so parallelism = K sharded invocations.
+    // Gate on an EXPLICIT -PshardIndex (ShardedGradlewTest always passes it to children): the parent
+    // `shardedTest -PshardCount=K` invocation also configures this task, and on a fresh workspace the
+    // class-tree walk below runs at configuration time BEFORE testClasses compiled anything — 0 files
+    // matched and the guard killed the parent build. No shardIndex → not a shard → full suite filter.
     def shardCount = (project.findProperty('shardCount') ?: '1').toInteger()
     def shardIndex = (project.findProperty('shardIndex') ?: '0').toInteger()
+    // Disjoint OUTPUT dirs per shard: sibling shards run concurrently in the SAME workspace, and
+    // the Test task's shared result dirs (binary results + junit XML + html) get cross-corrupted —
+    // "Could not write XML test results" / truncated TEST-*.xml — killing otherwise-green shards.
+    if (project.hasProperty('shardIndex')) {
+        // Windows native-ES runs key ports and install dirs off this (see WindowsEsPortProvider /
+        // WindowsEsDirectoryManager); harmless on Linux where docker isolates everything.
+        systemProperty 'ror.shard.index', shardIndex
+        reports.junitXml.outputLocation = layout.buildDirectory.dir("test-results/shard-${shardIndex}")
+        reports.html.outputLocation = layout.buildDirectory.dir("reports/tests/shard-${shardIndex}")
+        binaryResultsDirectory.set(layout.buildDirectory.dir("test-results/shard-${shardIndex}-bin"))
+    }
     filter {
-        if (shardCount > 1) {
-            def matched = 0
+        if (shardCount > 1 && project.hasProperty('shardIndex')) {
+            // Partitioning lives in build-base's SuiteSharder (pure, unit-tested); this block is
+            // only the Gradle I/O around it: walk the class tree, parse suite-timings.json (with
+            // -PbalancedShards=true / ROR_BALANCED_SHARDS), include the shard's suites.
+            def balanced = (project.findProperty('balancedShards') ?: System.getenv('ROR_BALANCED_SHARDS') ?: 'false').toBoolean()
+            def timings = balanced ? tech.beshu.ror.buildbase.SuiteSharder.timingsFrom(file('suite-timings.json')) : [:]
+            def suites = []
             test.testClassesDirs.asFileTree.matching {
                 // `*Suite*` (not `*Suite`) so classes ending in `Suites` shard too; `base/` traits
-                // excluded so the `matched` guard counts only real suites.
+                // excluded so the zero-match guard counts only real suites.
                 include 'tech/beshu/ror/integration/suites/**/*Suite*.class'
                 exclude '**/*$*.class'   // skip nested/companion classes
                 exclude 'tech/beshu/ror/integration/suites/base/**'
             }.visit { fd ->
                 if (!fd.directory) {
-                    def fqcn = fd.path.replace('/', '.').replaceAll(/\.class$/, '')
-                    if (Math.floorMod(fqcn.hashCode(), shardCount) == shardIndex) {
-                        includeTestsMatching fqcn
-                        matched++
-                    }
+                    suites << fd.path.replace('/', '.').replaceAll(/\.class$/, '')
                 }
             }
-            if (matched == 0) {
+            def shardSuites = tech.beshu.ror.buildbase.SuiteSharder.suitesFor(suites, shardCount, shardIndex, timings)
+            if (shardSuites.isEmpty()) {
                 throw new GradleException("Shard ${shardIndex}/${shardCount} matched 0 suites — check shardCount/shardIndex.")
             }
-            logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount}: ${matched} suites")
+            shardSuites.each { includeTestsMatching it }
+            logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount}: ${shardSuites.size()} suites (${balanced ? 'balanced' : 'hash'} packing)")
         } else {
             includeTestsMatching 'tech.beshu.ror.integration.suites.*'
         }
@@ -175,6 +193,37 @@ tasks.register('prebuildEsImage', JavaExec) {
     if (explicitEsVersion != null) { systemProperty 'esVersion', explicitEsVersion }
     mainClass.set('tech.beshu.ror.utils.containers.PrebuildSingletonEsImage')
     classpath = sourceSets.test.runtimeClasspath
+}
+
+// Rebuilds suite-timings.json from the junit XMLs of the LAST test run and warns about drift
+// vs the committed file. CI runs it on the es90x leg (uploads the result as the
+// `suite-timings-regenerated` artifact and emits ::warning:: annotations on drift); locally:
+//   ./gradlew integration-tests:test -PesModule=es90x && ./gradlew integration-tests:regenerateSuiteTimings
+tasks.register('regenerateSuiteTimings') {
+    doLast {
+        def times = new TreeMap()
+        fileTree(dir: layout.buildDirectory, includes: ['test-results/**/TEST-*.xml']).each { f ->
+            def suite = new groovy.xml.XmlSlurper().parse(f)
+            def name = suite.@name.toString()
+            if (!name.startsWith('tech.beshu.ror.integration.suites')) return
+            def seconds = Math.round(Double.parseDouble(suite.@time.toString()))
+            times[name] = Math.max((long) times.getOrDefault(name, 0L), seconds)
+        }
+        if (times.isEmpty()) {
+            logger.quiet('No test-results found under build/ — run the integration tests first.')
+            return
+        }
+        def committedFile = new groovy.json.JsonSlurper().parse(file('suite-timings.json'))
+        // Thresholds + comparison live in build-base's SuiteTimings (pure, unit-tested);
+        // this task only does the XML/JSON I/O around it (same split as SuiteSharder).
+        def committed = tech.beshu.ror.buildbase.SuiteSharder.timingsFrom(file('suite-timings.json'))
+        def drifts = tech.beshu.ror.buildbase.SuiteTimings.driftReport(committed, times)
+        drifts.each { logger.warn("::warning::suite-timings ${it}") }
+        def out = layout.buildDirectory.file('suite-timings-regenerated.json').get().asFile
+        out.text = groovy.json.JsonOutput.prettyPrint(
+            groovy.json.JsonOutput.toJson([_readme: committedFile._readme, times: times])) + '\n'
+        logger.quiet(">>> regenerated ${times.size()} suite timings -> ${out} (${drifts.size()} drift warning(s))")
+    }
 }
 
 // Sharded-IT orchestrator: runs K parallel `./gradlew integration-tests:test -PshardIndex=i`

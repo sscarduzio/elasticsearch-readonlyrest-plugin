@@ -201,10 +201,11 @@ trait BaseAdminApiSuite
           // first reload
           forceReload("/admin_api/readonlyrest_first_update.yml")
 
-          // after first reload only dev1 can access indices
-          Thread.sleep(
-            settingsReloadInterval.plus(10 second).toMillis
-          ) // have to wait for ROR1_2 instance settings reload
+          // after first reload only dev1 can access indices; poll the 2nd instance (it reloads
+          // settings on its own interval) instead of a fixed worst-case sleep
+          eventually {
+            dev1Ror2ndInstanceSearchManager.search("test1_index") should have statusCode 200
+          }
           val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After1stReloadResults should have statusCode 200
           val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
@@ -217,10 +218,11 @@ trait BaseAdminApiSuite
           // second reload
           forceReload("/admin_api/readonlyrest_second_update.yml")
 
-          // after second reload dev1 & dev2 can access indices
-          Thread.sleep(
-            settingsReloadInterval.plus(10 second).toMillis
-          ) // have to wait for ROR1_2 instance settings reload
+          // after second reload dev1 & dev2 can access indices; poll the 2nd instance for the
+          // newly-granted dev2 access instead of a fixed worst-case sleep
+          eventually {
+            dev2Ror2ndInstanceSearchManager.search("test2_index") should have statusCode 200
+          }
           val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After2ndReloadResults should have statusCode 200
           val dev2ror1After2ndReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")

@@ -48,7 +48,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
 }
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, RequestFieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -57,6 +57,12 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 class FieldsRule(val settings: Settings) extends RegularRule with RequestIdAwareLogging {
 
   override val name: Rule.Name = FieldsRule.Name.name
+
+  // Optimization: when the fields are pre-resolved, build the restrictions once instead of per request.
+  private val staticFieldsRestrictions: Option[FieldsRestrictions] =
+    resolveAllIfPreResolved(settings.fields.toNonEmptyList)
+      // resolved values are a NonEmptyList, so the unique set is never empty — no Option to thread
+      .map(fields => FieldsRestrictions(UniqueNonEmptyList.fromNonEmptyList(fields), settings.accessMode))
 
   override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.requestContext match {
@@ -86,10 +92,14 @@ class FieldsRule(val settings: Settings) extends RegularRule with RequestIdAware
       blockContext: B
   ): Decision[B] = {
     implicit val blockContextImpl: B = blockContext
-    val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext)
-    UniqueNonEmptyList.from(maybeResolvedFields) match {
-      case Some(resolvedFields) =>
-        processBlockContextUsingDefinedFLSMode(blockContext, resolvedFields)
+    val maybeFieldsRestrictions = staticFieldsRestrictions.orElse {
+      UniqueNonEmptyList
+        .from(resolveAll(settings.fields.toNonEmptyList, blockContext))
+        .map(FieldsRestrictions(_, settings.accessMode))
+    }
+    maybeFieldsRestrictions match {
+      case Some(fieldsRestrictions) =>
+        processBlockContextUsingDefinedFLSMode(blockContext, fieldsRestrictions)
       case None =>
         logger.warn(s"Could not resolve any variable for field rule.")
         reject()
@@ -98,8 +108,7 @@ class FieldsRule(val settings: Settings) extends RegularRule with RequestIdAware
 
   private def processBlockContextUsingDefinedFLSMode[
       B <: BlockContext: BlockContextWithFLSUpdater: AllowsFieldsInRequest
-  ](blockContext: B, resolvedFields: UniqueNonEmptyList[DocumentField]): Decision[B] = {
-    val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
+  ](blockContext: B, fieldsRestrictions: FieldsRestrictions): Decision[B] = {
     settings.flsEngine match {
       case FlsEngine.Lucene =>
         fulfillRuleWithResolvedStrategy(blockContext, fieldsRestrictions, resolvedStrategy = FlsAtLuceneLevelApproach)

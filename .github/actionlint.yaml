@@ -1,0 +1,5 @@
+# Custom self-hosted runner labels used by CI (Ubicloud for Linux; Windows uses GitHub-hosted).
+# Registering them here silences actionlint's "unknown label" false positives.
+self-hosted-runner:
+  labels:
+    - ubicloud-standard-4       # 4 vCPU / 16 GB — the only Ubicloud size CI uses

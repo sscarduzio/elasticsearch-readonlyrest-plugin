@@ -21,7 +21,6 @@ import cats.kernel.Semigroup
 import cats.{Eq, Monoid}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -44,7 +43,7 @@ object LoggedUser {
 }
 
 object User {
-  final case class Id(value: NonEmptyString)
+  final case class Id(value: NonEmptyString) extends EagerHashCode
 
   object Id {
 
@@ -74,13 +73,13 @@ sealed abstract class Pattern[T](val value: T)
 
 final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
 
-final case class Group(id: GroupId, name: GroupName)
+final case class Group(id: GroupId, name: GroupName) extends EagerHashCode
 
 object Group {
   def from(id: GroupId): Group = Group(id, GroupName.from(id))
 }
 
-final case class GroupName(value: NonEmptyString)
+final case class GroupName(value: NonEmptyString) extends EagerHashCode
 
 object GroupName {
   def from(id: GroupId): GroupName = GroupName(id.value)
@@ -89,7 +88,7 @@ object GroupName {
 sealed trait GroupIdLike
 
 object GroupIdLike {
-  final case class GroupId(value: NonEmptyString) extends GroupIdLike
+  final case class GroupId(value: NonEmptyString) extends GroupIdLike with EagerHashCode
 
   object GroupId {
     implicit val eq: Eq[GroupId] = Eq.by(_.value.value)
@@ -298,8 +297,6 @@ object LocalUsers {
   final case class Available(users: AvailableLocalUsers) extends LocalUsers
 
   case object NotAvailable extends LocalUsers
-
-  def from(block: Block): LocalUsers = block.rules.map(LocalUsers.from).combineAll
 
   def from(rule: Rule): LocalUsers = rule match {
     case authentication: AuthenticationRule => authentication.localUsers

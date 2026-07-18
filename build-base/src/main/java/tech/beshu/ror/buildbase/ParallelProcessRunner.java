@@ -90,6 +90,9 @@ public final class ParallelProcessRunner {
                 .directory(workingDirectory)
                 .redirectErrorStream(true)
                 .redirectOutput(cmd.outputFile);
+        // Shard workers reuse the ROR plugin zip the parent's prebuild already assembled
+        // (see RorPluginGradleProject.assemble) instead of re-running a nested gradle build.
+        pb.environment().put("ROR_REUSE_ASSEMBLED", "1");
         Process process = pb.start();
         processes.add(process);
         futures.add(process.onExit());

@@ -154,10 +154,36 @@ abstract class EsContainer(
     try {
       super.start()
     } catch {
+      case ex: Throwable if isDockerParentImageBuildRace(ex) =>
+        retryStartAfterDockerParentImageBuildRace(ex)
       case ex: Throwable =>
         logger.error("Container starting error", ex)
         throw ex
     }
+  }
+
+  // Known docker classic-builder race: two sharded test JVMs concurrently building images that
+  // share parent layers can fail the export with "unknown parent image ID" (moby bug). It's
+  // transient — the parent exists once the sibling's build settles — so one delayed retry
+  // re-resolves the image cleanly.
+  private def retryStartAfterDockerParentImageBuildRace(cause: Throwable): Unit = {
+    logger.warn("Docker parent-image build race detected - retrying container start once", cause)
+    Thread.sleep(5000)
+    try {
+      super.start()
+    } catch {
+      case retryEx: Throwable =>
+        logger.error("Container starting error (after parent-image-race retry)", retryEx)
+        throw retryEx
+    }
+  }
+
+  private def isDockerParentImageBuildRace(ex: Throwable): Boolean = {
+    Iterator
+      .iterate(ex)(_.getCause)
+      .takeWhile(_ != null)
+      .take(10)
+      .exists(t => Option(t.getMessage).exists(_.contains("unknown parent image ID")))
   }
 
 }

@@ -282,7 +282,15 @@ class ReadonlyRestStartingTests
             resourcesPath + secondNewIndexSettingsFile,
             createCoreResult = Task
               .sleep(100 millis)
-              .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp, None))) // very long creation
+              .map(_ =>
+                Right(
+                  Core(
+                    mockEnabledAccessControl,
+                    RorDependencies.noOp,
+                    AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+                  )
+                )
+              ) // very long creation
           )
           mockSavingMainSettings(
             mockedIndexDocumentManager,
@@ -1637,12 +1645,11 @@ class ReadonlyRestStartingTests
           Some(
             new CoreCreationResult.AuditSetup.IndexWithDataStream(
               capability,
-              AuditingTool.AuditSettings(
+              AuditingTool.AuditOutputsConfig.WithOutputs(
                 NonEmptyList.of(
-                  AuditSink.Enabled(dataStreamSinkConfig1),
-                  AuditSink.Enabled(dataStreamSinkConfig2)
-                ),
-                defaultTestEsNodeSettings
+                  AuditSink.Enabled(SinkName.random(), dataStreamSinkConfig1),
+                  AuditSink.Enabled(SinkName.random(), dataStreamSinkConfig2)
+                )
               )
             )
           )
@@ -1971,13 +1978,12 @@ class ReadonlyRestStartingTests
       .expects(*, *, *, *, *, *)
       .anyNumberOfTimes()
       .onCall { (_, _, _, _, _, _) =>
-        if (startedAttempts.getAndIncrement() < failingAttemptsCount) failure
-        else
-          Task.now(
-            Right(
-              CoreCreationResult(Core(accessControl, RorDependencies.noOp, auditingSettings = None), auditSetup = None)
-            )
-          )
+        if (startedAttempts.getAndIncrement() < failingAttemptsCount) {
+          failure
+        } else {
+          val auditingConfig = AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+          Task.now(Right(Core(accessControl, RorDependencies.noOp, auditingConfig)))
+        }
       }
 
     implicit val systemContext: SystemContext = createSystemContext()
@@ -2126,6 +2132,10 @@ class ReadonlyRestStartingTests
       .expects()
       .anyNumberOfTimes()
       .returns("ENABLED")
+    (mockedAccessControl.withBlockTransformation _)
+      .expects(*)
+      .anyNumberOfTimes()
+      .returns(mockedAccessControl)
     mockedAccessControl
   }
 
@@ -2139,6 +2149,10 @@ class ReadonlyRestStartingTests
       .expects()
       .anyNumberOfTimes()
       .returns("DISABLED")
+    (mockedAccessControl.withBlockTransformation _)
+      .expects(*)
+      .anyNumberOfTimes()
+      .returns(mockedAccessControl)
     mockedAccessControl
   }
 
