@@ -17,22 +17,22 @@
 package tech.beshu.ror.integration
 
 import cats.data.NonEmptyList
+import cats.effect.Resource
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
-import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
+import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.TestsUtils.{defaultTestEsNodeSettings, fullDataStreamName, header, nes}
@@ -189,17 +189,17 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
     val settings = AuditOutputsConfig.WithOutputs(
       NonEmptyList.of(
-        AuditSink.Enabled(
+        EsIndexBased(
           SinkName.random(),
-          Config.EsIndexBasedSink(
+          EsIndexBasedSink(
             AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             RorAuditIndexTemplate.default,
             AuditCluster.LocalAuditCluster
           )
         ),
-        AuditSink.Enabled(
+        EsDataStreamBased(
           SinkName.random(),
-          Config.EsDataStreamBasedSink(
+          EsDataStreamBasedSink(
             AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             RorAuditDataStream.default,
             AuditCluster.LocalAuditCluster
@@ -210,12 +210,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     val auditingTool = AuditingTool
       .create(
         config = AuditingConfig(Some(settings), defaultAclLog = true, defaultTestEsNodeSettings),
-        auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
-          override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService =
-            dataStreamBasedAuditSinkService
-
-          override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexBasedAuditSinkService
-        }
+        indexCreator = (_: AuditCluster) => indexBasedAuditSinkService,
+        dataStreamCreator = (_: AuditCluster) => dataStreamBasedAuditSinkService,
+        httpClientsFactory = MockHttpClientsFactory,
       )
       .runSyncUnsafe()
       .toOption
@@ -272,9 +269,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       .expects(RorAuditDataStream.default.dataStream)
       .returning(Task.now(true))
 
-    override def dataStreamCreator: AuditDataStreamCreator = AuditDataStreamCreator(
-      NonEmptyList.one(mockedDataStreamService)
-    )
+    override def dataStreamCreator: Resource[Task, AuditDataStreamCreator] = Resource.pure {
+      AuditDataStreamCreator(mockedDataStreamService)
+    }
 
   }
 

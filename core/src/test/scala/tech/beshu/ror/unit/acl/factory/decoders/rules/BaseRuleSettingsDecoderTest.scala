@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
-import tech.beshu.ror.mocks.MockHttpClientsFactory
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockedCapabilities}
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -67,8 +67,10 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule: ClassTag] extends AnyWordS
           RorSettingsIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider,
-          mocksProvider
+          mocksProvider,
+          MockedCapabilities.standard
         )
+        .map(_.map(_.core))
         .runSyncUnsafe()
     ) { case Right(Core(acl: EnabledAccessControlList, _, _)) =>
       val rule = acl.blocks.head.rules
@@ -94,7 +96,8 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule: ClassTag] extends AnyWordS
           RorSettingsIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider,
-          mocksProvider
+          mocksProvider,
+          MockedCapabilities.standard
         )
         .runSyncUnsafe()
     ) { case Left(error) =>

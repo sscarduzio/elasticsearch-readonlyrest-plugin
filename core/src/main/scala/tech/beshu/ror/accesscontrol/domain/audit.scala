@@ -20,7 +20,7 @@ import cats.Show
 import cats.data.Validated
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
-import io.lemonlabs.uri.Uri
+import io.lemonlabs.uri.{Uri, Url}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
@@ -171,7 +171,8 @@ object AuditCluster {
   final case class RemoteAuditCluster(
       nodes: UniqueNonEmptyList[AuditClusterNode],
       mode: ClusterMode,
-      credentials: Option[NodeCredentials]
+      credentials: Option[NodeCredentials],
+      ignoreClusterConnectivityProblems: Boolean
   ) extends AuditCluster {
     def requestTimeout: FiniteDuration = 30.seconds
     def connectionTimeout: FiniteDuration = 1.seconds
@@ -185,6 +186,8 @@ object AuditCluster {
     def port: Int = uri.toUrl.port.getOrElse(9200)
 
     def scheme: String = uri.schemeOption.getOrElse("http")
+
+    def toUrl: Url = uri.toUrl.withScheme(scheme).withHost(hostname).withPort(port)
 
     def credentials: Option[NodeCredentials] = {
       for {
@@ -201,6 +204,7 @@ object AuditCluster {
 
   object ClusterMode {
     case object RoundRobin extends ClusterMode
+    case object Failover extends ClusterMode
   }
 
 }

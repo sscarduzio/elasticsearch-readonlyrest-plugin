@@ -17,7 +17,9 @@
 package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
+import cats.effect.Resource
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
+import monix.eval.Task
 import org.apache.http.HttpHost
 import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials}
 import org.apache.http.client.config.RequestConfig
@@ -27,15 +29,20 @@ import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.elasticsearch.client.*
 import org.elasticsearch.client.RestClient.FailureListener
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
-import tech.beshu.ror.accesscontrol.domain.AuditCluster.ClusterMode
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName, RequestId}
+import tech.beshu.ror.es.services.MultiNodeRestClient.ResponseHandler
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.security.cert.X509Certificate
+import java.time.Clock
 import java.util.concurrent.Semaphore
 
-final class RestClientAuditSinkService private (client: RestClient, inFlightRequestSemaphore: Semaphore)
-    extends IndexBasedAuditSinkService
+final class RestClientAuditSinkService private (
+    client: MultiNodeRestClient[Request, Response],
+    inFlightRequestSemaphore: Semaphore,
+    override val dataStreamCreator: Resource[Task, AuditDataStreamCreator]
+) extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
     with RequestIdAwareLogging {
 
@@ -62,7 +69,7 @@ final class RestClientAuditSinkService private (client: RestClient, inFlightRequ
       client
         .performRequestAsync(
           createRequest(indexName, documentId, jsonRecord),
-          createResponseListener(indexName, documentId)
+          createResponseHandler(indexName, documentId)
         )
     } else {
       logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] — too many in-flight requests")
@@ -76,10 +83,10 @@ final class RestClientAuditSinkService private (client: RestClient, inFlightRequ
     request
   }
 
-  private def createResponseListener(indexName: String, documentId: String)(
+  private def createResponseHandler(indexName: String, documentId: String)(
       implicit requestId: RequestId
   ) =
-    new ResponseListener() {
+    new ResponseHandler[Response] {
       override def onSuccess(response: Response): Unit = {
         try {
           response.getStatusLine.getStatusCode / 100 match {
@@ -104,35 +111,61 @@ final class RestClientAuditSinkService private (client: RestClient, inFlightRequ
       }
     }
 
-  override val dataStreamCreator: AuditDataStreamCreator = new AuditDataStreamCreator(
-    NonEmptyList.one(client).map(new RestClientDataStreamService(_))
-  )
-
 }
 
 object RestClientAuditSinkService extends RequestIdAwareLogging {
 
-  def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditSinkService = {
+  def create(remoteCluster: AuditCluster.RemoteAuditCluster)(
+      implicit clock: Clock
+  ): RestClientAuditSinkService = {
+    val hosts = remoteCluster.nodes.toNonEmptyList.map(toHttpHost)
+    createService(remoteCluster, createClusterAwareClient(remoteCluster, hosts), hosts)
+  }
+
+  private def createClusterAwareClient(
+      remoteCluster: AuditCluster.RemoteAuditCluster,
+      hosts: NonEmptyList[HttpHost]
+  )(
+      implicit clock: Clock
+  ): MultiNodeRestClient[Request, Response] = {
     remoteCluster.mode match {
       case ClusterMode.RoundRobin =>
-        new RestClientAuditSinkService(
-          client = createRestClient(remoteCluster),
-          inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests)
+        RestClientRequestExecutor.roundRobinClient(createRestClient(remoteCluster, hosts))
+      case ClusterMode.Failover =>
+        RestClientRequestExecutor.failoverClient(
+          hosts.map(host => createRestClient(remoteCluster, NonEmptyList.one(host)))
         )
     }
   }
 
-  private def createRestClient(remoteCluster: AuditCluster.RemoteAuditCluster) = {
-    val hosts = remoteCluster.nodes.map { node =>
-      new HttpHost(node.hostname, node.port, node.scheme)
-    }
+  private def createAuditSinkCreator(hosts: NonEmptyList[HttpHost], remoteCluster: AuditCluster.RemoteAuditCluster) = {
+    Resource
+      .make(Task.delay(createRestClient(remoteCluster, hosts)))(client => Task.delay(client.close()))
+      .map(client => AuditDataStreamCreator(new RestClientDataStreamService(client)))
+  }
 
+  private def createService(
+      remoteCluster: AuditCluster.RemoteAuditCluster,
+      client: MultiNodeRestClient[Request, Response],
+      httpHosts: NonEmptyList[HttpHost]
+  ) = {
+    new RestClientAuditSinkService(
+      client = client,
+      inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
+      dataStreamCreator = createAuditSinkCreator(httpHosts, remoteCluster)
+    )
+  }
+
+  private def createRestClient(
+      remoteCluster: AuditCluster.RemoteAuditCluster,
+      hosts: NonEmptyList[HttpHost]
+  ): RestClient = {
     val credentials =
       remoteCluster.credentials
         .map(c => new UsernamePasswordCredentials(c.username.value, c.password.value))
 
     RestClient
-      .builder(hosts.toSeq: _*)
+      .builder(hosts.toList: _*)
       .setHttpClientConfigCallback((httpClientBuilder: HttpAsyncClientBuilder) => {
         val configurations =
           configureRequestConfig(remoteCluster) andThen configureCredentials(credentials) andThen configureSsl()
@@ -194,6 +227,10 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
     override def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
     override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
     override def getAcceptedIssuers: Array[X509Certificate] = null
+  }
+
+  private def toHttpHost(node: AuditClusterNode) = {
+    new HttpHost(node.hostname, node.port, node.scheme)
   }
 
 }

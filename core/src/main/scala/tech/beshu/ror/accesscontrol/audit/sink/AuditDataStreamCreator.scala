@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.audit.sink
 
 import cats.data.Validated.Valid
 import cats.data.{NonEmptyList, Validated}
-import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator.ErrorMessage
@@ -32,13 +31,10 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.concurrent.TimeUnit
 
-final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) extends RequestIdAwareLogging {
+final class AuditDataStreamCreator(service: DataStreamService) extends RequestIdAwareLogging {
 
   def createIfNotExists(dataStreamName: RorAuditDataStream): Task[Either[NonEmptyList[ErrorMessage], Unit]] = {
-    services.toList
-      .map(createIfNotExists(_, dataStreamName))
-      .sequence
-      .map(_.map(_.leftMap(NonEmptyList.one)).combineAll.toEither)
+    createIfNotExists(service, dataStreamName).map(_.toEither.left.map(NonEmptyList.one))
   }
 
   private def createIfNotExists(
@@ -47,14 +43,20 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) ex
   ): Task[Validated[ErrorMessage, Unit]] = {
     service
       .checkDataStreamExists(dataStreamName.dataStream)
+      .attempt
       .flatMap {
-        case true =>
+        case Right(true) =>
           Task
-            .delay(noRequestIdLogger.info(s"Data stream ${dataStreamName.dataStream.show} already exists"))
+            .delay(noRequestIdLogger.info(s"Data stream ${dataStreamName.dataStream.show} already exists."))
             .as(Valid(()))
-        case false =>
+        case Right(false) =>
           val settings = defaultSettingsFor(dataStreamName.dataStream)
           setupDataStream(service, settings)
+        case Left(ex) =>
+          val errorMessage = s"Unable to determine if data stream ${dataStreamName.dataStream.show} exists."
+          Task
+            .delay(noRequestIdLogger.error(errorMessage, ex))
+            .as(ErrorMessage(errorMessage).invalid)
       }
   }
 
@@ -152,5 +154,9 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) ex
 }
 
 object AuditDataStreamCreator {
+
+  def apply(service: DataStreamService): AuditDataStreamCreator =
+    new AuditDataStreamCreator(service)
+
   final case class ErrorMessage(message: String) extends AnyVal
 }

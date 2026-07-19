@@ -21,12 +21,12 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditingConfig
-import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorSettingsIndex}
+import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
+import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult.AuditSetup
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason
@@ -50,7 +50,7 @@ import scala.language.postfixOps
 class ReadonlyRest(
     coreFactory: CoreFactory,
     indexDocumentManager: IndexDocumentManager,
-    auditSinkServiceCreator: AuditSinkServiceCreator
+    auditCapabilities: EsAuditCapabilities
 )(
     implicit systemContext: SystemContext
 ) extends RequestIdAwareLogging {
@@ -205,7 +205,8 @@ class ReadonlyRest(
           settingsIndex,
           engineResources.httpClientsFactory,
           engineResources.ldapConnectionPoolProvider,
-          authServicesMocksProvider
+          authServicesMocksProvider,
+          auditCapabilities
         )
     )
       .flatMap(core => createEngine(engineResources, core))
@@ -228,10 +229,11 @@ class ReadonlyRest(
 
   private def createEngine(
       engineResources: EngineResources,
-      core: Core
+      coreCreationResult: CoreCreationResult
   ): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
+    val core = coreCreationResult.core
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
-    EitherT(createAuditingTool(core.auditingConfig))
+    EitherT(createAuditingTool(coreCreationResult, engineResources))
       .map { auditingTool =>
         val decoratedCore = Core(
           accessControl = new AccessControlListLoggingDecorator(
@@ -249,20 +251,38 @@ class ReadonlyRest(
       }
   }
 
-  private def createAuditingTool(auditingConfig: AuditingConfig)(
+  private def createAuditingTool(result: CoreCreationResult, engineResources: EngineResources)(
       implicit loggingContext: LoggingContext
   ): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
-    AuditingTool
-      .create(auditingConfig, auditSinkServiceCreator)(
-        using systemContext.clock,
-        loggingContext
-      )
-      .map {
-        _.leftMap {
-          _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))
-        }
-      }
+    result.auditSetup match {
+      case index: AuditSetup.Index =>
+        AuditingTool
+          .create(
+            config = index.settings,
+            creator = index.capability.creator,
+            httpClientsFactory = engineResources.httpClientsFactory
+          )(
+            using systemContext.clock,
+            loggingContext
+          )
+          .map(_.leftMap(toCreationErrors))
+      case stream: AuditSetup.IndexWithDataStream =>
+        AuditingTool
+          .create(
+            config = stream.settings,
+            indexCreator = stream.capability.indexCreator,
+            dataStreamCreator = stream.capability.dataStreamCreator,
+            httpClientsFactory = engineResources.httpClientsFactory
+          )(
+            using systemContext.clock,
+            loggingContext
+          )
+          .map(_.leftMap(toCreationErrors))
+    }
   }
+
+  private def toCreationErrors(errors: NonEmptyList[AuditingTool.CreationError]): NonEmptyList[CoreCreationError] =
+    errors.map(e => CoreCreationError.AuditingSettingsCreationError(Message(e.message)))
 
   private def inspectFlsEngine(engine: Engine)(
       implicit requestId: RequestId
@@ -360,21 +380,21 @@ object ReadonlyRest {
 
   private val defaultStartingRetryPolicy: RetryPolicy = RetryPolicy(initialDelay = 5 seconds, maxDelay = 1 minute)
 
-  def create(indexContentService: IndexDocumentManager, auditSinkServiceCreator: AuditSinkServiceCreator, env: EsEnv)(
+  def create(indexContentService: IndexDocumentManager, auditCapabilities: EsAuditCapabilities, env: EsEnv)(
       implicit systemContext: SystemContext
   ): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env)
-    create(coreFactory, indexContentService, auditSinkServiceCreator)
+    create(coreFactory, indexContentService, auditCapabilities)
   }
 
   def create(
       coreFactory: CoreFactory,
       indexDocumentManager: IndexDocumentManager,
-      auditSinkServiceCreator: AuditSinkServiceCreator
+      auditCapabilities: EsAuditCapabilities
   )(
       implicit systemContext: SystemContext
   ): ReadonlyRest = {
-    new ReadonlyRest(coreFactory, indexDocumentManager, auditSinkServiceCreator)
+    new ReadonlyRest(coreFactory, indexDocumentManager, auditCapabilities)
   }
 
 }

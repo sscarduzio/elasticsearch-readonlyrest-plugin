@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.es.services
 
-import cats.data.NonEmptyList
+import cats.effect.Resource
+import monix.eval.Task
 import org.elasticsearch.action.bulk.{BulkProcessor2, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.{ActionListener, DocWriteRequest}
@@ -113,6 +114,10 @@ final class NodeClientBasedAuditSinkService(
 
   }
 
-  override val dataStreamCreator: AuditDataStreamCreator =
-    AuditDataStreamCreator(NonEmptyList.one(new EsDataStreamService(client, jsonParserFactory)))
+  override val dataStreamCreator: Resource[Task, AuditDataStreamCreator] = {
+    Resource
+      .pure[Task, DataStreamService](new EsDataStreamService(client, jsonParserFactory))
+      .map(AuditDataStreamCreator.apply)
+  }
+
 }

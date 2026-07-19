@@ -602,7 +602,8 @@ class DataStreamServiceTest extends AnyWordSpec with MockFactory {
   }
 
   extension (c: AuditDataStreamCreator.type) {
-    def create(service: DataStreamService): AuditDataStreamCreator = AuditDataStreamCreator(NonEmptyList.of(service))
+    def create(service: DataStreamService): AuditDataStreamCreator =
+      AuditDataStreamCreator(service)
   }
 
   extension (service: MockableDataStreamService) {

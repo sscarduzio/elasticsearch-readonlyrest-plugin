@@ -24,8 +24,7 @@ import io.circe.{Decoder, Encoder, Json}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.AuditIndexSchema
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput.*
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexPattern, RequestId}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.api.MainSettingsApi.*
@@ -73,29 +72,33 @@ class MainSettingsApi(
 
   private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
     val sinks = rorInstance.auditSettings match {
-      case Some(AuditOutputsConfig.NoOutputsConfigured)     => List.empty
-      case Some(AuditOutputsConfig.WithOutputs(auditSinks)) => auditSinks.toList
-      case None                                             => List.empty
+      case Some(AuditOutputsConfig.NoOutputsConfigured)  => List.empty
+      case Some(AuditOutputsConfig.WithOutputs(outputs)) => outputs.toList
+      case None                                          => List.empty
     }
     val auditOutputs = sinks.flatMap {
-      case AuditSink.Enabled(_, config) =>
-        config match {
-          case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
-            Some(LocalAuditIndex(rorAuditIndexTemplate.rorAuditIndexPattern, AuditIndexSchema.from(logSerializer)))
-          case Config.EsIndexBasedSink(_, _, _: AuditCluster.RemoteAuditCluster) =>
-            Some(OtherAuditOutput("Remote audit cluster"))
-          case Config.EsDataStreamBasedSink(logSerializer, ds, AuditCluster.LocalAuditCluster) =>
-            Some(LocalDataStream(ds.dataStream, AuditIndexSchema.from(logSerializer)))
-          case Config.EsDataStreamBasedSink(_, ds, _: AuditCluster.RemoteAuditCluster) =>
-            Some(OtherAuditOutput(s"Remote ${ds.dataStream.value.value} data stream"))
-          case s: Config.LogBasedSink =>
-            Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}]"))
-          case s: Config.RollingFileBasedSink =>
-            Some(
-              OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}] to file [${s.fileAppender.filePath}]")
-            )
-        }
-      case AuditSink.Disabled => None
+      case s: EsIndexBased if s.config.auditCluster == AuditCluster.LocalAuditCluster =>
+        Some(
+          LocalAuditIndex(
+            s.config.rorAuditIndexTemplate.rorAuditIndexPattern,
+            AuditIndexSchema.from(s.config.serializer)
+          )
+        )
+      case _: EsIndexBased =>
+        Some(OtherAuditOutput("Remote audit cluster"))
+      case s: EsDataStreamBased if s.config.auditCluster == AuditCluster.LocalAuditCluster =>
+        Some(LocalDataStream(s.config.rorAuditDataStream.dataStream, AuditIndexSchema.from(s.config.serializer)))
+      case s: EsDataStreamBased =>
+        Some(OtherAuditOutput(s"Remote ${s.config.rorAuditDataStream.dataStream.value.value} data stream"))
+      case s: LogBased =>
+        Some(OtherAuditOutput(s"Logger with name [${s.config.loggerName.value.value}]"))
+      case s: RollingFileBased =>
+        Some(
+          OtherAuditOutput(
+            s"Logger with name [${s.config.loggerName.value.value}] to file [${s.config.fileAppender.filePath}]"
+          )
+        )
+      case Disabled => None
     }
     ProvideAuditSettings.AuditSettings(auditOutputs)
   }
@@ -257,7 +260,7 @@ object MainSettingsApi {
     sealed trait ProvideAuditSettings extends MainSettingsResponse
 
     object ProvideAuditSettings {
-      final case class AuditSettings(auditOutputs: List[AuditOutput]) extends ProvideAuditSettings
+      final case class AuditSettings(auditOutputs: List[ProvideAuditSettings.AuditOutput]) extends ProvideAuditSettings
       sealed trait AuditOutput
 
       object AuditOutput {
@@ -392,10 +395,20 @@ object MainSettingsApi {
     )
   }
 
-  private def addResponseJson(builder: EsXContentBuilder, status: String, auditOutputs: List[AuditOutput]): Unit = {
-    val localAuditIndexes = auditOutputs.collect { case index: AuditOutput.LocalAuditIndex => index }
-    val localDataStreams = auditOutputs.collect { case index: AuditOutput.LocalDataStream => index }
-    val otherAuditOutputs = auditOutputs.collect { case output: AuditOutput.OtherAuditOutput => output }
+  private def addResponseJson(
+      builder: EsXContentBuilder,
+      status: String,
+      auditOutputs: List[ProvideAuditSettings.AuditOutput]
+  ): Unit = {
+    val localAuditIndexes = auditOutputs.collect { case index: ProvideAuditSettings.AuditOutput.LocalAuditIndex =>
+      index
+    }
+    val localDataStreams = auditOutputs.collect { case index: ProvideAuditSettings.AuditOutput.LocalDataStream =>
+      index
+    }
+    val otherAuditOutputs = auditOutputs.collect { case output: ProvideAuditSettings.AuditOutput.OtherAuditOutput =>
+      output
+    }
     builder.build(
       Json
         .obj(

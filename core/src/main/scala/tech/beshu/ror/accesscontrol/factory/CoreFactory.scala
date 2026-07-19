@@ -23,9 +23,8 @@ import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditSinks
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
@@ -36,6 +35,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
+import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
@@ -60,7 +61,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 final case class Core(
     accessControl: AccessControlList,
     dependencies: RorDependencies,
-    auditingConfig: AuditingTool.AuditingConfig
+    auditingConfig: AuditingTool.AuditingConfig.AnyMode
 )
 
 trait CoreFactory {
@@ -70,8 +71,43 @@ trait CoreFactory {
       rorSettingsIndex: RorSettingsIndex,
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-      mocksProvider: MocksProvider
-  ): Task[Either[NonEmptyList[CoreCreationError], Core]]
+      mocksProvider: MocksProvider,
+      auditCapabilities: EsAuditCapabilities
+  ): Task[Either[NonEmptyList[CoreCreationError], CoreCreationResult]]
+
+}
+
+object CoreFactory {
+
+  final class CoreCreationResult(val core: Core, val auditSetup: AuditSetup)
+
+  object CoreCreationResult {
+    sealed trait AuditSetup
+
+    object AuditSetup {
+
+      final class Index(
+          val capability: EsAuditCapabilities.Index,
+          val settings: AuditingConfig.Legacy
+      ) extends AuditSetup
+
+      final class IndexWithDataStream(
+          val capability: EsAuditCapabilities.IndexWithDataStream,
+          val settings: AuditingConfig.Standard
+      ) extends AuditSetup
+
+    }
+
+    extension (audit: AuditSetup) {
+
+      def settings: AuditingConfig.AnyMode = audit match {
+        case index: AuditSetup.Index                => index.settings
+        case stream: AuditSetup.IndexWithDataStream => stream.settings
+      }
+
+    }
+
+  }
 
 }
 
@@ -85,8 +121,9 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       rorSettingsIndex: RorSettingsIndex,
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-      mocksProvider: MocksProvider
-  ): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
+      mocksProvider: MocksProvider,
+      auditCapabilities: EsAuditCapabilities
+  ): Task[Either[NonEmptyList[CoreCreationError], CoreCreationResult]] = {
     rorSettings.settingsJson \\ Attributes.rorSectionName match {
       case Nil =>
         createCoreFromRorSection(
@@ -95,6 +132,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
           httpClientFactory,
           ldapConnectionPoolProvider,
           mocksProvider,
+          auditCapabilities,
         )
       case rorSection :: Nil =>
         createCoreFromRorSection(
@@ -103,6 +141,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
           httpClientFactory,
           ldapConnectionPoolProvider,
           mocksProvider,
+          auditCapabilities,
         )
       case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
     }
@@ -113,7 +152,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       rorSettingsIndex: RorSettingsIndex,
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-      mocksProvider: MocksProvider
+      mocksProvider: MocksProvider,
+      auditCapabilities: EsAuditCapabilities
   ) = {
     val resolver = new JsonStaticVariablesResolver(
       systemContext.envVarsProvider,
@@ -121,7 +161,14 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
     )
     resolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
-        createFrom(resolvedRorSection, rorSettingsIndex, httpClientFactory, ldapConnectionPoolProvider, mocksProvider)
+        createFrom(
+          resolvedRorSection,
+          rorSettingsIndex,
+          httpClientFactory,
+          ldapConnectionPoolProvider,
+          mocksProvider,
+          auditCapabilities
+        )
           .map {
             case Right(settings) =>
               Right(settings)
@@ -142,28 +189,45 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       settingsIndex: RorSettingsIndex,
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-      mocksProvider: MocksProvider
+      mocksProvider: MocksProvider,
+      auditCapabilities: EsAuditCapabilities
   ) = {
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
-      core <-
+      result <-
         if (!enabled) {
           AsyncDecoderCreator.from(
-            Decoder.const(
-              Core(
-                accessControl = DisabledAccessControlList,
-                dependencies = RorDependencies.noOp,
-                auditingConfig = AuditingTool.AuditingConfig(None, defaultAclLog = true, esEnv.esNodeSettings),
+            Decoder.const({
+              val auditingConfig =
+                AuditingConfig(outputsConfig = None, defaultAclLog = true, esNodeSettings = esEnv.esNodeSettings)
+              new CoreCreationResult(
+                core = Core(
+                  accessControl = DisabledAccessControlList,
+                  dependencies = RorDependencies.noOp,
+                  auditingConfig = auditingConfig,
+                ),
+                auditSetup = auditCapabilities match {
+                  case index: EsAuditCapabilities.Index =>
+                    AuditSetup.Index(index, auditingConfig)
+                  case stream: EsAuditCapabilities.IndexWithDataStream =>
+                    AuditSetup.IndexWithDataStream(stream, auditingConfig)
+                }
               )
-            )
+            })
           )
         } else {
           for {
             globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(settingsIndex))
-            core <- coreDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
-          } yield core
+            result <- coreDecoder(
+              httpClientFactory,
+              ldapConnectionPoolProvider,
+              globalSettings,
+              mocksProvider,
+              auditCapabilities
+            )
+          } yield result
         }
-    } yield core
+    } yield result
 
     decoder(HCursor.fromJson(settingsJson))
   }
@@ -373,13 +437,13 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
 
   private def auditSinkNamesDecoder(
       blocksNel: NonEmptyList[BlockDecodingResult],
-      auditingConfig: AuditingTool.AuditingConfig
+      auditingConfig: AuditingConfig[AuditingTool.Mode]
   ): AsyncDecoder[Unit] =
     AsyncDecoderCreator.instance[Unit] { _ =>
       Task.now {
         val configuredSinkNames: scala.collection.Set[SinkName] = auditingConfig.outputsConfig match {
-          case Some(AuditOutputsConfig.WithOutputs(sinks)) =>
-            sinks.toList.collect { case AuditSink.Enabled(name, _) => name }.toSet
+          case Some(AuditOutputsConfig.WithOutputs(outputs)) =>
+            outputs.toList.flatMap(_.sinkName).toSet
           case _ => scala.collection.Set.empty
         }
         val globalSinkNames: scala.collection.Set[SinkName] =
@@ -469,13 +533,27 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
     }
   }
 
+  private def auditSettingsDecoder(
+      auditCapabilities: EsAuditCapabilities
+  )(esEnv: EsEnv): Decoder[AuditSetup] = auditCapabilities match {
+    case cap: EsAuditCapabilities.Index =>
+      AuditingSettingsDecoder
+        .legacy(esEnv)
+        .map(settings => new AuditSetup.Index(cap, settings))
+    case cap: EsAuditCapabilities.IndexWithDataStream =>
+      AuditingSettingsDecoder
+        .standard(esEnv)
+        .map(settings => new AuditSetup.IndexWithDataStream(cap, settings))
+  }
+
   private def coreDecoder(
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
       globalSettings: GlobalSettings,
-      mocksProvider: MocksProvider
-  ): AsyncDecoder[Core] = {
-    AsyncDecoderCreator.instance[Core] { c =>
+      mocksProvider: MocksProvider,
+      auditCapabilities: EsAuditCapabilities
+  ): AsyncDecoder[CoreCreationResult] = {
+    AsyncDecoderCreator.instance[CoreCreationResult] { c =>
       val decoder = for {
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         loggingContext = LoggingContext(obfuscatedHeaders)
@@ -489,7 +567,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
-        auditingConfig <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
+        auditSetup <- AsyncDecoderCreator.from(auditSettingsDecoder(auditCapabilities)(esEnv))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(
           ExternalAuthenticationServicesDecoder.instance(httpClientFactory)
@@ -555,7 +633,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
                 .toEither
             }
         }
-        _ <- auditSinkNamesDecoder(blocksNel, auditingConfig)
+        _ <- auditSinkNamesDecoder(blocksNel, auditSetup.settings)
       } yield {
         val blocks = blocksNel.map(_.block)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
@@ -588,7 +666,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
             obfuscatedHeaders
           )
         ): AccessControlList
-        Core(accessControl, rorDependencies, auditingConfig)
+        new CoreCreationResult(Core(accessControl, rorDependencies, auditSetup.settings), auditSetup)
       }
       decoder.apply(c)
     }

@@ -41,7 +41,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.mocks.{
   MockHttpClientsFactory,
   MockHttpClientsFactoryWithFixedHttpClient,
-  MockLdapConnectionPoolProvider
+  MockLdapConnectionPoolProvider,
+  MockedCapabilities
 }
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
@@ -561,8 +562,10 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
         MockLdapConnectionPoolProvider,
-        NoOpMocksProvider
+        NoOpMocksProvider,
+        MockedCapabilities.standard
       )
+      .map(_.map(_.core))
       .runSyncUnsafe()
   }
 

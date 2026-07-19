@@ -55,8 +55,8 @@ object EsDataStreamBasedAuditSink {
 
     def apply(errors: NonEmptyList[AuditDataStreamCreator.ErrorMessage], auditCluster: AuditCluster): CreationError = {
       val clusterType = auditCluster match {
-        case AuditCluster.LocalAuditCluster               => "local cluster"
-        case AuditCluster.RemoteAuditCluster(nodes, _, _) => s"remote cluster ${nodes.toList.map(_.uri).show}"
+        case AuditCluster.LocalAuditCluster           => "local cluster"
+        case cluster: AuditCluster.RemoteAuditCluster => s"remote cluster ${cluster.show}"
       }
       new CreationError(
         s"Unable to configure audit output using a data stream in $clusterType. Details: [${errors.toList.map(_.message).show}]"
@@ -83,7 +83,7 @@ object EsDataStreamBasedAuditSink {
       auditSinkService: DataStreamBasedAuditSinkService,
       auditCluster: AuditCluster
   ) = {
-    EitherT(auditSinkService.dataStreamCreator.createIfNotExists(rorAuditDataStream))
+    EitherT(auditSinkService.dataStreamCreator.use(_.createIfNotExists(rorAuditDataStream)))
       .leftMap(errorMessages => CreationError(errorMessages, auditCluster))
   }
 
