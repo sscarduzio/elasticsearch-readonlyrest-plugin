@@ -228,7 +228,8 @@ object AuditingTool extends RequestIdAwareLogging {
         final case class EsIndexBasedSink(
             serializer: JsonAuditSerializer,
             rorAuditIndexTemplate: RorAuditIndexTemplate,
-            auditCluster: AuditCluster
+            auditCluster: AuditCluster,
+            pipeline: Option[String] = None
         ) extends Config
 
         object EsIndexBasedSink {
@@ -237,6 +238,7 @@ object AuditingTool extends RequestIdAwareLogging {
             serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             rorAuditIndexTemplate = RorAuditIndexTemplate.default,
             auditCluster = AuditCluster.LocalAuditCluster,
+            pipeline = None,
           )
 
         }
@@ -244,7 +246,8 @@ object AuditingTool extends RequestIdAwareLogging {
         final case class EsDataStreamBasedSink(
             serializer: JsonAuditSerializer,
             rorAuditDataStream: RorAuditDataStream,
-            auditCluster: AuditCluster
+            auditCluster: AuditCluster,
+            pipeline: Option[String] = None
         ) extends Config
 
         object EsDataStreamBasedSink {
@@ -253,6 +256,7 @@ object AuditingTool extends RequestIdAwareLogging {
             serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             rorAuditDataStream = RorAuditDataStream.default,
             auditCluster = AuditCluster.LocalAuditCluster,
+            pipeline = None,
           )
 
         }
@@ -399,7 +403,8 @@ object AuditingTool extends RequestIdAwareLogging {
       sinkName = name,
       serializer = config.serializer,
       indexTemplate = config.rorAuditIndexTemplate,
-      auditSinkService = service
+      auditSinkService = service,
+      pipeline = config.pipeline
     )
   }
 
@@ -412,7 +417,14 @@ object AuditingTool extends RequestIdAwareLogging {
       .delay(serviceCreator.dataStream(config.auditCluster))
       .flatMap { auditSinkService =>
         EsDataStreamBasedAuditSink
-          .create(name, config.serializer, config.rorAuditDataStream, auditSinkService, config.auditCluster)
+          .create(
+            name,
+            config.serializer,
+            config.rorAuditDataStream,
+            auditSinkService,
+            config.auditCluster,
+            config.pipeline
+          )
           .map(_.leftMap(error => CreationError(error.message)).toValidated)
       }
 

@@ -80,13 +80,13 @@ class MainSettingsApi(
     val auditOutputs = sinks.flatMap {
       case AuditSink.Enabled(_, config) =>
         config match {
-          case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
+          case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster, _) =>
             Some(LocalAuditIndex(rorAuditIndexTemplate.rorAuditIndexPattern, AuditIndexSchema.from(logSerializer)))
-          case Config.EsIndexBasedSink(_, _, _: AuditCluster.RemoteAuditCluster) =>
+          case Config.EsIndexBasedSink(_, _, _: AuditCluster.RemoteAuditCluster, _) =>
             Some(OtherAuditOutput("Remote audit cluster"))
-          case Config.EsDataStreamBasedSink(logSerializer, ds, AuditCluster.LocalAuditCluster) =>
+          case Config.EsDataStreamBasedSink(logSerializer, ds, AuditCluster.LocalAuditCluster, _) =>
             Some(LocalDataStream(ds.dataStream, AuditIndexSchema.from(logSerializer)))
-          case Config.EsDataStreamBasedSink(_, ds, _: AuditCluster.RemoteAuditCluster) =>
+          case Config.EsDataStreamBasedSink(_, ds, _: AuditCluster.RemoteAuditCluster, _) =>
             Some(OtherAuditOutput(s"Remote ${ds.dataStream.value.value} data stream"))
           case s: Config.LogBasedSink =>
             Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}]"))
