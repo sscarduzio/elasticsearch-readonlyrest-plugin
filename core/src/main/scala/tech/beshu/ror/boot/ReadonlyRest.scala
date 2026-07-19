@@ -21,10 +21,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditingConfig
-import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities, LoggingContext}
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorSettingsIndex}
@@ -256,12 +253,12 @@ class ReadonlyRest(
 
   private def createAuditingTool(result: CoreCreationResult, engineResources: EngineResources)(
       implicit loggingContext: LoggingContext
-  ): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
+  ): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
     result.auditSetup match {
-      case Some(index: AuditSetup.Index) =>
+      case index: AuditSetup.Index =>
         AuditingTool
           .create(
-            settings = index.settings,
+            config = index.settings,
             creator = index.capability.creator,
             httpClientsFactory = engineResources.httpClientsFactory
           )(
@@ -269,10 +266,10 @@ class ReadonlyRest(
             loggingContext
           )
           .map(_.leftMap(toCreationErrors))
-      case Some(stream: AuditSetup.IndexWithDataStream) =>
+      case stream: AuditSetup.IndexWithDataStream =>
         AuditingTool
           .create(
-            settings = stream.settings,
+            config = stream.settings,
             indexCreator = stream.capability.indexCreator,
             dataStreamCreator = stream.capability.dataStreamCreator,
             httpClientsFactory = engineResources.httpClientsFactory
@@ -281,8 +278,6 @@ class ReadonlyRest(
             loggingContext
           )
           .map(_.leftMap(toCreationErrors))
-      case None =>
-        Task.pure(Right(None))
     }
   }
 
@@ -392,10 +387,14 @@ object ReadonlyRest {
     create(coreFactory, indexContentService, auditCapabilities)
   }
 
-  def create(coreFactory: CoreFactory, indexDocumentManager: IndexDocumentManager, capabilities: EsAuditCapabilities)(
+  def create(
+      coreFactory: CoreFactory,
+      indexDocumentManager: IndexDocumentManager,
+      auditCapabilities: EsAuditCapabilities
+  )(
       implicit systemContext: SystemContext
   ): ReadonlyRest = {
-    new ReadonlyRest(coreFactory, indexDocumentManager, capabilities)
+    new ReadonlyRest(coreFactory, indexDocumentManager, auditCapabilities)
   }
 
 }

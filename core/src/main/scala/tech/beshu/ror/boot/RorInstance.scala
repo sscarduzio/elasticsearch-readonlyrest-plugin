@@ -22,7 +22,6 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.RorDependencies
@@ -127,7 +126,7 @@ class RorInstance private (
     theTestSettingsEngine.saveServicesMocks(mocks)
   }
 
-  def auditSettings: Option[AuditingTool.AuditOutputsConfig] = {
+  def auditSettings: Option[AuditingTool.AuditOutputsConfig[AuditingTool.Mode]] = {
     theMainSettingsEngine.engine.flatMap(_.core.auditingConfig.outputsConfig)
   }
 

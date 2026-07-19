@@ -28,7 +28,6 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.NonEmptyStringOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList.*
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}

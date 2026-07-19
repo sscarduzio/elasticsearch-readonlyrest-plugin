@@ -66,7 +66,7 @@ sealed trait AuditSinkServiceCreator extends RequestIdAwareLogging {
 
 }
 
-object AuditSinkServiceCreator extends RequestIdAwareLogging {
+object AuditSinkServiceCreator {
 
   final case class InitializationError(message: String)
 

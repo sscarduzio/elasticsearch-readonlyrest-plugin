@@ -21,19 +21,12 @@ import org.scalatest.TestSuite
 import squants.information.Megabytes
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
-import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.mocks.{
-  MockDataStreamBasedAuditSinkServiceCreator,
-  MockHttpClientsFactory,
-  MockIndexBasedAuditSinkServiceCreator,
-  MockLdapConnectionPoolProvider,
-  MockedCapabilities
-}
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider, MockedCapabilities}
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -57,12 +50,6 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
   protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider
   protected val httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory
   protected val mockProvider: MocksProvider = NoOpMocksProvider
-
-  protected val capabilities: EsAuditCapabilities =
-    new EsAuditCapabilities.IndexWithDataStream(
-      MockIndexBasedAuditSinkServiceCreator,
-      MockDataStreamBasedAuditSinkServiceCreator
-    )
 
   lazy val acl: AccessControlList = {
     val yamlParser = new RawRorSettingsYamlParser(Megabytes(3))

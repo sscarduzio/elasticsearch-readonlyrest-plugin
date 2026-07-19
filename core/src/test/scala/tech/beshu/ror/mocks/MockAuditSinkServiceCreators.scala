@@ -19,7 +19,6 @@ package tech.beshu.ror.mocks
 import cats.effect.Resource
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
-import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities.{Index, IndexWithDataStream}
 import tech.beshu.ror.accesscontrol.audit.sink.{
   AuditDataStreamCreator,
   DataStreamBasedAuditSinkServiceCreator,
@@ -30,10 +29,14 @@ import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId
 import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
 object MockedCapabilities {
-  val standard: EsAuditCapabilities =
-    new IndexWithDataStream(MockIndexBasedAuditSinkServiceCreator, MockDataStreamBasedAuditSinkServiceCreator)
 
-  val legacy: EsAuditCapabilities = new Index(MockIndexBasedAuditSinkServiceCreator)
+  val standard: EsAuditCapabilities =
+    new EsAuditCapabilities.IndexWithDataStream(
+      MockIndexBasedAuditSinkServiceCreator,
+      MockDataStreamBasedAuditSinkServiceCreator
+    )
+
+  val legacy: EsAuditCapabilities = new EsAuditCapabilities.Index(MockIndexBasedAuditSinkServiceCreator)
 }
 
 object MockIndexBasedAuditSinkServiceCreator extends IndexBasedAuditSinkServiceCreator {

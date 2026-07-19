@@ -23,8 +23,6 @@ import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditSinks
@@ -39,7 +37,6 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
 import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult.*
-import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult.AuditSetup.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
@@ -64,7 +61,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 final case class Core(
     accessControl: AccessControlList,
     dependencies: RorDependencies,
-    auditingConfig: AuditingTool.AuditingConfig[AuditSink.Config]
+    auditingConfig: AuditingTool.AuditingConfig.AnyMode
 )
 
 trait CoreFactory {
@@ -82,7 +79,7 @@ trait CoreFactory {
 
 object CoreFactory {
 
-  final class CoreCreationResult(val core: Core, val auditSetup: Option[CoreCreationResult.AuditSetup])
+  final class CoreCreationResult(val core: Core, val auditSetup: AuditSetup)
 
   object CoreCreationResult {
     sealed trait AuditSetup
@@ -91,19 +88,19 @@ object CoreFactory {
 
       final class Index(
           val capability: EsAuditCapabilities.Index,
-          val settings: AuditSettings.Legacy
+          val settings: AuditingConfig.Legacy
       ) extends AuditSetup
 
       final class IndexWithDataStream(
           val capability: EsAuditCapabilities.IndexWithDataStream,
-          val settings: AuditSettings.Standard
+          val settings: AuditingConfig.Standard
       ) extends AuditSetup
 
     }
 
     extension (audit: AuditSetup) {
 
-      def settings: AuditSettings[AuditSink.Config] = audit match {
+      def settings: AuditingConfig.AnyMode = audit match {
         case index: AuditSetup.Index                => index.settings
         case stream: AuditSetup.IndexWithDataStream => stream.settings
       }
@@ -200,16 +197,23 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       result <-
         if (!enabled) {
           AsyncDecoderCreator.from(
-            Decoder.const(
+            Decoder.const({
+              val auditingConfig =
+                AuditingConfig(outputsConfig = None, defaultAclLog = true, esNodeSettings = esEnv.esNodeSettings)
               new CoreCreationResult(
-                Core(
+                core = Core(
                   accessControl = DisabledAccessControlList,
                   dependencies = RorDependencies.noOp,
-                  auditingConfig = AuditingTool.AuditingConfig(None, defaultAclLog = true, esEnv.esNodeSettings),
+                  auditingConfig = auditingConfig,
                 ),
-                None
+                auditSetup = auditCapabilities match {
+                  case index: EsAuditCapabilities.Index =>
+                    AuditSetup.Index(index, auditingConfig)
+                  case stream: EsAuditCapabilities.IndexWithDataStream =>
+                    AuditSetup.IndexWithDataStream(stream, auditingConfig)
+                }
               )
-            )
+            })
           )
         } else {
           for {
@@ -433,13 +437,13 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
 
   private def auditSinkNamesDecoder(
       blocksNel: NonEmptyList[BlockDecodingResult],
-      auditingConfig: AuditingTool.AuditingConfig
+      auditingConfig: AuditingConfig[AuditingTool.Mode]
   ): AsyncDecoder[Unit] =
     AsyncDecoderCreator.instance[Unit] { _ =>
       Task.now {
         val configuredSinkNames: scala.collection.Set[SinkName] = auditingConfig.outputsConfig match {
-          case Some(AuditOutputsConfig.WithOutputs(sinks)) =>
-            sinks.toList.collect { case AuditSink.Enabled(name, _) => name }.toSet
+          case Some(AuditOutputsConfig.WithOutputs(outputs)) =>
+            outputs.toList.flatMap(_.sinkName).toSet
           case _ => scala.collection.Set.empty
         }
         val globalSinkNames: scala.collection.Set[SinkName] =
@@ -530,16 +534,16 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
   }
 
   private def auditSettingsDecoder(
-      capabilities: EsAuditCapabilities
-  )(esEnv: EsEnv): Decoder[Option[CoreCreationResult.AuditSetup]] = capabilities match {
+      auditCapabilities: EsAuditCapabilities
+  )(esEnv: EsEnv): Decoder[AuditSetup] = auditCapabilities match {
     case cap: EsAuditCapabilities.Index =>
       AuditingSettingsDecoder
         .legacy(esEnv)
-        .map(_.map(settings => new CoreCreationResult.AuditSetup.Index(cap, settings)))
+        .map(settings => new AuditSetup.Index(cap, settings))
     case cap: EsAuditCapabilities.IndexWithDataStream =>
       AuditingSettingsDecoder
         .standard(esEnv)
-        .map(_.map(settings => new CoreCreationResult.AuditSetup.IndexWithDataStream(cap, settings)))
+        .map(settings => new AuditSetup.IndexWithDataStream(cap, settings))
   }
 
   private def coreDecoder(
@@ -563,7 +567,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
-        auditingConfig <- AsyncDecoderCreator.from(auditSettingsDecoder(auditCapabilities)(esEnv))
+        auditSetup <- AsyncDecoderCreator.from(auditSettingsDecoder(auditCapabilities)(esEnv))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(
           ExternalAuthenticationServicesDecoder.instance(httpClientFactory)
@@ -629,7 +633,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
                 .toEither
             }
         }
-        _ <- auditSinkNamesDecoder(blocksNel, auditingConfig)
+        _ <- auditSinkNamesDecoder(blocksNel, auditSetup.settings)
       } yield {
         val blocks = blocksNel.map(_.block)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
@@ -662,7 +666,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
             obfuscatedHeaders
           )
         ): AccessControlList
-        new CoreCreationResult(Core(accessControl, rorDependencies, auditingConfig.map(_.settings)), auditingConfig)
+        new CoreCreationResult(Core(accessControl, rorDependencies, auditSetup.settings), auditSetup)
       }
       decoder.apply(c)
     }
