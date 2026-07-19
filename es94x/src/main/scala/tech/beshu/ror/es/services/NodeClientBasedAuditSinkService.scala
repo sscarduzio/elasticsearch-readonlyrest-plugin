@@ -58,29 +58,39 @@ final class NodeClientBasedAuditSinkService(
       .setMaxNumberOfRetries(AUDIT_SINK_MAX_RETRIES)
       .build
 
-  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String, pipeline: Option[String])(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(indexName.name.value, documentId, jsonRecord)
+    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline)
   }
 
-  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
+  override def submit(
+      dataStreamName: DataStreamName.Full,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[String]
+  )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(dataStreamName.value.value, documentId, jsonRecord)
+    submitDocument(dataStreamName.value.value, documentId, jsonRecord, pipeline)
   }
 
   override def close(): Unit = {
     bulkProcessor.close()
   }
 
-  private def submitDocument(indexName: String, documentId: String, jsonRecord: String): Unit = {
-    bulkProcessor.add(
-      new IndexRequest(indexName)
-        .id(documentId)
-        .source(jsonRecord, XContentType.JSON)
-        .opType(DocWriteRequest.OpType.CREATE)
-    )
+  private def submitDocument(
+      indexName: String,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[String]
+  ): Unit = {
+    val request = new IndexRequest(indexName)
+      .id(documentId)
+      .source(jsonRecord, XContentType.JSON)
+      .opType(DocWriteRequest.OpType.CREATE)
+    pipeline.foreach(request.setPipeline)
+    bulkProcessor.add(request)
   }
 
   private object BulkRequestHandler extends BiConsumer[BulkRequest, ActionListener[BulkResponse]] {

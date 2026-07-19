@@ -30,7 +30,8 @@ private[audit] final class EsDataStreamBasedAuditSink private (
     sinkName: SinkName,
     serializer: JsonAuditSerializer,
     rorAuditDataStream: RorAuditDataStream,
-    auditSinkService: DataStreamBasedAuditSinkService
+    auditSinkService: DataStreamBasedAuditSinkService,
+    pipeline: Option[String]
 ) extends JsonBasedAuditSink(sinkName, serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
@@ -39,7 +40,8 @@ private[audit] final class EsDataStreamBasedAuditSink private (
     auditSinkService.submit(
       dataStreamName = rorAuditDataStream.dataStream,
       documentId = event.requestContext.id,
-      jsonRecord = serializedEvent.toString
+      jsonRecord = serializedEvent.toString,
+      pipeline = pipeline
     )
   }
 
@@ -70,11 +72,12 @@ object EsDataStreamBasedAuditSink {
       serializer: JsonAuditSerializer,
       rorAuditDataStream: RorAuditDataStream,
       auditSinkService: DataStreamBasedAuditSinkService,
-      auditCluster: AuditCluster
+      auditCluster: AuditCluster,
+      pipeline: Option[String] = None
   ): Task[Either[CreationError, EsDataStreamBasedAuditSink]] = value {
     for {
       _ <- createRorAuditDataStreamIfNotExists(rorAuditDataStream, auditSinkService, auditCluster)
-      auditSink <- createAuditSink(sinkName, serializer, rorAuditDataStream, auditSinkService)
+      auditSink <- createAuditSink(sinkName, serializer, rorAuditDataStream, auditSinkService, pipeline)
     } yield auditSink
   }
 
@@ -91,11 +94,12 @@ object EsDataStreamBasedAuditSink {
       sinkName: SinkName,
       serializer: JsonAuditSerializer,
       rorAuditDataStream: RorAuditDataStream,
-      auditSinkService: DataStreamBasedAuditSinkService
+      auditSinkService: DataStreamBasedAuditSinkService,
+      pipeline: Option[String]
   ) = {
     EitherT.right[CreationError](
       Task.delay(
-        new EsDataStreamBasedAuditSink(sinkName, serializer, rorAuditDataStream, auditSinkService)
+        new EsDataStreamBasedAuditSink(sinkName, serializer, rorAuditDataStream, auditSinkService, pipeline)
       )
     )
   }
