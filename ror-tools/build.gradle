@@ -130,6 +130,9 @@ def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport
 def elasticsearchArtifactName = "elasticsearch-${esVersion}.jar"
 def elasticsearchArtifactDestinationPath = "org/elasticsearch/elasticsearch/${esVersion}/"
 
+def elasticsearchRestClientArtifactName = "elasticsearch-rest-client-${esVersion}.jar"
+def elasticsearchRestClientArtifactDestinationPath = "org/elasticsearch/client/elasticsearch-rest-client/${esVersion}/"
+
 def registerLibsStoreUpload = { String taskName, String artifactName, String destinationPath ->
     tasks.register(taskName, Exec) {
         dependsOn getArtifactsFromEsBinaries
@@ -148,9 +151,10 @@ def registerLibsStoreUpload = { String taskName, String artifactName, String des
 
 registerLibsStoreUpload('uploadNetty4TransportFromEsBinaries', netty4TransportArtifactName, netty4TransportArtifactDestinationPath)
 registerLibsStoreUpload('uploadElasticsearchFromEsBinaries', elasticsearchArtifactName, elasticsearchArtifactDestinationPath)
+registerLibsStoreUpload('uploadElasticsearchRestClientFromEsBinaries', elasticsearchRestClientArtifactName, elasticsearchRestClientArtifactDestinationPath)
 
 tasks.register('uploadArtifactsFromEsBinaries') {
-    dependsOn 'uploadNetty4TransportFromEsBinaries', 'uploadElasticsearchFromEsBinaries'
+    dependsOn 'uploadNetty4TransportFromEsBinaries', 'uploadElasticsearchFromEsBinaries', 'uploadElasticsearchRestClientFromEsBinaries'
 }
 
 tasks.register('getArtifactsFromEsBinaries') {
@@ -170,6 +174,13 @@ tasks.register('getArtifactsFromEsBinaries') {
         project.logger.info("Copying ${esArtifactPath} to ${destPath.get().asFile.path} ...")
         copy {
             from esArtifactPath
+            into destPath
+        }
+
+        def elasticsearchRestClientArtifactPath = "${esExtractedDir}/modules/reindex/${elasticsearchRestClientArtifactName}"
+        project.logger.info("Copying ${elasticsearchRestClientArtifactPath} to ${destPath.get().asFile.path} ...")
+        copy {
+            from elasticsearchRestClientArtifactPath
             into destPath
         }
     }
