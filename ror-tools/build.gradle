@@ -133,6 +133,9 @@ def elasticsearchArtifactDestinationPath = "org/elasticsearch/elasticsearch/${es
 def elasticsearchRestClientArtifactName = "elasticsearch-rest-client-${esVersion}.jar"
 def elasticsearchRestClientArtifactDestinationPath = "org/elasticsearch/client/elasticsearch-rest-client/${esVersion}/"
 
+def elasticsearchXContentArtifactName = "elasticsearch-x-content-${esVersion}.jar"
+def elasticsearchXContentArtifactDestinationPath = "org/elasticsearch/elasticsearch-x-content/${esVersion}/"
+
 def registerLibsStoreUpload = { String taskName, String artifactName, String destinationPath ->
     tasks.register(taskName, Exec) {
         dependsOn getArtifactsFromEsBinaries
@@ -152,9 +155,10 @@ def registerLibsStoreUpload = { String taskName, String artifactName, String des
 registerLibsStoreUpload('uploadNetty4TransportFromEsBinaries', netty4TransportArtifactName, netty4TransportArtifactDestinationPath)
 registerLibsStoreUpload('uploadElasticsearchFromEsBinaries', elasticsearchArtifactName, elasticsearchArtifactDestinationPath)
 registerLibsStoreUpload('uploadElasticsearchRestClientFromEsBinaries', elasticsearchRestClientArtifactName, elasticsearchRestClientArtifactDestinationPath)
+registerLibsStoreUpload('uploadElasticsearchXContentFromEsBinaries', elasticsearchXContentArtifactName, elasticsearchXContentArtifactDestinationPath)
 
 tasks.register('uploadArtifactsFromEsBinaries') {
-    dependsOn 'uploadNetty4TransportFromEsBinaries', 'uploadElasticsearchFromEsBinaries', 'uploadElasticsearchRestClientFromEsBinaries'
+    dependsOn 'uploadNetty4TransportFromEsBinaries', 'uploadElasticsearchFromEsBinaries', 'uploadElasticsearchRestClientFromEsBinaries', 'uploadElasticsearchXContentFromEsBinaries'
 }
 
 tasks.register('getArtifactsFromEsBinaries') {
@@ -181,6 +185,13 @@ tasks.register('getArtifactsFromEsBinaries') {
         project.logger.info("Copying ${elasticsearchRestClientArtifactPath} to ${destPath.get().asFile.path} ...")
         copy {
             from elasticsearchRestClientArtifactPath
+            into destPath
+        }
+
+        def elasticsearchXContentArtifactPath = "${esExtractedDir}/lib/${elasticsearchXContentArtifactName}"
+        project.logger.info("Copying ${elasticsearchXContentArtifactPath} to ${destPath.get().asFile.path} ...")
+        copy {
+            from elasticsearchXContentArtifactPath
             into destPath
         }
     }
