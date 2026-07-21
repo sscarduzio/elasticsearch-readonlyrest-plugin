@@ -324,7 +324,7 @@ check_maven_artifacts_exist() {
 }
 
 if [[ $ROR_TASK == "publish_maven_artifacts" ]]; then
-  # .travis/secret.pgp is downloaded via Azure secret files, see azure-pipelines.yml
+  # .travis/secret.pgp is decoded from the PGP_SECRET_KEY_B64 repo secret, see .github/workflows/ci.yml
   CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
   PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
 
