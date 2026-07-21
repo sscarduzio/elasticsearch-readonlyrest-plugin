@@ -522,6 +522,8 @@ stages:
           matrix:
             IT_es94x:
               ROR_TASK: integration_es94x
+            IT_es92x:
+              ROR_TASK: integration_es92x
             IT_es90x:
               ROR_TASK: integration_es90x
 
@@ -652,6 +654,8 @@ stages:
           matrix:
             WIN_IT_es94x:
               ES_MODULE: es94x
+            WIN_IT_es92x:
+              ES_MODULE: es92x
             WIN_IT_es818x:
               ES_MODULE: es818x
             WIN_IT_es717x:
