@@ -104,5 +104,4 @@ Everything the Azure pipeline did is ported — nothing was dropped. The mapping
 | `PUBLISH_MVN_ARTIFACTS` / `..._WITHOUT_TESTING` | `publish_mvn` (same dispatch input) |
 | Azure "secure file" `secret.pgp` | `PGP_SECRET_KEY_B64` repo secret, decoded in-step |
 
-`azure-pipelines.yml` is kept with `trigger: none` / `pr: none` as a manually-runnable
-fallback for one release cycle after the switch, then it gets deleted.
+The Azure pipeline itself is deleted; this table remains as the historical mapping.
