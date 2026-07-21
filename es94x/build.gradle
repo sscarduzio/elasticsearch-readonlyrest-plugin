@@ -58,10 +58,9 @@ configurations {
     wagon
     distJars {
         exclude group: 'org.elasticsearch'
-        exclude group: 'lucene-core'
+        exclude group: 'org.apache.lucene'
         exclude module: 'log4j-api'
         exclude module: 'log4j-core'
-        exclude group: 'lucene-analyzers-common'
         exclude group: 'org.apache.commons'
         exclude group: 'org.yaml'
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
