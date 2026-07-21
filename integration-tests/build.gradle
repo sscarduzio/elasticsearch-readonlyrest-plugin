@@ -201,13 +201,35 @@ tasks.register('prebuildEsImage', JavaExec) {
 //   ./gradlew integration-tests:test -PesModule=es90x && ./gradlew integration-tests:regenerateSuiteTimings
 tasks.register('regenerateSuiteTimings') {
     doLast {
-        def times = new TreeMap()
+        // WALL time per suite, not the junit `time` attribute: `time` is test execution only,
+        // while packing weights must include container boots (often the dominant part). Suites
+        // run serially within a shard, so start(i+1) - start(i) = exec(i) + boot(i+1); from that,
+        // wall(i) = boot(i) + exec(i). The first suite's boot is unobservable — use the shard's
+        // median boot.
+        def byShard = [:].withDefault { [] }
         fileTree(dir: layout.buildDirectory, includes: ['test-results/**/TEST-*.xml']).each { f ->
             def suite = new groovy.xml.XmlSlurper().parse(f)
             def name = suite.@name.toString()
             if (!name.startsWith('tech.beshu.ror.integration.suites')) return
-            def seconds = Math.round(Double.parseDouble(suite.@time.toString()))
-            times[name] = Math.max((long) times.getOrDefault(name, 0L), seconds)
+            byShard[f.parentFile.path] << [
+                start: java.time.Instant.parse(suite.@timestamp.toString()),
+                name : name,
+                exec : Double.parseDouble(suite.@time.toString())
+            ]
+        }
+        def times = new TreeMap()
+        byShard.values().each { suites ->
+            suites.sort { it.start }
+            def boots = []
+            for (int i = 1; i < suites.size(); i++) {
+                def gap = java.time.Duration.between(suites[i - 1].start, suites[i].start).seconds
+                boots << Math.max(0L, (long) (gap - suites[i - 1].exec))
+            }
+            def medianBoot = boots ? boots.toSorted()[boots.size().intdiv(2)] : 30L
+            suites.eachWithIndex { s, i ->
+                def wall = Math.round((i > 0 ? boots[i - 1] : medianBoot) + s.exec)
+                times[s.name] = Math.max((long) times.getOrDefault(s.name, 0L), wall)
+            }
         }
         if (times.isEmpty()) {
             logger.quiet('No test-results found under build/ — run the integration tests first.')
