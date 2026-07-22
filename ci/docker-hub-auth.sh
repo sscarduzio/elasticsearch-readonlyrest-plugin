@@ -1,7 +1,7 @@
 #!/bin/bash
 # Authenticated Docker Hub pulls for jobs that start testcontainers (integration AND unit tests pull
 # images — osixia/openldap, wiremock, toxiproxy, …). Anonymous pulls share one per-IP rate limit
-# across every Azure hosted agent, so a busy CI window hits "toomanyrequests".
+# across runners behind shared egress, so a busy CI window hits "toomanyrequests".
 #
 # MUST be SOURCED (not executed) so the export lands in the caller's shell that runs the tests:
 #   source ci/docker-hub-auth.sh
@@ -11,20 +11,12 @@
 # testcontainers' RegistryAuthLocator does `if (getenv != null) ObjectMapper.readTree(...)`, so an
 # empty string would throw a JSON parse error; only a genuinely absent var is skipped cleanly.
 #
-# Inputs are read from the env (the caller maps the Azure pipeline vars):
+# Inputs are read from the env:
 #   DOCKER_HUB_USER, DOCKER_HUB_RO_TOKEN
-#
-# An undefined Azure non-secret var expands to its literal "$(NAME)"; reject that form too.
-if [ -n "${DOCKER_HUB_RO_TOKEN:-}" ] && [ "${DOCKER_HUB_RO_TOKEN}" != '$(DOCKER_HUB_RO_TOKEN)' ] \
-   && [ -n "${DOCKER_HUB_USER:-}" ] && [ "${DOCKER_HUB_USER}" != '$(DOCKER_HUB_USER)' ]; then
+if [ -n "${DOCKER_HUB_RO_TOKEN:-}" ] && [ -n "${DOCKER_HUB_USER:-}" ]; then
   export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf '%s:%s' "$DOCKER_HUB_USER" "$DOCKER_HUB_RO_TOKEN" | base64 -w0)\"}}}"
-  # Redact from logs (the value is base64(user:token)). Each CI has its own log command; emitting
-  # the Azure ##vso line on GitHub Actions would PRINT the secret instead of masking it.
-  if [ -n "${GITHUB_ACTIONS:-}" ]; then
-    echo "::add-mask::$DOCKER_AUTH_CONFIG"
-  else
-    echo "##vso[task.setvariable variable=DOCKER_AUTH_CONFIG;isSecret=true]$DOCKER_AUTH_CONFIG"
-  fi
+  # Redact from logs (the value is base64(user:token)).
+  echo "::add-mask::$DOCKER_AUTH_CONFIG"
   echo "[TEST] Docker Hub authenticated pulls ENABLED (user '$DOCKER_HUB_USER')"
 else
   echo "[TEST] Docker Hub authenticated pulls DISABLED (anonymous, rate-limited) — DOCKER_HUB_USER/DOCKER_HUB_RO_TOKEN not both set"
