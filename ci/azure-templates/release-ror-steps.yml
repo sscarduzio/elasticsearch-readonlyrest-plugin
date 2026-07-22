@@ -11,7 +11,7 @@ steps:
     fetchDepth: 1
     clean: false
     persistCredentials: true
-    timeoutInMinutes: 180
+    timeoutInMinutes: 270
   - script: |
       set -e
 
