@@ -41,13 +41,8 @@ dependencies {
     implementation (group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: moduleEsVersion) {
         exclude group: 'org.elasticsearch', module: 'exponential-histogram'
     }
-    implementation  group: 'org.elasticsearch',                 name: 'elasticsearch-x-content',                version: moduleEsVersion
-    implementation  group: 'org.elasticsearch',                 name: 'elasticsearch-core',                     version: moduleEsVersion
-    implementation  group: 'org.apache.lucene',                 name: 'lucene-core',                            version: '10.3.2'
     implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: moduleEsVersion
     implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.14'
-    implementation  group: 'org.apache.httpcomponents',         name: 'httpasyncclient',                        version: '4.1.5'
-    implementation  group: 'org.apache.httpcomponents',         name: 'httpcore-nio',                           version: '4.4.16'
     implementation  group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.1'
     compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
     // if you don't have this dependency in local maven, please run publishToMavenLocal task first
@@ -58,9 +53,10 @@ configurations {
     wagon
     distJars {
         exclude group: 'org.elasticsearch'
-        exclude group: 'org.apache.lucene'
+        exclude group: 'lucene-core'
         exclude module: 'log4j-api'
         exclude module: 'log4j-core'
+        exclude group: 'lucene-analyzers-common'
         exclude group: 'org.apache.commons'
         exclude group: 'org.yaml'
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
