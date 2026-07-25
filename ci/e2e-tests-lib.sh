@@ -35,7 +35,7 @@ dispatch_kbn_prebuild_image() {
 
   if [ -z "${KBN_REPO_GH_TOKEN:-}" ] || [[ "${KBN_REPO_GH_TOKEN}" == '$('* ]]; then
     echo "ERROR: KBN_REPO_GH_TOKEN is not set or was not resolved by the pipeline (required to dispatch the ROR KBN pre-build workflow)"
-    echo "       Make sure KBN_REPO_DISPATCH_TOKEN is defined as a secret variable in Azure DevOps."
+    echo "       Make sure KBN_REPO_GH_TOKEN is defined as a secret variable in pipeline variables."
     return 2
   fi
 
