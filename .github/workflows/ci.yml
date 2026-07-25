@@ -24,6 +24,7 @@ on:
         options:
           - run_all_tests_on_linux
           - run_all_tests_on_windows
+          - run_e2e_tests
           - build_toolchains_image
           - release_without_testing
           - run_disk_probe
@@ -73,6 +74,7 @@ jobs:
       action:     ${{ github.event.inputs.actionToPerform || 'run_all_tests_on_linux' }}
       it_linux_matrix:   ${{ steps.m.outputs.linux }}
       it_windows_matrix: ${{ steps.m.outputs.windows }}
+      e2e_matrix:        ${{ steps.m.outputs.e2e }}
     steps:
       - id: f
         env:
@@ -93,8 +95,9 @@ jobs:
           LINUX_FULL='["integration_es94x","integration_es92x","integration_es91x","integration_es90x","integration_es818x","integration_es816x","integration_es815x","integration_es814x","integration_es813x","integration_es812x","integration_es811x","integration_es810x","integration_es89x","integration_es88x","integration_es87x","integration_es85x","integration_es84x","integration_es83x","integration_es82x","integration_es81x","integration_es80x","integration_es717x","integration_es716x","integration_es714x","integration_es711x","integration_es710x","integration_es79x","integration_es78x","integration_es77x","integration_es74x","integration_es73x","integration_es72x","integration_es70x","integration_es67x"]'
           LINUX_PR='["integration_es94x","integration_es90x","integration_es818x","integration_es816x","integration_es810x","integration_es80x","integration_es717x","integration_es710x","integration_es70x","integration_es67x"]'
           WIN_FULL='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
-          WIN_BRANCH='["es94x","es92x","es90x","es818x","es80x","es717x","es70x"]'
+          WIN_BRANCH='["es94x","es90x","es818x","es80x","es717x","es70x"]'
           WIN_PR='["es94x","es818x","es717x"]'
+          E2E_MODULES='["es94x","es818x","es717x"]'
 
           if [ "$IS_DISPATCH" = "true" ] || [ "$IS_FULL" = "true" ]; then
             echo "linux=$LINUX_FULL" >> "$GITHUB_OUTPUT"
@@ -109,6 +112,8 @@ jobs:
           else
             echo "windows=$WIN_PR" >> "$GITHUB_OUTPUT"
           fi
+
+          echo "e2e=$E2E_MODULES" >> "$GITHUB_OUTPUT"
 
   # ── BUILD_TOOLCHAINS_IMAGE (schedule / manual) ────────────────────────────
   build_toolchains_image:
@@ -540,7 +545,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
-      (github.event_name != 'workflow_dispatch' || startsWith(needs.setup.outputs.action, 'run_all_tests'))
+      (github.event_name != 'workflow_dispatch' || startsWith(needs.setup.outputs.action, 'run_all_tests') || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubicloud-standard-4
     timeout-minutes: 120
     # No container: the e2e runner drives docker compose on the host and needs Node + a JDK provided
@@ -557,7 +562,7 @@ jobs:
       fail-fast: false
       max-parallel: 99
       matrix:
-        E2E_ES_MODULE: [ es94x ]
+        E2E_ES_MODULE: ${{ fromJSON(needs.setup.outputs.e2e_matrix) }}
     steps:
       # persist-credentials: true mirrors Azure (persistCredentials). The e2e flow authenticates to
       # the KBN repo via KBN_REPO_GH_TOKEN and clones the (public) e2e-tests repo; keep the checkout
