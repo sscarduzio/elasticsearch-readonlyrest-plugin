@@ -10,7 +10,7 @@ docker_image_exists() {
 # never touch a sibling CI job sharing the self-hosted Docker daemon. Single source of truth for "kill
 # this CI job's containers" — used by run-pipeline.sh's SIGTERM trap, the pipeline's always() cleanup
 # step, and the standalone orphan reaper. No-op if ROR_CI_JOB_ID is unset or nothing matches.
-function reap_ci_job_containers {
+reap_ci_job_containers() {
   [ -n "${ROR_CI_JOB_ID:-}" ] || return 0
   local ids
   ids=$(docker ps -aq --filter "label=ror.ci-job=$ROR_CI_JOB_ID" 2>/dev/null)
@@ -137,7 +137,7 @@ tag() {
 # ROR_<STORE>_STORE_* env vars, so the same logic serves both the artifacts store
 # (ROR_ARTIFACTS_STORE_*) and the libs store (ROR_LIBS_STORE_*). Each store keeps its
 # own endpoint, credentials, bucket, region and path-prefix.
-function upload_using_aws_s3_uploader {
+upload_using_aws_s3_uploader() {
   local LOCAL_FILE="$1"
   local S3_PATH STORE BUCKET PATH_PREFIX
   S3_PATH=$(echo "$2" | sed 's:/*$::')
@@ -170,7 +170,7 @@ function upload_using_aws_s3_uploader {
       "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
 }
 
-function log_disk_usage {
+log_disk_usage() {
   local label="${1:-}"
   echo "=== Disk usage ($label) ==="
   df -h / || true

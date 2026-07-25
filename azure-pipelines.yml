@@ -906,9 +906,9 @@ stages:
       - E2E_TESTS
     condition: |
       and(
-        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
-        in(dependencies.TEST.result, 'Succeeded', 'Skipped'),
-        in(dependencies.E2E_TESTS.result, 'Succeeded', 'Skipped'),
+        succeeded('REQUIRED_CHECKS'),
+        succeeded('TEST'),
+        succeeded('E2E_TESTS'),
         eq(variables.isPullRequest, true),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
@@ -990,8 +990,8 @@ stages:
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
-        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
-        in(dependencies.TEST.result, 'Succeeded', 'Skipped'),
+        succeeded('REQUIRED_CHECKS'),
+        succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
@@ -1067,8 +1067,8 @@ stages:
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
-        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
-        in(dependencies.TEST.result, 'Succeeded', 'Skipped'),
+        succeeded('REQUIRED_CHECKS'),
+        succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
@@ -1140,8 +1140,8 @@ stages:
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
-        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
-        in(dependencies.TEST.result, 'Succeeded', 'Skipped'),
+        succeeded('REQUIRED_CHECKS'),
+        succeeded('TEST'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
