@@ -64,6 +64,15 @@ Currently eshome support debugging only es8x modules.
 ## Adding license headers to newly created files:
 * `./gradlew licenseFormatMain`
 * `./gradlew licenseFormatTest`
+
+## Code formatting:
+Format all sources:
+* `./gradlew formatCode`
+
+Check formatting without modifying files (used in CI):
+* `./gradlew formatCodeCheck`
+
+The pre-commit hook runs formatting automatically on staged `.scala` and `.java` files before each commit.
 ## Testing with LDAP
 If you need to setup local LDAP you can use LDAPServer defined in our tests sources: `tech.beshu.ror.utils.ldap.LDAPServer`
 ## Troubleshooting

@@ -24,14 +24,23 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 import java.util.function.Consumer
 
-class EsContainerWithNoSecurity private(esConfig: Elasticsearch.Config,
-                                        esVersion: String,
-                                        startedClusterDependencies: StartedClusterDependencies,
-                                        elasticsearch: Elasticsearch,
-                                        initializer: ElasticsearchNodeDataInitializer,
-                                        additionalLogConsumer: Option[Consumer[OutputFrame]],
-                                        awaitingReadyStrategy: AwaitingReadyStrategy)
-  extends EsContainer(esVersion, esConfig, startedClusterDependencies, elasticsearch, initializer, additionalLogConsumer, awaitingReadyStrategy) {
+class EsContainerWithNoSecurity private (
+    esConfig: Elasticsearch.Config,
+    esVersion: String,
+    startedClusterDependencies: StartedClusterDependencies,
+    elasticsearch: Elasticsearch,
+    initializer: ElasticsearchNodeDataInitializer,
+    additionalLogConsumer: Option[Consumer[OutputFrame]],
+    awaitingReadyStrategy: AwaitingReadyStrategy
+) extends EsContainer(
+      esVersion,
+      esConfig,
+      startedClusterDependencies,
+      elasticsearch,
+      initializer,
+      additionalLogConsumer,
+      awaitingReadyStrategy
+    ) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES without any security installed container ...")
 
@@ -42,12 +51,14 @@ class EsContainerWithNoSecurity private(esConfig: Elasticsearch.Config,
 
 object EsContainerWithNoSecurity extends StrictLogging {
 
-  def create(esVersion: String,
-             esConfig: Elasticsearch.Config,
-             initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies,
-             additionalLogConsumer: Option[Consumer[OutputFrame]],
-             awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
+  def create(
+      esVersion: String,
+      esConfig: Elasticsearch.Config,
+      initializer: ElasticsearchNodeDataInitializer,
+      startedClusterDependencies: StartedClusterDependencies,
+      additionalLogConsumer: Option[Consumer[OutputFrame]],
+      awaitingReadyStrategy: AwaitingReadyStrategy
+  ): EsContainer = {
     new EsContainerWithNoSecurity(
       esConfig,
       esVersion,
@@ -59,15 +70,15 @@ object EsContainerWithNoSecurity extends StrictLogging {
     )
   }
 
-  private def esImageFromDockerfile(esVersion: String,
-                                    esConfig: Elasticsearch.Config) = {
+  private def esImageFromDockerfile(esVersion: String, esConfig: Elasticsearch.Config) = {
     Elasticsearch
       .create(
         esVersion,
         esConfig.copy(
-          additionalElasticsearchYamlEntries = esConfig.additionalElasticsearchYamlEntries ++ Map("xpack.security.enabled" -> "false")
+          additionalElasticsearchYamlEntries =
+            esConfig.additionalElasticsearchYamlEntries ++ Map("xpack.security.enabled" -> "false")
         )
       )
   }
-}
 
+}

@@ -69,4 +69,5 @@ object dependencies {
       originalPort = ToxiproxyContainer.proxiedPort
     )
   }
+
 }

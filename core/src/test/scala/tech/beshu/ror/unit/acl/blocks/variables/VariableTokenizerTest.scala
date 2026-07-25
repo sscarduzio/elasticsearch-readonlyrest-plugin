@@ -32,16 +32,20 @@ class VariableTokenizerTest extends AnyWordSpec with Matchers {
         "only transformation string" in {
           val text: NonEmptyString = "#{to_lowercase}"
           val result = Tokenizer.tokenize(text)
-          result should be(NonEmptyList.of(
-            Text("#{to_lowercase}"),
-          ))
+          result should be(
+            NonEmptyList.of(
+              Text("#{to_lowercase}"),
+            )
+          )
         }
         "text prepends transformation string" in {
           val text: NonEmptyString = "text#{to_lowercase}"
           val result = Tokenizer.tokenize(text)
-          result should be(NonEmptyList.of(
-            Text("text#{to_lowercase}"),
-          ))
+          result should be(
+            NonEmptyList.of(
+              Text("text#{to_lowercase}"),
+            )
+          )
         }
       }
     }
@@ -49,97 +53,113 @@ class VariableTokenizerTest extends AnyWordSpec with Matchers {
       "simple placeholder used" in {
         val text: NonEmptyString = "jwt_value_@{jwt:tech.beshu.mainGroupsString}"
         val result = Tokenizer.tokenize(text)
-        result should be(NonEmptyList.of(
-          Text("jwt_value_"),
-          Placeholder("jwt:tech.beshu.mainGroupsString", "@{jwt:tech.beshu.mainGroupsString}", None)
-        ))
+        result should be(
+          NonEmptyList.of(
+            Text("jwt_value_"),
+            Placeholder("jwt:tech.beshu.mainGroupsString", "@{jwt:tech.beshu.mainGroupsString}", None)
+          )
+        )
       }
       "placeholder with transformation" in {
         val text: NonEmptyString = "jwt_value_@{jwt:tech.beshu.mainGroupsString}#{to_lowercase}"
         val result = Tokenizer.tokenize(text)
-        result should be(NonEmptyList.of(
-          Text("jwt_value_"),
-          Placeholder(
-            "jwt:tech.beshu.mainGroupsString",
-            "@{jwt:tech.beshu.mainGroupsString}",
-            Some(Transformation("to_lowercase", "#{to_lowercase}"))
+        result should be(
+          NonEmptyList.of(
+            Text("jwt_value_"),
+            Placeholder(
+              "jwt:tech.beshu.mainGroupsString",
+              "@{jwt:tech.beshu.mainGroupsString}",
+              Some(Transformation("to_lowercase", "#{to_lowercase}"))
+            )
           )
-        ))
+        )
       }
       "placeholder with transformation with arg" in {
         val text: NonEmptyString = s"""jwt_value_@{jwt:tech.beshu.mainGroupsString}#{abc("().,\\"")}"""
         val result = Tokenizer.tokenize(text)
-        result should be(NonEmptyList.of(
-          Text("jwt_value_"),
-          Placeholder(
-            "jwt:tech.beshu.mainGroupsString",
-            "@{jwt:tech.beshu.mainGroupsString}",
-            Some(Transformation("abc(\"().,\\\"\")", "#{abc(\"().,\\\"\")}"))
+        result should be(
+          NonEmptyList.of(
+            Text("jwt_value_"),
+            Placeholder(
+              "jwt:tech.beshu.mainGroupsString",
+              "@{jwt:tech.beshu.mainGroupsString}",
+              Some(Transformation("abc(\"().,\\\"\")", "#{abc(\"().,\\\"\")}"))
+            )
           )
-        ))
+        )
 
       }
       "transformation as text when transformation string is not closed with brace" in {
         val text: NonEmptyString = "jwt_value_@{jwt:tech.beshu.mainGroupsString}#{to_lowercase"
         val result = Tokenizer.tokenize(text)
-        result should be(NonEmptyList.of(
-          Text("jwt_value_"),
-          Placeholder(
-            "jwt:tech.beshu.mainGroupsString",
-            "@{jwt:tech.beshu.mainGroupsString}",
-            None
-          ),
-          Text("#{to_lowercase")
-        ))
+        result should be(
+          NonEmptyList.of(
+            Text("jwt_value_"),
+            Placeholder(
+              "jwt:tech.beshu.mainGroupsString",
+              "@{jwt:tech.beshu.mainGroupsString}",
+              None
+            ),
+            Text("#{to_lowercase")
+          )
+        )
       }
       "transformation with escaped closing brace" in {
         val text: NonEmptyString = s"""jwt_value_@{jwt:tech.beshu.mainGroupsString}#{replace_all("\\}","x")}"""
         val result = Tokenizer.tokenize(text)
-        result should be(NonEmptyList.of(
-          Text("jwt_value_"),
-          Placeholder(
-            "jwt:tech.beshu.mainGroupsString",
-            "@{jwt:tech.beshu.mainGroupsString}",
-            Some(Transformation("replace_all(\"\\}\",\"x\")", "#{replace_all(\"\\}\",\"x\")}"))
-
+        result should be(
+          NonEmptyList.of(
+            Text("jwt_value_"),
+            Placeholder(
+              "jwt:tech.beshu.mainGroupsString",
+              "@{jwt:tech.beshu.mainGroupsString}",
+              Some(Transformation("replace_all(\"\\}\",\"x\")", "#{replace_all(\"\\}\",\"x\")}"))
+            )
           )
-        ))
+        )
       }
     }
     "explodable placeholder used" when {
       "simple placeholder" in {
         val text: NonEmptyString = "g@explode{jwt:tech.beshu.mainGroupsString}"
         val result = Tokenizer.tokenize(text)
-        result should be(NonEmptyList.of(
-          Text("g"),
-          ExplodablePlaceholder("jwt:tech.beshu.mainGroupsString", "@explode{jwt:tech.beshu.mainGroupsString}", None)
-        ))
+        result should be(
+          NonEmptyList.of(
+            Text("g"),
+            ExplodablePlaceholder("jwt:tech.beshu.mainGroupsString", "@explode{jwt:tech.beshu.mainGroupsString}", None)
+          )
+        )
       }
       "placeholder with transformation" in {
         val text: NonEmptyString = s"g@explode{jwt:tech.beshu.mainGroupsString}#{to_lowercase}"
         val result = Tokenizer.tokenize(text)
-        result should be(NonEmptyList.of(
-          Text("g"),
-          ExplodablePlaceholder(
-            "jwt:tech.beshu.mainGroupsString",
-            "@explode{jwt:tech.beshu.mainGroupsString}",
-            Some(Transformation("to_lowercase", "#{to_lowercase}"))
+        result should be(
+          NonEmptyList.of(
+            Text("g"),
+            ExplodablePlaceholder(
+              "jwt:tech.beshu.mainGroupsString",
+              "@explode{jwt:tech.beshu.mainGroupsString}",
+              Some(Transformation("to_lowercase", "#{to_lowercase}"))
+            )
           )
-        ))
+        )
       }
       "transformation as text when transformation string is not closed with brace" in {
         val text: NonEmptyString = s"g@explode{jwt:tech.beshu.mainGroupsString}#{to_lowercase"
         val result = Tokenizer.tokenize(text)
-        result should be(NonEmptyList.of(
-          Text("g"),
-          ExplodablePlaceholder(
-            "jwt:tech.beshu.mainGroupsString",
-            "@explode{jwt:tech.beshu.mainGroupsString}",
-            None
-          ),
-          Text("#{to_lowercase")
-        ))
+        result should be(
+          NonEmptyList.of(
+            Text("g"),
+            ExplodablePlaceholder(
+              "jwt:tech.beshu.mainGroupsString",
+              "@explode{jwt:tech.beshu.mainGroupsString}",
+              None
+            ),
+            Text("#{to_lowercase")
+          )
+        )
       }
     }
   }
+
 }

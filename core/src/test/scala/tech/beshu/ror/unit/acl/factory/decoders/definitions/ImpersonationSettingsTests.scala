@@ -32,41 +32,45 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, I
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ImpersonationSettingsTests extends BaseDecoderTest(
-  new ImpersonationDefinitionsDecoderCreator(
-    GlobalSettings(
-      showBasicAuthPrompt = true,
-      forbiddenRequestMessage = "Forbidden by ReadonlyREST",
-      flsEngine = FlsEngine.ES,
-      settingsIndex = RorSettingsIndex(fullIndexName(".readonlyrest")),
-      userIdCaseSensitivity = CaseSensitivity.Enabled,
-      usersDefinitionDuplicateUsernamesValidationEnabled = true
-    ),
-    Definitions[ExternalAuthenticationService](Nil),
-    Definitions[ProxyAuth](Nil),
-    Definitions[LdapService](Nil),
-    NoOpMocksProvider,
-    defaultEsEnv()
-  ).create
-) {
+class ImpersonationSettingsTests
+    extends BaseDecoderTest(
+      new ImpersonationDefinitionsDecoderCreator(
+        GlobalSettings(
+          showBasicAuthPrompt = true,
+          forbiddenRequestMessage = "Forbidden by ReadonlyREST",
+          flsEngine = FlsEngine.ES,
+          settingsIndex = RorSettingsIndex(fullIndexName(".readonlyrest")),
+          userIdCaseSensitivity = CaseSensitivity.Enabled,
+          usersDefinitionDuplicateUsernamesValidationEnabled = true
+        ),
+        Definitions[ExternalAuthenticationService](Nil),
+        Definitions[ProxyAuth](Nil),
+        Definitions[LdapService](Nil),
+        NoOpMocksProvider,
+        defaultEsEnv()
+      ).create
+    ) {
 
   "An impersonation definition" should {
     "be able to be loaded from settings" when {
       "one impersonator is defined" which {
         "using auth key as authentication method" in {
           assertDecodingSuccess(
-            yaml =
-              s"""
-                 |impersonation:
-                 | - impersonator: admin
-                 |   auth_key: admin:pass
-                 |   users: ["*"]
+            yaml = s"""
+                      |impersonation:
+                      | - impersonator: admin
+                      |   auth_key: admin:pass
+                      |   users: ["*"]
            """.stripMargin,
             assertion = { definitions =>
               definitions.items should have size 1
               val impersonator = definitions.items.head
-              impersonator.impersonatorUsernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin")))))
-              impersonator.impersonatedUsers should be(ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("*"))))))
+              impersonator.impersonatorUsernames should be(
+                UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin"))))
+              )
+              impersonator.impersonatedUsers should be(
+                ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("*")))))
+              )
               impersonator.authenticationRule shouldBe a[AuthKeyRule]
             }
           )
@@ -74,29 +78,38 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
       }
       "two impersonators are defined" in {
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |impersonation:
-               | - impersonator: admin
-               |   auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
-               |   users: ["*"]
-               | - impersonator: admin2
-               |   auth_key: admin2:pass
-               |   users: ["user1", "user2"]
+          yaml = s"""
+                    |impersonation:
+                    | - impersonator: admin
+                    |   auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+                    |   users: ["*"]
+                    | - impersonator: admin2
+                    |   auth_key: admin2:pass
+                    |   users: ["user1", "user2"]
            """.stripMargin,
           assertion = { definitions =>
             definitions.items should have size 2
 
             val impersonator1 = definitions.items.head
-            impersonator1.impersonatorUsernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin")))))
-            impersonator1.impersonatedUsers should be(ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("*"))))))
+            impersonator1.impersonatorUsernames should be(
+              UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin"))))
+            )
+            impersonator1.impersonatedUsers should be(
+              ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("*")))))
+            )
             impersonator1.authenticationRule shouldBe a[AuthKeySha1Rule]
 
             val impersonator2 = definitions.items.tail.head
-            impersonator2.impersonatorUsernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin2")))))
-            impersonator2.impersonatedUsers should be(ImpersonatedUsers(UserIdPatterns(
-              UniqueNonEmptyList.of(UserIdPattern(User.Id("user1")), UserIdPattern(User.Id("user2")))
-            )))
+            impersonator2.impersonatorUsernames should be(
+              UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin2"))))
+            )
+            impersonator2.impersonatedUsers should be(
+              ImpersonatedUsers(
+                UserIdPatterns(
+                  UniqueNonEmptyList.of(UserIdPattern(User.Id("user1")), UserIdPattern(User.Id("user2")))
+                )
+              )
+            )
             impersonator2.authenticationRule shouldBe a[AuthKeyRule]
           }
         )
@@ -115,9 +128,8 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
     "not be able to be loaded from settings" when {
       "impersonation section is empty" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |impersonation:
+          yaml = s"""
+                    |impersonation:
               """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message("impersonation declared, but no definition found")))
@@ -126,11 +138,10 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
       }
       "there is no impersonator key" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |impersonation:
-               | - auth_key: admin:pass
-               |   users: ["*"]
+          yaml = s"""
+                    |impersonation:
+                    | - auth_key: admin:pass
+                    |   users: ["*"]
            """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message("Impersonation definition malformed")))
@@ -139,11 +150,10 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
       }
       "there is no authentication method defined" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |impersonation:
-               | - impersonator: admin
-               |   users: ["*"]
+          yaml = s"""
+                    |impersonation:
+                    | - impersonator: admin
+                    |   users: ["*"]
            """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message("No authentication method defined for [admin]")))
@@ -152,25 +162,27 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
       }
       "unknown authentication method is defined" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |impersonation:
-               | - impersonator: admin
-               |   unknown_auth: admin:pass
-               |   users: ["*"]
+          yaml = s"""
+                    |impersonation:
+                    | - impersonator: admin
+                    |   unknown_auth: admin:pass
+                    |   users: ["*"]
            """.stripMargin,
           assertion = { error =>
-            error should be(DefinitionsLevelCreationError(Message("Only an authentication rule can be used in context of 'impersonator' definition")))
+            error should be(
+              DefinitionsLevelCreationError(
+                Message("Only an authentication rule can be used in context of 'impersonator' definition")
+              )
+            )
           }
         )
       }
       "there is no users key" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |impersonation:
-               | - impersonator: admin
-               |   auth_key: admin:pass
+          yaml = s"""
+                    |impersonation:
+                    | - impersonator: admin
+                    |   auth_key: admin:pass
            """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message("Impersonation definition malformed")))
@@ -179,12 +191,11 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
       }
       "users set is empty" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |impersonation:
-               | - impersonator: admin
-               |   auth_key: admin:pass
-               |   users: []
+          yaml = s"""
+                    |impersonation:
+                    | - impersonator: admin
+                    |   auth_key: admin:pass
+                    |   users: []
            """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message("Non empty list of user ID patterns are required")))
@@ -193,20 +204,24 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
       }
       "impersonator and user to be impersonated occurs in the impersonator and users sections" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |impersonation:
-               | - impersonator: ["admin1"]
-               |   auth_key: admin1:pass
-               |   users: ["admin1"]
+          yaml = s"""
+                    |impersonation:
+                    | - impersonator: ["admin1"]
+                    |   auth_key: admin1:pass
+                    |   users: ["admin1"]
            """.stripMargin,
           assertion = { error =>
-            error should be(DefinitionsLevelCreationError(Message(
-              "Each of the given users [admin1] should be either impersonator or a user to be impersonated"
-            )))
+            error should be(
+              DefinitionsLevelCreationError(
+                Message(
+                  "Each of the given users [admin1] should be either impersonator or a user to be impersonated"
+                )
+              )
+            )
           }
         )
       }
     }
   }
+
 }

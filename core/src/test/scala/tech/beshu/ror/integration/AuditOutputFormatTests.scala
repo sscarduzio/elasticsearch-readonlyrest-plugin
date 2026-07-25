@@ -25,8 +25,9 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
@@ -34,7 +35,7 @@ import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamSe
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, defaultTestEsNodeSettings}
+import tech.beshu.ror.utils.TestsUtils.{defaultTestEsNodeSettings, fullDataStreamName, header, nes}
 
 import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration.*
@@ -67,7 +68,8 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         val dataStreamAuditSinkService = new MockedDataStreamBasedAuditSinkService()
         val acl = auditedAcl(indexAuditSinkService, dataStreamAuditSinkService)
         val request = MockRequestContext.indices.withHeaders(
-          header("x-forwarded-for", "192.168.0.1"), header("custom-one", "test")
+          header("x-forwarded-for", "192.168.0.1"),
+          header("custom-one", "test")
         )
 
         acl.handleRegularRequest(request).runSyncUnsafe()
@@ -113,18 +115,19 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         val (index, jsonStringFromIndex) = Await.result(indexAuditSinkService.result, 5 seconds)
         index.name.value should startWith("readonlyrest_audit-")
-        ujson.read(jsonStringFromIndex) should be (expectedJson(jsonStringFromIndex))
+        ujson.read(jsonStringFromIndex) should be(expectedJson(jsonStringFromIndex))
 
         val (dataStream, jsonStringFromDataStream) = Await.result(dataStreamAuditSinkService.result, 5 seconds)
-        dataStream should be (fullDataStreamName(NonEmptyString.unsafeFrom("readonlyrest_audit")))
-        ujson.read(jsonStringFromDataStream) should be (expectedJson(jsonStringFromDataStream))
+        dataStream should be(fullDataStreamName(NonEmptyString.unsafeFrom("readonlyrest_audit")))
+        ujson.read(jsonStringFromDataStream) should be(expectedJson(jsonStringFromDataStream))
       }
       "is passed normally" in {
         val indexAuditSinkService = new MockedIndexAuditSinkService()
         val dataStreamAuditSinkService = new MockedDataStreamBasedAuditSinkService()
         val acl = auditedAcl(indexAuditSinkService, dataStreamAuditSinkService)
         val request = MockRequestContext.indices.withHeaders(
-          header("X-Forwarded-For", "192.168.0.1"), header("Custom-One", "test")
+          header("X-Forwarded-For", "192.168.0.1"),
+          header("Custom-One", "test")
         )
 
         acl.handleRegularRequest(request).runSyncUnsafe()
@@ -170,49 +173,62 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         val (index, jsonStringFromIndex) = Await.result(indexAuditSinkService.result, 5 seconds)
         index.name.value should startWith("readonlyrest_audit-")
-        ujson.read(jsonStringFromIndex) should be (expectedJson(jsonStringFromIndex))
+        ujson.read(jsonStringFromIndex) should be(expectedJson(jsonStringFromIndex))
 
         val (dataStream, jsonStringFromDataStream) = Await.result(dataStreamAuditSinkService.result, 5 seconds)
-        dataStream should be (fullDataStreamName(nes("readonlyrest_audit")))
-        ujson.read(jsonStringFromDataStream) should be (expectedJson(jsonStringFromDataStream))
+        dataStream should be(fullDataStreamName(nes("readonlyrest_audit")))
+        ujson.read(jsonStringFromDataStream) should be(expectedJson(jsonStringFromDataStream))
       }
     }
   }
 
-  private def auditedAcl(indexBasedAuditSinkService: IndexBasedAuditSinkService,
-                         dataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService) = {
+  private def auditedAcl(
+      indexBasedAuditSinkService: IndexBasedAuditSinkService,
+      dataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService
+  ) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-    val settings = AuditingTool.AuditSettings(
+    val settings = AuditOutputsConfig.WithOutputs(
       NonEmptyList.of(
-        AuditSink.Enabled(Config.EsIndexBasedSink(
-          new BlockVerbosityAwareAuditLogSerializer,
-          RorAuditIndexTemplate.default,
-          AuditCluster.LocalAuditCluster
-        )),
-        AuditSink.Enabled(Config.EsDataStreamBasedSink(
-          new BlockVerbosityAwareAuditLogSerializer,
-          RorAuditDataStream.default,
-          AuditCluster.LocalAuditCluster
-        ))
-      ),
-      defaultTestEsNodeSettings
+        AuditSink.Enabled(
+          SinkName.random(),
+          Config.EsIndexBasedSink(
+            AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
+            RorAuditIndexTemplate.default,
+            AuditCluster.LocalAuditCluster
+          )
+        ),
+        AuditSink.Enabled(
+          SinkName.random(),
+          Config.EsDataStreamBasedSink(
+            AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
+            RorAuditDataStream.default,
+            AuditCluster.LocalAuditCluster
+          )
+        )
+      )
     )
-    val auditingTool = AuditingTool.create(
-      settings = settings,
-      auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
-        override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamBasedAuditSinkService
+    val auditingTool = AuditingTool
+      .create(
+        config = AuditingConfig(Some(settings), defaultAclLog = true, defaultTestEsNodeSettings),
+        auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
+          override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService =
+            dataStreamBasedAuditSinkService
 
-        override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexBasedAuditSinkService
-      }
-    ).runSyncUnsafe().toOption.flatten.get
-    new AccessControlListLoggingDecorator(acl, Some(auditingTool))
+          override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexBasedAuditSinkService
+        }
+      )
+      .runSyncUnsafe()
+      .toOption
+      .get
+    new AccessControlListLoggingDecorator(acl, auditingTool)
   }
 
   private def captureProcessingMillis(jsonString: String) = {
     "\"processingMillis\":(\\d*),".r
       .findFirstMatchIn(jsonString)
       .getOrElse(throw new IllegalStateException("no processingMillis pattern matched"))
-      .group(1).toLong
+      .group(1)
+      .toLong
   }
 
   private def captureCorrelationId(jsonString: String) = {
@@ -225,8 +241,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private class MockedIndexAuditSinkService extends IndexBasedAuditSinkService {
     private val submittedIndexAndJson: Promise[(IndexName.Full, String)] = Promise()
 
-    override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)
-                       (implicit requestId: RequestId): Unit = {
+    override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+        implicit requestId: RequestId
+    ): Unit = {
       submittedIndexAndJson.trySuccess(indexName, jsonRecord)
     }
 
@@ -238,8 +255,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private class MockedDataStreamBasedAuditSinkService extends DataStreamBasedAuditSinkService {
     private val submittedDataStreamAndJson: Promise[(DataStreamName.Full, String)] = Promise()
 
-    override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)
-                       (implicit requestId: RequestId): Unit = {
+    override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
+        implicit requestId: RequestId
+    ): Unit = {
       submittedDataStreamAndJson.trySuccess(dataStreamName, jsonRecord)
     }
 
@@ -248,10 +266,16 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     def result: Future[(DataStreamName.Full, String)] = submittedDataStreamAndJson.future
 
     private val mockedDataStreamService = mock[DataStreamService]
-    (mockedDataStreamService.checkDataStreamExists(_: DataStreamName.Full))
+
+    (mockedDataStreamService
+      .checkDataStreamExists(_: DataStreamName.Full))
       .expects(RorAuditDataStream.default.dataStream)
       .returning(Task.now(true))
 
-    override def dataStreamCreator: AuditDataStreamCreator = AuditDataStreamCreator(NonEmptyList.one(mockedDataStreamService))
+    override def dataStreamCreator: AuditDataStreamCreator = AuditDataStreamCreator(
+      NonEmptyList.one(mockedDataStreamService)
+    )
+
   }
+
 }

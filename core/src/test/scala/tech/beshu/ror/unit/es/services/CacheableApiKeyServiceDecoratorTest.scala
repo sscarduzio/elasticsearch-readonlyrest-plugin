@@ -26,10 +26,7 @@ import tech.beshu.ror.es.services.{ApiKeyService, CacheableApiKeyServiceDecorato
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
-class CacheableApiKeyServiceDecoratorTest
-  extends AnyWordSpec
-    with MockFactory
-    with WithDummyRequestIdSupport {
+class CacheableApiKeyServiceDecoratorTest extends AnyWordSpec with MockFactory with WithDummyRequestIdSupport {
 
   "CacheableApiKeyServiceDecorator" when {
     "validateToken is called" should {
@@ -76,7 +73,8 @@ class CacheableApiKeyServiceDecoratorTest
   private def mockFor(expectations: (AuthorizationToken, Boolean)*): ApiKeyService = {
     val service = mock[ApiKeyService]
     expectations.foreach { case (token, result) =>
-      (service.validateToken(_: AuthorizationToken)(_: RequestId))
+      (service
+        .validateToken(_: AuthorizationToken)(_: RequestId))
         .expects(token, *)
         .returning(Task.now(result))
         .once()

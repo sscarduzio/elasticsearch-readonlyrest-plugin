@@ -27,13 +27,13 @@ import scala.language.postfixOps
 
 object WindowsEsRunner extends LazyLogging {
 
-  def startEs(config: Config,
-              additionalLogConsumer: Option[Consumer[OutputFrame]]): WindowsEsProcess = {
+  def startEs(config: Config, additionalLogConsumer: Option[Consumer[OutputFrame]]): WindowsEsProcess = {
     val binDir = binPath(config.clusterName, config.nodeName)
     val esBat = binDir / "elasticsearch.bat"
     logger.info(s"Starting Elasticsearch [${config.clusterName}][${config.nodeName}]")
 
-    val proc = os.proc(esBat)
+    val proc = os
+      .proc(esBat)
       .spawn(
         cwd = binDir,
         env = Map(
@@ -59,14 +59,16 @@ object WindowsEsRunner extends LazyLogging {
     process
   }
 
-  class WindowsEsProcess(val clusterName: String, val nodeName: String, proc: SubProcess) extends WindowsPseudoContainer.Service {
-    
+  class WindowsEsProcess(val clusterName: String, val nodeName: String, proc: SubProcess)
+      extends WindowsPseudoContainer.Service {
+
     override def destroy(): Unit = {
       logger.info(s"Stopping ES process with pid ${proc.wrapped.pid}")
       try {
         os.proc("taskkill", "/PID", proc.wrapped.pid.toString, "/F", "/T").call()
       } catch {
-        case e: Exception => logger.error(s"Failed to stop Elasticsearch [${clusterName}][${nodeName}] process: ${e.getMessage}")
+        case e: Exception =>
+          logger.error(s"Failed to stop Elasticsearch [${clusterName}][${nodeName}] process: ${e.getMessage}")
       }
     }
 

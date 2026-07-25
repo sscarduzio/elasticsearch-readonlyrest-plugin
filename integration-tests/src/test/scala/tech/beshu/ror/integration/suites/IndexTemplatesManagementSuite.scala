@@ -23,12 +23,17 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Sin
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
-import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, IndexTemplateManager, LegacyTemplateManager}
+import tech.beshu.ror.utils.elasticsearch.{
+  BaseTemplateManager,
+  ComponentTemplateManager,
+  IndexTemplateManager,
+  LegacyTemplateManager
+}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class IndexTemplatesManagementSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseTemplatesSuite
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -41,8 +46,7 @@ class IndexTemplatesManagementSuite
   if (doesSupportComponentTemplates) componentTemplateApiTests()
   if (doesSupportIndexTemplates) simulateTemplatesApiTests()
 
-  def indexTemplateApiTests(name: String)
-                           (templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
+  def indexTemplateApiTests(name: String)(templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
 
     lazy val dev1TemplateManager = templateManagerCreator(basicAuthClient("dev1", "test"))
     lazy val dev2TemplateManager = templateManagerCreator(basicAuthClient("dev2", "test"))
@@ -1055,7 +1059,7 @@ class IndexTemplatesManagementSuite
           val result = dev1TemplateManager.getTemplates
 
           result should have statusCode 200
-          result.templates should contain allOf(
+          result.templates should contain allOf (
             ComponentTemplate("temp1", Set.empty),
             ComponentTemplate("temp2", Set("dev1_index")),
             ComponentTemplate("temp3", Set.empty),
@@ -1081,7 +1085,7 @@ class IndexTemplatesManagementSuite
             val result = dev1TemplateManager.getTemplate("temp*")
 
             result should have statusCode 200
-            result.templates should contain allOf(
+            result.templates should contain allOf (
               ComponentTemplate("temp1", Set("dev1_index")),
               ComponentTemplate("temp2", Set.empty)
             )
@@ -1210,7 +1214,7 @@ class IndexTemplatesManagementSuite
 
     "A simulate template API" should {
       "be allowed for a user" which {
-        "has an access to the given existing template" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "has an access to the given existing template" excludeES (allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
@@ -1232,7 +1236,7 @@ class IndexTemplatesManagementSuite
           result.templateAliases should be(Set("dev1_index"))
           result.overlappingTemplates should be(List.empty)
         }
-        "has an access to given non-existing template" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "has an access to given non-existing template" excludeES (allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp2",
@@ -1248,13 +1252,15 @@ class IndexTemplatesManagementSuite
 
           result should have statusCode 200
           result.templateAliases should be(Set("dev1_index"))
-          result.overlappingTemplates should be(List(
-            Template("temp2", Set("custom*"), Set.empty)
-          ))
+          result.overlappingTemplates should be(
+            List(
+              Template("temp2", Set("custom*"), Set.empty)
+            )
+          )
         }
       }
       "not to be allowed for a user" which {
-        "has no access to the given existing template" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "has no access to the given existing template" excludeES (allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
@@ -1266,7 +1272,7 @@ class IndexTemplatesManagementSuite
 
           result should have statusCode 400
         }
-        "has no access to the given non-existing template" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "has no access to the given non-existing template" excludeES (allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
@@ -1281,4 +1287,5 @@ class IndexTemplatesManagementSuite
       }
     }
   }
+
 }

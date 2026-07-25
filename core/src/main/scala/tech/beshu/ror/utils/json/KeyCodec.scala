@@ -21,10 +21,11 @@ import io.circe.{KeyDecoder, KeyEncoder}
 trait KeyCodec[A] extends KeyEncoder[A] with KeyDecoder[A]
 
 object KeyCodec {
-  def from[A](decode: String => Option[A],
-              encode: A => String): KeyCodec[A] = new KeyCodec[A] {
+
+  def from[A](decode: String => Option[A], encode: A => String): KeyCodec[A] = new KeyCodec[A] {
     override def apply(key: String): Option[A] = decode(key)
 
     override def apply(key: A): String = encode(key)
   }
+
 }

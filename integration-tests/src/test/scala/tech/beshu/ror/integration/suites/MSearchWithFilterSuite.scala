@@ -28,7 +28,7 @@ import java.util.function.BiPredicate
 
 //TODO: change test names. Current names are copies from old java integration tests
 class MSearchWithFilterSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -88,4 +88,5 @@ class MSearchWithFilterSuite
   private def resultsContainsLessElementsThan(): BiPredicate[SearchManager#MSearchResult, Throwable] =
     (searchResult: SearchManager#MSearchResult, throwable: Throwable) =>
       throwable != null || searchResult == null || searchResult.totalHitsForResponse(0) < 4
+
 }

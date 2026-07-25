@@ -33,8 +33,7 @@ import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class RorKbnAuthYamlLoadedAccessControlTests
-  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
   override protected def settingsYaml: String =
     """
@@ -85,7 +84,9 @@ class RorKbnAuthYamlLoadedAccessControlTests
       "allow to proceed" when {
         "JWT token with some arbitrary group is defined" in {
           val jwt = JwtUtils.Jwt(
-            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            secret = Keys.hmacShaKeyFor(
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+            ),
             claims = List("sub" := "test", "user" := "user", "groups" := "arbitrary_group_name")
           )
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
@@ -104,11 +105,14 @@ class RorKbnAuthYamlLoadedAccessControlTests
         }
         "JWT token with some arbitrary group is defined, preferred group is used and matches group in JWT" in {
           val jwt = JwtUtils.Jwt(
-            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            secret = Keys.hmacShaKeyFor(
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+            ),
             claims = List("sub" := "test", "user" := "user", "groups" := "group_in_jwt_token")
           )
           val preferredGroup = group("group_in_jwt_token")
-          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt), preferredGroup.id.toCurrentGroupHeader)
+          val request =
+            MockRequestContext.indices.withHeaders(bearerHeader(jwt), preferredGroup.id.toCurrentGroupHeader)
 
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -124,7 +128,9 @@ class RorKbnAuthYamlLoadedAccessControlTests
         }
         "JWT token with non-empty list of groups is defined, preferred group is used" in {
           val jwt = JwtUtils.Jwt(
-            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            secret = Keys.hmacShaKeyFor(
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+            ),
             claims = List("sub" := "test", "user" := "user", "groups" := List("viewer_group"))
           )
           val preferredGroup = group("mapped_viewer_group")
@@ -154,7 +160,9 @@ class RorKbnAuthYamlLoadedAccessControlTests
       "not allow to proceed" when {
         "JWT token with empty list of groups is defined" in {
           val jwt = JwtUtils.Jwt(
-            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            secret = Keys.hmacShaKeyFor(
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+            ),
             claims = List("sub" := "test", "user" := "user", "groups" := "")
           )
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
@@ -162,23 +170,26 @@ class RorKbnAuthYamlLoadedAccessControlTests
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
           history.blocks should have size 4
-          inside(result) { case r@RegularRequestResult.ForbiddenByMismatched(_) =>
+          inside(result) { case r @ RegularRequestResult.ForbiddenByMismatched(_) =>
             r.causes.toNonEmptyList should have size 1
             r.causes.head should be(ForbiddenCause.OperationNotAllowed)
           }
         }
         "JWT token with some arbitrary group is defined, preferred group is used and does not match group in JWT" in {
           val jwt = JwtUtils.Jwt(
-            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            secret = Keys.hmacShaKeyFor(
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+            ),
             claims = List("sub" := "test", "user" := "user", "groups" := "arbitrary_group_name")
           )
           val preferredGroup = group("mapped_viewer_group")
-          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt), preferredGroup.id.toCurrentGroupHeader)
+          val request =
+            MockRequestContext.indices.withHeaders(bearerHeader(jwt), preferredGroup.id.toCurrentGroupHeader)
 
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
           history.blocks should have size 4
-          inside(result) { case r@RegularRequestResult.ForbiddenByMismatched(_) =>
+          inside(result) { case r @ RegularRequestResult.ForbiddenByMismatched(_) =>
             r.causes.toNonEmptyList should have size 1
             r.causes.head should be(ForbiddenCause.OperationNotAllowed)
           }
@@ -186,4 +197,5 @@ class RorKbnAuthYamlLoadedAccessControlTests
       }
     }
   }
+
 }

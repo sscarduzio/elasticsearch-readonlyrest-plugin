@@ -22,9 +22,15 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -35,7 +41,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 
 class DataStreamsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
-  extends RuleBaseDecoderWithoutAssociatedFields[DataStreamsRule] {
+    extends RuleBaseDecoderWithoutAssociatedFields[DataStreamsRule] {
 
   private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
@@ -45,56 +51,71 @@ class DataStreamsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
       .toSyncDecoder
       .emapE { dataStreams =>
         if (checkIfAlreadyResolvedDataStreamVariableContains(dataStreams, DataStreamName.all))
-          Left(RulesLevelCreationError(Message(s"Setting up a rule (${DataStreamsRule.Name.show}) that matches all the values is redundant - data stream ${DataStreamName.all.show}")))
+          Left(
+            RulesLevelCreationError(
+              Message(
+                s"Setting up a rule (${DataStreamsRule.Name.show}) that matches all the values is redundant - data stream ${DataStreamName.all.show}"
+              )
+            )
+          )
         else if (checkIfAlreadyResolvedDataStreamVariableContains(dataStreams, DataStreamName.wildcard))
-          Left(RulesLevelCreationError(Message(s"Setting up a rule (${DataStreamsRule.Name.show}) that matches all the values is redundant - data stream ${DataStreamName.wildcard.show}")))
+          Left(
+            RulesLevelCreationError(
+              Message(
+                s"Setting up a rule (${DataStreamsRule.Name.show}) that matches all the values is redundant - data stream ${DataStreamName.wildcard.show}"
+              )
+            )
+          )
         else
           Right(dataStreams)
       }
       .map(dataStreams => RuleDefinition.create(new DataStreamsRule(DataStreamsRule.Settings(dataStreams))))
       .decoder
+
 }
 
 private object DataStreamsDecodersHelper {
+
   private implicit val dataStreamNameConvertible: Convertible[DataStreamName] = new Convertible[DataStreamName] {
     override def convert: String => Either[Convertible.ConvertError, DataStreamName] = { str =>
-
       for {
-        dataStreamName <- DataStreamName.fromString(str).toRight(Convertible.ConvertError("Data stream name cannot be empty"))
+        dataStreamName <- DataStreamName
+          .fromString(str)
+          .toRight(Convertible.ConvertError("Data stream name cannot be empty"))
         _ <- validateIsLowerCase(dataStreamName)
       } yield dataStreamName
     }
 
     private def validateIsLowerCase(value: DataStreamName) = value match {
-      case DataStreamName.Full(name) if isLowerCase(name) => Right(())
+      case DataStreamName.Full(name) if isLowerCase(name)                  => Right(())
       case DataStreamName.Pattern(namePattern) if isLowerCase(namePattern) => Right(())
-      case DataStreamName.Full(_) | DataStreamName.Pattern(_) =>
+      case DataStreamName.Full(_) | DataStreamName.Pattern(_)              =>
         Left(Convertible.ConvertError("Data stream name cannot contain the upper case characters"))
-      case DataStreamName.All => Right(())
+      case DataStreamName.All      => Right(())
       case DataStreamName.Wildcard => Right(())
     }
 
     private def isLowerCase(value: NonEmptyString) = value.value.toLowerCase == value.value
   }
 
-  implicit def dataStreamNameValueDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[DataStreamName]] =
-    DecoderHelpers
-      .decodeStringLikeNonEmpty
-      .toSyncDecoder
-      .emapE { str =>
-        variableCreator
-          .createMultiResolvableVariableFrom[DataStreamName](str)
-          .left.map(error => RulesLevelCreationError(Message(error.show)))
-      }
-      .decoder
+  implicit def dataStreamNameValueDecoder(
+      implicit variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder[RuntimeMultiResolvableVariable[DataStreamName]] =
+    DecoderHelpers.decodeStringLikeNonEmpty.toSyncDecoder.emapE { str =>
+      variableCreator
+        .createMultiResolvableVariableFrom[DataStreamName](str)
+        .left
+        .map(error => RulesLevelCreationError(Message(error.show)))
+    }.decoder
 
-  private[rules] def checkIfAlreadyResolvedDataStreamVariableContains(dataStreamsVars: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
-                                                                      dataStream: DataStreamName): Boolean = {
-    dataStreamsVars
-      .find {
-        case AlreadyResolved(dataStreams) => dataStreams.contains_(dataStream)
-        case ToBeResolved(_) => false
-      }
-      .isDefined
+  private[rules] def checkIfAlreadyResolvedDataStreamVariableContains(
+      dataStreamsVars: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
+      dataStream: DataStreamName
+  ): Boolean = {
+    dataStreamsVars.find {
+      case AlreadyResolved(dataStreams) => dataStreams.contains_(dataStream)
+      case ToBeResolved(_)              => false
+    }.isDefined
   }
+
 }

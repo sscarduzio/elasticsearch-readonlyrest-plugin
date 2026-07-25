@@ -17,6 +17,7 @@
 package tech.beshu.ror.api
 
 sealed abstract class StatusCode(val code: Int)
+
 object StatusCode {
   case object Ok extends StatusCode(200)
   case object BadRequest extends StatusCode(400)

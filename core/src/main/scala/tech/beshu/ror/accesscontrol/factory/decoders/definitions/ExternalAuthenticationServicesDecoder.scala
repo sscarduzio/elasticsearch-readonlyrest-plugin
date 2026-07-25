@@ -21,12 +21,12 @@ import cats.implicits.*
 import io.circe.Decoder
 import io.lemonlabs.uri.Url
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
-import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
+import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
@@ -35,31 +35,55 @@ object ExternalAuthenticationServicesDecoder {
 
   def instance(httpClientFactory: HttpClientsFactory): ADecoder[Id, Definitions[ExternalAuthenticationService]] = {
     implicit val serviceDecoder: SyncDecoder[ExternalAuthenticationService] =
-      SyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.basicAuthExternalAuthenticationServiceDecoder(httpClientFactory))
+      SyncDecoderCreator.from(
+        ExternalAuthenticationServicesDecoder.basicAuthExternalAuthenticationServiceDecoder(httpClientFactory)
+      )
     DefinitionsBaseDecoder.instance[Id, ExternalAuthenticationService]("external_authentication_service_configs")
   }
 
   implicit val serviceNameDecoder: Decoder[ExternalAuthenticationService.Name] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(ExternalAuthenticationService.Name.apply)
 
-  private implicit def basicAuthExternalAuthenticationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthenticationService] = {
+  private implicit def basicAuthExternalAuthenticationServiceDecoder(
+      implicit httpClientFactory: HttpClientsFactory
+  ): Decoder[ExternalAuthenticationService] = {
     cacheableAuthenticationServiceDecoder(
-      (id: ExternalAuthenticationService#Id, url: Url, successStatusCode: Int, requestTimeout: PositiveFiniteDuration, httpClient: HttpClient) =>
-        new BasicAuthHttpExternalAuthenticationService(id, url, successStatusCode, requestTimeout, httpClient),
+      (
+          id: ExternalAuthenticationService#Id,
+          url: Url,
+          successStatusCode: Int,
+          requestTimeout: PositiveFiniteDuration,
+          httpClient: HttpClient
+      ) => new BasicAuthHttpExternalAuthenticationService(id, url, successStatusCode, requestTimeout, httpClient),
       httpClientFactory
     )
   }
 
-  implicit def jwtExternalAuthenticationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthenticationService] = {
+  implicit def jwtExternalAuthenticationServiceDecoder(
+      implicit httpClientFactory: HttpClientsFactory
+  ): Decoder[ExternalAuthenticationService] = {
     cacheableAuthenticationServiceDecoder(
-      (id: ExternalAuthenticationService#Id, url: Url, successStatusCode: Int, requestTimeout: PositiveFiniteDuration, httpClient: HttpClient) =>
-        new JwtExternalAuthenticationService(id, url, successStatusCode, requestTimeout, httpClient),
+      (
+          id: ExternalAuthenticationService#Id,
+          url: Url,
+          successStatusCode: Int,
+          requestTimeout: PositiveFiniteDuration,
+          httpClient: HttpClient
+      ) => new JwtExternalAuthenticationService(id, url, successStatusCode, requestTimeout, httpClient),
       httpClientFactory
     )
   }
 
-  private def cacheableAuthenticationServiceDecoder(creator: (ExternalAuthenticationService#Id, Url, Int, PositiveFiniteDuration, HttpClient) => ExternalAuthenticationService,
-                                                    httpClientFactory: HttpClientsFactory) = {
+  private def cacheableAuthenticationServiceDecoder(
+      creator: (
+          ExternalAuthenticationService#Id,
+          Url,
+          Int,
+          PositiveFiniteDuration,
+          HttpClient
+      ) => ExternalAuthenticationService,
+      httpClientFactory: HttpClientsFactory
+  ) = {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -74,7 +98,11 @@ object ExternalAuthenticationServicesDecoder {
       .emapE { case (name, url, httpSuccessCode, cacheTtl, validateOpt, httpClientConfigOpt) =>
         val httpClientConfig = (validateOpt, httpClientConfigOpt) match {
           case (Some(_), Some(_)) =>
-            Left(CoreCreationError.RulesLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
+            Left(
+              CoreCreationError.RulesLevelCreationError(
+                Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")
+              )
+            )
           case (Some(validate), None) =>
             Right(SimpleHttpClient.Config.default.copy(validate = validate))
           case (None, Some(config)) =>
@@ -86,8 +114,8 @@ object ExternalAuthenticationServicesDecoder {
           val httpClient = httpClientFactory.create(config)
           val externalAuthService: ExternalAuthenticationService =
             creator(name, url, httpSuccessCode.getOrElse(defaults.successHttpCode), config.requestTimeout, httpClient)
-          cacheTtl.foldLeft(externalAuthService) {
-            case (cacheableAuthService, ttl) => new CacheableExternalAuthenticationServiceDecorator(cacheableAuthService, ttl)
+          cacheTtl.foldLeft(externalAuthService) { case (cacheableAuthService, ttl) =>
+            new CacheableExternalAuthenticationServiceDecorator(cacheableAuthService, ttl)
           }
         }
       }

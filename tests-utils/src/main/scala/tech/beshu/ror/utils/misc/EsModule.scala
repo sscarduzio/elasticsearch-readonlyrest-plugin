@@ -21,6 +21,7 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import scala.util.matching.Regex
 
 final case class EsModule(name: String)
+
 object EsModule {
 
   def doesCurrentModuleMatch(esModuleRegex: Regex, otherEsModuleRegex: Regex*): Boolean = {
@@ -36,8 +37,7 @@ object EsModule {
   }
 
   def getExcludedModuleNames(excludedEsModulePatterns: Regex, otherExcludedEsModulePatterns: Regex*): List[EsModule] = {
-    RorPluginGradleProject
-      .availableEsModules
+    RorPluginGradleProject.availableEsModules
       .map(EsModule.apply)
       .filter { esModule =>
         doesEsModuleMatchRegex(esModule, excludedEsModulePatterns :: otherExcludedEsModulePatterns.toList)

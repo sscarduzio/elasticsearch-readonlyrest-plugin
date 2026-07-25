@@ -27,14 +27,14 @@ import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestC
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class DeleteDataStreamEsRequestContext(actionRequest: DeleteDataStreamAction.Request,
-                                       esContext: EsContext,
-                                       override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+class DeleteDataStreamEsRequestContext(
+    actionRequest: DeleteDataStreamAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   private lazy val originDataStreams =
-    actionRequest
-      .getNames.asSafeSet
+    actionRequest.getNames.asSafeSet
       .flatMap(DataStreamName.fromString)
 
   override protected def dataStreamsFrom(request: DeleteDataStreamAction.Request): Set[DataStreamName] =
@@ -51,4 +51,5 @@ class DeleteDataStreamEsRequestContext(actionRequest: DeleteDataStreamAction.Req
   private def setDataStreamNames(dataStreams: Set[DataStreamName]): Unit = {
     actionRequest.indices(dataStreams.map(_.stringify).toList: _*) // method is named indices but it sets data streams
   }
+
 }

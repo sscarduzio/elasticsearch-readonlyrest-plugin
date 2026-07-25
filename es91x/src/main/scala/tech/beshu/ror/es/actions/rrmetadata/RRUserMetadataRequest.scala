@@ -24,8 +24,7 @@ import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.DetailsCr
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.implicits.*
 
-class RRUserMetadataRequest(licenseTypeHeader: Option[Header])
-  extends ActionRequest with RorActionRequest {
+class RRUserMetadataRequest(licenseTypeHeader: Option[Header]) extends ActionRequest with RorActionRequest {
 
   lazy val details: UserMetadataRequestContext.Details = {
     UserMetadataRequestContext.Details
@@ -50,7 +49,9 @@ class RRUserMetadataRequest(licenseTypeHeader: Option[Header])
     e
   }
 
-  private object ShouldAlreadyBeValidatedIllegalState extends IllegalStateException(
-    "Cannot prepare Api Version object. It's invalid state. Should be already validated in the RRUserMetadataRequest#validate() method!"
-  )
+  private object ShouldAlreadyBeValidatedIllegalState
+      extends IllegalStateException(
+        "Cannot prepare Api Version object. It's invalid state. Should be already validated in the RRUserMetadataRequest#validate() method!"
+      )
+
 }

@@ -26,14 +26,18 @@ import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 trait WithReadonlyrestBootSupport {
   this: Suite =>
 
-  protected def withReadonlyRest(readonlyRestAndSettings: (ReadonlyRest, EsConfigBasedRorSettings))
-                                (testCode: RorInstance => Any): Unit = {
+  protected def withReadonlyRest(
+      readonlyRestAndSettings: (ReadonlyRest, EsConfigBasedRorSettings)
+  )(testCode: RorInstance => Any): Unit = {
     val (readonlyRest, esConfigBasedRorSettings) = readonlyRestAndSettings
-    withReadonlyRestExt((readonlyRest, esConfigBasedRorSettings, ())) { case (rorInstance, ()) => testCode(rorInstance) }
+    withReadonlyRestExt((readonlyRest, esConfigBasedRorSettings, ())) { case (rorInstance, ()) =>
+      testCode(rorInstance)
+    }
   }
 
-  protected def withReadonlyRestExt[EXT](readonlyRestAndSettingsAndExt: (ReadonlyRest, EsConfigBasedRorSettings, EXT))
-                                        (testCode: (RorInstance, EXT) => Any): Unit = {
+  protected def withReadonlyRestExt[EXT](
+      readonlyRestAndSettingsAndExt: (ReadonlyRest, EsConfigBasedRorSettings, EXT)
+  )(testCode: (RorInstance, EXT) => Any): Unit = {
     val (readonlyRest, esConfigBasedRorSettings, ext) = readonlyRestAndSettingsAndExt
     Resource
       .make(
@@ -41,7 +45,7 @@ trait WithReadonlyrestBootSupport {
           .start(esConfigBasedRorSettings)
           .flatMap {
             case Right(startedInstance) => Task.now(startedInstance)
-            case Left(startingFailure) => Task.raiseError(new Exception(s"$startingFailure"))
+            case Left(startingFailure)  => Task.raiseError(new Exception(s"$startingFailure"))
           }
       )(
         release = _.stop()

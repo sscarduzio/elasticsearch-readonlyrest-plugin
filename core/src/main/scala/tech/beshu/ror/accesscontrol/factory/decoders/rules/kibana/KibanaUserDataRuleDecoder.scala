@@ -18,32 +18,37 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeResolvableVariableCreator,
+  RuntimeSingleResolvableVariable
+}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{RulesLevelCreationError, ValueLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  RulesLevelCreationError,
+  ValueLevelCreationError
+}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.js.JsCompiler
 
 import scala.util.{Failure, Success}
 
-class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
-                                variableCreator: RuntimeResolvableVariableCreator)
-                               (implicit jsCompiler: JsCompiler)
-  extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule]
+class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex, variableCreator: RuntimeResolvableVariableCreator)(
+    implicit jsCompiler: JsCompiler
+) extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule]
     with RequestIdAwareLogging {
 
   private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
@@ -56,19 +61,24 @@ class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
         for {
           access <- c.downField("access").as[KibanaAccess]
           kibanaIndex <- c.downField("index").as[Option[RuntimeSingleResolvableVariable[KibanaIndexName]]]
-          kibanaTemplateIndex <- c.downField("template_index").as[Option[RuntimeSingleResolvableVariable[KibanaIndexName]]]
+          kibanaTemplateIndex <- c
+            .downField("template_index")
+            .as[Option[RuntimeSingleResolvableVariable[KibanaIndexName]]]
           appsToHide <- c.downField("hide_apps").as[Option[Set[KibanaApp]]]
           allowedApiPaths <- allowedApiPathsDecoder(access).apply(c)
           metadataResolvableJsonRepresentation <- metadataDecoder.apply(c)
-        } yield new KibanaUserDataRule(KibanaUserDataRule.Settings(
-          access = access,
-          kibanaIndex = kibanaIndex.getOrElse(RuntimeSingleResolvableVariable.AlreadyResolved(KibanaIndexName.default)),
-          kibanaTemplateIndex = kibanaTemplateIndex,
-          appsToHide = appsToHide.getOrElse(Set.empty),
-          allowedApiPaths = allowedApiPaths.getOrElse(Set.empty),
-          genericMetadata = metadataResolvableJsonRepresentation,
-          rorIndex = settingsIndex
-        ))
+        } yield new KibanaUserDataRule(
+          KibanaUserDataRule.Settings(
+            access = access,
+            kibanaIndex =
+              kibanaIndex.getOrElse(RuntimeSingleResolvableVariable.AlreadyResolved(KibanaIndexName.default)),
+            kibanaTemplateIndex = kibanaTemplateIndex,
+            appsToHide = appsToHide.getOrElse(Set.empty),
+            allowedApiPaths = allowedApiPaths.getOrElse(Set.empty),
+            genericMetadata = metadataResolvableJsonRepresentation,
+            rorIndex = settingsIndex
+          )
+        )
       }
       .map(RuleDefinition.create[KibanaUserDataRule](_))
       .toSyncDecoder
@@ -97,18 +107,22 @@ class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
         case KibanaAccess.ApiOnly =>
           allowedApiPathsField.as[Option[Set[KibanaAllowedApiPath]]]
         case _ if allowedApiPathsField.succeeded =>
-          Left(decodingFailureFrom(RulesLevelCreationError(Message(
-            "'allowed_api_paths' can only be used with 'access: api_only'"
-          ))))
+          Left(
+            decodingFailureFrom(
+              RulesLevelCreationError(
+                Message(
+                  "'allowed_api_paths' can only be used with 'access: api_only'"
+                )
+              )
+            )
+          )
         case _ =>
           Right(None)
       }
     }
 
   private implicit lazy val pathRegexDecoder: Decoder[JavaRegex] =
-    Decoder
-      .decodeString
-      .toSyncDecoder
+    Decoder.decodeString.toSyncDecoder
       .emapE { str =>
         NonEmptyString
           .unapply(str)
@@ -118,18 +132,22 @@ class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
       .decoder
 
   private implicit lazy val httpMethodDecoder: Decoder[HttpMethod] =
-    Decoder
-      .decodeString
+    Decoder.decodeString
       .map(_.toUpperCase())
       .toSyncDecoder
       .emapE[HttpMethod] {
-        case "GET" => Right(HttpMethod.Get)
-        case "POST" => Right(HttpMethod.Post)
-        case "PUT" => Right(HttpMethod.Put)
+        case "GET"    => Right(HttpMethod.Get)
+        case "POST"   => Right(HttpMethod.Post)
+        case "PUT"    => Right(HttpMethod.Put)
         case "DELETE" => Right(HttpMethod.Delete)
-        case unknown => Left(CoreCreationError.ValueLevelCreationError(Message(
-          s"Unsupported HTTP method: '${unknown.show}'. Available options: 'GET', 'POST', 'PUT', 'DELETE'"
-        )))
+        case unknown  =>
+          Left(
+            CoreCreationError.ValueLevelCreationError(
+              Message(
+                s"Unsupported HTTP method: '${unknown.show}'. Available options: 'GET', 'POST', 'PUT', 'DELETE'"
+              )
+            )
+          )
       }
       .decoder
 
@@ -151,7 +169,8 @@ class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
     Decoder.instance { c =>
       c.keys.flatMap(_.find(_ == "metadata")) match {
         case Some(_) => c.downField("metadata").as[ResolvableJsonRepresentation].map(Some.apply)
-        case None => Right(None)
+        case None    => Right(None)
       }
     }
+
 }

@@ -24,15 +24,17 @@ import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 class ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource: FileSettingsSource[MainRorSettings])
-  extends StartingRorSettingsLoader with RequestIdAwareLogging {
+    extends StartingRorSettingsLoader
+    with RequestIdAwareLogging {
 
-  override def load()
-                   (implicit requestId: RequestId): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
+  override def load()(
+      implicit requestId: RequestId
+  ): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
     val result = loadSettingsFromSource(
       source = mainSettingsFileSource,
       settingsDescription = s"main settings from file '${mainSettingsFileSource.settingsFile.show}''"
     )
-    result.map((_, None)).value
+    result.leftMap(_.show).map((_, None)).value
   }
 
 }

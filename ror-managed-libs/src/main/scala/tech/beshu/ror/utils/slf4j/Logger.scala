@@ -38,7 +38,9 @@ object Logger {
    *
    * @param clazz the class
    */
-  def apply(clazz: Class[_]): Logger = Logger(LogManager.getContext(clazz.getClassLoader, false).getLogger(clazz.getName))
+  def apply(clazz: Class[_]): Logger = Logger(
+    LogManager.getContext(clazz.getClassLoader, false).getLogger(clazz.getName)
+  )
 
   /**
    * Create a [[Logger]] wrapping the given Log4j logger.
@@ -64,230 +66,223 @@ object Logger {
  * Since this wrapper is implemented with macros, the String construction and method invocations
  * will only occur when debug logging is enabled.
  */
-class Logger private(val delegate: ExtendedLogger) extends AnyVal {
+class Logger private (val delegate: ExtendedLogger) extends AnyVal {
 
   inline def fatal(inline marker: Marker, inline message: Message): Unit =
-    ${LoggerMacro.fatalMarkerMsg('this, 'marker, 'message)}
+    ${ LoggerMacro.fatalMarkerMsg('this, 'marker, 'message) }
 
   inline def fatal(inline marker: Marker, inline message: CharSequence): Unit =
-    ${LoggerMacro.fatalMarkerCseq('this, 'marker, 'message)}
+    ${ LoggerMacro.fatalMarkerCseq('this, 'marker, 'message) }
 
   inline def fatal(inline marker: Marker, inline message: AnyRef): Unit =
-    ${LoggerMacro.fatalMarkerObject('this, 'marker, 'message)}
+    ${ LoggerMacro.fatalMarkerObject('this, 'marker, 'message) }
 
   inline def fatal(inline marker: Marker, inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.fatalMarkerMsgThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.fatalMarkerMsgThrowable('this, 'marker, 'message, 'cause) }
 
   inline def fatal(inline marker: Marker, inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.fatalMarkerCseqThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.fatalMarkerCseqThrowable('this, 'marker, 'message, 'cause) }
 
   inline def fatal(inline marker: Marker, inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.fatalMarkerObjectThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.fatalMarkerObjectThrowable('this, 'marker, 'message, 'cause) }
 
   inline def fatal(inline message: Message): Unit =
-    ${LoggerMacro.fatalMsg('this, 'message)}
+    ${ LoggerMacro.fatalMsg('this, 'message) }
 
   inline def fatal(inline message: CharSequence): Unit =
-    ${LoggerMacro.fatalCseq('this, 'message)}
+    ${ LoggerMacro.fatalCseq('this, 'message) }
 
   inline def fatal(inline message: AnyRef): Unit =
-    ${LoggerMacro.fatalObject('this, 'message)}
+    ${ LoggerMacro.fatalObject('this, 'message) }
 
   inline def fatal(inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.fatalMsgThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.fatalMsgThrowable('this, 'message, 'cause) }
 
   inline def fatal(inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.fatalCseqThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.fatalCseqThrowable('this, 'message, 'cause) }
 
   inline def fatal(inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.fatalObjectThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.fatalObjectThrowable('this, 'message, 'cause) }
 
   inline def error(inline marker: Marker, inline message: Message): Unit =
-    ${LoggerMacro.errorMarkerMsg('this, 'marker, 'message)}
+    ${ LoggerMacro.errorMarkerMsg('this, 'marker, 'message) }
 
   inline def error(inline marker: Marker, inline message: CharSequence): Unit =
-    ${LoggerMacro.errorMarkerCseq('this, 'marker, 'message)}
+    ${ LoggerMacro.errorMarkerCseq('this, 'marker, 'message) }
 
   inline def error(inline marker: Marker, inline message: AnyRef): Unit =
-    ${LoggerMacro.errorMarkerObject('this, 'marker, 'message)}
-
+    ${ LoggerMacro.errorMarkerObject('this, 'marker, 'message) }
 
   inline def error(inline marker: Marker, inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.errorMarkerMsgThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.errorMarkerMsgThrowable('this, 'marker, 'message, 'cause) }
 
   inline def error(inline marker: Marker, inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.errorMarkerCseqThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.errorMarkerCseqThrowable('this, 'marker, 'message, 'cause) }
 
   inline def error(inline marker: Marker, inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.errorMarkerObjectThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.errorMarkerObjectThrowable('this, 'marker, 'message, 'cause) }
 
   inline def error(inline message: Message): Unit =
-    ${LoggerMacro.errorMsg('this, 'message)}
+    ${ LoggerMacro.errorMsg('this, 'message) }
 
   inline def error(inline message: CharSequence): Unit =
-    ${LoggerMacro.errorCseq('this, 'message)}
+    ${ LoggerMacro.errorCseq('this, 'message) }
 
   inline def error(inline message: AnyRef): Unit =
-    ${LoggerMacro.errorObject('this, 'message)}
+    ${ LoggerMacro.errorObject('this, 'message) }
 
   inline def error(inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.errorMsgThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.errorMsgThrowable('this, 'message, 'cause) }
 
   inline def error(inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.errorCseqThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.errorCseqThrowable('this, 'message, 'cause) }
 
   inline def error(inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.errorObjectThrowable('this, 'message, 'cause)}
-
+    ${ LoggerMacro.errorObjectThrowable('this, 'message, 'cause) }
 
   inline def warn(inline marker: Marker, inline message: Message): Unit =
-    ${LoggerMacro.warnMarkerMsg('this, 'marker, 'message)}
+    ${ LoggerMacro.warnMarkerMsg('this, 'marker, 'message) }
 
   inline def warn(inline marker: Marker, inline message: CharSequence): Unit =
-    ${LoggerMacro.warnMarkerCseq('this, 'marker, 'message)}
+    ${ LoggerMacro.warnMarkerCseq('this, 'marker, 'message) }
 
   inline def warn(inline marker: Marker, inline message: AnyRef): Unit =
-    ${LoggerMacro.warnMarkerObject('this, 'marker, 'message)}
+    ${ LoggerMacro.warnMarkerObject('this, 'marker, 'message) }
 
   inline def warn(inline marker: Marker, inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.warnMarkerMsgThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.warnMarkerMsgThrowable('this, 'marker, 'message, 'cause) }
 
   inline def warn(inline marker: Marker, inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.warnMarkerCseqThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.warnMarkerCseqThrowable('this, 'marker, 'message, 'cause) }
 
   inline def warn(inline marker: Marker, inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.warnMarkerObjectThrowable('this, 'marker, 'message, 'cause)}
-
+    ${ LoggerMacro.warnMarkerObjectThrowable('this, 'marker, 'message, 'cause) }
 
   inline def warn(message: Message): Unit =
-    ${LoggerMacro.warnMsg('this, 'message)}
+    ${ LoggerMacro.warnMsg('this, 'message) }
 
   inline def warn(inline message: CharSequence): Unit =
-    ${LoggerMacro.warnCseq('this, 'message)}
+    ${ LoggerMacro.warnCseq('this, 'message) }
 
   inline def warn(inline message: AnyRef): Unit =
-    ${LoggerMacro.warnObject('this, 'message)}
+    ${ LoggerMacro.warnObject('this, 'message) }
 
   inline def warn(inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.warnMsgThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.warnMsgThrowable('this, 'message, 'cause) }
 
   inline def warn(inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.warnCseqThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.warnCseqThrowable('this, 'message, 'cause) }
 
   inline def warn(inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.warnObjectThrowable('this, 'message, 'cause)}
-
+    ${ LoggerMacro.warnObjectThrowable('this, 'message, 'cause) }
 
   inline def info(inline marker: Marker, inline message: Message): Unit =
-    ${LoggerMacro.infoMarkerMsg('this, 'marker, 'message)}
+    ${ LoggerMacro.infoMarkerMsg('this, 'marker, 'message) }
 
   inline def info(inline marker: Marker, inline message: CharSequence): Unit =
-    ${LoggerMacro.infoMarkerCseq('this, 'marker, 'message)}
+    ${ LoggerMacro.infoMarkerCseq('this, 'marker, 'message) }
 
   inline def info(inline marker: Marker, inline message: AnyRef): Unit =
-    ${LoggerMacro.infoMarkerObject('this, 'marker, 'message)}
+    ${ LoggerMacro.infoMarkerObject('this, 'marker, 'message) }
 
   inline def info(inline marker: Marker, inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.infoMarkerMsgThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.infoMarkerMsgThrowable('this, 'marker, 'message, 'cause) }
 
   inline def info(inline marker: Marker, inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.infoMarkerCseqThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.infoMarkerCseqThrowable('this, 'marker, 'message, 'cause) }
 
   inline def info(inline marker: Marker, inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.infoMarkerObjectThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.infoMarkerObjectThrowable('this, 'marker, 'message, 'cause) }
 
   inline def info(inline message: Message): Unit =
-    ${LoggerMacro.infoMsg('this, 'message)}
+    ${ LoggerMacro.infoMsg('this, 'message) }
 
   inline def info(inline message: CharSequence): Unit =
-    ${LoggerMacro.infoCseq('this, 'message)}
+    ${ LoggerMacro.infoCseq('this, 'message) }
 
   inline def info(inline message: AnyRef): Unit =
-    ${LoggerMacro.infoObject('this, 'message)}
+    ${ LoggerMacro.infoObject('this, 'message) }
 
   inline def info(inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.infoMsgThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.infoMsgThrowable('this, 'message, 'cause) }
 
   inline def info(inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.infoCseqThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.infoCseqThrowable('this, 'message, 'cause) }
 
   inline def info(inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.infoObjectThrowable('this, 'message, 'cause)}
-
+    ${ LoggerMacro.infoObjectThrowable('this, 'message, 'cause) }
 
   inline def debug(inline marker: Marker, inline message: Message): Unit =
-    ${LoggerMacro.debugMarkerMsg('this, 'marker, 'message)}
+    ${ LoggerMacro.debugMarkerMsg('this, 'marker, 'message) }
 
   inline def debug(inline marker: Marker, inline message: CharSequence): Unit =
-    ${LoggerMacro.debugMarkerCseq('this, 'marker, 'message)}
+    ${ LoggerMacro.debugMarkerCseq('this, 'marker, 'message) }
 
   inline def debug(inline marker: Marker, inline message: AnyRef): Unit =
-    ${LoggerMacro.debugMarkerObject('this, 'marker, 'message)}
+    ${ LoggerMacro.debugMarkerObject('this, 'marker, 'message) }
 
   inline def debug(inline marker: Marker, inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.debugMarkerMsgThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.debugMarkerMsgThrowable('this, 'marker, 'message, 'cause) }
 
   inline def debug(inline marker: Marker, inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.fatalMarkerCseqThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.fatalMarkerCseqThrowable('this, 'marker, 'message, 'cause) }
 
   inline def debug(inline marker: Marker, inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.debugMarkerObjectThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.debugMarkerObjectThrowable('this, 'marker, 'message, 'cause) }
 
   inline def debug(inline message: Message): Unit =
-    ${LoggerMacro.debugMsg('this, 'message)}
+    ${ LoggerMacro.debugMsg('this, 'message) }
 
   inline def debug(inline message: CharSequence): Unit =
-    ${LoggerMacro.debugCseq('this, 'message)}
+    ${ LoggerMacro.debugCseq('this, 'message) }
 
   inline def debug(inline message: AnyRef): Unit =
-    ${LoggerMacro.debugObject('this, 'message)}
+    ${ LoggerMacro.debugObject('this, 'message) }
 
   inline def debug(inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.debugMsgThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.debugMsgThrowable('this, 'message, 'cause) }
 
   inline def debug(inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.debugCseqThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.debugCseqThrowable('this, 'message, 'cause) }
 
   inline def debug(inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.debugObjectThrowable('this, 'message, 'cause)}
-
+    ${ LoggerMacro.debugObjectThrowable('this, 'message, 'cause) }
 
   inline def trace(inline marker: Marker, inline message: Message): Unit =
-    ${LoggerMacro.traceMarkerMsg('this, 'marker, 'message)}
+    ${ LoggerMacro.traceMarkerMsg('this, 'marker, 'message) }
 
   inline def trace(inline marker: Marker, inline message: CharSequence): Unit =
-    ${LoggerMacro.traceMarkerCseq('this, 'marker, 'message)}
+    ${ LoggerMacro.traceMarkerCseq('this, 'marker, 'message) }
 
   inline def trace(inline marker: Marker, inline message: AnyRef): Unit =
-    ${LoggerMacro.traceMarkerObject('this, 'marker, 'message)}
+    ${ LoggerMacro.traceMarkerObject('this, 'marker, 'message) }
 
   inline def trace(inline marker: Marker, inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.traceMarkerMsgThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.traceMarkerMsgThrowable('this, 'marker, 'message, 'cause) }
 
   inline def trace(inline marker: Marker, inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.fatalMarkerCseqThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.fatalMarkerCseqThrowable('this, 'marker, 'message, 'cause) }
 
   inline def trace(inline marker: Marker, inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.traceMarkerObjectThrowable('this, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.traceMarkerObjectThrowable('this, 'marker, 'message, 'cause) }
 
   inline def trace(inline message: Message): Unit =
-    ${LoggerMacro.traceMsg('this, 'message)}
+    ${ LoggerMacro.traceMsg('this, 'message) }
 
   inline def trace(inline message: CharSequence): Unit =
-    ${LoggerMacro.traceCseq('this, 'message)}
+    ${ LoggerMacro.traceCseq('this, 'message) }
 
   inline def trace(inline message: AnyRef): Unit =
-    ${LoggerMacro.traceObject('this, 'message)}
+    ${ LoggerMacro.traceObject('this, 'message) }
 
   inline def trace(inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.traceMsgThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.traceMsgThrowable('this, 'message, 'cause) }
 
   inline def trace(inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.traceCseqThrowable('this, 'message, 'cause)}
+    ${ LoggerMacro.traceCseqThrowable('this, 'message, 'cause) }
 
   inline def trace(inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.traceObjectThrowable('this, 'message, 'cause)}
-
+    ${ LoggerMacro.traceObjectThrowable('this, 'message, 'cause) }
 
   /**
    * Logs a `Message` with the specific `Marker` at the given `Level`.
@@ -297,7 +292,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param message the message to be logged
    */
   inline def apply(inline level: Level, inline marker: Marker, inline message: Message): Unit =
-    ${LoggerMacro.logMarkerMsg('this, 'level, 'marker, 'message)}
+    ${ LoggerMacro.logMarkerMsg('this, 'level, 'marker, 'message) }
 
   /**
    * Logs a string with the specific `Marker` at the given `Level`.
@@ -307,7 +302,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param message the message to be logged
    */
   inline def apply(inline level: Level, inline marker: Marker, inline message: CharSequence): Unit =
-    ${LoggerMacro.logMarkerCseq('this, 'level, 'marker, 'message)}
+    ${ LoggerMacro.logMarkerCseq('this, 'level, 'marker, 'message) }
 
   /**
    * Logs an object with the specific `Marker` at the given `Level`.
@@ -317,7 +312,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param message the message to be logged
    */
   inline def apply(inline level: Level, inline marker: Marker, inline message: AnyRef): Unit =
-    ${LoggerMacro.logMarkerObject('this, 'level, 'marker, 'message)}
+    ${ LoggerMacro.logMarkerObject('this, 'level, 'marker, 'message) }
 
   /**
    * Logs a `Message` with the specific `Marker` at the given `Level` including the stack trace
@@ -329,7 +324,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param cause   the cause
    */
   inline def apply(inline level: Level, inline marker: Marker, inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.logMarkerMsgThrowable('this, 'level, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.logMarkerMsgThrowable('this, 'level, 'marker, 'message, 'cause) }
 
   /**
    * Logs a string with the specific `Marker` at the given `Level` including the stack trace
@@ -340,8 +335,13 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param message the message to be logged
    * @param cause   the cause
    */
-  inline def apply(inline level: Level, inline marker: Marker, inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.logMarkerCseqThrowable('this, 'level, 'marker, 'message, 'cause)}
+  inline def apply(
+      inline level: Level,
+      inline marker: Marker,
+      inline message: CharSequence,
+      inline cause: Throwable
+  ): Unit =
+    ${ LoggerMacro.logMarkerCseqThrowable('this, 'level, 'marker, 'message, 'cause) }
 
   /**
    * Logs an object with the specific `Marker` at the given `Level` including the stack trace
@@ -353,7 +353,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param cause   the cause
    */
   inline def apply(inline level: Level, inline marker: Marker, inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.logMarkerObjectThrowable('this, 'level, 'marker, 'message, 'cause)}
+    ${ LoggerMacro.logMarkerObjectThrowable('this, 'level, 'marker, 'message, 'cause) }
 
   /**
    * Logs a `Message` at the given `Level`.
@@ -362,7 +362,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param message the message to be logged
    */
   inline def apply(inline level: Level, inline message: Message): Unit =
-    ${LoggerMacro.logMsg('this, 'level, 'message)}
+    ${ LoggerMacro.logMsg('this, 'level, 'message) }
 
   /**
    * Logs a string at the given `Level`.
@@ -371,7 +371,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param message the message to be logged
    */
   inline def apply(inline level: Level, inline message: CharSequence): Unit =
-    ${LoggerMacro.logCseq('this, 'level, 'message)}
+    ${ LoggerMacro.logCseq('this, 'level, 'message) }
 
   /**
    * Logs an object at the given `Level`.
@@ -380,7 +380,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param message the message to be logged
    */
   inline def apply(inline level: Level, inline message: AnyRef): Unit =
-    ${LoggerMacro.logObject('this, 'level, 'message)}
+    ${ LoggerMacro.logObject('this, 'level, 'message) }
 
   /**
    * Logs a `Message` at the given `Level` including the stack trace of the given `Throwable`.
@@ -390,7 +390,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param cause   a `Throwable`
    */
   inline def apply(inline level: Level, inline message: Message, inline cause: Throwable): Unit =
-    ${LoggerMacro.logMsgThrowable('this, 'level, 'message, 'cause)}
+    ${ LoggerMacro.logMsgThrowable('this, 'level, 'message, 'cause) }
 
   /**
    * Logs a string at the given `Level` including the stack trace of the given `Throwable`.
@@ -400,7 +400,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param cause   a `Throwable`
    */
   inline def apply(inline level: Level, inline message: CharSequence, inline cause: Throwable): Unit =
-    ${LoggerMacro.logCseqThrowable('this, 'level, 'message, 'cause)}
+    ${ LoggerMacro.logCseqThrowable('this, 'level, 'message, 'cause) }
 
   /**
    * Logs an object at the given `Level` including the stack trace of the given `Throwable`.
@@ -410,8 +410,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param cause   a `Throwable`
    */
   inline def apply(inline level: Level, inline message: AnyRef, inline cause: Throwable): Unit =
-    ${LoggerMacro.logObjectThrowable('this, 'level, 'message, 'cause)}
-
+    ${ LoggerMacro.logObjectThrowable('this, 'level, 'message, 'cause) }
 
   /**
    * Logs entry to a method. Used when the method in question has no parameters or when the parameters should not be
@@ -439,7 +438,7 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
     if (params.isEmpty) {
       delegate.traceEntry()
     } else {
-      delegate.traceEntry(params.head.toString, params.tail:_*)
+      delegate.traceEntry(params.head.toString, params.tail: _*)
     }
   }
 
@@ -554,7 +553,6 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
   inline def catching(inline level: Level, inline t: Throwable): Unit =
     delegate.catching(level, t)
 
-
   /** Always logs a message at the specified level. It is the responsibility of the caller to ensure the specified
    * level is enabled.
    *
@@ -580,7 +578,13 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param cause   cause or `null`
    */
   def logMessage(level: Level, marker: Marker, message: CharSequence, cause: Throwable): Unit = {
-    delegate.logMessage(Logger.FQCN, level, marker, delegate.getMessageFactory.asInstanceOf[MessageFactory2].newMessage(message), cause)
+    delegate.logMessage(
+      Logger.FQCN,
+      level,
+      marker,
+      delegate.getMessageFactory.asInstanceOf[MessageFactory2].newMessage(message),
+      cause
+    )
   }
 
   /** Always logs a message at the specified level. It is the responsibility of the caller to ensure the specified
@@ -594,7 +598,13 @@ class Logger private(val delegate: ExtendedLogger) extends AnyVal {
    * @param cause   cause or `null`
    */
   def logMessage(level: Level, marker: Marker, message: AnyRef, cause: Throwable): Unit = {
-    delegate.logMessage(Logger.FQCN, level, marker, delegate.getMessageFactory.asInstanceOf[MessageFactory2].newMessage(message), cause)
+    delegate.logMessage(
+      Logger.FQCN,
+      level,
+      marker,
+      delegate.getMessageFactory.asInstanceOf[MessageFactory2].newMessage(message),
+      cause
+    )
   }
 
 }

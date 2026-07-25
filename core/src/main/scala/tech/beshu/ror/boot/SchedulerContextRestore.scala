@@ -56,5 +56,7 @@ object SchedulerContextRestore {
       onContextSwitch.apply().foreach(_.apply())
       r.run()
     }
+
   }
+
 }

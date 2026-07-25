@@ -22,6 +22,7 @@ import scala.concurrent.duration.Duration
 object DurationOps {
 
   extension (duration: Duration) {
+
     def inShortFormat: String = {
       val d = duration.toCoarsest
       val unit = d.unit match {
@@ -35,5 +36,7 @@ object DurationOps {
       }
       s"${d.length}$unit"
     }
+
   }
+
 }

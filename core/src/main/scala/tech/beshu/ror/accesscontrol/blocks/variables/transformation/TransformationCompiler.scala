@@ -17,7 +17,10 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.transformation
 
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError.{UnableToCompileTransformation, UnableToParseTransformation}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError.{
+  UnableToCompileTransformation,
+  UnableToParseTransformation
+}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionAlias
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parser
 
@@ -25,16 +28,19 @@ class TransformationCompiler(compiler: ExpressionCompiler, useAliases: Boolean) 
 
   def compile(transformationString: String): Either[CompilationError, domain.Function] = {
     for {
-      expression <- Parser.parse(transformationString)
-        .left.map(error => UnableToParseTransformation(error.message))
-      function <- compiler.compile(expression, useAlias = useAliases)
-        .left.map(error => UnableToCompileTransformation(error.message))
+      expression <- Parser.parse(transformationString).left.map(error => UnableToParseTransformation(error.message))
+      function <- compiler
+        .compile(expression, useAlias = useAliases)
+        .left
+        .map(error => UnableToCompileTransformation(error.message))
     } yield function
   }
+
 }
 
 object TransformationCompiler {
   sealed trait CompilationError
+
   object CompilationError {
     final case class UnableToParseTransformation(message: String) extends CompilationError
     final case class UnableToCompileTransformation(message: String) extends CompilationError
@@ -47,11 +53,14 @@ object TransformationCompiler {
     )
   }
 
-  def withAliases(supportedFunctions: SupportedVariablesFunctions,
-                  aliasedFunctions: Seq[FunctionAlias]): TransformationCompiler = {
+  def withAliases(
+      supportedFunctions: SupportedVariablesFunctions,
+      aliasedFunctions: Seq[FunctionAlias]
+  ): TransformationCompiler = {
     new TransformationCompiler(
       compiler = ExpressionCompiler.create(functions = supportedFunctions.functions, aliases = aliasedFunctions),
       useAliases = true
     )
   }
+
 }

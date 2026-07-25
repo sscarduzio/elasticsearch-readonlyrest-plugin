@@ -32,9 +32,9 @@ import java.io.InputStream
   and calls finishAuthentication(XPackUser.INSTANCE), completing the flow via listener.onResponse(…). The exact
   bytecode patch adapts to ES versions (6.7+/7.4+/7.15.x) — using an invokedynamic Consumer callback where required
   — while ES ≥ 7.16.0 is left unchanged.
-*/
-private[patches] class ModifyAuthenticationServiceAuthenticatorClass private(esVersion: SemVer)
-  extends BytecodeJarModifier {
+ */
+private[patches] class ModifyAuthenticationServiceAuthenticatorClass private (esVersion: SemVer)
+    extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -51,35 +51,49 @@ private[patches] class ModifyAuthenticationServiceAuthenticatorClass private(esV
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visit(version: Int, access: Int, name: String, signature: String, superName: String, interfaces: Array[String]): Unit = {
+    override def visit(
+        version: Int,
+        access: Int,
+        name: String,
+        signature: String,
+        superName: String,
+        interfaces: Array[String]
+    ): Unit = {
       super.visit(version, access, name, signature, superName, interfaces)
       esVersion match {
         case v if v >= es7150 => // nothing
-        case v if v >= es740 => RorAuthenticateXPackUserMethod.createForEsGreaterOrEqual740(this)
-        case v if v >= es670 => RorAuthenticateXPackUserMethod.createForEsGreaterOrEqual670(this)
-        case _ => // nothing
+        case v if v >= es740  => RorAuthenticateXPackUserMethod.createForEsGreaterOrEqual740(this)
+        case v if v >= es670  => RorAuthenticateXPackUserMethod.createForEsGreaterOrEqual670(this)
+        case _                => // nothing
       }
     }
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "authenticateAsync" =>
           esVersion match {
             case v if v >= es7160 =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
             case v if v >= es7150 =>
-              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual7150(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual7150(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case v if v >= es740 =>
-              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual740(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual740(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case v if v >= es670 =>
-              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual670(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual670(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }
@@ -88,7 +102,9 @@ private[patches] class ModifyAuthenticationServiceAuthenticatorClass private(esV
             case v if v >= es7160 =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
             case v if v >= es670 =>
-              new CallAuthenticateAsyncInConsumeTokenMethodForEsGreaterOrEqual670(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new CallAuthenticateAsyncInConsumeTokenMethodForEsGreaterOrEqual670(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }
@@ -398,10 +414,12 @@ private[patches] class ModifyAuthenticationServiceAuthenticatorClass private(esV
         methodVisitor.visitMaxs(6, 2)
         methodVisitor.visitEnd()
       }
+
     }
 
-    private class SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual7150(underlying: MethodVisitor)
-      extends MethodVisitor(Opcodes.ASM9) {
+    private class SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual7150(
+        underlying: MethodVisitor
+    ) extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
         underlying.visitCode()
@@ -523,7 +541,13 @@ private[patches] class ModifyAuthenticationServiceAuthenticatorClass private(esV
 
         // if (authentication != null)
         underlying.visitLabel(label7)
-        underlying.visitFrame(Opcodes.F_APPEND, 1, Array("org/elasticsearch/xpack/core/security/authc/Authentication"), 0, null)
+        underlying.visitFrame(
+          Opcodes.F_APPEND,
+          1,
+          Array("org/elasticsearch/xpack/core/security/authc/Authentication"),
+          0,
+          null
+        )
         underlying.visitVarInsn(Opcodes.ALOAD, 1)
         val label10 = new Label()
         underlying.visitJumpInsn(Opcodes.IFNULL, label10)
@@ -681,10 +705,12 @@ private[patches] class ModifyAuthenticationServiceAuthenticatorClass private(esV
         underlying.visitMaxs(6, 3)
         underlying.visitEnd()
       }
+
     }
 
-    private class SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual740(underlying: MethodVisitor)
-      extends MethodVisitor(Opcodes.ASM9) {
+    private class SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual740(
+        underlying: MethodVisitor
+    ) extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
         underlying.visitCode()
@@ -807,10 +833,12 @@ private[patches] class ModifyAuthenticationServiceAuthenticatorClass private(esV
         underlying.visitMaxs(2, 1)
         underlying.visitEnd()
       }
+
     }
 
-    private class SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual670(underlying: MethodVisitor)
-      extends MethodVisitor(Opcodes.ASM9) {
+    private class SetXpackUserAsAuthenticatedUserInAuthenticateAsyncMethodForEsGreaterOrEqual670(
+        underlying: MethodVisitor
+    ) extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
         underlying.visitCode()
@@ -933,10 +961,11 @@ private[patches] class ModifyAuthenticationServiceAuthenticatorClass private(esV
         underlying.visitMaxs(2, 1)
         underlying.visitEnd()
       }
+
     }
 
     private class CallAuthenticateAsyncInConsumeTokenMethodForEsGreaterOrEqual670(underlying: MethodVisitor)
-      extends MethodVisitor(Opcodes.ASM9) {
+        extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
         underlying.visitCode()
@@ -983,10 +1012,14 @@ private[patches] class ModifyAuthenticationServiceAuthenticatorClass private(esV
         underlying.visitMaxs(1, 2)
         underlying.visitEnd()
       }
+
     }
+
   }
+
 }
 
 object ModifyAuthenticationServiceAuthenticatorClass {
-  def apply(esVersion: SemVer): ModifyAuthenticationServiceAuthenticatorClass = new ModifyAuthenticationServiceAuthenticatorClass(esVersion)
+  def apply(esVersion: SemVer): ModifyAuthenticationServiceAuthenticatorClass =
+    new ModifyAuthenticationServiceAuthenticatorClass(esVersion)
 }

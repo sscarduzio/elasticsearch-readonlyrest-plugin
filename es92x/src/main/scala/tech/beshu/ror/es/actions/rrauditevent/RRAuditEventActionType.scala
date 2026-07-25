@@ -28,5 +28,5 @@ object RRAuditEventActionType {
 
   case object RRAuditEventActionTypeBeTransported extends Exception
 
-  private [rrauditevent] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAuditEventActionTypeBeTransported
+  private[rrauditevent] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAuditEventActionTypeBeTransported
 }

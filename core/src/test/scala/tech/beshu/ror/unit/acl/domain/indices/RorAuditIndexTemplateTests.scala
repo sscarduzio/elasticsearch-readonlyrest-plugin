@@ -15,6 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.domain.indices
+
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -35,15 +36,16 @@ class RorAuditIndexTemplateTests extends AnyWordSpec with Inside {
         index should be(indexName(".ror_2021_01"))
       }
       "template doesn't contain date pattern" in {
-        inside(RorAuditIndexTemplate.from("'.ror'")) {
-          case Right(templateWithoutDate) =>
-            templateWithoutDate.indexName(Instant.now()) should be (indexName(".ror"))
+        inside(RorAuditIndexTemplate.from("'.ror'")) { case Right(templateWithoutDate) =>
+          templateWithoutDate.indexName(Instant.now()) should be(indexName(".ror"))
         }
       }
     }
     "not be able to be created" when {
       "the string date pattern is malformed" in {
-        RorAuditIndexTemplate.from("'.ror'_dddd_MMM") should be(Left(CreationError.ParsingError("Too many pattern letters: d")))
+        RorAuditIndexTemplate.from("'.ror'_dddd_MMM") should be(
+          Left(CreationError.ParsingError("Too many pattern letters: d"))
+        )
       }
     }
     "conform to index" which {
@@ -77,4 +79,5 @@ class RorAuditIndexTemplateTests extends AnyWordSpec with Inside {
       }
     }
   }
+
 }

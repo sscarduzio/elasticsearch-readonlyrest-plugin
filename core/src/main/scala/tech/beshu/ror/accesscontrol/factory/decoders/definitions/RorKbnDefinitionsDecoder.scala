@@ -39,7 +39,9 @@ object RorKbnDefinitionsDecoder {
 
   implicit val rorKbnDefNameDecoder: Decoder[RorKbnDef.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
-  private def rorKbnDefDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RorKbnDef] =  {
+  private def rorKbnDefDecoder(
+      implicit variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder[RorKbnDef] = {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -70,12 +72,12 @@ object RorKbnDefinitionsDecoder {
       ES256       EC
       ES384       EC
       ES512       EC
-    */
-  private def signatureCheckMethod(c: HCursor)
-                                  (implicit variableCreator: RuntimeResolvableVariableCreator): Decoder.Result[SignatureCheckMethod] = {
+   */
+  private def signatureCheckMethod(c: HCursor)(
+      implicit variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
-      DecoderHelpers
-        .decodeStringLikeWithSingleVarResolvedInPlace
+      DecoderHelpers.decodeStringLikeWithSingleVarResolvedInPlace
         .tryDecode(c.downField("signature_key"))
     for {
       alg <- c.downField("signature_algo").as[Option[String]]
@@ -87,22 +89,33 @@ object RorKbnDefinitionsDecoder {
         case Some("RSA") =>
           decodeSignatureKey
             .flatMap { key =>
-              keyStringToPublicKey("RSA", key).toEither
-                .left.map(_ => decodingFailureFrom(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))))
+              keyStringToPublicKey("RSA", key).toEither.left.map(_ =>
+                decodingFailureFrom(
+                  CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))
+                )
+              )
             }
             .map(SignatureCheckMethod.Rsa.apply)
         case Some("EC") =>
           decodeSignatureKey
             .flatMap { key =>
-              keyStringToPublicKey("EC", key).toEither
-                .left.map(_ => decodingFailureFrom(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))))
+              keyStringToPublicKey("EC", key).toEither.left.map(_ =>
+                decodingFailureFrom(
+                  CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))
+                )
+              )
             }
             .map(SignatureCheckMethod.Ec.apply)
         case Some(unknown) =>
-          Left(decodingFailureFrom(
-            DefinitionsLevelCreationError(Message(s"Unrecognised algorithm family '${unknown.show}'. Should be either of: HMAC, EC, RSA, NONE"))
-          ))
+          Left(
+            decodingFailureFrom(
+              DefinitionsLevelCreationError(
+                Message(s"Unrecognised algorithm family '${unknown.show}'. Should be either of: HMAC, EC, RSA, NONE")
+              )
+            )
+          )
       }
     } yield checkMethod
   }
+
 }

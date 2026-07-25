@@ -29,29 +29,32 @@ class FieldsPolicyTests extends AnyWordSpec {
   "A FieldMatcher" should {
     "work in whitelist mode" in {
       val fields = UniqueNonEmptyList.of(
-        DocumentField("it*re*bus1"), DocumentField("item.*Date")
+        DocumentField("it*re*bus1"),
+        DocumentField("item.*Date")
       )
       val fieldsRestrictions = FieldsRestrictions(fields, AccessMode.Whitelist)
       val matcher = new FieldsPolicy(fieldsRestrictions)
 
-      matcher.canKeep("itemresobus2resobus1") should be (true)
-      matcher.canKeep("item.endDate") should be (true)
-      matcher.canKeep("item") should be (true)
-      matcher.canKeep("item.endDate.text") should be (false)
-      matcher.canKeep("item.endDate1") should be (false)
+      matcher.canKeep("itemresobus2resobus1") should be(true)
+      matcher.canKeep("item.endDate") should be(true)
+      matcher.canKeep("item") should be(true)
+      matcher.canKeep("item.endDate.text") should be(false)
+      matcher.canKeep("item.endDate1") should be(false)
     }
     "work in blacklist mode" in {
       val fields = UniqueNonEmptyList.of(
-        DocumentField("it*re*bus1"), DocumentField("item.*Date")
+        DocumentField("it*re*bus1"),
+        DocumentField("item.*Date")
       )
       val fieldsRestrictions = FieldsRestrictions(fields, AccessMode.Blacklist)
       val matcher = new FieldsPolicy(fieldsRestrictions)
 
-      matcher.canKeep("itemresobus2resobus1") should be (false)
-      matcher.canKeep("item.endDate") should be (false)
-      matcher.canKeep("item") should be (true)
-      matcher.canKeep("item.endDate.text") should be (false)
-      matcher.canKeep("item.endDate1") should be (true)
+      matcher.canKeep("itemresobus2resobus1") should be(false)
+      matcher.canKeep("item.endDate") should be(false)
+      matcher.canKeep("item") should be(true)
+      matcher.canKeep("item.endDate.text") should be(false)
+      matcher.canKeep("item.endDate1") should be(true)
     }
   }
+
 }

@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.response
 
 import cats.implicits.*
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -25,12 +24,13 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 object FLSContextHeaderHandler extends RequestIdAwareLogging {
 
-  def addContextHeader(threadPool: ThreadPool,
-                       fieldsRestrictions: FieldsRestrictions)
-                      (implicit requestId: RequestContext.Id): Unit = {
+  def addContextHeader(threadPool: ThreadPool, fieldsRestrictions: FieldsRestrictions)(
+      implicit requestId: RequestContext.Id
+  ): Unit = {
     val threadContext = threadPool.getThreadContext
     val header = createContextHeader(fieldsRestrictions)
     Option(threadContext.getHeader(header.name.value.value)) match {
@@ -48,4 +48,5 @@ object FLSContextHeaderHandler extends RequestIdAwareLogging {
       transientFieldsToHeaderValue.toRawValue(fieldsRestrictions)
     )
   }
+
 }

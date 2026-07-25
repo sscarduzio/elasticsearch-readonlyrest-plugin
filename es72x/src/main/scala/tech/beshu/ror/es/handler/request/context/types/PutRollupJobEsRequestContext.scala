@@ -30,11 +30,12 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, S
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
-                                           esContext: EsContext,
-                                           aclContext: AccessControlStaticContext,
-                                           override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
+class PutRollupJobEsRequestContext private (
+    actionRequest: ActionRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   private lazy val originIndices = {
     val config = on(actionRequest).call("getConfig").get[AnyRef]()
@@ -43,19 +44,25 @@ class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
     (RequestedIndex.fromString(indexPattern) :: RequestedIndex.fromString(rollupIndex) :: Nil).flatten.toCovariantSet
   }
 
-  override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] = originIndices
+  override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] =
+    originIndices
 
-  override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: ActionRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     if (originIndices == filteredIndices.toCovariantSet) {
       Modified
     } else {
-      logger.error(s"Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")
+      logger.error(
+        s"Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue."
+      )
       ShouldBeInterrupted
     }
   }
+
 }
 
 object PutRollupJobEsRequestContext {
@@ -67,4 +74,5 @@ object PutRollupJobEsRequestContext {
       None
     }
   }
+
 }

@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
-import monix.eval.Task
 import cats.data.NonEmptyList
 import cats.implicits.*
+import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -35,13 +35,14 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequest,
-                                              requestedRepository: RepositoryName.Full,
-                                              requestedSnapshot: SnapshotName.Full,
-                                              requestedIndices: Set[RequestedIndex[ClusterIndexName]],
-                                              esContext: EsContext,
-                                              override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, threadPool) {
+class RestoreSnapshotEsRequestContext private (
+    actionRequest: RestoreSnapshotRequest,
+    requestedRepository: RepositoryName.Full,
+    requestedSnapshot: SnapshotName.Full,
+    requestedIndices: Set[RequestedIndex[ClusterIndexName]],
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, threadPool) {
 
   override protected def snapshotsFrom(request: RestoreSnapshotRequest): Set[SnapshotName] =
     Set(requestedSnapshot)
@@ -62,7 +63,9 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
-        logger.error(s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(
+          s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible."
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -74,7 +77,9 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
         Left(())
       case snapshot :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.show}]")
+          logger.warn(
+            s"Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.show}]"
+          )
         }
         Right(snapshot)
     }
@@ -87,7 +92,9 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+          logger.warn(
+            s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]"
+          )
         }
         Right(repository)
     }
@@ -95,31 +102,39 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
 
   private def allowedIndicesFrom(blockContext: SnapshotRequestBlockContext) = {
     NonEmptyList.fromList(blockContext.filteredIndices.toList) match {
-      case None => Left(())
+      case None          => Left(())
       case Some(indices) => Right(indices)
     }
   }
 
-  private def update(request: RestoreSnapshotRequest,
-                     snapshot: SnapshotName,
-                     repository: RepositoryName,
-                     indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
+  private def update(
+      request: RestoreSnapshotRequest,
+      snapshot: SnapshotName,
+      repository: RepositoryName,
+      indices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ) = {
     request.snapshot(SnapshotName.toString(snapshot))
     request.repository(RepositoryName.toString(repository))
     request.indices(indices.stringify: _*)
   }
+
 }
+
 object RestoreSnapshotEsRequestContext {
 
-  def create(actionRequest: RestoreSnapshotRequest,
-             esContext: EsContext,
-             threadPool: ThreadPool)
-            (implicit id: RequestContext.Id): Task[RestoreSnapshotEsRequestContext] = {
+  def create(actionRequest: RestoreSnapshotRequest, esContext: EsContext, threadPool: ThreadPool)(
+      implicit id: RequestContext.Id
+  ): Task[RestoreSnapshotEsRequestContext] = {
     given RequestId = id.toRequestId
     for {
       requestedRepository <- Task(repositoryFrom(actionRequest))
       requestedSnapshot <- Task(snapshotFrom(actionRequest))
-      requestedIndices <- requestedIndicesFrom(actionRequest, requestedRepository, requestedSnapshot, esContext.esServices.clusterService)
+      requestedIndices <- requestedIndicesFrom(
+        actionRequest,
+        requestedRepository,
+        requestedSnapshot,
+        esContext.esServices.clusterService
+      )
     } yield RestoreSnapshotEsRequestContext(
       actionRequest,
       requestedRepository,
@@ -134,7 +149,7 @@ object RestoreSnapshotEsRequestContext {
     RepositoryName
       .from(request.repository())
       .map {
-        case repository@RepositoryName.Full(_) => repository
+        case repository @ RepositoryName.Full(_)                                      => repository
         case RepositoryName.Pattern(_) | RepositoryName.All | RepositoryName.Wildcard =>
           throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Repository name cannot contain wildcard")
       }
@@ -145,18 +160,21 @@ object RestoreSnapshotEsRequestContext {
     SnapshotName
       .from(request.snapshot())
       .map {
-        case snapshot@SnapshotName.Full(_) => snapshot
+        case snapshot @ SnapshotName.Full(_)                                    => snapshot
         case SnapshotName.Pattern(_) | SnapshotName.All | SnapshotName.Wildcard =>
           throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Snapshot name cannot contain wildcard")
       }
       .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Snapshot name is empty"))
   }
 
-  private def requestedIndicesFrom(request: RestoreSnapshotRequest,
-                                   repository: RepositoryName.Full,
-                                   snapshot: SnapshotName.Full,
-                                   clusterService: EsClusterService)
-                                  (implicit rid: RequestId) = {
+  private def requestedIndicesFrom(
+      request: RestoreSnapshotRequest,
+      repository: RepositoryName.Full,
+      snapshot: SnapshotName.Full,
+      clusterService: EsClusterService
+  )(
+      implicit rid: RequestId
+  ) = {
     clusterService
       .snapshotIndices(repository, snapshot)
       .map(_.filterBy(indicesFrom(request)))
@@ -164,9 +182,9 @@ object RestoreSnapshotEsRequestContext {
   }
 
   private def indicesFrom(request: RestoreSnapshotRequest) = {
-    request
-      .indices.asSafeSet
+    request.indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
+
 }

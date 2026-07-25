@@ -18,9 +18,12 @@ package tech.beshu.ror.es
 
 import tech.beshu.ror.es.services.*
 
-class EsServices(val clusterService: EsClusterService,
-                 val serviceAccountTokenService: ServiceAccountTokenService,
-                 val apiKeyService: ApiKeyService)
+class EsServices(
+    val clusterService: EsClusterService,
+    val serviceAccountTokenService: ServiceAccountTokenService,
+    val apiKeyService: ApiKeyService
+)
+
 object EsServices {
 
   def withCaching(esServices: EsServices): EsServices = new EsServices(
@@ -28,4 +31,5 @@ object EsServices {
     new CacheableServiceAccountTokenServiceDecorator(esServices.serviceAccountTokenService),
     new CacheableApiKeyServiceDecorator(esServices.apiKeyService)
   )
+
 }

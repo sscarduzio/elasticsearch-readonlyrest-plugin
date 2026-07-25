@@ -24,14 +24,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.{BaseComposedAuthenti
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 
-final class JwtAuthRule(val authentication: JwtAuthenticationRule,
-                        val authorization: JwtAuthorizationRule)
-  extends BaseComposedAuthenticationAndAuthorizationRule(
-    authenticationRule = authentication,
-    authorizationRule = authorization
-  ) with BaseJwtRule {
+final class JwtAuthRule(val authentication: JwtAuthenticationRule, val authorization: JwtAuthorizationRule)
+    extends BaseComposedAuthenticationAndAuthorizationRule(
+      authenticationRule = authentication,
+      authorizationRule = authorization
+    )
+    with BaseJwtRule {
 
-  override protected[rules] def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+  override protected[rules] def postAuthAction[B <: BlockContext: BlockContextUpdater](
+      blockContext: B
+  ): Task[Decision[B]] = {
     doPostAuthAction(blockContext, authorization.settings.jwt, GroupsAuthorizationFailed.apply)
   }
 
@@ -42,7 +44,9 @@ final class JwtAuthRule(val authentication: JwtAuthenticationRule,
 }
 
 object JwtAuthRule {
+
   implicit case object Name extends RuleName[JwtAuthRule] {
     override val name = Rule.Name("jwt_auth")
   }
+
 }

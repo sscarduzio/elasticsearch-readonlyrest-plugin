@@ -26,7 +26,11 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
-import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{
+  LoadingAttemptsCount,
+  LoadingAttemptsInterval,
+  LoadingDelay
+}
 import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
@@ -37,19 +41,26 @@ import scala.language.{implicitConversions, postfixOps}
 import scala.util.{Failure, Success, Try}
 
 sealed trait RorCoreSettingsLoadingStrategy
+
 object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
 
   case object ForceLoadingFromFileSettings extends RorCoreSettingsLoadingStrategy
-  final case class LoadFromIndexWithFileFallback(indexLoadingRetrySettings: LoadingRetryStrategySettings,
-                                                 coreRefreshSettings: CoreRefreshSettings)
-    extends RorCoreSettingsLoadingStrategy
 
-  final case class LoadingRetryStrategySettings(attemptsInterval: LoadingAttemptsInterval,
-                                                attemptsCount: LoadingAttemptsCount,
-                                                delay: LoadingDelay)
+  final case class LoadFromIndexWithFileFallback(
+      indexLoadingRetrySettings: LoadingRetryStrategySettings,
+      coreRefreshSettings: CoreRefreshSettings
+  ) extends RorCoreSettingsLoadingStrategy
+
+  final case class LoadingRetryStrategySettings(
+      attemptsInterval: LoadingAttemptsInterval,
+      attemptsCount: LoadingAttemptsCount,
+      delay: LoadingDelay
+  )
+
   object LoadingRetryStrategySettings {
 
     final case class LoadingAttemptsCount(value: Int Refined NonNegative) extends AnyVal
+
     object LoadingAttemptsCount {
       def unsafeFrom(value: Int): LoadingAttemptsCount = LoadingAttemptsCount(Refined.unsafeApply(value))
 
@@ -57,26 +68,35 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
     }
 
     final case class LoadingAttemptsInterval(value: NonNegativeFiniteDuration) extends AnyVal
+
     object LoadingAttemptsInterval {
-      def unsafeFrom(value: FiniteDuration): LoadingAttemptsInterval = LoadingAttemptsInterval(value.toRefinedNonNegativeUnsafe)
+
+      def unsafeFrom(value: FiniteDuration): LoadingAttemptsInterval = LoadingAttemptsInterval(
+        value.toRefinedNonNegativeUnsafe
+      )
+
     }
 
     final case class LoadingDelay(value: NonNegativeFiniteDuration) extends AnyVal
+
     object LoadingDelay {
       val none: LoadingDelay = unsafeFrom(0 seconds)
 
       def unsafeFrom(value: FiniteDuration): LoadingDelay = LoadingDelay(value.toRefinedNonNegativeUnsafe)
     }
+
   }
 
   sealed trait CoreRefreshSettings
+
   object CoreRefreshSettings {
     case object Disabled extends CoreRefreshSettings
     final case class Enabled(pollInterval: PositiveFiniteDuration) extends CoreRefreshSettings
   }
 
-  def load(esEnv: EsEnv)
-          (implicit systemContext: SystemContext): Task[Either[LoadingError, RorCoreSettingsLoadingStrategy]] = {
+  def load(esEnv: EsEnv)(
+      implicit systemContext: SystemContext
+  ): Task[Either[LoadingError, RorCoreSettingsLoadingStrategy]] = {
     implicit val loadingRorCoreStrategySettingsDecoder: YamlLeafOrPropertyOrEnvDecoder[RorCoreSettingsLoadingStrategy] =
       decoders.loadingRorCoreStrategySettingsDecoder(systemContext)
     loadSetting[RorCoreSettingsLoadingStrategy](esEnv, "ROR loading core strategy settings")
@@ -85,7 +105,8 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
   private object decoders {
 
     object defaults {
-      val coreRefreshSettings: CoreRefreshSettings = CoreRefreshSettings.Enabled(positiveFiniteDuration(5, TimeUnit.SECONDS))
+      val coreRefreshSettings: CoreRefreshSettings =
+        CoreRefreshSettings.Enabled(positiveFiniteDuration(5, TimeUnit.SECONDS))
       val loadingDelay: LoadingDelay = LoadingDelay(nonNegativeFiniteDuration(5, TimeUnit.SECONDS))
       val loadingAttemptsCount: LoadingAttemptsCount = LoadingAttemptsCount(nonNegativeInt(5))
       val loadingAttemptsInterval = LoadingAttemptsInterval(nonNegativeFiniteDuration(5, TimeUnit.SECONDS))
@@ -109,12 +130,15 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
       val initialDelayKey: NonEmptyString = nes("initial_delay")
     }
 
-    def loadingRorCoreStrategySettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyOrEnvDecoder[RorCoreSettingsLoadingStrategy] = {
+    def loadingRorCoreStrategySettingsDecoder(
+        systemContext: SystemContext
+    ): YamlLeafOrPropertyOrEnvDecoder[RorCoreSettingsLoadingStrategy] = {
       for {
         forceLoadFromFile <- forceLoadFromFileDecoder(systemContext)
         loadingRorCoreStrategy <- forceLoadFromFile match {
           case None | Some(false) => loadFromIndexWithFileFallbackDecoder(systemContext)
-          case Some(true) => YamlLeafOrPropertyOrEnvDecoder.pure[RorCoreSettingsLoadingStrategy](ForceLoadingFromFileSettings)
+          case Some(true)         =>
+            YamlLeafOrPropertyOrEnvDecoder.pure[RorCoreSettingsLoadingStrategy](ForceLoadingFromFileSettings)
         }
       } yield loadingRorCoreStrategy
     }
@@ -128,7 +152,9 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
       )
     }
 
-    private def loadFromIndexWithFileFallbackDecoder(systemContext: SystemContext): YamlLeafOrPropertyOrEnvDecoder[RorCoreSettingsLoadingStrategy] = {
+    private def loadFromIndexWithFileFallbackDecoder(
+        systemContext: SystemContext
+    ): YamlLeafOrPropertyOrEnvDecoder[RorCoreSettingsLoadingStrategy] = {
       for {
         loadingRetryStrategySettings <- loadingRetryStrategySettingsDecoder(systemContext)
         coreRefreshSettings <- coreRefreshSettingsDecoder(systemContext)
@@ -159,7 +185,12 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
         legacyNonNeg(LoadingAttemptsInterval.apply)
       YamlLeafOrPropertyOrEnvDecoder
         .createOptionalValueDecoder(
-          path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsIntervalKey),
+          path = NonEmptyList.of(
+            consts.rorSection,
+            consts.loadFromIndexSection,
+            consts.retryStrategySection,
+            consts.attemptsIntervalKey
+          ),
           decoder = decoder
         )
         .orElse {
@@ -173,7 +204,8 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
       val decoder: FromString[LoadingAttemptsCount] = FromString.nonNegativeInt.map(LoadingAttemptsCount.apply)
       YamlLeafOrPropertyOrEnvDecoder
         .createOptionalValueDecoder(
-          path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsCountKey),
+          path = NonEmptyList
+            .of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsCountKey),
           decoder = decoder
         )
         .orElse(
@@ -190,7 +222,8 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
         legacyNonNeg(LoadingDelay.apply)
       YamlLeafOrPropertyOrEnvDecoder
         .createOptionalValueDecoder(
-          path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.initialDelayKey),
+          path = NonEmptyList
+            .of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.initialDelayKey),
           decoder = decoder
         )
         .orElse(
@@ -233,10 +266,11 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
     private def parseLegacyDuration(value: String): Try[FiniteDuration] = Try {
       Try(value.toLong) match {
         case Success(seconds) => FiniteDuration(seconds, java.util.concurrent.TimeUnit.SECONDS)
-        case Failure(_) => Duration(value) match {
-          case d: FiniteDuration => d
-          case _ => throw new IllegalArgumentException(s"Expected a finite duration, got '$value'")
-        }
+        case Failure(_)       =>
+          Duration(value) match {
+            case d: FiniteDuration => d
+            case _                 => throw new IllegalArgumentException(s"Expected a finite duration, got '$value'")
+          }
       }
     }
 

@@ -30,10 +30,10 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 trait FieldRuleEngineSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
-    with BeforeAndAfterAll 
+    with BeforeAndAfterAll
     with CustomScalaTestMatchers {
   this: EsClusterProvider =>
 
@@ -53,16 +53,15 @@ trait FieldRuleEngineSuite
         "modifiable at ES level query using not allowed field is passed in request" in {
           val result = user1SearchManager.search(
             "test-index",
-            ujson.read(
-              """
-                |{
-                |  "query": {
-                |    "match": {
-                |       "notAllowedField": 1
-                |    }
-                |  }
-                |}
-                |""".stripMargin)
+            ujson.read("""
+                         |{
+                         |  "query": {
+                         |    "match": {
+                         |       "notAllowedField": 1
+                         |    }
+                         |  }
+                         |}
+                         |""".stripMargin)
           )
 
           result should have statusCode 200
@@ -73,16 +72,15 @@ trait FieldRuleEngineSuite
         "using not allowed field is passed in request" in {
           val result = user1SearchManager.search(
             "test-index",
-            ujson.read(
-              """
-                |{
-                |  "query": {
-                |    "query_string": {
-                |      "query": "notAllowed\\*: 1"
-                |    }
-                |  }
-                |}
-                |""".stripMargin)
+            ujson.read("""
+                         |{
+                         |  "query": {
+                         |    "query_string": {
+                         |      "query": "notAllowed\\*: 1"
+                         |    }
+                         |  }
+                         |}
+                         |""".stripMargin)
           )
 
           unmodifiableQueryAssertion(result)
@@ -91,17 +89,16 @@ trait FieldRuleEngineSuite
       "properly handle forbidden field in the aggregate" in {
         val result = user1SearchManager.search(
           "test-index",
-          ujson.read(
-            s"""
-               |{
-               |  "aggs":{
-               |    "my_aggregate":{
-               |      "terms":{
-               |        "field":"forbiddenField"
-               |      }
-               |    }
-               |  }
-               |}
+          ujson.read(s"""
+                        |{
+                        |  "aggs":{
+                        |    "my_aggregate":{
+                        |      "terms":{
+                        |        "field":"forbiddenField"
+                        |      }
+                        |    }
+                        |  }
+                        |}
              """.stripMargin)
         )
 
@@ -146,7 +143,7 @@ trait FieldRuleEngineSuite
       val result = user3DocumentManager.get(index = "test-index", id = 3)
 
       result should have statusCode 200
-      result.responseJson("_source") should be (
+      result.responseJson("_source") should be(
         ujson.read(s"""{"allowedField":"allowed:3"}""")
       )
     }
@@ -178,7 +175,7 @@ trait FieldRuleEngineSuite
     )
 
     val result3 = user1SearchManager.searchScroll(searchResult.scrollId)
-    if(Version.greaterOrEqualThan(esVersionUsed, 7, 0, 0)) {
+    if (Version.greaterOrEqualThan(esVersionUsed, 7, 0, 0)) {
       result3 should have statusCode 404
     } else {
       result3 should have statusCode 200
@@ -202,13 +199,14 @@ trait FieldRuleEngineSuite
     )
 
     val result3 = user2SearchManager.searchScroll(searchResult.scrollId)
-    if(Version.greaterOrEqualThan(esVersionUsed, 7, 0, 0)) {
+    if (Version.greaterOrEqualThan(esVersionUsed, 7, 0, 0)) {
       result3 should have statusCode 404
     } else {
       result3 should have statusCode 200
       result3.searchHits shouldBe (List.empty)
     }
   }
+
 }
 
 object FieldRuleEngineSuite {
@@ -217,15 +215,16 @@ object FieldRuleEngineSuite {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     def createDocument(id: Int) = ujson.read {
       s"""
-        |{
-        | "allowedField": "allowed:$id",
-        | "notAllowedField": $id,
-        | "forbiddenField": $id
-        |}""".stripMargin
-      }
+         |{
+         | "allowedField": "allowed:$id",
+         | "notAllowedField": $id,
+         | "forbiddenField": $id
+         |}""".stripMargin
+    }
 
     (1 to 5).foreach { idx =>
       documentManager.createDoc("test-index", idx, createDocument(idx)).force()
     }
   }
+
 }

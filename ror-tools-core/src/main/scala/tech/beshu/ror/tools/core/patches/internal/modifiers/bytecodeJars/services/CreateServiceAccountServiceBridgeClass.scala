@@ -23,8 +23,9 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
   Creates and injects a new ServiceAccountServiceBridge class into the Elasticsearch JAR, allowing the
   ROR plugin to access the X-Pack ServiceAccountService across plugin/classloader boundaries via a
   static publish/get/clear pattern.
-*/
-private [patches] object CreateServiceAccountServiceBridgeClass extends BytecodeJarModifier {
+ */
+private[patches] object CreateServiceAccountServiceBridgeClass extends BytecodeJarModifier {
+
   override def apply(file: File): Unit = {
     addNewFileToJar(
       jar = file,
@@ -37,10 +38,23 @@ private [patches] object CreateServiceAccountServiceBridgeClass extends Bytecode
     import org.objectweb.asm.*
     val cw = new ClassWriter(0)
     val name = "org/elasticsearch/plugins/ServiceAccountServiceBridge"
-    cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER, name, null, "java/lang/Object", null)
+    cw.visit(
+      Opcodes.V11,
+      Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
+      name,
+      null,
+      "java/lang/Object",
+      null
+    )
 
     cw
-      .visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_VOLATILE, "instance", "Ljava/lang/Object;", null, null)
+      .visitField(
+        Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_VOLATILE,
+        "instance",
+        "Ljava/lang/Object;",
+        null,
+        null
+      )
       .visitEnd()
 
     // private ServiceAccountServiceBridge() { super(); }
@@ -83,4 +97,5 @@ private [patches] object CreateServiceAccountServiceBridgeClass extends Bytecode
     cw.visitEnd()
     cw.toByteArray
   }
+
 }

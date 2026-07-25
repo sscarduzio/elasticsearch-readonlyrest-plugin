@@ -32,8 +32,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class KibanaHideAppsRuleTests
-  extends AnyWordSpec with Inside with BlockContextAssertion {
+class KibanaHideAppsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
   "A KibanaHideAppsRule" should {
     "always match" should {
@@ -43,8 +42,7 @@ class KibanaHideAppsRuleTests
         val blockContext = UserMetadataRequestBlockContext(
           block = mock[Block],
           requestContext = requestContext,
-          blockMetadata = BlockMetadata
-            .empty
+          blockMetadata = BlockMetadata.empty
             .withLoggedUser(DirectlyLoggedUser(Id("user1"))),
           responseHeaders = Set.empty,
           responseTransformations = List.empty
@@ -52,14 +50,14 @@ class KibanaHideAppsRuleTests
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        inside(result) {
-          case Permitted(blockContext: UserMetadataRequestBlockContext) =>
-            assertBlockContext(blockContext)(
-              loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-              kibanaPolicy = Some(KibanaPolicy.default.copy(hiddenApps = Set(FullNameKibanaApp("app1"))))
-            )
+        inside(result) { case Permitted(blockContext: UserMetadataRequestBlockContext) =>
+          assertBlockContext(blockContext)(
+            loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
+            kibanaPolicy = Some(KibanaPolicy.default.copy(hiddenApps = Set(FullNameKibanaApp("app1"))))
+          )
         }
       }
     }
   }
+
 }

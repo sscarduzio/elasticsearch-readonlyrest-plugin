@@ -33,4 +33,5 @@ object TestsEnvVarsProvider {
   def usingMap(map: Map[NonEmptyString, String]): TestsEnvVarsProvider = new TestsEnvVarsProvider(
     map.map { case (key, value) => (EnvVarName(key), value) }
   )
+
 }

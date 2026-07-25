@@ -20,51 +20,65 @@ import better.files.File
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps.emptyPluginInstallationSteps
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, InternodeSsl, RestSsl}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{
+  Attributes,
+  InternodeSsl,
+  RestSsl
+}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 
 import scala.concurrent.duration.FiniteDuration
 
 object ReadonlyRestWithEnabledXpackSecurityPlugin {
-  final case class Config(rorSettings: File,
-                          rorPlugin: File,
-                          attributes: Attributes)
+  final case class Config(rorSettings: File, rorPlugin: File, attributes: Attributes)
+
   object Config {
-    final case class Attributes(rorSettingsReloading: Enabled[FiniteDuration],
-                                rorInIndexSettingsLoadingDelay: FiniteDuration,
-                                rorCustomSettingsIndex: Option[String],
-                                restSsl: Enabled[RestSsl],
-                                internodeSsl: Enabled[InternodeSsl],
-                                rorSettingsFileName: String)
+
+    final case class Attributes(
+        rorSettingsReloading: Enabled[FiniteDuration],
+        rorInIndexSettingsLoadingDelay: FiniteDuration,
+        rorCustomSettingsIndex: Option[String],
+        restSsl: Enabled[RestSsl],
+        internodeSsl: Enabled[InternodeSsl],
+        rorSettingsFileName: String
+    )
+
     object Attributes {
+
       val default: Attributes = Attributes(
         rorSettingsReloading = ReadonlyRestPlugin.Config.Attributes.default.rorSettingsReloading,
         rorInIndexSettingsLoadingDelay = ReadonlyRestPlugin.Config.Attributes.default.rorInIndexSettingsLoadingDelay,
         rorCustomSettingsIndex = ReadonlyRestPlugin.Config.Attributes.default.rorCustomSettingsIndex,
-        restSsl = if(XpackSecurityPlugin.Config.Attributes.default.restSslEnabled) Enabled.Yes(RestSsl.Xpack) else Enabled.No,
-        internodeSsl = if(XpackSecurityPlugin.Config.Attributes.default.internodeSslEnabled) Enabled.Yes(InternodeSsl.Xpack) else Enabled.No,
+        restSsl =
+          if (XpackSecurityPlugin.Config.Attributes.default.restSslEnabled) Enabled.Yes(RestSsl.Xpack) else Enabled.No,
+        internodeSsl =
+          if (XpackSecurityPlugin.Config.Attributes.default.internodeSslEnabled) Enabled.Yes(InternodeSsl.Xpack)
+          else Enabled.No,
         rorSettingsFileName = "/basic/readonlyrest.yml"
       )
+
     }
 
     sealed trait RestSsl
+
     object RestSsl {
       case object Xpack extends RestSsl
       final case class Ror(rorrestSsl: ReadonlyRestPlugin.Config.RestSsl) extends RestSsl
     }
 
     sealed trait InternodeSsl
+
     object InternodeSsl {
       case object Xpack extends InternodeSsl
       final case class Ror(rorInternodeSsl: ReadonlyRestPlugin.Config.InternodeSsl) extends InternodeSsl
     }
+
   }
+
 }
 
-class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
-                                                 config: Config,
-                                                 performPatching: Boolean)
-  extends Elasticsearch.Plugin {
+class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String, config: Config, performPatching: Boolean)
+    extends Elasticsearch.Plugin {
 
   private val readonlyRestPlugin = new ReadonlyRestPlugin(esVersion, createRorConfig(), performPatching)
   private val xpackSecurityPlugin = new XpackSecurityPlugin(esVersion, createXpackSecurityConfig())
@@ -109,16 +123,16 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
   private def createRorRestSsl() = {
     config.attributes.restSsl match {
       case Enabled.Yes(RestSsl.Ror(rorRestSsl)) => Enabled.Yes(rorRestSsl)
-      case Enabled.Yes(RestSsl.Xpack) => Enabled.No
-      case Enabled.No => Enabled.No
+      case Enabled.Yes(RestSsl.Xpack)           => Enabled.No
+      case Enabled.No                           => Enabled.No
     }
   }
 
   private def createRorInternodeSsl() = {
     config.attributes.internodeSsl match {
       case Enabled.Yes(InternodeSsl.Ror(rorInternodeSsl)) => Enabled.Yes(rorInternodeSsl)
-      case Enabled.Yes(InternodeSsl.Xpack) => Enabled.No
-      case Enabled.No => Enabled.No
+      case Enabled.Yes(InternodeSsl.Xpack)                => Enabled.No
+      case Enabled.No                                     => Enabled.No
     }
   }
 
@@ -126,17 +140,17 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
     XpackSecurityPlugin.Config(
       XpackSecurityPlugin.Config.Attributes(
         restSslEnabled = config.attributes.restSsl match {
-          case Enabled.Yes(RestSsl.Xpack) => true
+          case Enabled.Yes(RestSsl.Xpack)  => true
           case Enabled.Yes(RestSsl.Ror(_)) => false
-          case Enabled.No => false
+          case Enabled.No                  => false
         },
         internodeSslEnabled = config.attributes.internodeSsl match {
-          case Enabled.Yes(InternodeSsl.Xpack) => true
+          case Enabled.Yes(InternodeSsl.Xpack)  => true
           case Enabled.Yes(InternodeSsl.Ror(_)) => false
-          case Enabled.No => false
+          case Enabled.No                       => false
         }
       )
     )
   }
-}
 
+}

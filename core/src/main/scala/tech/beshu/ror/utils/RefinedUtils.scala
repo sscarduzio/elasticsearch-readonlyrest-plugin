@@ -46,14 +46,16 @@ object RefinedUtils {
   }
 
   inline def positiveFiniteDuration(inline length: Long, inline timeUnit: TimeUnit): PositiveFiniteDuration = {
-    inline if (length > 0) Duration(length, timeUnit).toRefinedPositiveUnsafe else error("FiniteDuration is not positive")
+    inline if (length > 0) Duration(length, timeUnit).toRefinedPositiveUnsafe
+    else error("FiniteDuration is not positive")
   }
 
   inline def nonNegativeFiniteDuration(inline length: Long, inline timeUnit: TimeUnit): NonNegativeFiniteDuration = {
-    inline if (length >= 0) Duration(length, timeUnit).toRefinedNonNegativeUnsafe else error("FiniteDuration is not non-negative")
+    inline if (length >= 0) Duration(length, timeUnit).toRefinedNonNegativeUnsafe
+    else error("FiniteDuration is not non-negative")
   }
 
-  def positiveDecoder[T: Decoder : Show](valueToLong: T => Long): Decoder[T Refined Positive] =
+  def positiveDecoder[T: Decoder: Show](valueToLong: T => Long): Decoder[T Refined Positive] =
     SyncDecoderCreator
       .from(Decoder[T])
       .emapE { value =>
@@ -66,6 +68,7 @@ object RefinedUtils {
       .decoder
 
   extension (duration: Duration) {
+
     def toRefinedPositive: Either[String, PositiveFiniteDuration] = duration match {
       case v: FiniteDuration if v.toMillis > 0 =>
         Right(Refined.unsafeApply(v))
@@ -86,4 +89,5 @@ object RefinedUtils {
     def toRefinedNonNegativeUnsafe: NonNegativeFiniteDuration =
       duration.toRefineNonNegative.fold(err => throw new IllegalArgumentException(err), identity)
   }
+
 }

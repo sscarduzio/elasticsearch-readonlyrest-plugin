@@ -22,14 +22,23 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
+  FilterableMultiRequestBlockContext,
+  FilterableRequestBlockContext
+}
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeResolvableVariableCreator,
+  RuntimeSingleResolvableVariable
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Action, Filter, User}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -45,30 +54,45 @@ class FilterRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
           val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
           val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
           val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
-          val blockContext = FilterableRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
+          val blockContext = FilterableRequestBlockContext(
+            mock[Block],
+            requestContext,
+            BlockMetadata.empty,
+            Set.empty,
+            List.empty,
+            Set.empty,
+            Set.empty,
+            None
+          )
 
           val result = rule.check(blockContext).runSyncUnsafe()
 
-          inside(result){
-            case Permitted(blockContext) =>
-              assertBlockContext(blockContext)(
-                filter = Some(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"))
-              )
+          inside(result) { case Permitted(blockContext) =>
+            assertBlockContext(blockContext)(
+              filter = Some(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"))
+            )
           }
         }
         "multi search request block context is used" in {
           val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
           val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
           val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
-          val blockContext = FilterableMultiRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, List.empty, None)
+          val blockContext = FilterableMultiRequestBlockContext(
+            mock[Block],
+            requestContext,
+            BlockMetadata.empty,
+            Set.empty,
+            List.empty,
+            List.empty,
+            None
+          )
 
           val result = rule.check(blockContext).runSyncUnsafe()
 
-          inside(result){
-            case Permitted(blockContext) =>
-              assertBlockContext(blockContext)(
-                filter = Some(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"))
-              )
+          inside(result) { case Permitted(blockContext) =>
+            assertBlockContext(blockContext)(
+              filter = Some(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"))
+            )
           }
         }
       }
@@ -90,12 +114,13 @@ class FilterRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        inside(result) {
-          case Permitted(blockContext) =>
-            assertBlockContext(blockContext)(
-              loggedUser = Some(loggedUser),
-              filter = Some(Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"bob\"}}}]}}")))
+        inside(result) { case Permitted(blockContext) =>
+          assertBlockContext(blockContext)(
+            loggedUser = Some(loggedUser),
+            filter = Some(
+              Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"bob\"}}}]}}"))
             )
+          )
         }
       }
     }
@@ -104,25 +129,52 @@ class FilterRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
-        val blockContext = FilterableRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
+        val blockContext = FilterableRequestBlockContext(
+          mock[Block],
+          requestContext,
+          BlockMetadata.empty,
+          Set.empty,
+          List.empty,
+          Set.empty,
+          Set.empty,
+          None
+        )
 
-        rule.check(blockContext).runSyncUnsafe() should be (Denied(NotAuthorized))
+        rule.check(blockContext).runSyncUnsafe() should be(Denied(NotAuthorized))
       }
       "request is not allowed for DLS" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(isAllowedForDLS = false)
-        val blockContext = FilterableRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
+        val blockContext = FilterableRequestBlockContext(
+          mock[Block],
+          requestContext,
+          BlockMetadata.empty,
+          Set.empty,
+          List.empty,
+          Set.empty,
+          Set.empty,
+          None
+        )
 
-        rule.check(blockContext).runSyncUnsafe() should be (Denied(NotAuthorized))
+        rule.check(blockContext).runSyncUnsafe() should be(Denied(NotAuthorized))
       }
       "request is ROR admin request" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(action = MockRequestContext.adminAction)
-        val blockContext = FilterableRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
+        val blockContext = FilterableRequestBlockContext(
+          mock[Block],
+          requestContext,
+          BlockMetadata.empty,
+          Set.empty,
+          List.empty,
+          Set.empty,
+          Set.empty,
+          None
+        )
 
-        rule.check(blockContext).runSyncUnsafe() should be (Denied(NotAuthorized))
+        rule.check(blockContext).runSyncUnsafe() should be(Denied(NotAuthorized))
       }
     }
   }
@@ -135,5 +187,8 @@ class FilterRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
   }
 
   private val variableCreator: RuntimeResolvableVariableCreator =
-    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
+    new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty)
+    )
+
 }

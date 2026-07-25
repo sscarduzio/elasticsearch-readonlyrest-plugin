@@ -26,10 +26,11 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
 import tech.beshu.ror.syntax.*
 
-abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T,
-                                                                esContext: EsContext,
-                                                                override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[SnapshotRequestBlockContext](esContext)
+abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](
+    actionRequest: T,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[SnapshotRequestBlockContext](esContext)
     with EsRequest[SnapshotRequestBlockContext] {
 
   override def initialBlockContext(block: Block): SnapshotRequestBlockContext = SnapshotRequestBlockContext(

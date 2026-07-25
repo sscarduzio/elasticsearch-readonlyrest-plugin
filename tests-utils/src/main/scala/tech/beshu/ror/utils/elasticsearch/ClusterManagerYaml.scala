@@ -20,7 +20,7 @@ import org.apache.http.client.methods.HttpGet
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class ClusterManagerYaml(client: RestClient, esVersion: String)
-  extends BaseManager(client, esVersion, esNativeApi = true)  {
+    extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def health(): YamlMapResponse = health(None)
 
@@ -29,12 +29,15 @@ class ClusterManagerYaml(client: RestClient, esVersion: String)
   }
 
   private def createHealthRequest(index: Option[String]) = {
-    new HttpGet(client.from(
-      index match {
-        case Some(value) => s"_cluster/health/$value"
-        case None => "_cluster/health"
-      },
-      Map("timeout" -> "2s", "format" -> "yaml")
-    ))
+    new HttpGet(
+      client.from(
+        index match {
+          case Some(value) => s"_cluster/health/$value"
+          case None        => "_cluster/health"
+        },
+        Map("timeout" -> "2s", "format" -> "yaml")
+      )
+    )
   }
+
 }

@@ -18,39 +18,53 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
-import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, OptionalFilePatchDecorator, RorPluginDirectory}
+import tech.beshu.ror.tools.core.patches.internal.{
+  FileModifiersBasedPatch,
+  OptionalFilePatchDecorator,
+  RorPluginDirectory
+}
 
-private[patches] class XPackCoreJarPatchCreator private(patchingSteps: Iterable[FileModifier])
-  extends FilePatchCreator[XPackCoreJarPatch] {
+private[patches] class XPackCoreJarPatchCreator private (patchingSteps: Iterable[FileModifier])
+    extends FilePatchCreator[XPackCoreJarPatch] {
 
-  override def create(rorPluginDirectory: RorPluginDirectory,
-                      esVersion: SemVer): XPackCoreJarPatch = {
+  override def create(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer): XPackCoreJarPatch = {
     new XPackCoreJarPatch(rorPluginDirectory, esVersion, patchingSteps)
   }
+
 }
+
 object XPackCoreJarPatchCreator {
   def apply(patchingSteps: FileModifier*): XPackCoreJarPatchCreator = new XPackCoreJarPatchCreator(patchingSteps)
 }
 
-private[patches] class OptionalXPackCoreJarPatchCreator private(patchingSteps: Iterable[FileModifier])
-  extends FilePatchCreator[OptionalFilePatchDecorator[XPackCoreJarPatch]] {
+private[patches] class OptionalXPackCoreJarPatchCreator private (patchingSteps: Iterable[FileModifier])
+    extends FilePatchCreator[OptionalFilePatchDecorator[XPackCoreJarPatch]] {
 
-  override def create(rorPluginDirectory: RorPluginDirectory,
-                      esVersion: SemVer): OptionalFilePatchDecorator[XPackCoreJarPatch] = {
+  override def create(
+      rorPluginDirectory: RorPluginDirectory,
+      esVersion: SemVer
+  ): OptionalFilePatchDecorator[XPackCoreJarPatch] = {
     val patch = new XPackCoreJarPatch(rorPluginDirectory, esVersion, patchingSteps)
     new OptionalFilePatchDecorator(patch, patch.fileToPatchPath)
   }
-}
-object OptionalXPackCoreJarPatchCreator {
-  def apply(patchingSteps: FileModifier*): OptionalXPackCoreJarPatchCreator = new OptionalXPackCoreJarPatchCreator(patchingSteps)
+
 }
 
-private[patches] class XPackCoreJarPatch(rorPluginDirectory: RorPluginDirectory,
-                                         esVersion: SemVer,
-                                         patchingSteps: Iterable[FileModifier],
-                                        )
-  extends FileModifiersBasedPatch(
-    rorPluginDirectory = rorPluginDirectory,
-    fileToPatchPath = rorPluginDirectory.esDirectory.modulesPath / "x-pack-core" / s"x-pack-core-${esVersion.render}.jar",
-    patchingSteps = patchingSteps
+object OptionalXPackCoreJarPatchCreator {
+
+  def apply(patchingSteps: FileModifier*): OptionalXPackCoreJarPatchCreator = new OptionalXPackCoreJarPatchCreator(
+    patchingSteps
   )
+
+}
+
+private[patches] class XPackCoreJarPatch(
+    rorPluginDirectory: RorPluginDirectory,
+    esVersion: SemVer,
+    patchingSteps: Iterable[FileModifier],
+) extends FileModifiersBasedPatch(
+      rorPluginDirectory = rorPluginDirectory,
+      fileToPatchPath =
+        rorPluginDirectory.esDirectory.modulesPath / "x-pack-core" / s"x-pack-core-${esVersion.render}.jar",
+      patchingSteps = patchingSteps
+    )

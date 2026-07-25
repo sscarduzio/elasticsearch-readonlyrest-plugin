@@ -20,7 +20,7 @@ package tech.beshu.ror.utils.containers
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 
-class WireMockScalaAdapter(proxy: WireMockContainer) extends SingleContainer[GenericContainer[_]]{
+class WireMockScalaAdapter(proxy: WireMockContainer) extends SingleContainer[GenericContainer[_]] {
   def getWireMockHost: String = proxy.getWireMockHost
   def getWireMockPort: Integer = proxy.getWireMockPort
 

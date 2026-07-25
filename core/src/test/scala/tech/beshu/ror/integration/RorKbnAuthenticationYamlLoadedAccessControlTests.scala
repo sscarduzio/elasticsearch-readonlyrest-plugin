@@ -32,7 +32,9 @@ import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 
 class RorKbnAuthenticationYamlLoadedAccessControlTests
-  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+    extends AnyWordSpec
+    with BaseYamlLoadedAccessControlTest
+    with Inside {
 
   override protected def settingsYaml: String =
     """
@@ -71,7 +73,9 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
       "allow to proceed" when {
         "JWT token is defined with empty groups" in {
           val jwt = JwtUtils.Jwt(
-            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            secret = Keys.hmacShaKeyFor(
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+            ),
             claims = List("sub" := "test", "user" := "user", "groups" := "")
           )
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
@@ -89,7 +93,9 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
         }
         "JWT token is defined with group that does not match the current group passed in header" in {
           val jwt = JwtUtils.Jwt(
-            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            secret = Keys.hmacShaKeyFor(
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+            ),
             claims = List("sub" := "test", "user" := "user", "groups" := List("some_group_in_jwt"))
           )
           val request = MockRequestContext.indices.withHeaders(
@@ -112,4 +118,5 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
       }
     }
   }
+
 }

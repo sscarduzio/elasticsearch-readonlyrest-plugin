@@ -32,22 +32,23 @@ class RRAdminActionHandler extends RequestIdAwareLogging {
 
   def handle(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     getApi match {
-      case Some(api) => doPrivileged {
-        implicit val requestId: RequestId = request.requestContextId
-        api
-          .call(request.getAdminRequest)
-          .runAsync { response =>
-            handle(response, listener)
-          }
-      }
+      case Some(api) =>
+        doPrivileged {
+          implicit val requestId: RequestId = request.requestContextId
+          api
+            .call(request.getAdminRequest)
+            .runAsync { response =>
+              handle(response, listener)
+            }
+        }
       case None =>
         listener.onFailure(new Exception("ROR Settings API is not available"))
     }
   }
 
-  private def handle(result: Either[Throwable, MainSettingsResponse],
-                     listener: ActionListener[RRAdminResponse])
-                    (implicit requestId: RequestId): Unit = result match {
+  private def handle(result: Either[Throwable, MainSettingsResponse], listener: ActionListener[RRAdminResponse])(
+      implicit requestId: RequestId
+  ): Unit = result match {
     case Right(response) =>
       listener.onResponse(new RRAdminResponse(response))
     case Left(ex) =>

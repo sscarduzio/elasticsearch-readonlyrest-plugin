@@ -20,16 +20,16 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettingsYamlParser}
 
-class MainSettingsFileSource private (settingsFile: RorSettingsFile)
-                                     (implicit decoder: Decoder[MainRorSettings])
-  extends FileSettingsSource[MainRorSettings](settingsFile.file)
+class MainSettingsFileSource private (settingsFile: RorSettingsFile)(
+    implicit decoder: Decoder[MainRorSettings]
+) extends FileSettingsSource[MainRorSettings](settingsFile.file)
 
 object MainSettingsFileSource {
 
-  def create(settingsFile: RorSettingsFile,
-             settingsYamlParser: RawRorSettingsYamlParser): MainSettingsFileSource = {
+  def create(settingsFile: RorSettingsFile, settingsYamlParser: RawRorSettingsYamlParser): MainSettingsFileSource = {
     implicit val decoder: Decoder[MainRorSettings] =
       new RawRorSettingsCodec(settingsYamlParser).map(MainRorSettings.apply)
     new MainSettingsFileSource(settingsFile)
   }
+
 }

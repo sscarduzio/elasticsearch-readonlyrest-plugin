@@ -29,9 +29,8 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.constants
 import tech.beshu.ror.syntax.*
 
-class FieldsRuleDecoder(flsEngine: FlsEngine,
-                        variableCreator: RuntimeResolvableVariableCreator)
-  extends RuleBaseDecoderWithoutAssociatedFields[FieldsRule] {
+class FieldsRuleDecoder(flsEngine: FlsEngine, variableCreator: RuntimeResolvableVariableCreator)
+    extends RuleBaseDecoderWithoutAssociatedFields[FieldsRule] {
 
   override protected def decoder: Decoder[RuleDefinition[FieldsRule]] =
     FieldsRuleDecoderHelper.fieldsRuleDecoder(flsEngine, variableCreator)
@@ -44,12 +43,18 @@ private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
   implicit val accessModeConverter: AccessModeConverter[AccessMode] =
     AccessModeConverter.create(whitelistElement = AccessMode.Whitelist, blacklistElement = AccessMode.Blacklist)
 
-  def fieldsRuleDecoder(flsEngine: FlsEngine, variableCreator: RuntimeResolvableVariableCreator): Decoder[RuleDefinition[FieldsRule]] = {
+  def fieldsRuleDecoder(
+      flsEngine: FlsEngine,
+      variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder[RuleDefinition[FieldsRule]] = {
     implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
     for {
       configuredFields <- configuredFieldsDecoder
       accessMode <- accessModeDecoder[AccessMode](configuredFields)
-      documentFields <- documentFieldsDecoder[DocumentField](configuredFields, constants.FIELDS_ALWAYS_ALLOW.map(NonEmptyString.unsafeFrom).toCovariantSet)
+      documentFields <- documentFieldsDecoder[DocumentField](
+        configuredFields,
+        constants.FIELDS_ALWAYS_ALLOW.map(NonEmptyString.unsafeFrom).toCovariantSet
+      )
     } yield RuleDefinition.create(new FieldsRule(FieldsRule.Settings(documentFields, accessMode, flsEngine)))
   }
 

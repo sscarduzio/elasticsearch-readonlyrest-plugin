@@ -18,6 +18,7 @@ package tech.beshu.ror.es.utils
 
 import monix.eval.Task
 import org.elasticsearch.action.ActionListener
+
 import scala.concurrent.Promise
 
 class ActionListenerToTaskAdapter[T] extends ActionListener[T] {
@@ -32,4 +33,5 @@ class ActionListenerToTaskAdapter[T] extends ActionListener[T] {
   override def onFailure(exception: Exception): Unit = {
     promise.failure(exception)
   }
+
 }

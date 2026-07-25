@@ -23,7 +23,12 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralNonIndexRequestBlockContext, HasFieldLevelSecurity}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
+  FilterableMultiRequestBlockContext,
+  FilterableRequestBlockContext,
+  GeneralNonIndexRequestBlockContext,
+  HasFieldLevelSecurity
+}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.FilterableRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
@@ -84,7 +89,8 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
               ),
               incomingBlockContext = emptyFilterable(
                 requestContext = MockRequestContext.filterable().copy(action = roAction),
-                requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1")))
+                requestFieldsUsage =
+                  RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1")))
               ),
               expectedStrategy = Strategy.FlsAtLuceneLevelApproach
             )
@@ -127,9 +133,12 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
               ),
               incomingBlockContext = emptyFilterable(
                 requestContext = MockRequestContext.filterable().copy(action = roAction),
-                requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField")))
+                requestFieldsUsage =
+                  RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField")))
               ),
-              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField.fromString("notAllowedField")))
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(
+                NonEmptyList.one(UsedField.SpecificField.fromString("notAllowedField"))
+              )
             )
           }
         }
@@ -202,7 +211,8 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
             ),
             incomingBlockContext = emptyFilterable(
               requestContext = MockRequestContext.filterable().copy(action = roAction),
-              requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1")))
+              requestFieldsUsage =
+                RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1")))
             )
           )
         }
@@ -274,42 +284,50 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
           responseHeaders = Set.empty,
           responseTransformations = List.empty
         )
-        inside(rule.check(incomingBlockContext).runSyncStep) {
-          case Right(Permitted(outBlockContext)) =>
-            outBlockContext should be (incomingBlockContext)
+        inside(rule.check(incomingBlockContext).runSyncStep) { case Right(Permitted(outBlockContext)) =>
+          outBlockContext should be(incomingBlockContext)
         }
       }
     }
   }
 
-  private def assertMatchRule[B <: BlockContext : BlockContextUpdater : HasFieldLevelSecurity](config: Configuration,
-                                                                                               incomingBlockContext: B,
-                                                                                               expectedStrategy: Strategy) = {
+  private def assertMatchRule[B <: BlockContext: BlockContextUpdater: HasFieldLevelSecurity](
+      config: Configuration,
+      incomingBlockContext: B,
+      expectedStrategy: Strategy
+  ) = {
     import HasFieldLevelSecurity.*
     val rule = createRule(config)
 
-    inside(rule.check(incomingBlockContext).runSyncStep) {
-      case Right(Permitted(outBlockContext)) =>
-        outBlockContext.fieldLevelSecurity.isDefined should be (true)
-        outBlockContext.fieldLevelSecurity.get.strategy should be (expectedStrategy)
+    inside(rule.check(incomingBlockContext).runSyncStep) { case Right(Permitted(outBlockContext)) =>
+      outBlockContext.fieldLevelSecurity.isDefined should be(true)
+      outBlockContext.fieldLevelSecurity.get.strategy should be(expectedStrategy)
     }
   }
 
-  private def assertRejectRule[B <: BlockContext : BlockContextUpdater](config: Configuration,
-                                                                        incomingBlockContext: B) = {
+  private def assertRejectRule[B <: BlockContext: BlockContextUpdater](
+      config: Configuration,
+      incomingBlockContext: B
+  ) = {
 
     val rule = createRule(config)
 
-    rule.check(incomingBlockContext).runSyncStep should be (Right(Denied(NotAuthorized)))
+    rule.check(incomingBlockContext).runSyncStep should be(Right(Denied(NotAuthorized)))
   }
 
   private def createRule(configuredFLS: Configuration) = {
-    val resolvedFields = configuredFLS.fields.values.map(field => AlreadyResolved(DocumentField(NonEmptyString.unsafeFrom(field)).nel))
-    new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), configuredFLS.fields.accessMode, configuredFLS.flsEngine))
+    val resolvedFields =
+      configuredFLS.fields.values.map(field => AlreadyResolved(DocumentField(NonEmptyString.unsafeFrom(field)).nel))
+    new FieldsRule(
+      FieldsRule.Settings(
+        UniqueNonEmptyList.fromNonEmptyList(resolvedFields),
+        configuredFLS.fields.accessMode,
+        configuredFLS.flsEngine
+      )
+    )
   }
 
-  private def emptyFilterable(requestContext: RequestContext,
-                              requestFieldsUsage: RequestFieldsUsage) = {
+  private def emptyFilterable(requestContext: RequestContext, requestFieldsUsage: RequestFieldsUsage) = {
     FilterableRequestBlockContext(
       block = mock[Block],
       requestContext = requestContext,
@@ -324,8 +342,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
     )
   }
 
-  private def emptyFilterableMultiBlockContext(requestContext: RequestContext,
-                                               requestFieldsUsage: RequestFieldsUsage) = {
+  private def emptyFilterableMultiBlockContext(
+      requestContext: RequestContext,
+      requestFieldsUsage: RequestFieldsUsage
+  ) = {
     FilterableMultiRequestBlockContext(
       block = mock[Block],
       requestContext = requestContext,
@@ -338,6 +358,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
       requestFieldsUsage = requestFieldsUsage
     )
   }
+
 }
 
 object FieldsRuleTests {

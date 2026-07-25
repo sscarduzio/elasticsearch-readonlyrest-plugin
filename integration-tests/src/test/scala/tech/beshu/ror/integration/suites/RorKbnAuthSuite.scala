@@ -26,15 +26,17 @@ import tech.beshu.ror.utils.misc.JwtUtils.*
 
 //TODO change test names. Current names are copies from old java integration tests
 class RorKbnAuthSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
   private val algo = Jwts.SIG.HS256
-  private val validKey = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-  private val validKeyRole = "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
+  private val validKey =
+    "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+  private val validKeyRole =
+    "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
   private val wrongKey = "abcdefdsadsadsadsadsadfdsfdsfdsfdsfds"
 
   override implicit val rorSettingsFileName: String = "/ror_kbn_auth/readonlyrest.yml"
@@ -47,9 +49,13 @@ class RorKbnAuthSuite
   }
 
   "rejectTokenWithWrongKey" in {
-    val jwt = Jwt(algo, wrongKey, claims = List(
-      "user" := "user"
-    ))
+    val jwt = Jwt(
+      algo,
+      wrongKey,
+      claims = List(
+        "user" := "user"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
@@ -74,10 +80,14 @@ class RorKbnAuthSuite
 
   "acceptValidTokenWithUserClaim" in {
     // Groups claim is mandatory, cannot be empty
-    val jwt = Jwt(algo, validKey, claims = List(
-      "user" := "user",
-      "groups" := "any_arbitrary_group"
-    ))
+    val jwt = Jwt(
+      algo,
+      validKey,
+      claims = List(
+        "user" := "user",
+        "groups" := "any_arbitrary_group"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
@@ -89,10 +99,14 @@ class RorKbnAuthSuite
   }
 
   "rejectExpiredToken" in {
-    val jwt = Jwt(algo, validKey, claims = List(
-      "user" := "user",
-      "exp" := "0"
-    ))
+    val jwt = Jwt(
+      algo,
+      validKey,
+      claims = List(
+        "user" := "user",
+        "exp" := "0"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
@@ -104,9 +118,13 @@ class RorKbnAuthSuite
   }
 
   "rejectTokenWithoutRolesClaim" in {
-    val jwt = Jwt(algo, validKeyRole, claims = List(
-      "user" := "user"
-    ))
+    val jwt = Jwt(
+      algo,
+      validKeyRole,
+      claims = List(
+        "user" := "user"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
@@ -118,10 +136,14 @@ class RorKbnAuthSuite
   }
 
   "rejectTokenWithWrongRolesClaim" in {
-    val jwt = Jwt(algo, validKeyRole, claims = List(
-      "user" := "user",
-      "groups" := "wrong_group"
-    ))
+    val jwt = Jwt(
+      algo,
+      validKeyRole,
+      claims = List(
+        "user" := "user",
+        "groups" := "wrong_group"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
@@ -133,10 +155,14 @@ class RorKbnAuthSuite
   }
 
   "acceptValidTokenWithRolesClaim" in {
-    val jwt = Jwt(algo, validKeyRole, claims = List(
-      "user" := "user",
-      "groups" := "viewer_group"
-    ))
+    val jwt = Jwt(
+      algo,
+      validKeyRole,
+      claims = List(
+        "user" := "user",
+        "groups" := "viewer_group"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),

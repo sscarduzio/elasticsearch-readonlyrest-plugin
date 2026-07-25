@@ -24,10 +24,10 @@ import org.elasticsearch.rest.action.cat.RestCatAction
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, RorWrappedCatRequest, RorWrappedCatResponse}
 
-
 @Inject
 class RorWrappedRestCatAction(settings: Settings, catAction: RestCatAction)
-  extends BaseRestHandler(settings) with RestHandler {
+    extends BaseRestHandler(settings)
+    with RestHandler {
 
   override val getName: String = catAction.getName
 
@@ -43,4 +43,5 @@ class RorWrappedRestCatAction(settings: Settings, catAction: RestCatAction)
         }
       )
   }
+
 }

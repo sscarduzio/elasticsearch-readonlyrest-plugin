@@ -20,22 +20,23 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
 import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, RorPluginDirectory}
 
-private[patches] class EntitlementJarPatchCreator private(patchingSteps: Iterable[FileModifier])
-  extends FilePatchCreator[EntitlementJarPatch] {
+private[patches] class EntitlementJarPatchCreator private (patchingSteps: Iterable[FileModifier])
+    extends FilePatchCreator[EntitlementJarPatch] {
 
-  override def create(rorPluginDirectory: RorPluginDirectory,
-                      esVersion: SemVer): EntitlementJarPatch =
+  override def create(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer): EntitlementJarPatch =
     new EntitlementJarPatch(rorPluginDirectory, esVersion, patchingSteps)
 }
+
 object EntitlementJarPatchCreator {
   def apply(patchingSteps: FileModifier*): EntitlementJarPatchCreator = new EntitlementJarPatchCreator(patchingSteps)
 }
 
-private[patches] class EntitlementJarPatch(rorPluginDirectory: RorPluginDirectory,
-                                           esVersion: SemVer,
-                                           patchingSteps: Iterable[FileModifier])
-  extends FileModifiersBasedPatch(
-    rorPluginDirectory = rorPluginDirectory,
-    fileToPatchPath = rorPluginDirectory.esDirectory.libPath / s"elasticsearch-entitlement-${esVersion.render}.jar",
-    patchingSteps = patchingSteps
-  )
+private[patches] class EntitlementJarPatch(
+    rorPluginDirectory: RorPluginDirectory,
+    esVersion: SemVer,
+    patchingSteps: Iterable[FileModifier]
+) extends FileModifiersBasedPatch(
+      rorPluginDirectory = rorPluginDirectory,
+      fileToPatchPath = rorPluginDirectory.esDirectory.libPath / s"elasticsearch-entitlement-${esVersion.render}.jar",
+      patchingSteps = patchingSteps
+    )

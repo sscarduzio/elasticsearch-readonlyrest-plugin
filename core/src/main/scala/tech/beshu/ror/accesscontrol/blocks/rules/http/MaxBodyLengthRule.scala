@@ -23,16 +23,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 
-class MaxBodyLengthRule(val settings: Settings)
-  extends RegularRule {
+class MaxBodyLengthRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = MaxBodyLengthRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     Decision.permit(`with` = blockContext)(
       when = blockContext.requestContext.restRequest.contentLength <= settings.maxContentLength
     )
   }
+
 }
 
 object MaxBodyLengthRule {

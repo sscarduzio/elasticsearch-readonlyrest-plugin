@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
@@ -32,19 +32,18 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class KibanaUserDataRule(override val settings: Settings)
-  extends BaseKibanaRule(settings) {
+class KibanaUserDataRule(override val settings: Settings) extends BaseKibanaRule(settings) {
 
   override val name: Rule.Name = KibanaUserDataRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     if (shouldMatch(blockContext, resolveKibanaIndex(blockContext)))
       matched(blockContext)
     else
       Denied[B](Cause.NotAuthorized)
   }
 
-  private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B): Permitted[B] = {
+  private def matched[B <: BlockContext: BlockContextUpdater](blockContext: B): Permitted[B] = {
     Decision.Permitted[B] {
       blockContext.withBlockMetadata {
         updateUserMetadata(blockContext)
@@ -82,8 +81,7 @@ class KibanaUserDataRule(override val settings: Settings)
     settings.kibanaIndex.resolve(context).toTry.get
 
   private def resolveKibanaIndexTemplate(context: BlockContext) =
-    settings
-      .kibanaTemplateIndex
+    settings.kibanaTemplateIndex
       .flatMap {
         _.resolve(context) match {
           case Right(resolvedKibanaIndexTemplate) =>
@@ -102,8 +100,7 @@ class KibanaUserDataRule(override val settings: Settings)
     UniqueNonEmptyList.from(settings.allowedApiPaths)
 
   private def resolvedKibanaGenericMetadata(context: BlockContext) =
-    settings
-      .genericMetadata
+    settings.genericMetadata
       .flatMap {
         _.resolve(context) match {
           case Right(resolvedMetadata) =>
@@ -115,13 +112,15 @@ class KibanaUserDataRule(override val settings: Settings)
         }
       }
 
-  private def applyToBlockMetadata[T](opt: Option[T])
-                                    (userMetadataUpdateFunction: (BlockMetadata, T) => BlockMetadata): BlockMetadata => BlockMetadata = {
+  private def applyToBlockMetadata[T](
+      opt: Option[T]
+  )(userMetadataUpdateFunction: (BlockMetadata, T) => BlockMetadata): BlockMetadata => BlockMetadata = {
     opt match {
       case Some(value) => userMetadataUpdateFunction(_, value)
-      case None => identity[BlockMetadata]
+      case None        => identity[BlockMetadata]
     }
   }
+
 }
 
 object KibanaUserDataRule {
@@ -130,12 +129,14 @@ object KibanaUserDataRule {
     override val name = Rule.Name("kibana")
   }
 
-  final case class Settings(override val access: KibanaAccess,
-                            kibanaIndex: RuntimeSingleResolvableVariable[KibanaIndexName],
-                            kibanaTemplateIndex: Option[RuntimeSingleResolvableVariable[KibanaIndexName]],
-                            appsToHide: Set[KibanaApp],
-                            allowedApiPaths: Set[KibanaAllowedApiPath],
-                            genericMetadata: Option[ResolvableJsonRepresentation],
-                            override val rorIndex: RorSettingsIndex)
-    extends BaseKibanaRule.Settings(access, rorIndex)
+  final case class Settings(
+      override val access: KibanaAccess,
+      kibanaIndex: RuntimeSingleResolvableVariable[KibanaIndexName],
+      kibanaTemplateIndex: Option[RuntimeSingleResolvableVariable[KibanaIndexName]],
+      appsToHide: Set[KibanaApp],
+      allowedApiPaths: Set[KibanaAllowedApiPath],
+      genericMetadata: Option[ResolvableJsonRepresentation],
+      override val rorIndex: RorSettingsIndex
+  ) extends BaseKibanaRule.Settings(access, rorIndex)
+
 }

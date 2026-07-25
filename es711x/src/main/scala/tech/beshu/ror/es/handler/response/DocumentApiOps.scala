@@ -30,7 +30,7 @@ object DocumentApiOps {
 
   object GetApi {
 
-    //it's ugly but I don't know better way to do it
+    // it's ugly but I don't know better way to do it
     def doesNotExistResponse(original: GetResponse): GetResponse = {
       val exists = false
       val source = null
@@ -44,7 +44,8 @@ object DocumentApiOps {
         exists,
         source,
         java.util.Collections.emptyMap(),
-        java.util.Collections.emptyMap())
+        java.util.Collections.emptyMap()
+      )
       new GetResponse(result)
     }
 
@@ -76,31 +77,38 @@ object DocumentApiOps {
           .filter(_.nonEmpty)
           .map(source => FieldsFiltering.filterSource(source, fieldsRestrictions)) match {
           case Some(value) => value.bytes
-          case None => response.getSourceAsBytesRef
+          case None        => response.getSourceAsBytesRef
         }
       }
 
       private def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
         Option(on(response).get[AnyRef]("getResult"))
-          .collect {
-            case getResult: GetResult => getResult
+          .collect { case getResult: GetResult =>
+            getResult
           }
           .map { getResult =>
-            val originalNonMetadataFields = FieldsFiltering.NonMetadataDocumentFields(getResult.getDocumentFields.asScala.toMap)
-            val originalMetadataFields = FieldsFiltering.MetadataDocumentFields(getResult.getMetadataFields.asScala.toMap)
+            val originalNonMetadataFields =
+              FieldsFiltering.NonMetadataDocumentFields(getResult.getDocumentFields.asScala.toMap)
+            val originalMetadataFields =
+              FieldsFiltering.MetadataDocumentFields(getResult.getMetadataFields.asScala.toMap)
 
-            val filteredNonMetadataFields = FieldsFiltering.filterNonMetadataDocumentFields(originalNonMetadataFields, fieldsRestrictions)
+            val filteredNonMetadataFields =
+              FieldsFiltering.filterNonMetadataDocumentFields(originalNonMetadataFields, fieldsRestrictions)
             FieldsFiltering.NewFilteredDocumentFields(filteredNonMetadataFields, originalMetadataFields)
           }
           .getOrElse(throw new IllegalStateException("Could not access get result in get response."))
       }
+
     }
+
   }
 
   object MultiGetApi {
+
     implicit class MultiGetItemResponseOps(val item: MultiGetItemResponse) extends AnyVal {
       def asDocumentWithIndex: DocumentWithIndex = createDocumentWithIndex(item.getIndex, item.getId)
     }
+
   }
 
   private def createDocumentWithIndex(indexStr: String, docId: String) = {
@@ -116,4 +124,5 @@ object DocumentApiOps {
         throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")
       }
   }
+
 }

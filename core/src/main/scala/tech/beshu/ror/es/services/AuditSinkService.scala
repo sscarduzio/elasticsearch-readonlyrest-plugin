@@ -24,13 +24,18 @@ sealed trait AuditSinkService {
 }
 
 trait IndexBasedAuditSinkService extends AuditSinkService {
-  def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)
-            (implicit requestId: RequestId): Unit
+
+  def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+      implicit requestId: RequestId
+  ): Unit
+
 }
 
 trait DataStreamBasedAuditSinkService extends AuditSinkService {
-  def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)
-            (implicit requestId: RequestId): Unit
+
+  def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
+      implicit requestId: RequestId
+  ): Unit
 
   def dataStreamCreator: AuditDataStreamCreator
 }

@@ -25,47 +25,55 @@ import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, UserOrigin}
 import tech.beshu.ror.utils.NonEmptyListMap
 
 sealed trait UserMetadata
+
 object UserMetadata {
 
-  final case class WithoutGroups(loggedUser: LoggedUser,
-                                 userOrigin: Option[UserOrigin],
-                                 kibanaPolicy: Option[KibanaPolicy],
-                                 metadataOrigin: MetadataOrigin)
-    extends UserMetadata
+  final case class WithoutGroups(
+      loggedUser: LoggedUser,
+      userOrigin: Option[UserOrigin],
+      kibanaPolicy: Option[KibanaPolicy],
+      metadataOrigin: MetadataOrigin
+  ) extends UserMetadata
 
-  final case class WithGroups private(groupsMetadata: NonEmptyListMap[GroupId, GroupMetadata])
-    extends UserMetadata
+  final case class WithGroups private (groupsMetadata: NonEmptyListMap[GroupId, GroupMetadata]) extends UserMetadata
+
   object WithGroups {
+
     def apply(groupsMetadata: NonEmptyList[GroupMetadata]): WithGroups = WithGroups {
       NonEmptyListMap.from(groupsMetadata.map(elem => (elem.group.id, elem)))
     }
 
-    final case class GroupMetadata(group: Group,
-                                   loggedUser: LoggedUser,
-                                   userOrigin: Option[UserOrigin],
-                                   kibanaPolicy: Option[KibanaPolicy],
-                                   // todo: try to get rid of the metadata origin in the future from this place
-                                   metadataOrigin: MetadataOrigin)
-
+    final case class GroupMetadata(
+        group: Group,
+        loggedUser: LoggedUser,
+        userOrigin: Option[UserOrigin],
+        kibanaPolicy: Option[KibanaPolicy],
+        // todo: try to get rid of the metadata origin in the future from this place
+        metadataOrigin: MetadataOrigin
+    )
 
     extension (groupMetadata: GroupMetadata) {
+
       def isAllowed: Boolean = {
         groupMetadata.metadataOrigin.blockContext.block.policy == Policy.Allow
       }
+
     }
 
     extension (withGroups: WithGroups) {
+
       def excludeOtherThanAllowTypeGroups(): Option[WithGroups] = {
         NonEmptyList
           .fromList {
-            withGroups
-              .groupsMetadata.values
+            withGroups.groupsMetadata.values
               .filter(_.metadataOrigin.blockContext.block.policy == Policy.Allow)
               .toList
           }
           .map(WithGroups.apply)
       }
+
     }
+
   }
 
   final case class MetadataOrigin(blockContext: UserMetadataRequestBlockContext)

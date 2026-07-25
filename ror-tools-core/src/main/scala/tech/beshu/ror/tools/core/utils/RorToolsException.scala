@@ -25,13 +25,14 @@ sealed trait RorToolsException {
 object RorToolsException {
 
   final class EsPatchingNotRequired(esVersion: SemVer)
-    extends IllegalStateException(s"Elasticsearch ${esVersion.render} doesn't require patching")
+      extends IllegalStateException(s"Elasticsearch ${esVersion.render} doesn't require patching")
       with RorToolsException
 
   final case class EsPathException(message: String)
-    extends IllegalStateException(
-      s"$message. Consider using --es-path to specify custom Elasticsearch installation path. " +
-        s"See our docs for details: https://docs.readonlyrest.com/elasticsearch#installing-the-plugin"
-    )
+      extends IllegalStateException(
+        s"$message. Consider using --es-path to specify custom Elasticsearch installation path. " +
+          s"See our docs for details: https://docs.readonlyrest.com/elasticsearch#installing-the-plugin"
+      )
       with RorToolsException
+
 }

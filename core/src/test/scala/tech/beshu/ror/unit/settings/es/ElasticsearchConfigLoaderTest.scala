@@ -29,8 +29,8 @@ import tech.beshu.ror.settings.es.ElasticsearchConfigLoader
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.RefinedUtils.nes
-import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
+import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 
 class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
 
@@ -107,9 +107,11 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
       "use the property value when the YAML path is absent" in {
         val yaml = "node.name: my-node"
 
-        given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-          nes("readonlyrest.settings.index_name") -> ".ror-from-property"
-        ))
+        given PropertiesProvider = TestsPropertiesProvider.usingMap(
+          Map(
+            nes("readonlyrest.settings.index_name") -> ".ror-from-property"
+          )
+        )
         given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "index_name")
 
         loadWith[Option[String]](yaml) should be(Right(Some(".ror-from-property")))
@@ -122,9 +124,11 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
             |    index_name: .ror-from-yaml
             |""".stripMargin
 
-        given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-          nes("readonlyrest.settings.index_name") -> ".ror-from-property"
-        ))
+        given PropertiesProvider = TestsPropertiesProvider.usingMap(
+          Map(
+            nes("readonlyrest.settings.index_name") -> ".ror-from-property"
+          )
+        )
         given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "index_name")
 
         loadWith[Option[String]](yaml) should be(Right(Some(".ror-from-yaml")))
@@ -142,7 +146,9 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
 
         given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "index_name")
 
-        loadWith[Option[String]](yaml, envVars = Map(nes("ROR_INDEX_NAME") -> ".ror-env-index")) should be(Right(Some(".ror-env-index")))
+        loadWith[Option[String]](yaml, envVars = Map(nes("ROR_INDEX_NAME") -> ".ror-env-index")) should be(
+          Right(Some(".ror-env-index"))
+        )
       }
       "fail when the environment variable is not defined" in {
         val yaml =
@@ -154,9 +160,8 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
 
         given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "index_name")
 
-        inside(loadWith[Option[String]](yaml)) {
-          case Left(error: LoadingError.MalformedSettings) =>
-            error.message should include("UNDEFINED_VAR")
+        inside(loadWith[Option[String]](yaml)) { case Left(error: LoadingError.MalformedSettings) =>
+          error.message should include("UNDEFINED_VAR")
         }
       }
     }
@@ -169,8 +174,7 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
           .loadSettings[Option[String]]("test settings")
           .runSyncUnsafe()
 
-        inside(result) {
-          case Left(_: LoadingError.FileNotFound) =>
+        inside(result) { case Left(_: LoadingError.FileNotFound) =>
         }
       }
     }
@@ -181,26 +185,32 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
 
         given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "index_name")
 
-        inside(loadWith[Option[String]](yaml)) {
-          case Left(_: LoadingError.MalformedSettings) =>
+        inside(loadWith[Option[String]](yaml)) { case Left(_: LoadingError.MalformedSettings) =>
         }
       }
     }
   }
 
-  private def optionalAt(segments: String*)(using PropertiesProvider): YamlLeafOrPropertyOrEnvDecoder[Option[String]] =
+  private def optionalAt(segments: String*)(
+      using PropertiesProvider
+  ): YamlLeafOrPropertyOrEnvDecoder[Option[String]] =
     YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
       path = NonEmptyList.fromListUnsafe(segments.toList.map(NonEmptyString.unsafeFrom)),
       decoder = FromString.string
     )
 
-  private def requiredAt(segments: String*)(using PropertiesProvider): YamlLeafOrPropertyOrEnvDecoder[String] =
+  private def requiredAt(segments: String*)(
+      using PropertiesProvider
+  ): YamlLeafOrPropertyOrEnvDecoder[String] =
     YamlLeafOrPropertyOrEnvDecoder.createRequiredValueDecoder(
       path = NonEmptyList.fromListUnsafe(segments.toList.map(NonEmptyString.unsafeFrom)),
       decoder = FromString.string
     )
 
-  private def loadWith[A: YamlLeafOrPropertyOrEnvDecoder](content: String, envVars: Map[NonEmptyString, String] = Map.empty): Either[LoadingError, A] = {
+  private def loadWith[A: YamlLeafOrPropertyOrEnvDecoder](
+      content: String,
+      envVars: Map[NonEmptyString, String] = Map.empty
+  ): Either[LoadingError, A] = {
     given SystemContext = new SystemContext(envVarsProvider = TestsEnvVarsProvider.usingMap(envVars))
     File
       .temporaryFile()
@@ -208,4 +218,5 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
       .map(file => new ElasticsearchConfigLoader(file).loadSettings[A]("test settings").runSyncUnsafe())
       .get()
   }
+
 }

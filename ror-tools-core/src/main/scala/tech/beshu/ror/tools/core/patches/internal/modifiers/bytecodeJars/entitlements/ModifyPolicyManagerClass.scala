@@ -37,8 +37,7 @@ import java.io.InputStream
  * This ensures ReadonlyREST is not blocked by the entitlements system when PolicyManager is the
  * class responsible for enforcing file-read permissions.
  */
-private[patches] class ModifyPolicyManagerClass private(esVersion: SemVer)
-  extends BytecodeJarModifier {
+private[patches] class ModifyPolicyManagerClass private (esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -55,14 +54,15 @@ private[patches] class ModifyPolicyManagerClass private(esVersion: SemVer)
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "checkFileRead" =>
           esVersion match {
@@ -70,12 +70,26 @@ private[patches] class ModifyPolicyManagerClass private(esVersion: SemVer)
               super.visitMethod(access, name, descriptor, signature, exceptions)
             case v if v >= es900 =>
               val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
-              new CheckFileReadMethodShouldNotValidateFileAccessInCaseOfRorPlugin(access, name, descriptor, signature, exceptions, mv)
+              new CheckFileReadMethodShouldNotValidateFileAccessInCaseOfRorPlugin(
+                access,
+                name,
+                descriptor,
+                signature,
+                exceptions,
+                mv
+              )
             case v if v >= es8190 =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
             case v if v >= es8180 =>
               val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
-              new CheckFileReadMethodShouldNotValidateFileAccessInCaseOfRorPlugin(access, name, descriptor, signature, exceptions, mv)
+              new CheckFileReadMethodShouldNotValidateFileAccessInCaseOfRorPlugin(
+                access,
+                name,
+                descriptor,
+                signature,
+                exceptions,
+                mv
+              )
             case v =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }
@@ -83,15 +97,17 @@ private[patches] class ModifyPolicyManagerClass private(esVersion: SemVer)
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
-  private class CheckFileReadMethodShouldNotValidateFileAccessInCaseOfRorPlugin(access: Int,
-                                                                                name: String,
-                                                                                desc: String,
-                                                                                signature: String,
-                                                                                exceptions: Array[String],
-                                                                                underlying: MethodVisitor)
-    extends MethodNode(Opcodes.ASM9, access, name, desc, signature, exceptions) {
+  private class CheckFileReadMethodShouldNotValidateFileAccessInCaseOfRorPlugin(
+      access: Int,
+      name: String,
+      desc: String,
+      signature: String,
+      exceptions: Array[String],
+      underlying: MethodVisitor
+  ) extends MethodNode(Opcodes.ASM9, access, name, desc, signature, exceptions) {
 
     override def visitEnd(): Unit = {
       patchAllCanReadCalls()
@@ -106,8 +122,7 @@ private[patches] class ModifyPolicyManagerClass private(esVersion: SemVer)
         val nextInsn = insn.getNext
 
         insn match {
-          case m: MethodInsnNode
-            if m.name == "canRead" && m.desc == "(Ljava/nio/file/Path;)Z" =>
+          case m: MethodInsnNode if m.name == "canRead" && m.desc == "(Ljava/nio/file/Path;)Z" =>
 
             val loadPath = m.getPrevious
             val fileAccessCall = if (loadPath != null) loadPath.getPrevious else null
@@ -115,9 +130,9 @@ private[patches] class ModifyPolicyManagerClass private(esVersion: SemVer)
 
             (loadEnt, fileAccessCall, loadPath) match {
               case (ve: VarInsnNode, fa: MethodInsnNode, vp: VarInsnNode)
-                if ve.getOpcode == Opcodes.ALOAD &&
-                  vp.getOpcode == Opcodes.ALOAD &&
-                  fa.name == "fileAccess" =>
+                  if ve.getOpcode == Opcodes.ALOAD &&
+                    vp.getOpcode == Opcodes.ALOAD &&
+                    fa.name == "fileAccess" =>
 
                 val entIdx = ve.`var`
                 val pathIdx = vp.`var`
@@ -130,20 +145,24 @@ private[patches] class ModifyPolicyManagerClass private(esVersion: SemVer)
                 // "readonlyrest".equals(entitlements.componentName())
                 replacement.add(new LdcInsnNode("readonlyrest"))
                 replacement.add(new VarInsnNode(Opcodes.ALOAD, entIdx))
-                replacement.add(new MethodInsnNode(
-                  Opcodes.INVOKEVIRTUAL,
-                  fa.owner,
-                  "componentName",
-                  "()Ljava/lang/String;",
-                  false
-                ))
-                replacement.add(new MethodInsnNode(
-                  Opcodes.INVOKEVIRTUAL,
-                  "java/lang/String",
-                  "equals",
-                  "(Ljava/lang/Object;)Z",
-                  false
-                ))
+                replacement.add(
+                  new MethodInsnNode(
+                    Opcodes.INVOKEVIRTUAL,
+                    fa.owner,
+                    "componentName",
+                    "()Ljava/lang/String;",
+                    false
+                  )
+                )
+                replacement.add(
+                  new MethodInsnNode(
+                    Opcodes.INVOKEVIRTUAL,
+                    "java/lang/String",
+                    "equals",
+                    "(Ljava/lang/Object;)Z",
+                    false
+                  )
+                )
 
                 // if false -> else branch
                 replacement.add(new JumpInsnNode(Opcodes.IFEQ, lElse))
@@ -174,7 +193,9 @@ private[patches] class ModifyPolicyManagerClass private(esVersion: SemVer)
         insn = nextInsn
       }
     }
+
   }
+
 }
 
 object ModifyPolicyManagerClass {

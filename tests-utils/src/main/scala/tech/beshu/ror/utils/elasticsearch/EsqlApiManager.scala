@@ -17,14 +17,13 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
+import org.apache.http.client.methods.HttpPost
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
-import org.apache.http.client.methods.HttpPost
 import ujson.Arr
 
-class EsqlApiManager(restClient: RestClient, esVersion: String)
-  extends BaseManager(restClient, esVersion, true) {
+class EsqlApiManager(restClient: RestClient, esVersion: String) extends BaseManager(restClient, esVersion, true) {
 
   def execute(selectQuery: String): EsqlResult = {
     call(createSqlQueryRequest(selectQuery), new EsqlResult(_))
@@ -39,6 +38,7 @@ class EsqlApiManager(restClient: RestClient, esVersion: String)
   }
 
   class EsqlResult(response: HttpResponse) extends JsonResponse(response) {
+
     lazy val queryResult: Map[String, Vector[JSON]] = {
       val columns = responseJson("columns").arr.map(_.obj("name").str).toVector
       val rows = responseJson("values").arr.toVector.map(_.arr.toVector).transpose
@@ -59,4 +59,5 @@ class EsqlApiManager(restClient: RestClient, esVersion: String)
 
     private def columnIdxBy(name: String) = columnNames.indexOf(name)
   }
+
 }

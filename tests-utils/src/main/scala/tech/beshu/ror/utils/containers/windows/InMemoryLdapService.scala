@@ -20,6 +20,8 @@ import com.typesafe.scalalogging.LazyLogging
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
 import com.unboundid.ldap.sdk.LDAPConnection
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
+import javax.net.ssl.{KeyManager, KeyManagerFactory}
+import javax.security.auth.x500.X500Principal
 import org.testcontainers.lifecycle.Startable
 import org.testcontainers.shaded.org.bouncycastle.cert.*
 import org.testcontainers.shaded.org.bouncycastle.cert.jcajce.{JcaX509CertificateConverter, JcaX509v3CertificateBuilder}
@@ -32,13 +34,12 @@ import java.math.BigInteger
 import java.security.cert.X509Certificate
 import java.security.{KeyPairGenerator, KeyStore, Security}
 import java.util.Date
-import javax.net.ssl.{KeyManager, KeyManagerFactory}
-import javax.security.auth.x500.X500Principal
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Using
 
 private[windows] class InMemoryLdapService(name: String, ldapInitScript: InitScriptSource)
-  extends Startable with LazyLogging {
+    extends Startable
+    with LazyLogging {
 
   private val config: InMemoryDirectoryServerConfig = {
     val c = new InMemoryDirectoryServerConfig(defaults.ldap.domainDn)
@@ -114,11 +115,13 @@ private[windows] class InMemoryLdapService(name: String, ldapInitScript: InitScr
       kmf.init(keyStore, "pass".toCharArray)
       kmf.getKeyManagers.head
     }
+
   }
+
 }
 
-private class NonStoppableInMemoryLdapService private(name: String, ldapInitScript: InitScriptSource)
-  extends InMemoryLdapService(name, ldapInitScript) {
+private class NonStoppableInMemoryLdapService private (name: String, ldapInitScript: InitScriptSource)
+    extends InMemoryLdapService(name, ldapInitScript) {
 
   override def start(): Unit = ()
 
@@ -128,9 +131,11 @@ private class NonStoppableInMemoryLdapService private(name: String, ldapInitScri
 }
 
 object NonStoppableInMemoryLdapService {
+
   def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
     val ldap = new NonStoppableInMemoryLdapService(name, ldapInitScript)
     ldap.privateStart()
     new WindowsPseudoLdapContainer(ldap)
   }
+
 }

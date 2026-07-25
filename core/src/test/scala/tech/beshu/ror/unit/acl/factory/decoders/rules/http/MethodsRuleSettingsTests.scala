@@ -19,7 +19,10 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.http
 import cats.data.NonEmptySet
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
@@ -32,16 +35,15 @@ class MethodsRuleSettingsTests extends BaseRuleSettingsDecoderTest[MethodsRule] 
     "be able to be loaded from settings" when {
       "one http method is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    methods: "GET"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    methods: "GET"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.methods should be(NonEmptySet.one(Method.GET))
           }
@@ -49,18 +51,18 @@ class MethodsRuleSettingsTests extends BaseRuleSettingsDecoderTest[MethodsRule] 
       }
       "several http methods are defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    methods: [GET, POST, PUT, DELETE, HEAD, OPTIONS]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    methods: [GET, POST, PUT, DELETE, HEAD, OPTIONS]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
-            val headers = NonEmptySet.of(Method.GET, Method.POST, Method.PUT, Method.DELETE, Method.HEAD, Method.OPTIONS)
+            val headers =
+              NonEmptySet.of(Method.GET, Method.POST, Method.PUT, Method.DELETE, Method.HEAD, Method.OPTIONS)
             rule.settings.methods should be(headers)
           }
         )
@@ -69,43 +71,46 @@ class MethodsRuleSettingsTests extends BaseRuleSettingsDecoderTest[MethodsRule] 
     "not be able to be loaded from settings" when {
       "no http method is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    methods:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    methods:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
-              """methods: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """methods: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
       "unknown http method is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    methods: NEW
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    methods: NEW
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(Message("Unknown/unsupported http method: NEW")))
+            errors.head should be(RulesLevelCreationError(Message("Unknown/unsupported http method: NEW")))
           }
         )
       }
     }
   }
+
 }

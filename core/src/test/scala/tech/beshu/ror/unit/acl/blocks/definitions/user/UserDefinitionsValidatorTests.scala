@@ -89,9 +89,11 @@ class UserDefinitionsValidatorTests extends AnyWordSpec with Matchers {
 
         val result = validator.validate(definitions)
 
-        result shouldBe Left(NonEmptyList.of(
-          ValidationError.DuplicatedUsernameForLocalUser(userId("user2"))
-        ))
+        result shouldBe Left(
+          NonEmptyList.of(
+            ValidationError.DuplicatedUsernameForLocalUser(userId("user2"))
+          )
+        )
       }
     }
 
@@ -109,10 +111,12 @@ class UserDefinitionsValidatorTests extends AnyWordSpec with Matchers {
 
         val result = validator.validate(definitions)
 
-        result shouldBe Left(NonEmptyList.of(
-          ValidationError.DuplicatedUsernameForLocalUser(userId("user2")),
-          ValidationError.DuplicatedUsernameForLocalUser(userId("user3"))
-        ))
+        result shouldBe Left(
+          NonEmptyList.of(
+            ValidationError.DuplicatedUsernameForLocalUser(userId("user2")),
+            ValidationError.DuplicatedUsernameForLocalUser(userId("user3"))
+          )
+        )
       }
     }
   }
@@ -133,10 +137,12 @@ class UserDefinitionsValidatorTests extends AnyWordSpec with Matchers {
       userIdPatterns(username, usernames: _*),
       WithoutGroupsMapping(
         new AuthKeyRule(
-          BasicAuthenticationRule.Settings(Credentials(
-            User.Id(NonEmptyString.unsafeFrom("example-user")),
-            PlainTextSecret(NonEmptyString.unsafeFrom("example-password"))
-          )),
+          BasicAuthenticationRule.Settings(
+            Credentials(
+              User.Id(NonEmptyString.unsafeFrom("example-user")),
+              PlainTextSecret(NonEmptyString.unsafeFrom("example-password"))
+            )
+          ),
           CaseSensitivity.Enabled,
           Impersonation.Disabled,
         ),
@@ -144,4 +150,5 @@ class UserDefinitionsValidatorTests extends AnyWordSpec with Matchers {
       )
     )
   }
+
 }

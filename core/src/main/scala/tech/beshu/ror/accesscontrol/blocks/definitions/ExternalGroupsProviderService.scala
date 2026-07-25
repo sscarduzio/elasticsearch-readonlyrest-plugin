@@ -21,7 +21,6 @@ import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Url
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalGroupsProviderService.Name
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -30,6 +29,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Ite
 import tech.beshu.ror.accesscontrol.utils.AsyncCacheableActionWithTimeout
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -39,29 +39,36 @@ import scala.util.{Failure, Success, Try}
 trait ExternalGroupsProviderService extends Item {
   override type Id = Name
 
-  def groupsFor(userId: User.Id)
-               (implicit requestId: RequestId): Task[UniqueList[Group]]
+  def groupsFor(userId: User.Id)(
+      implicit requestId: RequestId
+  ): Task[UniqueList[Group]]
+
   def serviceTimeout: PositiveFiniteDuration
 
   override val idShow: Show[Name] = Show.show(_.value.value)
 }
+
 object ExternalGroupsProviderService {
 
   final case class Name(value: NonEmptyString)
+
   object Name {
     implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
   }
+
 }
 
-final class HttpExternalGroupsProviderService(override val id: ExternalGroupsProviderService#Id,
-                                              override val serviceTimeout: PositiveFiniteDuration,
-                                              val config: HttpExternalGroupsProviderService.Config,
-                                              httpClient: HttpClient)
-  extends ExternalGroupsProviderService
+final class HttpExternalGroupsProviderService(
+    override val id: ExternalGroupsProviderService#Id,
+    override val serviceTimeout: PositiveFiniteDuration,
+    val config: HttpExternalGroupsProviderService.Config,
+    httpClient: HttpClient
+) extends ExternalGroupsProviderService
     with RequestIdAwareLogging {
 
-  override def groupsFor(userId: User.Id)
-                        (implicit requestId: RequestId): Task[UniqueList[Group]] = {
+  override def groupsFor(userId: User.Id)(
+      implicit requestId: RequestId
+  ): Task[UniqueList[Group]] = {
     httpClient
       .send(createRequest(userId))
       .map(response => groupsFromResponseBody(response.body))
@@ -70,7 +77,7 @@ final class HttpExternalGroupsProviderService(override val id: ExternalGroupsPro
   private def createRequest(userId: User.Id) = {
     val uriWithParams = config.url.addParams(queryParams(userId))
     val method = config.method match {
-      case HttpExternalGroupsProviderService.Config.SupportedHttpMethod.Get => HttpClient.Method.Get
+      case HttpExternalGroupsProviderService.Config.SupportedHttpMethod.Get  => HttpClient.Method.Get
       case HttpExternalGroupsProviderService.Config.SupportedHttpMethod.Post => HttpClient.Method.Post
     }
     HttpClient.Request(
@@ -83,7 +90,8 @@ final class HttpExternalGroupsProviderService(override val id: ExternalGroupsPro
   private def queryParams(userId: User.Id): Map[String, String] = {
     config.defaultQueryParams.map(p => (autoUnwrap(p.name), autoUnwrap(p.value))).toMap ++
       (config.authTokenSendMethod match {
-        case HttpExternalGroupsProviderService.Config.AuthTokenSendMethod.UsingQueryParam => Map(config.tokenName.value.value -> userId.value.value)
+        case HttpExternalGroupsProviderService.Config.AuthTokenSendMethod.UsingQueryParam =>
+          Map(config.tokenName.value.value -> userId.value.value)
         case HttpExternalGroupsProviderService.Config.AuthTokenSendMethod.UsingHeader => Map.empty[String, String]
       })
   }
@@ -91,13 +99,15 @@ final class HttpExternalGroupsProviderService(override val id: ExternalGroupsPro
   private def headersMap(userId: User.Id): Map[String, String] = {
     config.defaultHeaders.map(h => (h.name.value.value, h.value.value)).toMap ++
       (config.authTokenSendMethod match {
-        case HttpExternalGroupsProviderService.Config.AuthTokenSendMethod.UsingHeader => Map(config.tokenName.value.value -> userId.value.value)
+        case HttpExternalGroupsProviderService.Config.AuthTokenSendMethod.UsingHeader =>
+          Map(config.tokenName.value.value -> userId.value.value)
         case HttpExternalGroupsProviderService.Config.AuthTokenSendMethod.UsingQueryParam => Map.empty
       })
   }
 
-  private def groupsFromResponseBody(body: String)
-                                    (implicit requestId: RequestId): UniqueList[Group] = {
+  private def groupsFromResponseBody(body: String)(
+      implicit requestId: RequestId
+  ): UniqueList[Group] = {
     implicit val show: Show[Name] = idShow
     val groupsFromBody = groupsFrom(body)
     groupsFromBody match {
@@ -118,7 +128,8 @@ final class HttpExternalGroupsProviderService(override val id: ExternalGroupsPro
   }
 
   private def groupIdsFrom(body: String) = {
-    config.groupsConfig.idsConfig.jsonPath.read[java.util.List[String]](body)
+    config.groupsConfig.idsConfig.jsonPath
+      .read[java.util.List[String]](body)
       .map {
         _.asScala.toList
       }
@@ -132,10 +143,12 @@ final class HttpExternalGroupsProviderService(override val id: ExternalGroupsPro
             case rawGroupNames if rawGroupNames.size == rawGroupIds.size =>
               Success(formGroups(groupIdsWithNames = rawGroupIds.zip(rawGroupNames)))
             case rawGroupNames =>
-              Failure(new IllegalArgumentException(
-                s"Group names array extracted from the response at json path ${namesConfig.jsonPath.rawPath} has different size [size=${rawGroupNames.size}] than " +
-                  s"the group IDs array extracted from the response at json path ${config.groupsConfig.idsConfig.jsonPath.rawPath} [size=${rawGroupIds.size}]"
-              ))
+              Failure(
+                new IllegalArgumentException(
+                  s"Group names array extracted from the response at json path ${namesConfig.jsonPath.rawPath} has different size [size=${rawGroupNames.size}] than " +
+                    s"the group IDs array extracted from the response at json path ${config.groupsConfig.idsConfig.jsonPath.rawPath} [size=${rawGroupIds.size}]"
+                )
+              )
           }
       case None =>
         Success(
@@ -146,8 +159,12 @@ final class HttpExternalGroupsProviderService(override val id: ExternalGroupsPro
     }
   }
 
-  private def groupNamesFrom(body: String, namesConfig: HttpExternalGroupsProviderService.Config.GroupsConfig.GroupNamesConfig): Try[List[String]] = {
-    namesConfig.jsonPath.read[java.util.List[String]](body)
+  private def groupNamesFrom(
+      body: String,
+      namesConfig: HttpExternalGroupsProviderService.Config.GroupsConfig.GroupNamesConfig
+  ): Try[List[String]] = {
+    namesConfig.jsonPath
+      .read[java.util.List[String]](body)
       .map {
         _.asScala.toList
       }
@@ -167,12 +184,14 @@ final class HttpExternalGroupsProviderService(override val id: ExternalGroupsPro
       .unapply(value)
       .map(GroupName.apply)
       .getOrElse(fallback)
+
 }
 
 object HttpExternalGroupsProviderService {
 
   object Config {
     sealed trait SupportedHttpMethod
+
     object SupportedHttpMethod {
       case object Get extends SupportedHttpMethod
       case object Post extends SupportedHttpMethod
@@ -180,7 +199,11 @@ object HttpExternalGroupsProviderService {
 
     final case class AuthTokenName(value: NonEmptyString)
 
-    final case class GroupsConfig(idsConfig: GroupsConfig.GroupIdsConfig, namesConfig: Option[GroupsConfig.GroupNamesConfig])
+    final case class GroupsConfig(
+        idsConfig: GroupsConfig.GroupIdsConfig,
+        namesConfig: Option[GroupsConfig.GroupNamesConfig]
+    )
+
     object GroupsConfig {
       final case class GroupIdsConfig(jsonPath: JsonPath)
       final case class GroupNamesConfig(jsonPath: JsonPath)
@@ -189,34 +212,42 @@ object HttpExternalGroupsProviderService {
     final case class QueryParam(name: NonEmptyString, value: NonEmptyString)
 
     sealed trait AuthTokenSendMethod
+
     object AuthTokenSendMethod {
       case object UsingHeader extends AuthTokenSendMethod
       case object UsingQueryParam extends AuthTokenSendMethod
     }
+
   }
 
-  final case class Config(url: Url,
-                          method: Config.SupportedHttpMethod,
-                          tokenName: Config.AuthTokenName,
-                          groupsConfig: Config.GroupsConfig,
-                          authTokenSendMethod: Config.AuthTokenSendMethod,
-                          defaultHeaders: Set[Header],
-                          defaultQueryParams: Set[Config.QueryParam])
+  final case class Config(
+      url: Url,
+      method: Config.SupportedHttpMethod,
+      tokenName: Config.AuthTokenName,
+      groupsConfig: Config.GroupsConfig,
+      authTokenSendMethod: Config.AuthTokenSendMethod,
+      defaultHeaders: Set[Header],
+      defaultQueryParams: Set[Config.QueryParam]
+  )
 
   final case class InvalidResponse(message: String) extends Exception(message)
 }
 
-final class CacheableExternalGroupsProviderServiceDecorator(val underlying: ExternalGroupsProviderService,
-                                                            val ttl: PositiveFiniteDuration)
-  extends ExternalGroupsProviderService {
+final class CacheableExternalGroupsProviderServiceDecorator(
+    val underlying: ExternalGroupsProviderService,
+    val ttl: PositiveFiniteDuration
+) extends ExternalGroupsProviderService {
 
-  private val cacheableGrantsFor = new AsyncCacheableActionWithTimeout[User.Id, UniqueList[Group]](ttl,
-    (userId, requestId) => underlying.groupsFor(userId)(requestId))
+  private val cacheableGrantsFor = new AsyncCacheableActionWithTimeout[User.Id, UniqueList[Group]](
+    ttl,
+    (userId, requestId) => underlying.groupsFor(userId)(requestId)
+  )
 
   override val id: ExternalGroupsProviderService#Id = underlying.id
 
-  override def groupsFor(userId: User.Id)
-                        (implicit requestId: RequestId): Task[UniqueList[Group]] =
+  override def groupsFor(userId: User.Id)(
+      implicit requestId: RequestId
+  ): Task[UniqueList[Group]] =
     cacheableGrantsFor.call(userId, serviceTimeout)
 
   override def serviceTimeout: PositiveFiniteDuration =

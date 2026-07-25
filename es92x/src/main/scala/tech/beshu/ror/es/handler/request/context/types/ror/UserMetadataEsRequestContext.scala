@@ -28,10 +28,11 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.syntax.*
 
-class UserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
-                                   esContext: EsContext,
-                                   override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[UserMetadataRequestBlockContext](esContext)
+class UserMetadataEsRequestContext(
+    actionRequest: RRUserMetadataRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[UserMetadataRequestBlockContext](esContext)
     with UserMetadataRequestContext
     with EsRequest[UserMetadataRequestBlockContext] {
 

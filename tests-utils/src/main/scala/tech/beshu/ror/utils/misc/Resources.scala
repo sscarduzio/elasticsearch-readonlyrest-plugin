@@ -21,6 +21,7 @@ import better.files.File
 import java.nio.file.Path
 
 object Resources {
+
   def getResourcePath(resource: String): Path = {
     File(getClass.getResource(resource).toURI).path
   }
@@ -28,4 +29,5 @@ object Resources {
   def getResourceContent(resource: String): String = {
     File(getResourcePath(resource)).contentAsString
   }
+
 }

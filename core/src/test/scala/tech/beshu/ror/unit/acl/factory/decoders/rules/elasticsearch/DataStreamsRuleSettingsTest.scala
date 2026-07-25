@@ -20,9 +20,15 @@ import cats.data.NonEmptySet
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -34,16 +40,15 @@ class DataStreamsRuleSettingsTest extends BaseRuleSettingsDecoderTest[DataStream
     "be able to be loaded from settings" when {
       "one data stream is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    data_streams: data_stream1
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    data_streams: data_stream1
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val indices: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]] =
               NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("data_stream1").get.nel))
@@ -53,17 +58,16 @@ class DataStreamsRuleSettingsTest extends BaseRuleSettingsDecoderTest[DataStream
       }
       "data stream is defined with variable" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    data_streams: "data_stream_@{user}"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key: user:pass
+                   |    data_streams: "data_stream_@{user}"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.allowedDataStreams.length should be(1)
             rule.settings.allowedDataStreams.head shouldBe a[ToBeResolved[_]]
@@ -72,16 +76,15 @@ class DataStreamsRuleSettingsTest extends BaseRuleSettingsDecoderTest[DataStream
       }
       "two data streams are defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    data_streams: [data_stream1, data_stream2]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    data_streams: [data_stream1, data_stream2]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val indices: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]] = NonEmptySet.of(
               AlreadyResolved(DataStreamName.fromString("data_stream1").get.nel),
@@ -93,21 +96,22 @@ class DataStreamsRuleSettingsTest extends BaseRuleSettingsDecoderTest[DataStream
       }
       "two data streams are defined, second one with variable" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    data_streams: [data_stream1, "data_stream_@{user}"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key: user:pass
+                   |    data_streams: [data_stream1, "data_stream_@{user}"]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.allowedDataStreams.length == 2
 
-            rule.settings.allowedDataStreams.head should be(AlreadyResolved(DataStreamName.fromString("data_stream1").get.nel))
+            rule.settings.allowedDataStreams.head should be(
+              AlreadyResolved(DataStreamName.fromString("data_stream1").get.nel)
+            )
             rule.settings.allowedDataStreams.tail.head shouldBe a[ToBeResolved[_]]
           }
         )
@@ -116,84 +120,92 @@ class DataStreamsRuleSettingsTest extends BaseRuleSettingsDecoderTest[DataStream
     "not be able to be loaded from settings" when {
       "no data stream is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    data_streams:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    data_streams:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """data_streams: null
-                |""".stripMargin)))
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString("""data_streams: null
+                                                                                      |""".stripMargin)))
           }
         )
       }
       "data stream name contains upper case characters" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    data_streams: Data_Stream1
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    data_streams: Data_Stream1
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message(
-              "Data stream name cannot contain the upper case characters"
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                Message(
+                  "Data stream name cannot contain the upper case characters"
+                )
+              )
+            )
           }
         )
       }
       "there is '_all' data stream defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    data_streams: [data_stream1, _all]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    data_streams: [data_stream1, _all]
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message(
-              "Setting up a rule (data_streams) that matches all the values is redundant - data stream *"
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                Message(
+                  "Setting up a rule (data_streams) that matches all the values is redundant - data stream *"
+                )
+              )
+            )
           }
         )
       }
       "there is '*' data stream defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    data_streams: ["data_stream1", "*", "data_stream2"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    data_streams: ["data_stream1", "*", "data_stream2"]
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message(
-              "Setting up a rule (data_streams) that matches all the values is redundant - data stream *"
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                Message(
+                  "Setting up a rule (data_streams) that matches all the values is redundant - data stream *"
+                )
+              )
+            )
           }
         )
       }
     }
   }
+
 }

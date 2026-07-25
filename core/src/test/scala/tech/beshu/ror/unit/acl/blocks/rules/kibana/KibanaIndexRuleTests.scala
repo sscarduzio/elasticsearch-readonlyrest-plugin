@@ -31,35 +31,34 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.blocks.rules.utils.KibanaIndexNameRuntimeResolvableVariable
 import tech.beshu.ror.utils.TestsUtils.*
 
-class KibanaIndexRuleTests
-  extends AnyWordSpec with Inside with BlockContextAssertion {
+class KibanaIndexRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
   "A KibanaIndexRule" should {
     "always match" should {
       "set kibana index if can be resolved" in {
         val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index")))
         val requestContext = MockRequestContext.indices
-        val blockContext = UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+        val blockContext =
+          UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        inside(result) {
-          case Permitted(blockContext: UserMetadataRequestBlockContext) =>
-            assertBlockContext(blockContext)(
-              kibanaPolicy = Some(KibanaPolicy.default.copy(index = Some(kibanaIndexName("kibana_index"))))
-            )
+        inside(result) { case Permitted(blockContext: UserMetadataRequestBlockContext) =>
+          assertBlockContext(blockContext)(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(index = kibanaIndexName("kibana_index")))
+          )
         }
       }
       "not set kibana index if cannot be resolved" in {
         val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index_of_@{user}")))
         val requestContext = MockRequestContext.indices
-        val blockContext = UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+        val blockContext =
+          UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        inside(result) {
-          case Permitted(blockContext: UserMetadataRequestBlockContext) =>
-            assertBlockContext(blockContext)()
+        inside(result) { case Permitted(blockContext: UserMetadataRequestBlockContext) =>
+          assertBlockContext(blockContext)()
         }
       }
     }

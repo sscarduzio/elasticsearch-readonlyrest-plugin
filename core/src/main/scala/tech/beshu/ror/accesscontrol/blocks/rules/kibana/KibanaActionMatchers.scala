@@ -110,16 +110,21 @@ object KibanaActionMatchers {
       ).map(Action.apply)
   }
 
-  val nonStrictActions: PatternsMatcher[Action] = PatternsMatcher.create(Set(
-    Action("indices:data/write/*"), Action("indices:admin/template/put")
-  ))
+  val nonStrictActions: PatternsMatcher[Action] = PatternsMatcher.create(
+    Set(
+      Action("indices:data/write/*"),
+      Action("indices:admin/template/put")
+    )
+  )
 
   val indicesWriteAction: PatternsMatcher[Action] = PatternsMatcher.create(Set(Action("indices:data/write/*")))
 
   val kibanaSampleDataIndexMatcher: PatternsMatcher[ClusterIndexName] = PatternsMatcher.create(
     Set(Local(IndexName.Pattern.unsafeFromNes(nes("kibana_sample_data_*"))))
   )
+
   val kibanaSampleDataStreamMatcher: PatternsMatcher[DataStreamName] = PatternsMatcher.create(
     Set(DataStreamName.Pattern.fromNes(nes("kibana_sample_data_*")))
   )
+
 }

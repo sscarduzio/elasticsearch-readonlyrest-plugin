@@ -52,10 +52,12 @@ object SearchHitOps {
         }
       searchHit
     }
+
   }
 
   private def extractDocumentFields(searchHit: SearchHit) = {
     Try(on(searchHit).get[util.Map[String, DocumentField]]("documentFields"))
       .getOrElse(throw new IllegalStateException("Could not access document fields in search hit."))
   }
+
 }

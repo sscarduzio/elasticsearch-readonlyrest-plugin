@@ -24,12 +24,13 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
 
-class LocalIndicesManager(requestContext: RequestContext,
-                          override val allowedIndicesMatcher: PatternsMatcher[LocalIndexName])
-  extends IndicesManager[LocalIndexName] {
+class LocalIndicesManager(
+    requestContext: RequestContext,
+    override val allowedIndicesMatcher: PatternsMatcher[LocalIndexName]
+) extends IndicesManager[LocalIndexName] {
 
   private implicit val implicitRequestId: RequestId = requestContext.id.toRequestId
-  
+
   private val clusterService = requestContext.esServices.clusterService
   private val indexAttributesFromRequest = requestContext.indexAttributes
 
@@ -57,30 +58,49 @@ class LocalIndicesManager(requestContext: RequestContext,
   private lazy val cachedBackingIndicesPerDataStreamMap =
     dataStreamsSnapshot.backingIndicesPerDataStreamMapFor(indexAttributesFromRequest)
 
-  override def allIndicesAndAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+  override def allIndicesAndAliases(
+      implicit requestId: RequestId
+  ): Task[Set[LocalIndexName]] =
     Task.delay(cachedAllIndicesAndAliases)
 
-  override def allIndices(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+  override def allIndices(
+      implicit requestId: RequestId
+  ): Task[Set[LocalIndexName]] =
     Task.delay(cachedAllIndices)
 
-  override def allAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+  override def allAliases(
+      implicit requestId: RequestId
+  ): Task[Set[LocalIndexName]] =
     Task.delay(cachedAllAliases)
 
-  override def indicesPerAliasMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
+  override def indicesPerAliasMap(
+      implicit requestId: RequestId
+  ): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
     Task.delay(cachedIndicesPerAliasMap)
 
-  override def allDataStreamsAndDataStreamAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+  override def allDataStreamsAndDataStreamAliases(
+      implicit requestId: RequestId
+  ): Task[Set[LocalIndexName]] =
     Task.delay(cachedAllDataStreamsAndAliases)
 
-  override def allDataStreams(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+  override def allDataStreams(
+      implicit requestId: RequestId
+  ): Task[Set[LocalIndexName]] =
     Task.delay(cachedAllDataStreams)
 
-  override def allDataStreamAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+  override def allDataStreamAliases(
+      implicit requestId: RequestId
+  ): Task[Set[LocalIndexName]] =
     Task.delay(cachedAllDataStreamAliases)
 
-  override def dataStreamsPerAliasMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
+  override def dataStreamsPerAliasMap(
+      implicit requestId: RequestId
+  ): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
     Task.delay(cachedDataStreamsPerAliasMap)
 
-  override def backingIndicesPerDataStreamMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
+  override def backingIndicesPerDataStreamMap(
+      implicit requestId: RequestId
+  ): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
     Task.delay(cachedBackingIndicesPerDataStreamMap)
+
 }

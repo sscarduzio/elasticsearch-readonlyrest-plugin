@@ -31,37 +31,40 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.blocks.rules.utils.KibanaIndexNameRuntimeResolvableVariable
 import tech.beshu.ror.utils.TestsUtils.*
 
-class KibanaTemplateIndexRuleTests
-  extends AnyWordSpec with Inside with BlockContextAssertion {
+class KibanaTemplateIndexRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
   import org.scalatest.matchers.should.Matchers.*
 
   "A KibanaTemplateIndexRule" should {
     "always match" should {
       "set kibana template index if can be resolved" in {
-        val rule = new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index")))
+        val rule =
+          new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index")))
         val requestContext = MockRequestContext.indices
-        val blockContext = UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+        val blockContext =
+          UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        inside(result) {
-          case Permitted(blockContext: UserMetadataRequestBlockContext) =>
-            assertBlockContext(blockContext)(
-              kibanaPolicy = Some(KibanaPolicy.default.copy(templateIndex = Some(kibanaIndexName("kibana_template_index"))))
-            )
+        inside(result) { case Permitted(blockContext: UserMetadataRequestBlockContext) =>
+          assertBlockContext(blockContext)(
+            kibanaPolicy =
+              Some(KibanaPolicy.default.copy(templateIndex = Some(kibanaIndexName("kibana_template_index"))))
+          )
         }
       }
       "not set kibana index if cannot be resolved" in {
-        val rule = new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index_of_@{user}")))
+        val rule = new KibanaTemplateIndexRule(
+          KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index_of_@{user}"))
+        )
         val requestContext = MockRequestContext.indices
-        val blockContext = UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+        val blockContext =
+          UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        inside(result) {
-          case Permitted(blockContext: UserMetadataRequestBlockContext) =>
-            assertBlockContext(blockContext)()
+        inside(result) { case Permitted(blockContext: UserMetadataRequestBlockContext) =>
+          assertBlockContext(blockContext)()
         }
       }
     }

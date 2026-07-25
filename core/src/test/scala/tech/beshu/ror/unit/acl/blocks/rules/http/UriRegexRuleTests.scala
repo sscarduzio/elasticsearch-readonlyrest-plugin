@@ -24,15 +24,21 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{UriPath, User}
 import tech.beshu.ror.accesscontrol.orders.patternOrder
@@ -110,20 +116,26 @@ class UriRegexRuleTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(uriRegex: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]],
-                              uriPath: UriPath,
-                              loggedUser: Option[User.Id] = None) =
+  private def assertMatchRule(
+      uriRegex: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]],
+      uriPath: UriPath,
+      loggedUser: Option[User.Id] = None
+  ) =
     assertRule(uriRegex, uriPath, loggedUser, isMatched = true)
 
-  private def assertNotMatchRule(uriRegex: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]],
-                                 uriPath: UriPath,
-                                 loggedUser: Option[User.Id] = None) =
+  private def assertNotMatchRule(
+      uriRegex: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]],
+      uriPath: UriPath,
+      loggedUser: Option[User.Id] = None
+  ) =
     assertRule(uriRegex, uriPath, loggedUser, isMatched = false)
 
-  private def assertRule(uriRegex: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]],
-                         uriPath: UriPath,
-                         loggedUser: Option[User.Id],
-                         isMatched: Boolean) = {
+  private def assertRule(
+      uriRegex: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]],
+      uriPath: UriPath,
+      loggedUser: Option[User.Id],
+      isMatched: Boolean
+  ) = {
     val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
     val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(path = uriPath))
     val blockContext = UserMetadataRequestBlockContext(
@@ -131,7 +143,7 @@ class UriRegexRuleTests extends AnyWordSpec with MockFactory {
       requestContext = requestContext,
       blockMetadata = loggedUser match {
         case Some(userId) => BlockMetadata.empty.withLoggedUser(DirectlyLoggedUser(userId))
-        case None => BlockMetadata.empty
+        case None         => BlockMetadata.empty
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty
@@ -157,5 +169,8 @@ class UriRegexRuleTests extends AnyWordSpec with MockFactory {
   }
 
   private val variableCreator: RuntimeResolvableVariableCreator =
-    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
+    new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty)
+    )
+
 }

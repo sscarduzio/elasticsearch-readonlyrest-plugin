@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //TODO change test names. Current names are copies from old java integration tests
 class MSearchTEST2Suite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -95,9 +95,11 @@ class MSearchTEST2Suite
     response.totalHitsForResponse(1) shouldBe 1
     response.totalHitsForResponse(2) shouldBe 0
   }
+
 }
 
 object MSearchTEST2Suite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient, esVersion)
@@ -113,4 +115,5 @@ object MSearchTEST2Suite {
       .createDoc("perfmon_logstash-apacheaccess1", "documents", 2, ujson.read("""{"id": "asd123"}"""))
       .force()
   }
+
 }

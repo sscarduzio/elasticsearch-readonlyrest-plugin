@@ -25,10 +25,14 @@ class TestsPropertiesProvider(propertiesMap: Map[PropertiesProvider.PropName, St
   override def hasPropertyWithPrefix(prefix: String): Boolean = {
     propertiesMap.keys.exists(_.value.value.startsWith(prefix))
   }
+
 }
+
 object TestsPropertiesProvider {
   def default: TestsPropertiesProvider = new TestsPropertiesProvider(Map.empty)
+
   def usingMap(map: Map[NonEmptyString, String]) = new TestsPropertiesProvider(
     map.map { case (key, value) => (PropertiesProvider.PropName(key), value) }
   )
+
 }

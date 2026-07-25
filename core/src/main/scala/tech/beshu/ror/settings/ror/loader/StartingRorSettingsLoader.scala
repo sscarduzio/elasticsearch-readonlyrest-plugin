@@ -22,6 +22,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
@@ -29,12 +30,16 @@ import tech.beshu.ror.utils.ScalaOps.*
 trait StartingRorSettingsLoader {
   this: RequestIdAwareLogging =>
 
-  def load()
-          (implicit requestId: RequestId): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]]
+  def load()(
+      implicit requestId: RequestId
+  ): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]]
 
-  protected def loadSettingsFromSource[S: Show, E: Show](source: ReadOnlySettingsSource[S, E],
-                                                         settingsDescription: String)
-                                                        (implicit requestId: RequestId): EitherT[Task, LoadingError, S] = {
+  protected def loadSettingsFromSource[S: Show, E: Show](
+      source: ReadOnlySettingsSource[S, E],
+      settingsDescription: String
+  )(
+      implicit requestId: RequestId
+  ): EitherT[Task, SettingsLoadingError[E], S] = {
     for {
       _ <- EitherT.liftTask(logger.info(s"Loading ReadonlyREST $settingsDescription ..."))
       loadedSettings <- EitherT(source.load())
@@ -42,7 +47,6 @@ trait StartingRorSettingsLoader {
           error => logger.dInfo(s"Loading ReadonlyREST $settingsDescription failed: ${error.show}"),
           settings => logger.dDebug(s"Loaded ReadonlyREST $settingsDescription:\n${settings.show}")
         )
-        .leftMap(error => error.show)
     } yield loadedSettings
   }
 

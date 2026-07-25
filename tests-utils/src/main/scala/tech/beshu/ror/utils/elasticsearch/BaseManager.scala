@@ -35,25 +35,21 @@ import java.util.function.BiPredicate
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-abstract class BaseManager(client: RestClient,
-                           esVersion: String,
-                           esNativeApi: Boolean) {
+abstract class BaseManager(client: RestClient, esVersion: String, esNativeApi: Boolean) {
 
   protected def call[T <: SimpleResponse](request: HttpUriRequest, fromResponse: HttpResponse => T): T = {
     client
       .handle(
-        request = additionalHeaders.foldLeft(request) {
-          case (req, (name, value)) =>
-            req.addHeader(name, value)
-            req
+        request = additionalHeaders.foldLeft(request) { case (req, (name, value)) =>
+          req.addHeader(name, value)
+          req
         }
       )(
         fromResponse = fromResponse
       )
   }
 
-  protected[elasticsearch] def eventually[T <: SimpleResponse](action: => T)
-                                                              (until: T => Boolean): T = {
+  protected[elasticsearch] def eventually[T <: SimpleResponse](action: => T)(until: T => Boolean): T = {
     val policy: RetryPolicy[T] = requestRepeatPolicy[T](shouldRepeat = until andThen (!_))
     Failsafe
       .`with`[T, RetryPolicy[T]](policy)
@@ -74,8 +70,7 @@ abstract class BaseManager(client: RestClient,
 
   protected def additionalHeaders: Map[String, String] = Map.empty
 
-  class SimpleResponse private[elasticsearch](val response: HttpResponse,
-                                              request: Option[HttpRequest] = None) {
+  class SimpleResponse private[elasticsearch] (val response: HttpResponse, request: Option[HttpRequest] = None) {
     val headers: Set[SimpleHeader] = response.getAllHeaders.map(h => SimpleHeader(h.getName, h.getValue)).toSet
     val responseCode: Int = response.getStatusLine.getStatusCode
     val isSuccess: Boolean = responseCode / 100 == 2
@@ -87,16 +82,18 @@ abstract class BaseManager(client: RestClient,
     checkResponseAssertions()
 
     def force(): this.type = {
-      if (!isSuccess) throw new IllegalStateException(
-        s"Expected success but got HTTP $responseCode, body: $body"
-      )
+      if (!isSuccess)
+        throw new IllegalStateException(
+          s"Expected success but got HTTP $responseCode, body: $body"
+        )
       this
     }
 
     def successOrNotFound(): this.type = {
-      if (!(isSuccess || isNotFound)) throw new IllegalStateException(
-        s"Expected success or not found but got HTTP $responseCode, body: $body"
-      )
+      if (!(isSuccess || isNotFound))
+        throw new IllegalStateException(
+          s"Expected success or not found but got HTTP $responseCode, body: $body"
+        )
       this
     }
 
@@ -105,7 +102,7 @@ abstract class BaseManager(client: RestClient,
     private def checkResponseAssertions(): Unit = {
       OsUtils.currentOs match {
         case CurrentOs.Windows =>
-          // On Windows the header is (sometimes, not deterministic) not added to some requests in versions <7.14-8.0). 
+          // On Windows the header is (sometimes, not deterministic) not added to some requests in versions <7.14-8.0).
           // So the assertion is applied since ES 8.0
           if (!isForbidden && esNativeApi && Version.greaterOrEqualThan(esVersion, 8, 0, 0)) {
             assertContainsXElasticProductHeader(response)
@@ -125,27 +122,30 @@ abstract class BaseManager(client: RestClient,
           }
       }
     }
+
   }
 
   private def isExcludedRequest(request: HttpRequest) = {
     isPutSnapshotRequestWithWaitForCompletionFlag(request) ||
-      isRestoreSnapshotRequestWithWaitForCompletionFlag(request) ||
-      isReindexRequest(request)
+    isRestoreSnapshotRequestWithWaitForCompletionFlag(request) ||
+    isReindexRequest(request)
   }
 
   private def isPutSnapshotRequestWithWaitForCompletionFlag(request: HttpRequest): Boolean = {
     request.getRequestLine.getMethod.toUpperCase == "PUT" &&
-      request.getRequestLine.getUri.matches("^.*/_snapshot/.*/.*/?\\?(.*=.*&)*wait_for_completion=true(&.*=.*&)*$")
+    request.getRequestLine.getUri.matches("^.*/_snapshot/.*/.*/?\\?(.*=.*&)*wait_for_completion=true(&.*=.*&)*$")
   }
 
   private def isRestoreSnapshotRequestWithWaitForCompletionFlag(request: HttpRequest): Boolean = {
     request.getRequestLine.getMethod.toUpperCase == "POST" &&
-      request.getRequestLine.getUri.matches("^.*/_snapshot/.*/.*/_restore/?\\?(.*=.*&)*wait_for_completion=true(&.*=.*&)*$")
+    request.getRequestLine.getUri.matches(
+      "^.*/_snapshot/.*/.*/_restore/?\\?(.*=.*&)*wait_for_completion=true(&.*=.*&)*$"
+    )
   }
 
   private def isReindexRequest(request: HttpRequest): Boolean = {
     request.getRequestLine.getMethod.toUpperCase == "POST" &&
-      request.getRequestLine.getUri.matches("^.*/_reindex/?(\\?.*=.*)?$")
+    request.getRequestLine.getUri.matches("^.*/_reindex/?(\\?.*=.*)?$")
   }
 
   private def assertContainsXElasticProductHeader(response: HttpResponse): Unit = {
@@ -154,21 +154,21 @@ abstract class BaseManager(client: RestClient,
     }
   }
 
-  class JsonResponse(response: HttpResponse,
-                     request: Option[HttpRequest] = None)
-    extends SimpleResponse(response, request) {
+  class JsonResponse(response: HttpResponse, request: Option[HttpRequest] = None)
+      extends SimpleResponse(response, request) {
 
     lazy val responseJson: JSON = ujson.read(body)
   }
 
-  class YamlMapResponse(response: HttpResponse)
-    extends SimpleResponse(response) {
+  class YamlMapResponse(response: HttpResponse) extends SimpleResponse(response) {
 
     val responseYaml: Map[String, Any] = {
       val yamlParser = new Yaml(new SafeConstructor(new LoaderOptions()))
       yamlParser.load[util.LinkedHashMap[String, Object]](body).asScala.toMap
     }
+
   }
+
 }
 
 object BaseManager {

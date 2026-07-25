@@ -35,23 +35,27 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decoding
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
-                           impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                           mocksProvider: MocksProvider,
-                           globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[ProxyAuthRule] {
+class ProxyAuthRuleDecoder(
+    authProxiesDefinitions: Definitions[ProxyAuth],
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[ProxyAuthRule] {
 
   override protected def decoder: Decoder[RuleDefinition[ProxyAuthRule]] = {
     ProxyAuthRuleDecoder.simpleSettingsDecoder
       .or(ProxyAuthRuleDecoder.extendedSettingsDecoder(authProxiesDefinitions))
-      .map(settings => RuleDefinition.create(
-        new ProxyAuthRule(
-          settings,
-          globalSettings.userIdCaseSensitivity,
-          impersonatorsDef.toImpersonation(mocksProvider)
+      .map(settings =>
+        RuleDefinition.create(
+          new ProxyAuthRule(
+            settings,
+            globalSettings.userIdCaseSensitivity,
+            impersonatorsDef.toImpersonation(mocksProvider)
+          )
         )
-      ))
+      )
   }
+
 }
 
 private object ProxyAuthRuleDecoder {
@@ -71,11 +75,16 @@ private object ProxyAuthRuleDecoder {
         users <- uniqueNonEmptyListOfUserIdsDecoder.tryDecode(c.downField("users"))
         authProxyName <- c.downField("proxy_auth_config").as[Option[ProxyAuth.Name]]
         settings <- authProxyName match {
-          case None => Right(ProxyAuthRule.Settings(users, defaultUserHeaderName))
+          case None       => Right(ProxyAuthRule.Settings(users, defaultUserHeaderName))
           case Some(name) =>
             authProxiesDefinitions.items.find(_.id === name) match {
               case Some(proxy) => Right(ProxyAuthRule.Settings(users, proxy.userIdHeader))
-              case None => Left(decodingFailureFrom(RulesLevelCreationError(Message(s"Cannot find proxy auth with name: ${name.show}"))))
+              case None        =>
+                Left(
+                  decodingFailureFrom(
+                    RulesLevelCreationError(Message(s"Cannot find proxy auth with name: ${name.show}"))
+                  )
+                )
             }
         }
       } yield settings

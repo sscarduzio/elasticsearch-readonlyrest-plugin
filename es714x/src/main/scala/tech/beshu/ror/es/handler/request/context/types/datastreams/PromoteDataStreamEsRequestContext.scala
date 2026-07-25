@@ -27,11 +27,12 @@ import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBas
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 import tech.beshu.ror.syntax.*
 
-private[datastreams] class PromoteDataStreamEsRequestContext private(actionRequest: ActionRequest,
-                                                                     dataStreams: Set[DataStreamName],
-                                                                     esContext: EsContext,
-                                                                     override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+private[datastreams] class PromoteDataStreamEsRequestContext private (
+    actionRequest: ActionRequest,
+    dataStreams: Set[DataStreamName],
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
@@ -40,6 +41,7 @@ private[datastreams] class PromoteDataStreamEsRequestContext private(actionReque
   override protected def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     ModificationResult.Modified // data stream already processed by ACL
   }
+
 }
 
 object PromoteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
@@ -53,9 +55,12 @@ object PromoteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsCon
       getDataStreamsMethodName = "indices"
     ) match {
       case MatchResult.Matched(dataStreams) =>
-        Some(new PromoteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool))
+        Some(
+          new PromoteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool)
+        )
       case MatchResult.NotMatched() =>
         None
     }
   }
+
 }

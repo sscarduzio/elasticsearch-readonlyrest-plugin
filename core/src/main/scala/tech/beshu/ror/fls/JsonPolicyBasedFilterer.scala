@@ -27,33 +27,35 @@ class JsonPolicyBasedFilterer(policy: FieldsPolicy) {
 
   private def buildFilteredJson(json: JSON, collectedField: String): JSON = {
     json match {
-      case Obj(map) => Obj.from {
-        map
-          .flatMap { case (fieldName, fieldValue) =>
-            val newlyCollectedField = currentField(collectedField, fieldName)
-            if (policy.canKeep(newlyCollectedField)) {
-              Some(fieldName -> buildFilteredJson(fieldValue, newlyCollectedField))
-            } else {
-              None
+      case Obj(map) =>
+        Obj.from {
+          map
+            .flatMap { case (fieldName, fieldValue) =>
+              val newlyCollectedField = currentField(collectedField, fieldName)
+              if (policy.canKeep(newlyCollectedField)) {
+                Some(fieldName -> buildFilteredJson(fieldValue, newlyCollectedField))
+              } else {
+                None
+              }
             }
-          }
-      }
+        }
       case Arr(values) =>
         values.map { value =>
           buildFilteredJson(value, collectedField)
         }
-      case str@Str(_) => str
-      case num@Num(_) => num
-      case bool@Bool(_) => bool
-      case Null => Null
+      case str @ Str(_)   => str
+      case num @ Num(_)   => num
+      case bool @ Bool(_) => bool
+      case Null           => Null
     }
   }
 
   private def currentField(collectedField: String, currentFieldPart: String) = {
-    if(collectedField.isEmpty) currentFieldPart else s"$collectedField.$currentFieldPart"
+    if (collectedField.isEmpty) currentFieldPart else s"$collectedField.$currentFieldPart"
   }
 
 }
+
 object JsonPolicyBasedFilterer {
   type JSON = ujson.Value
 }

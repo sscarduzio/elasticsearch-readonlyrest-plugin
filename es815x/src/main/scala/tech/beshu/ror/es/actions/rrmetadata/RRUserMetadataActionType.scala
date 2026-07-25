@@ -28,5 +28,5 @@ object RRUserMetadataActionType {
 
   case object RRUserMetadataActionCannotBeTransported extends Exception
 
-  private [rrmetadata] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRUserMetadataActionCannotBeTransported
+  private[rrmetadata] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRUserMetadataActionCannotBeTransported
 }

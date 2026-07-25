@@ -22,16 +22,18 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.accesscontrol.orders
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 
-class UsersRuleDecoder(globalSettings: GlobalSettings,
-                       variableCreator: RuntimeResolvableVariableCreator)
-  extends RuleBaseDecoderWithoutAssociatedFields[UsersRule] {
+class UsersRuleDecoder(globalSettings: GlobalSettings, variableCreator: RuntimeResolvableVariableCreator)
+    extends RuleBaseDecoderWithoutAssociatedFields[UsersRule] {
 
   override protected def decoder: Decoder[RuleDefinition[UsersRule]] = {
     DecoderHelpers

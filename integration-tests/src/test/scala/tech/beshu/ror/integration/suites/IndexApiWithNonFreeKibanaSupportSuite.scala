@@ -20,9 +20,7 @@ import tech.beshu.ror.integration.suites.base.BaseIndexApiSuite
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.TestUjson.ujson
 
-class IndexApiWithNonFreeKibanaSupportSuite
-  extends BaseIndexApiSuite
-    with SingletonPluginTestSupport {
+class IndexApiWithNonFreeKibanaSupportSuite extends BaseIndexApiSuite with SingletonPluginTestSupport {
 
   override implicit val rorSettingsFileName: String = "/index_api/nonfree_readonlyrest.yml"
 
@@ -50,4 +48,5 @@ class IndexApiWithNonFreeKibanaSupportSuite
          |""".stripMargin
     )
   }
+
 }

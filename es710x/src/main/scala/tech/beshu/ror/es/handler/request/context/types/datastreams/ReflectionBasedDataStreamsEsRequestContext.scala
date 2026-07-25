@@ -20,7 +20,10 @@ import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.common.util.set.Sets
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
-import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.MatchResult.{Matched, NotMatched}
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.MatchResult.{
+  Matched,
+  NotMatched
+}
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ReflecUtils
@@ -40,16 +43,19 @@ object ReflectionBasedDataStreamsEsRequestContext {
 
   val supportedActionRequests: Set[ClassCanonicalName] = esContextCreators.map(_.actionRequestClass).toCovariantSet
 
-  private lazy val esContextCreators: UniqueNonEmptyList[ReflectionBasedDataStreamsEsContextCreator] = UniqueNonEmptyList.of(
-    CreateDataStreamEsRequestContext,
-    DataStreamsStatsEsRequestContext,
-    DeleteDataStreamEsRequestContext,
-    GetDataStreamEsRequestContext,
-  )
+  private lazy val esContextCreators: UniqueNonEmptyList[ReflectionBasedDataStreamsEsContextCreator] =
+    UniqueNonEmptyList.of(
+      CreateDataStreamEsRequestContext,
+      DataStreamsStatsEsRequestContext,
+      DeleteDataStreamEsRequestContext,
+      GetDataStreamEsRequestContext,
+    )
 
-  private[datastreams] def tryUpdateDataStreams[R <: ActionRequest](actionRequest: R,
-                                                                    dataStreamsFieldName: String,
-                                                                    dataStreams: Set[DataStreamName]): Boolean = {
+  private[datastreams] def tryUpdateDataStreams[R <: ActionRequest](
+      actionRequest: R,
+      dataStreamsFieldName: String,
+      dataStreams: Set[DataStreamName]
+  ): Boolean = {
     // Optimistic reflection attempt
     ReflecUtils.setIndices(
       actionRequest,
@@ -57,7 +63,6 @@ object ReflectionBasedDataStreamsEsRequestContext {
       dataStreams.map(_.stringify).toSet.asJava
     )
   }
-
 
   private[datastreams] sealed trait MatchResult[A]
 
@@ -75,8 +80,10 @@ object ReflectionBasedDataStreamsEsRequestContext {
 
     def unapply(arg: ReflectionBasedActionRequest): Option[BaseDataStreamsEsRequestContext[ActionRequest]]
 
-    protected def tryMatchActionRequestWithDataStreams(actionRequest: ActionRequest,
-                                                       getDataStreamsMethodName: String): MatchResult[DataStreamName] = {
+    protected def tryMatchActionRequestWithDataStreams(
+        actionRequest: ActionRequest,
+        getDataStreamsMethodName: String
+    ): MatchResult[DataStreamName] = {
       tryMatchActionRequest[DataStreamName](
         actionRequest = actionRequest,
         getPropsMethodName = getDataStreamsMethodName,
@@ -84,15 +91,18 @@ object ReflectionBasedDataStreamsEsRequestContext {
       )
     }
 
-    private def tryMatchActionRequest[A](actionRequest: ActionRequest,
-                                         getPropsMethodName: String,
-                                         toDomain: String => Option[A]): MatchResult[A] = {
+    private def tryMatchActionRequest[A](
+        actionRequest: ActionRequest,
+        getPropsMethodName: String,
+        toDomain: String => Option[A]
+    ): MatchResult[A] = {
       Option(actionRequest.getClass.getCanonicalName)
         .find(_ === actionRequestClass.value)
         .map { _ =>
           Matched.apply[A] {
             ReflecUtils
-              .extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest).asSafeSet
+              .extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest)
+              .asSafeSet
               .flatMap(toDomain)
           }
         }

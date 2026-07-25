@@ -25,8 +25,7 @@ import tech.beshu.ror.accesscontrol.factory.JsonStaticVariablesResolver.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.EnvVarsProvider
 
-class JsonStaticVariablesResolver(envProvider: EnvVarsProvider,
-                                  transformationCompiler: TransformationCompiler) {
+class JsonStaticVariablesResolver(envProvider: EnvVarsProvider, transformationCompiler: TransformationCompiler) {
 
   private val variableCreator = new StartupResolvableVariableCreator(transformationCompiler)
 
@@ -34,7 +33,7 @@ class JsonStaticVariablesResolver(envProvider: EnvVarsProvider,
     val errors = ResolvingErrors(Vector.empty)
     val jsonWithResolvedVars = mapJson(json, errors)
     errors.values.toList match {
-      case Nil => Right(jsonWithResolvedVars)
+      case Nil             => Right(jsonWithResolvedVars)
       case resolvingErrors => Left(NonEmptyList.fromListUnsafe(resolvingErrors))
     }
   }
@@ -76,7 +75,7 @@ class JsonStaticVariablesResolver(envProvider: EnvVarsProvider,
       case Right(newJsonValue) if isJsonPrimitive(newJsonValue) =>
         preserveNumericStringsAsStrings(newJsonValue)
       case Right(_) => Json.fromString(resolvedStr)
-      case Left(_) => Json.fromString(resolvedStr)
+      case Left(_)  => Json.fromString(resolvedStr)
     }
   }
 
@@ -85,7 +84,7 @@ class JsonStaticVariablesResolver(envProvider: EnvVarsProvider,
       case Right(variable) =>
         variable.resolve(envProvider) match {
           case Right(extracted) => extracted
-          case Left(error) =>
+          case Left(error)      =>
             errors.values = errors.values :+ ResolvingError(error.msg)
             str.value
         }
@@ -100,7 +99,7 @@ class JsonStaticVariablesResolver(envProvider: EnvVarsProvider,
       case Right(variable) =>
         variable.resolve(envProvider) match {
           case Right(extracted) => extracted
-          case Left(error) =>
+          case Left(error)      =>
             errors.values = errors.values :+ ResolvingError(error.msg)
             NonEmptyList.one(str.value)
         }
@@ -109,6 +108,7 @@ class JsonStaticVariablesResolver(envProvider: EnvVarsProvider,
         NonEmptyList.one(str.value)
     }
   }
+
 }
 
 object JsonStaticVariablesResolver {

@@ -22,26 +22,28 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestController, RestHandler, RestRequest}
-import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
 
 @Inject
 class RestRRUserMetadataAction(settings: Settings, controller: RestController)
-  extends BaseRestHandler(settings) with RestHandler {
+    extends BaseRestHandler(settings)
+    with RestHandler {
 
   register("GET", constants.USER_METADATA_PATH)
 
   override val getName: String = "ror-user-metadata-handler"
 
-  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
-    client.execute(
-      new RRUserMetadataActionType,
-      new RRUserMetadataRequest(rorKbnLicenseTypeHeaderFrom(request)),
-      new RestToXContentListener[RRUserMetadataResponse](channel)
-    )
-  }
+  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) =>
+    {
+      client.execute(
+        new RRUserMetadataActionType,
+        new RRUserMetadataRequest(rorKbnLicenseTypeHeaderFrom(request)),
+        new RestToXContentListener[RRUserMetadataResponse](channel)
+      )
+    }
 
   private def register(method: String, path: String): Unit =
     controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
@@ -49,4 +51,5 @@ class RestRRUserMetadataAction(settings: Settings, controller: RestController)
   private def rorKbnLicenseTypeHeaderFrom(request: RestRequest) = {
     findHeader(Header.Name.rorKbnLicenseType, in = request.getHeaders)
   }
+
 }

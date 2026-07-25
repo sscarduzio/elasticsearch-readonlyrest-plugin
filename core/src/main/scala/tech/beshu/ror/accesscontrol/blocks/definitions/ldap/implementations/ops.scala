@@ -21,11 +21,15 @@ import cats.implicits.*
 import com.unboundid.ldap.sdk.{SearchResult, SearchResultEntry, SearchScope}
 
 object ops {
+
   object logs {
     implicit val searchScopeShow: Show[SearchScope] = Show.show(_.getName)
+
     implicit val searchResultShow: Show[SearchResult] = Show.show { result =>
       s"code=${result.getResultCode.intValue().show}, cause=${result.getResultString.show}"
     }
+
     implicit val searchResultEntryShow: Show[SearchResultEntry] = Show.show(_.toString)
   }
+
 }

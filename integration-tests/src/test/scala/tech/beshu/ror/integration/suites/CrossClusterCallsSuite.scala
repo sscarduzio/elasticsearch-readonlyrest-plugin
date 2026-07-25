@@ -37,7 +37,7 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class CrossClusterCallsSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseEsRemoteClusterIntegrationTest
     with PluginTestSupport
     with SingleClientSupport
@@ -54,10 +54,12 @@ class CrossClusterCallsSuite
   override val remoteClusterContainer: EsRemoteClustersContainer = createRemoteClustersContainer(
     esClusterSettings = EsClusterSettings.create(
       clusterName = "ROR_L1",
-      securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-        rorSettingsFileName = rorSettingsFileName,
-        internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
-      )),
+      securityType = RorWithXpackSecurity(
+        ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+          rorSettingsFileName = rorSettingsFileName,
+          internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
+        )
+      ),
       nodeDataInitializer = localClusterNodeDataInitializer(),
     ),
     remoteClustersSettings = NonEmptyList.of(
@@ -70,25 +72,28 @@ class CrossClusterCallsSuite
 
   private def xpackClusterSettings() = EsClusterSettings.create(
     clusterName = "XPACK",
-    securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
-      internodeSslEnabled = true
-    )),
+    securityType = XPackSecurity(
+      XpackSecurityPlugin.Config.Attributes.default.copy(
+        internodeSslEnabled = true
+      )
+    ),
     nodeDataInitializer = xpackRemoteClusterNodeDataInitializer()
   )
 
-  private def rorClusterSettings(name: String,
-                                 nodeDataInitializer: ElasticsearchNodeDataInitializer) = {
+  private def rorClusterSettings(name: String, nodeDataInitializer: ElasticsearchNodeDataInitializer) = {
     EsClusterSettings.create(
       clusterName = name,
-      securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-        rorSettingsFileName = rorSettingsFileName,
-        internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
-      )),
+      securityType = RorWithXpackSecurity(
+        ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+          rorSettingsFileName = rorSettingsFileName,
+          internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
+        )
+      ),
       nodeDataInitializer = nodeDataInitializer
     )
   }
 
-  implicit override val patienceConfig: PatienceConfig =
+  override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
   private lazy val user1SearchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
@@ -119,19 +124,25 @@ class CrossClusterCallsSuite
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
         }
-        "he queries remote data streams only by data stream name" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "he queries remote data streams only by data stream name" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search("private2:test1_ds")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream name with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "he queries remote data streams only by data stream name with wildcard" excludeES (
+          allEs6x,
+          allEs7xBelowEs79x
+        ) in {
           val result = user1SearchManager.search("private2:test1_d*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream backing indices when data stream configured" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "he queries remote data streams only by data stream backing indices when data stream configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs79x
+        ) in {
           val resolveIndexResponse = user1IndexManager.resolveIndex("private2:test1_ds")
           resolveIndexResponse.dataStreams.size should be(1)
           val dataStream = resolveIndexResponse.dataStreams.head
@@ -142,25 +153,37 @@ class CrossClusterCallsSuite
           }
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream backing index with wildcard when data stream configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams only by data stream backing index with wildcard when data stream configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val result = user1SearchManager.search(s"private2:.ds-test1_ds*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream alias when data stream configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams only by data stream alias when data stream configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val result = user1SearchManager.search(s"private2:test_alias")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream alias pattern when data stream name configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams only by data stream alias pattern when data stream name configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val result = user1SearchManager.search(s"private2:test_al*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream alias when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams only by data stream alias when data stream alias configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val result = user2SearchManager.search(s"private2:test_alias")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
@@ -201,7 +224,10 @@ class CrossClusterCallsSuite
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
-        "he queries remote data streams backing indices with wildcard when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams backing indices with wildcard when data stream alias configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val result = user2SearchManager.search(s"private2:.ds-test*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
@@ -219,7 +245,10 @@ class CrossClusterCallsSuite
           val result = user2SearchManager.search("private2:test1_index")
           result should have statusCode 404
         }
-        "he queries remote data streams backing indices when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams backing indices when data stream alias configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val resolveIndexResponse = adminIndexManager.resolveIndex("private2:test_alias")
           val backingIndices = resolveIndexResponse.aliases.flatMap(_.indices)
           backingIndices should have size 5
@@ -275,31 +304,34 @@ class CrossClusterCallsSuite
   "A cluster _async_search for given index" should {
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices" excludeES(allEs6x, allEs7xBelowEs77x) in {
+        "he queries local and remote indices" excludeES (allEs6x, allEs7xBelowEs77x) in {
           val result = user3SearchManager.asyncSearch("private1:audit*", "metrics*")
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(
             Set("metrics_2020-03-26", "metrics_2020-03-27", "private1:audit_2020-03-26", "private1:audit_2020-03-27")
           )
         }
-        "he queries remote indices only" excludeES(allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote indices only" excludeES (allEs6x, allEs7xBelowEs77x) in {
           val result = user1SearchManager.asyncSearch("private2:test1_index")
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
         }
-        "he queries remote data streams by data stream name" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "he queries remote data streams by data stream name" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.asyncSearch("private2:test1_ds")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream name with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "he queries remote data streams only by data stream name with wildcard" excludeES (
+          allEs6x,
+          allEs7xBelowEs79x
+        ) in {
           val result = user1SearchManager.asyncSearch("private2:test1_d*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream backing indices" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "he queries remote data streams only by data stream backing indices" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val resolveIndexResponse = user1IndexManager.resolveIndex("private2:test1_ds")
           resolveIndexResponse.dataStreams.size should be(1)
           val dataStream = resolveIndexResponse.dataStreams.head
@@ -310,30 +342,45 @@ class CrossClusterCallsSuite
           }
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream backing index with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "he queries remote data streams only by data stream backing index with wildcard" excludeES (
+          allEs6x,
+          allEs7xBelowEs79x
+        ) in {
           val result = user1SearchManager.asyncSearch(s"private2:.ds-test1_ds*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote index which is not forbidden in 'pub' remote cluster" excludeES(allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote index which is not forbidden in 'pub' remote cluster" excludeES (
+          allEs6x,
+          allEs7xBelowEs77x
+        ) in {
           val result = user4SearchManager.asyncSearch("pu*:*logs*")
           result should have statusCode 200
           result.searchHits.arr.size should be(3)
         }
-        "he queries remote data streams only by data stream alias when data stream configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams only by data stream alias when data stream configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val result = user1SearchManager.asyncSearch(s"private2:test_alias")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream alias pattern when data stream name configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams only by data stream alias pattern when data stream name configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val result = user1SearchManager.asyncSearch(s"private2:test_al*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3"))
         }
-        "he queries remote data streams only by data stream alias when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams only by data stream alias when data stream alias configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val result = user2SearchManager.asyncSearch(s"private2:test_alias")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
@@ -343,17 +390,20 @@ class CrossClusterCallsSuite
     }
     "return empty response" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices patterns" excludeES(allEs6x, allEs7xBelowEs77x) in {
+        "he queries local and remote indices patterns" excludeES (allEs6x, allEs7xBelowEs77x) in {
           val result = user2SearchManager.asyncSearch("private:audit*", "metrics*")
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
-        "he queries remote indices patterns only" excludeES(allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote indices patterns only" excludeES (allEs6x, allEs7xBelowEs77x) in {
           val result = user2SearchManager.asyncSearch("private:audit*")
           result should have statusCode 200
           result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
-        "he queries remote data streams backing indices with wildcard when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams backing indices with wildcard when data stream alias configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val result = user2SearchManager.asyncSearch(s"private2:.ds-test*")
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
@@ -363,15 +413,18 @@ class CrossClusterCallsSuite
     }
     "return 404" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices" excludeES(allEs6x, allEs7xBelowEs77x) in {
+        "he queries local and remote indices" excludeES (allEs6x, allEs7xBelowEs77x) in {
           val result = user2SearchManager.asyncSearch("private:audit_2020-03-26", "metrics_2020-03-26")
           result should have statusCode 404
         }
-        "he queries remote indices only" excludeES(allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote indices only" excludeES (allEs6x, allEs7xBelowEs77x) in {
           val result = user2SearchManager.asyncSearch("private2:test1_index")
           result should have statusCode 404
         }
-        "he queries remote data streams backing indices when data stream alias configured" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "he queries remote data streams backing indices when data stream alias configured" excludeES (
+          allEs6x,
+          allEs7xBelowEs714x
+        ) in {
           val resolveIndexResponse = adminIndexManager.resolveIndex("private2:test_alias")
           val backingIndices = resolveIndexResponse.aliases.flatMap(_.indices)
           backingIndices should have size 5
@@ -385,37 +438,61 @@ class CrossClusterCallsSuite
     "be forbidden" when {
       "we want to forbid certain names of indices for a given user" when {
         "local indices are used" when {
-          "requested index name with wildcard is the same as configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
+          "requested index name with wildcard is the same as configured index name with wildcard" excludeES (
+            allEs6x,
+            allEs7xBelowEs77x
+          ) in {
             val result = user4SearchManager.asyncSearch("*-logs-*")
             result should have statusCode 403
           }
-          "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
+          "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES (
+            allEs6x,
+            allEs7xBelowEs77x
+          ) in {
             val result = user4SearchManager.asyncSearch("*-log*")
             result should have statusCode 403
           }
-          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
+          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES (
+            allEs6x,
+            allEs7xBelowEs77x
+          ) in {
             val result = user4SearchManager.asyncSearch("*-logs-2020*")
             result should have statusCode 403
           }
-          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES(allEs6x, allEs7xBelowEs77x) in {
+          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES (
+            allEs6x,
+            allEs7xBelowEs77x
+          ) in {
             val result = user4SearchManager.asyncSearch("service1*")
             result should have statusCode 403
           }
         }
         "remote indices are used" when {
-          "requested index name with wildcard is the same as configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
+          "requested index name with wildcard is the same as configured index name with wildcard" excludeES (
+            allEs6x,
+            allEs7xBelowEs77x
+          ) in {
             val result = user4SearchManager.asyncSearch("p*:*-logs-*")
             result should have statusCode 403
           }
-          "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
+          "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES (
+            allEs6x,
+            allEs7xBelowEs77x
+          ) in {
             val result = user4SearchManager.asyncSearch("p*:*-logs-*")
             result should have statusCode 403
           }
-          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x) in {
+          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES (
+            allEs6x,
+            allEs7xBelowEs77x
+          ) in {
             val result = user4SearchManager.asyncSearch("p*:*-logs-2020*")
             result should have statusCode 403
           }
-          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES(allEs6x, allEs7xBelowEs77x) in {
+          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES (
+            allEs6x,
+            allEs7xBelowEs77x
+          ) in {
             val result = user4SearchManager.asyncSearch("p*:service2*")
             result should have statusCode 403
           }
@@ -587,7 +664,11 @@ class CrossClusterCallsSuite
 
   "A /_resolve/cluster call" should {
     "return only clusters where requested indices are covered by the user's allowed indices patterns" when {
-      "requested indices include a missing local index and an existing remote index" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices include a missing local index and an existing remote index" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user1IndexManager.resolveCluster(
           "test1_index", // non-existing local index
           "private2:test1_index" // existing remote index
@@ -596,14 +677,19 @@ class CrossClusterCallsSuite
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
-            "(local)"  -> MatchingIndices.NoSuchIndex,
+            "(local)" -> MatchingIndices.NoSuchIndex,
             "private2" -> MatchingIndices.True
           )
         )
       }
-      "all requested indices are missing on the local cluster but covered by allowed indices patterns there" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "all requested indices are missing on the local cluster but covered by allowed indices patterns there" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user1IndexManager.resolveCluster(
-          "test1_index", "test1_ds" // non-existing indices
+          "test1_index",
+          "test1_ds" // non-existing indices
         )
 
         result should have statusCode 200
@@ -613,7 +699,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices are covered only by allowed indices patterns on a single remote cluster (no local indices requested)" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices are covered only by allowed indices patterns on a single remote cluster (no local indices requested)" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user1IndexManager.resolveCluster(
           "private2:test1_index", // existing remote index
           "private2:test1_ds" // existing remote data stream
@@ -626,7 +716,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices are covered by allowed indices patterns on the local cluster and on a remote cluster via an alias" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices are covered by allowed indices patterns on the local cluster and on a remote cluster via an alias" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user2IndexManager.resolveCluster(
           "test2_index", // non-existing local index
           "private2:test_alias" // existing remote alias
@@ -635,12 +729,16 @@ class CrossClusterCallsSuite
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
-            "(local)"  -> MatchingIndices.NoSuchIndex,
+            "(local)" -> MatchingIndices.NoSuchIndex,
             "private2" -> MatchingIndices.True
           )
         )
       }
-      "requested indices are covered by a wildcard allowed indices pattern on the local cluster and by a wildcard allowed indices pattern on a remote cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices are covered by a wildcard allowed indices pattern on the local cluster and by a wildcard allowed indices pattern on a remote cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "metrics_2020-03-26", // existing local index
           "metrics_2020-03-27", // existing local index
@@ -650,12 +748,16 @@ class CrossClusterCallsSuite
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
-            "(local)"  -> MatchingIndices.True,
+            "(local)" -> MatchingIndices.True,
             "private1" -> MatchingIndices.True
           )
         )
       }
-      "requested indices are covered only by a wildcard allowed indices pattern on the local cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices are covered only by a wildcard allowed indices pattern on the local cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "metrics_2020-03-26", // existing local index
           "metrics_2020-03-27" // existing local index
@@ -668,7 +770,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices are covered only by a wildcard allowed indices pattern on a remote cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices are covered only by a wildcard allowed indices pattern on a remote cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "private1:audit_2020-03-26", // existing remote index
           "private1:audit_2020-03-27" // existing remote index
@@ -681,7 +787,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices are covered only by allowed indices patterns on a single remote cluster (xpack example)" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices are covered only by allowed indices patterns on a single remote cluster (xpack example)" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user5IndexManager.resolveCluster(
           "xpack:xpack_cluster_index" // existing remote index
         )
@@ -693,7 +803,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "none of the requested indices are covered by any allowed indices patterns, but at least one index exists on a cluster that the user can access" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "none of the requested indices are covered by any allowed indices patterns, but at least one index exists on a cluster that the user can access" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "service1-logs-2020-03-27" // existing local index
         )
@@ -705,7 +819,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices on a remote cluster exist, but none of them match any allowed indices pattern for that cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices on a remote cluster exist, but none of them match any allowed indices pattern for that cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "private1:service2-logs-2020-03-27" // existing remote index
         )
@@ -717,7 +835,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "none of the requested indices are covered by any allowed indices patterns and the user has no allowed indices patterns for the involved clusters" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "none of the requested indices are covered by any allowed indices patterns and the user has no allowed indices patterns for the involved clusters" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user5IndexManager.resolveCluster(
           "metrics_2020-03-26" // existing local index
         )
@@ -725,7 +847,11 @@ class CrossClusterCallsSuite
         result should have statusCode 404
         result.responseJson("error")("type").str should be("no_such_remote_cluster_exception")
       }
-      "requested indices are on a cluster that does exist, but no allowed indices patterns mention that cluster at all" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices are on a cluster that does exist, but no allowed indices patterns mention that cluster at all" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user1IndexManager.resolveCluster(
           "public:service3-logs" // existing remote index
         )
@@ -733,7 +859,11 @@ class CrossClusterCallsSuite
         result should have statusCode 404
         result.responseJson("error")("type").str should be("no_such_remote_cluster_exception")
       }
-      "requested indices refer to a remote cluster where the user has allowed indices patterns, but the requested index name does not exist there" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices refer to a remote cluster where the user has allowed indices patterns, but the requested index name does not exist there" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "private1:non_existing_index" // non-existing remote index
         )
@@ -747,40 +877,56 @@ class CrossClusterCallsSuite
       }
     }
     "when called without requested indices, return all clusters where at least one existing index is covered by the user's allowed indices patterns" when {
-      "allowed indices patterns cover only remote indices on a single remote cluster" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+      "allowed indices patterns cover only remote indices on a single remote cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs818x
+      ) in {
         val result = user1IndexManager.resolveCluster()
 
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
-            "(local)"-> MatchingIndices.NotApplicable,
+            "(local)" -> MatchingIndices.NotApplicable,
             "private2" -> MatchingIndices.NotApplicable
           )
         )
       }
-      "allowed indices patterns cover only remote indices via an alias on a single remote cluster" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+      "allowed indices patterns cover only remote indices via an alias on a single remote cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs818x
+      ) in {
         val result = user2IndexManager.resolveCluster()
 
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
-            "(local)"-> MatchingIndices.NotApplicable,
+            "(local)" -> MatchingIndices.NotApplicable,
             "private2" -> MatchingIndices.NotApplicable
           )
         )
       }
-      "allowed indices patterns cover indices on the local cluster and on a remote cluster" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+      "allowed indices patterns cover indices on the local cluster and on a remote cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs818x
+      ) in {
         val result = user3IndexManager.resolveCluster()
 
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
-            "(local)"  -> MatchingIndices.NotApplicable,
+            "(local)" -> MatchingIndices.NotApplicable,
             "private1" -> MatchingIndices.NotApplicable
           )
         )
       }
-      "allowed indices patterns cover indices only on a single remote cluster (xpack)" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+      "allowed indices patterns cover indices only on a single remote cluster (xpack)" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs818x
+      ) in {
         val result = user5IndexManager.resolveCluster()
 
         result should have statusCode 200
@@ -792,7 +938,11 @@ class CrossClusterCallsSuite
       }
     }
     "when called with * and *:* wildcards, return all clusters where at least one existing index is covered by the user's allowed indices patterns" when {
-      "allowed indices patterns cover only remote indices on a single remote cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "allowed indices patterns cover only remote indices on a single remote cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user1IndexManager.resolveCluster("*", "*:*")
 
         result should have statusCode 200
@@ -802,7 +952,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "allowed indices patterns cover only remote indices via an alias on a single remote cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "allowed indices patterns cover only remote indices via an alias on a single remote cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user2IndexManager.resolveCluster("*", "*:*")
 
         result should have statusCode 200
@@ -812,7 +966,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "allowed indices patterns cover indices on the local cluster and on a remote cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "allowed indices patterns cover indices on the local cluster and on a remote cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster("*", "*:*")
 
         result should have statusCode 200
@@ -823,7 +981,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "allowed indices patterns cover indices only on a single remote cluster (xpack)" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "allowed indices patterns cover indices only on a single remote cluster (xpack)" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user5IndexManager.resolveCluster("*", "*:*")
 
         result should have statusCode 200
@@ -835,7 +997,11 @@ class CrossClusterCallsSuite
       }
     }
     "handle wildcard allowed indices patterns on cluster names (e.g. private*:*)" when {
-      "requested indices are on multiple clusters whose names are matched by a wildcard allowed indices pattern" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices are on multiple clusters whose names are matched by a wildcard allowed indices pattern" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user6IndexManager.resolveCluster(
           "private1:test1_index", // existing remote index
           "private2:test2_index" // existing remote index
@@ -849,7 +1015,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "no requested indices are provided, so all clusters whose name matches the wildcard allowed indices pattern are returned" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+      "no requested indices are provided, so all clusters whose name matches the wildcard allowed indices pattern are returned" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs818x
+      ) in {
         val result = user6IndexManager.resolveCluster()
 
         result should have statusCode 200
@@ -860,7 +1030,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "* and *:* wildcards are provided, so all clusters whose name matches the wildcard allowed indices pattern are returned" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "* and *:* wildcards are provided, so all clusters whose name matches the wildcard allowed indices pattern are returned" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user6IndexManager.resolveCluster("*", "*:*")
 
         result should have statusCode 200
@@ -873,7 +1047,11 @@ class CrossClusterCallsSuite
       }
     }
     "return no clusters when requested indices target only clusters that are not configured" when {
-      "requested indices refer to a remote cluster that does not exist in the remote cluster setup (user doesn't allow it)" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices refer to a remote cluster that does not exist in the remote cluster setup (user doesn't allow it)" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "nonexistingcluster:metrics_2020-03-26" // non-existing cluster
         )
@@ -881,7 +1059,11 @@ class CrossClusterCallsSuite
         result should have statusCode 404
         result.responseJson("error")("type").str should be("no_such_remote_cluster_exception")
       }
-      "requested indices refer to a remote cluster that does not exist in the remote cluster setup (user does allow it)" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "requested indices refer to a remote cluster that does not exist in the remote cluster setup (user does allow it)" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user7IndexManager.resolveCluster(
           "nonexistingcluster:metrics_2020-03-26" // non-existing cluster
         )
@@ -891,7 +1073,11 @@ class CrossClusterCallsSuite
       }
     }
     "handle wildcard requested index patterns (index expressions with wildcards in the index name)" when {
-      "a wildcard requested index pattern matches at least one existing and allowed index on the local cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "a wildcard requested index pattern matches at least one existing and allowed index on the local cluster" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "metrics_2020-03-*" // matches existing local indices: metrics_2020-03-26 and metrics_2020-03-27
         )
@@ -903,7 +1089,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "a wildcard requested index pattern is allowed on the local cluster but matches no existing indices" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "a wildcard requested index pattern is allowed on the local cluster but matches no existing indices" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "metrics_2019-*" // does not match any existing local index
         )
@@ -915,7 +1105,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "a wildcard requested index pattern is allowed on a remote cluster and matches existing indices there" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "a wildcard requested index pattern is allowed on a remote cluster and matches existing indices there" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "private1:audit_2020-03-*" // matches existing remote indices: audit_2020-03-26 and audit_2020-03-27
         )
@@ -927,7 +1121,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "a wildcard requested index pattern is allowed on a remote cluster but matches no existing indices there" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "a wildcard requested index pattern is allowed on a remote cluster but matches no existing indices there" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user3IndexManager.resolveCluster(
           "private1:audit_2019-*" // does not match any existing audit_* index in the remote cluster
         )
@@ -941,7 +1139,11 @@ class CrossClusterCallsSuite
       }
     }
     "handle wildcard requested cluster name patterns (cluster expressions with wildcards in the cluster name)" when {
-      "a wildcard requested cluster name pattern matches multiple configured clusters and allowed indices exist on all of them" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "a wildcard requested cluster name pattern matches multiple configured clusters and allowed indices exist on all of them" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user6IndexManager.resolveCluster(
           "private*:test1_index" // matches private1:test1_index and private2:test1_index
         )
@@ -954,7 +1156,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "a wildcard requested cluster name pattern matches configured clusters, but the requested index name does not exist on any of them" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
+      "a wildcard requested cluster name pattern matches configured clusters, but the requested index name does not exist on any of them" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x
+      ) in {
         val result = user6IndexManager.resolveCluster(
           "private*:non_existing_*" // index name does not exist on private1 or private2
         )
@@ -967,7 +1173,11 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "a wildcard requested cluster name pattern doesn't match configured clusters (ES >= 8.18.0)" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+      "a wildcard requested cluster name pattern doesn't match configured clusters (ES >= 8.18.0)" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs818x
+      ) in {
         val result = user6IndexManager.resolveCluster(
           "non-existing*:*" // there is no cluster matching that name
         )
@@ -975,7 +1185,13 @@ class CrossClusterCallsSuite
         result should have statusCode 200
         result.clusterToMatchingIndices should be(Map.empty)
       }
-      "a wildcard requested cluster name pattern doesn't match configured clusters " excludeES(allEs6x, allEs7x, allEs8xBelowEs813x, allES8xAboveEs818x, allEs9x) in {
+      "a wildcard requested cluster name pattern doesn't match configured clusters " excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs813x,
+        allES8xAboveEs818x,
+        allEs9x
+      ) in {
         val result = user6IndexManager.resolveCluster(
           "non-existing*:*" // there is no cluster matching that name
         )
@@ -989,83 +1205,88 @@ class CrossClusterCallsSuite
       }
     }
   }
+
 }
 
 object CrossClusterCallsSuite extends StrictLogging {
 
-  def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createFirstDoc("metrics_2020-03-26", ujson.read("""{"counter1":"100"}""")).force()
-    documentManager.createFirstDoc("metrics_2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+  def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) =>
+    {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createFirstDoc("metrics_2020-03-26", ujson.read("""{"counter1":"100"}""")).force()
+      documentManager.createFirstDoc("metrics_2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
 
-    documentManager.createFirstDoc("service1-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service1-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service1-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
-  }
+      documentManager.createFirstDoc("service1-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+      documentManager.createFirstDoc("service1-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+      documentManager.createFirstDoc("service1-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
+    }
 
-  def privateRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient, esVersion)
-    val indexManager = new IndexManager(adminRestClient, esVersion)
+  def privateRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer =
+    (esVersion, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      val indexManager = new IndexManager(adminRestClient, esVersion)
 
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test1_index", 2, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 2, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test1_index", 2, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test2_index", 2, ujson.read("""{"hello":"world"}""")).force()
 
-    documentManager.createDoc("audit_2020-03-26", 1, ujson.read("""{"usage":"ROR"}""")).force()
-    documentManager.createDoc("audit_2020-03-27", 1, ujson.read("""{"usage":"ROR"}""")).force()
+      documentManager.createDoc("audit_2020-03-26", 1, ujson.read("""{"usage":"ROR"}""")).force()
+      documentManager.createDoc("audit_2020-03-27", 1, ujson.read("""{"usage":"ROR"}""")).force()
 
-    documentManager.createFirstDoc("service2-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service2-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service2-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
+      documentManager.createFirstDoc("service2-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+      documentManager.createFirstDoc("service2-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+      documentManager.createFirstDoc("service2-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
 
-    indexManager.createAliasOf("service2-logs-*", "service2-logs").force()
+      indexManager.createAliasOf("service2-logs-*", "service2-logs").force()
 
-    if (Version.greaterOrEqualThan(esVersion, 7, 9, 0)) {
-      val enhancedDataStreamManager = EnhancedDataStreamManager(adminRestClient, esVersion)
-      enhancedDataStreamManager.createDataStream("test1_ds")
-      enhancedDataStreamManager.createDocsInDataStream(
-        name = "test1_ds",
-        messages = NonEmptyList.of("message1", "message2", "message3"),
-        rolloverAfterEachDoc = true
-      )
-
-      if (Version.greaterOrEqualThan(esVersion, 7, 14, 0)) {
-        enhancedDataStreamManager.createDataStream("test2_ds")
+      if (Version.greaterOrEqualThan(esVersion, 7, 9, 0)) {
+        val enhancedDataStreamManager = EnhancedDataStreamManager(adminRestClient, esVersion)
+        enhancedDataStreamManager.createDataStream("test1_ds")
         enhancedDataStreamManager.createDocsInDataStream(
-          name = "test2_ds",
-          messages = NonEmptyList.of("message4", "message5"),
+          name = "test1_ds",
+          messages = NonEmptyList.of("message1", "message2", "message3"),
           rolloverAfterEachDoc = true
         )
 
-        enhancedDataStreamManager.addAlias("test1_ds", "test_alias")
-        enhancedDataStreamManager.addAlias("test2_ds", "test_alias")
+        if (Version.greaterOrEqualThan(esVersion, 7, 14, 0)) {
+          enhancedDataStreamManager.createDataStream("test2_ds")
+          enhancedDataStreamManager.createDocsInDataStream(
+            name = "test2_ds",
+            messages = NonEmptyList.of("message4", "message5"),
+            rolloverAfterEachDoc = true
+          )
 
-        enhancedDataStreamManager.createDataStream("test3_ds")
-        enhancedDataStreamManager.createDocsInDataStream(
-          name = "test3_ds",
-          messages = NonEmptyList.of("message6", "message7"),
-          rolloverAfterEachDoc = true
-        )
+          enhancedDataStreamManager.addAlias("test1_ds", "test_alias")
+          enhancedDataStreamManager.addAlias("test2_ds", "test_alias")
+
+          enhancedDataStreamManager.createDataStream("test3_ds")
+          enhancedDataStreamManager.createDocsInDataStream(
+            name = "test3_ds",
+            messages = NonEmptyList.of("message6", "message7"),
+            rolloverAfterEachDoc = true
+          )
+        }
       }
     }
-  }
 
-  def publicRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createFirstDoc("service3-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service3-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("service3-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
+  def publicRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer =
+    (esVersion, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createFirstDoc("service3-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+      documentManager.createFirstDoc("service3-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+      documentManager.createFirstDoc("service3-logs-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
 
-    val indexManager = new IndexManager(adminRestClient, esVersion)
-    indexManager.createAliasOf("service3-logs-*", "service3-logs").force()
-  }
+      val indexManager = new IndexManager(adminRestClient, esVersion)
+      indexManager.createAliasOf("service3-logs-*", "service3-logs").force()
+    }
 
-  def xpackRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("xpack_cluster_index", 1, ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createDoc("xpack_cluster_index", 2, ujson.read("""{"counter1":"50"}""")).force()
-  }
+  def xpackRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer =
+    (esVersion, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createDoc("xpack_cluster_index", 1, ujson.read("""{"counter1":"50"}""")).force()
+      documentManager.createDoc("xpack_cluster_index", 2, ujson.read("""{"counter1":"50"}""")).force()
+    }
 
   def remoteClusterSetup(): SetupRemoteCluster = (remoteClusters: NonEmptyList[EsClusterContainer]) => {
     List(
@@ -1084,4 +1305,5 @@ object CrossClusterCallsSuite extends StrictLogging {
         None
       }
   }
+
 }

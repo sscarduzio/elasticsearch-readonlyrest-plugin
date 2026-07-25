@@ -28,7 +28,7 @@ import java.{lang, util}
 import scala.collection.JavaConverters._
 
 class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestcontext.AuditLogSerializer[T])
-  extends AuditLogSerializer {
+    extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
     val deprecatedResponseContext = responseContext match {
@@ -119,13 +119,15 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
       override val getType: String = requestContext.`type`
       override val getTaskId: lang.Long = requestContext.taskId
       override val getMethodString: String = requestContext.httpMethod
-      override val getLoggedInUserName: Optional[String] = Optional.ofNullable(SerializeUser.serialize(requestContext).orNull)
+      override val getLoggedInUserName: Optional[String] =
+        Optional.ofNullable(SerializeUser.serialize(requestContext).orNull)
       override val involvesIndices: Boolean = requestContext.involvesIndices
     }
   }
 
   private def toDeprecatedVerbosity(verbosity: Verbosity) = verbosity match {
-    case Verbosity.Info => tech.beshu.ror.commons.Verbosity.INFO
+    case Verbosity.Info  => tech.beshu.ror.commons.Verbosity.INFO
     case Verbosity.Error => tech.beshu.ror.commons.Verbosity.ERROR
   }
+
 }

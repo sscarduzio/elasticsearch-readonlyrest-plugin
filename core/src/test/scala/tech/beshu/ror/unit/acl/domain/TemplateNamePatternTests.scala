@@ -28,20 +28,33 @@ class TemplateNamePatternTests extends AnyFreeSpecLike with Matchers {
     "findMostGenericTemplateNamePatten should" - {
       "allow find the most generic template name pattern among given templates" in {
         TemplateNamePattern
-          .findMostGenericTemplateNamePatten(NonEmptyList.of(
-            TemplateNamePattern("temp1"), TemplateNamePattern("temp2"), TemplateNamePattern("temp3")
-          )) should be(TemplateNamePattern("temp*"))
+          .findMostGenericTemplateNamePatten(
+            NonEmptyList.of(
+              TemplateNamePattern("temp1"),
+              TemplateNamePattern("temp2"),
+              TemplateNamePattern("temp3")
+            )
+          ) should be(TemplateNamePattern("temp*"))
 
         TemplateNamePattern
-          .findMostGenericTemplateNamePatten(NonEmptyList.of(
-            TemplateNamePattern("te*"), TemplateNamePattern("temp2"), TemplateNamePattern("temp3")
-          )) should be(TemplateNamePattern("te*"))
+          .findMostGenericTemplateNamePatten(
+            NonEmptyList.of(
+              TemplateNamePattern("te*"),
+              TemplateNamePattern("temp2"),
+              TemplateNamePattern("temp3")
+            )
+          ) should be(TemplateNamePattern("te*"))
 
         TemplateNamePattern
-          .findMostGenericTemplateNamePatten(NonEmptyList.of(
-            TemplateNamePattern("te*"), TemplateNamePattern("temp2"), TemplateNamePattern("aTemp")
-          )) should be(TemplateNamePattern("*"))
+          .findMostGenericTemplateNamePatten(
+            NonEmptyList.of(
+              TemplateNamePattern("te*"),
+              TemplateNamePattern("temp2"),
+              TemplateNamePattern("aTemp")
+            )
+          ) should be(TemplateNamePattern("*"))
       }
     }
   }
+
 }

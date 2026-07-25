@@ -23,4 +23,5 @@ object RRAuditEventActionHandler {
   def handle(listener: ActionListener[RRAuditEventResponse]): Unit = {
     listener.onResponse(new RRAuditEventResponse())
   }
+
 }

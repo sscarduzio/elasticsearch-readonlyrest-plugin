@@ -21,11 +21,12 @@ import org.elasticsearch.common.io.stream.Writeable
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRAuthMockActionType extends ActionType[RRAuthMockResponse](RRAuthMockActionType.name)
+
 object RRAuthMockActionType {
   val name: String = RorAction.RorAuthMockAction.value
   val instance = new RRAuthMockActionType()
 
   case object RRAuthMockActionCannotBeTransported extends Exception
 
-  private [rrauthmock] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAuthMockActionCannotBeTransported
+  private[rrauthmock] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAuthMockActionCannotBeTransported
 }

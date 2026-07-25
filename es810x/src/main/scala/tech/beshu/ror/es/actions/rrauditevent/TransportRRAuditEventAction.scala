@@ -24,20 +24,27 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRRAuditEventAction(transportService: TransportService,
-                                  actionFilters: ActionFilters,
-                                  @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRAuditEventRequest, RRAuditEventResponse](
-    RRAuditEventActionType.name, transportService, actionFilters, RRAuditEventActionType.exceptionReader
-  ) {
+class TransportRRAuditEventAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRAuditEventRequest, RRAuditEventResponse](
+      RRAuditEventActionType.name,
+      transportService,
+      actionFilters,
+      RRAuditEventActionType.exceptionReader
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters) =
+  def this(transportService: TransportService, actionFilters: ActionFilters) =
     this(transportService, actionFilters, ())
 
-  override def doExecute(task: Task, request: RRAuditEventRequest,
-                         listener: ActionListener[RRAuditEventResponse]): Unit = {
+  override def doExecute(
+      task: Task,
+      request: RRAuditEventRequest,
+      listener: ActionListener[RRAuditEventResponse]
+  ): Unit = {
     RRAuditEventActionHandler.handle(listener)
   }
+
 }

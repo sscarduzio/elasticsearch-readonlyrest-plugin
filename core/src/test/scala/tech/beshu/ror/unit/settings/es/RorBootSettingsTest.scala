@@ -18,18 +18,17 @@ package tech.beshu.ror.unit.settings.es
 
 import eu.timepit.refined.types.all.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.settings.es.RorBootSettings
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
-import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
-import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.TestsUtils.{nes, unsafeNes, withEsEnv}
+import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 
-class RorBootSettingsTest
-  extends AnyWordSpec with Inside {
+class RorBootSettingsTest extends AnyWordSpec with Inside {
 
   "A ReadonlyREST ES starting settings" should {
     "be loaded from elasticsearch config file" when {
@@ -41,10 +40,14 @@ class RorBootSettingsTest
             |""".stripMargin
         )
 
-        settings should be(Right(RorBootSettings(
-          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
-          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
-        )))
+        settings should be(
+          Right(
+            RorBootSettings(
+              rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+              rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+            )
+          )
+        )
       }
       "boot settings uses flat dot syntax" in {
         val settings = load(
@@ -54,10 +57,14 @@ class RorBootSettingsTest
             |""".stripMargin
         )
 
-        settings should be(Right(RorBootSettings(
-          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
-          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
-        )))
+        settings should be(
+          Right(
+            RorBootSettings(
+              rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+              rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+            )
+          )
+        )
       }
       "boot settings contains failed to start response code" in {
         val settings = load(
@@ -67,10 +74,14 @@ class RorBootSettingsTest
             |""".stripMargin
         )
 
-        settings should be(Right(RorBootSettings(
-          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
-          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
-        )))
+        settings should be(
+          Right(
+            RorBootSettings(
+              rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+              rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+            )
+          )
+        )
       }
       "boot settings contains all codes" in {
         val settings = load(
@@ -81,10 +92,14 @@ class RorBootSettingsTest
             |""".stripMargin
         )
 
-        settings should be(Right(RorBootSettings(
-          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
-          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
-        )))
+        settings should be(
+          Right(
+            RorBootSettings(
+              rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+              rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+            )
+          )
+        )
       }
     }
     "there is no response codes defined in config, default values should be used" in {
@@ -95,10 +110,14 @@ class RorBootSettingsTest
           |""".stripMargin
       )
 
-      settings should be(Right(RorBootSettings(
-        rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
-        rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
-      )))
+      settings should be(
+        Right(
+          RorBootSettings(
+            rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+            rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+          )
+        )
+      )
     }
     "be loaded from JVM properties" when {
       "not_started_response_code is set via property" in {
@@ -109,10 +128,14 @@ class RorBootSettingsTest
           properties = Map(nes("readonlyrest.not_started_response_code") -> "503")
         )
 
-        settings should be(Right(RorBootSettings(
-          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
-          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
-        )))
+        settings should be(
+          Right(
+            RorBootSettings(
+              rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+              rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+            )
+          )
+        )
       }
       "failed_to_start_response_code is set via property" in {
         val settings = load(
@@ -122,10 +145,14 @@ class RorBootSettingsTest
           properties = Map(nes("readonlyrest.failed_to_start_response_code") -> "503")
         )
 
-        settings should be(Right(RorBootSettings(
-          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
-          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
-        )))
+        settings should be(
+          Right(
+            RorBootSettings(
+              rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+              rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+            )
+          )
+        )
       }
       "all settings are set via properties" in {
         val settings = load(
@@ -138,10 +165,14 @@ class RorBootSettingsTest
           )
         )
 
-        settings should be(Right(RorBootSettings(
-          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
-          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
-        )))
+        settings should be(
+          Right(
+            RorBootSettings(
+              rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+              rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+            )
+          )
+        )
       }
     }
     "be loaded from OS environment variables" when {
@@ -153,10 +184,14 @@ class RorBootSettingsTest
           envVars = Map(nes("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE") -> "503")
         )
 
-        settings should be(Right(RorBootSettings(
-          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
-          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
-        )))
+        settings should be(
+          Right(
+            RorBootSettings(
+              rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+              rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+            )
+          )
+        )
       }
       "failed_to_start_response_code is set via env var" in {
         val settings = load(
@@ -166,10 +201,14 @@ class RorBootSettingsTest
           envVars = Map(nes("ES_SETTING_READONLYREST_FAILED__TO__START__RESPONSE__CODE") -> "503")
         )
 
-        settings should be(Right(RorBootSettings(
-          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
-          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
-        )))
+        settings should be(
+          Right(
+            RorBootSettings(
+              rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+              rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+            )
+          )
+        )
       }
     }
     "YAML takes priority over JVM property and env var" in {
@@ -179,13 +218,17 @@ class RorBootSettingsTest
           |  not_started_response_code: 403
           |""".stripMargin,
         properties = Map(nes("readonlyrest.not_started_response_code") -> "503"),
-        envVars    = Map(nes("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE") -> "503")
+        envVars = Map(nes("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE") -> "503")
       )
 
-      settings should be(Right(RorBootSettings(
-        rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
-        rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
-      )))
+      settings should be(
+        Right(
+          RorBootSettings(
+            rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+            rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+          )
+        )
+      )
     }
     "JVM property takes priority over env var" in {
       val settings = load(
@@ -193,53 +236,63 @@ class RorBootSettingsTest
           |node.name: n1_it
           |""".stripMargin,
         properties = Map(nes("readonlyrest.not_started_response_code") -> "503"),
-        envVars    = Map(nes("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE") -> "403")
+        envVars = Map(nes("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE") -> "403")
       )
 
-      settings should be(Right(RorBootSettings(
-        rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
-        rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
-      )))
+      settings should be(
+        Right(
+          RorBootSettings(
+            rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+            rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+          )
+        )
+      )
     }
   }
+
   "not be able to load" when {
     "not started response code is malformed" in {
-      inside(load(
-        """
-          |readonlyrest:
-          |  not_started_response_code: 200
-          |""".stripMargin
-      )) {
-        case Left(MalformedSettings(_, message)) =>
-          message should include(
-            "Invalid value at '.readonlyrest.not_started_response_code': Unsupported HTTP code '200'. Allowed values: '403', '503'"
-          )
+      inside(
+        load(
+          """
+            |readonlyrest:
+            |  not_started_response_code: 200
+            |""".stripMargin
+        )
+      ) { case Left(MalformedSettings(_, message)) =>
+        message should include(
+          "Invalid value at '.readonlyrest.not_started_response_code': Unsupported HTTP code '200'. Allowed values: '403', '503'"
+        )
       }
     }
     "failed to start response code is malformed" in {
-      inside(load(
-        """
-          |readonlyrest:
-          |  failed_to_start_response_code: 200
-          |""".stripMargin
-      )) {
-        case Left(MalformedSettings(_, message)) =>
-          message should include(
-            "Invalid value at '.readonlyrest.failed_to_start_response_code': Unsupported HTTP code '200'. Allowed values: '403', '503'"
-          )
+      inside(
+        load(
+          """
+            |readonlyrest:
+            |  failed_to_start_response_code: 200
+            |""".stripMargin
+        )
+      ) { case Left(MalformedSettings(_, message)) =>
+        message should include(
+          "Invalid value at '.readonlyrest.failed_to_start_response_code': Unsupported HTTP code '200'. Allowed values: '403', '503'"
+        )
       }
     }
   }
 
-  private def load(yaml: String,
-                   properties: Map[NonEmptyString, String] = Map.empty,
-                   envVars: Map[NonEmptyString, String] = Map.empty) = {
+  private def load(
+      yaml: String,
+      properties: Map[NonEmptyString, String] = Map.empty,
+      envVars: Map[NonEmptyString, String] = Map.empty
+  ) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties),
-      envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)
+      envVarsProvider = TestsEnvVarsProvider.usingMap(envVars)
     )
     withEsEnv(yaml) { (esEnv, _) =>
       RorBootSettings.load(esEnv).runSyncUnsafe()
     }
   }
+
 }

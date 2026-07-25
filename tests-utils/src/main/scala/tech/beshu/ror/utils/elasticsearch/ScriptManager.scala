@@ -24,8 +24,7 @@ import ujson.Value
 
 import scala.util.Try
 
-class ScriptManager(client: RestClient, esVersion: String)
-  extends BaseManager(client, esVersion, esNativeApi = true) {
+class ScriptManager(client: RestClient, esVersion: String) extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def store(endpoint: String, query: String): StoreResult =
     call(createStoreRequest(endpoint, query), new StoreResult(_))
@@ -41,4 +40,5 @@ class ScriptManager(client: RestClient, esVersion: String)
   class StoreResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val searchHits: Try[Value] = Try(responseJson("hits")("hits"))
   }
+
 }

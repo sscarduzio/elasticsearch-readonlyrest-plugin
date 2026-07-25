@@ -38,7 +38,7 @@ import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 import scala.util.{Failure, Success, Try}
 
 class IndexLifecycleManagementApiSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with PluginTestSupport
     with SingleClientSupport
@@ -61,9 +61,11 @@ class IndexLifecycleManagementApiSuite
 
     createLocalClusterContainer(
       esClusterSettingsCreator(
-        RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorSettingsFileName = rorSettingsFileName
-        ))
+        RorWithXpackSecurity(
+          ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+            rorSettingsFileName = rorSettingsFileName
+          )
+        )
       )
     )
   }
@@ -73,7 +75,7 @@ class IndexLifecycleManagementApiSuite
   private lazy val dev1IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev1", "test"), esVersionUsed)
   private lazy val dev3IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev3", "test"), esVersionUsed)
 
-  implicit override val patienceConfig: PatienceConfig =
+  override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(30, Seconds)), interval = scaled(Span(200, Millis)))
 
   "Policy management APIs" when {
@@ -112,95 +114,103 @@ class IndexLifecycleManagementApiSuite
           val index = "dynamic1"
           createIndexWithAppliedMergedPolicy(index)
 
-          val result = dev3IndexLifecycleManager.moveToLifecycleStep(
-            index,
-            currentStep = ujson.read(
-              s"""
-                 |{
-                 |  "phase": "new",
-                 |  "action": "complete",
-                 |  "name": "complete"
-                 |}
+          // ILM assigns the index's initial step asynchronously; retry until ES has caught up
+          // (a fixed-order call races the background ILM task and intermittently gets 400).
+          eventually {
+            val result = dev3IndexLifecycleManager.moveToLifecycleStep(
+              index,
+              currentStep = ujson.read(s"""
+                                          |{
+                                          |  "phase": "new",
+                                          |  "action": "complete",
+                                          |  "name": "complete"
+                                          |}
                """.stripMargin),
-            nextStep = ujson.read(
-              s"""
-                 |{
-                 |  "phase": "warm",
-                 |  "action": "forcemerge",
-                 |  "name": "forcemerge"
-                 |}
+              nextStep = ujson.read(
+                s"""
+                   |{
+                   |  "phase": "warm",
+                   |  "action": "forcemerge",
+                   |  "name": "forcemerge"
+                   |}
                """.stripMargin
+              )
             )
-          )
 
-          result should have statusCode 200
+            result should have statusCode 200
+          }
         }
         "user has access to requested index (through configured wildcard)" in {
           val index = "dynamic_1"
           createIndexWithAppliedMergedPolicy(index)
 
-          val result = dev3IndexLifecycleManager.moveToLifecycleStep(
-            index,
-            currentStep = ujson.read(
-              s"""
-                 |{
-                 |  "phase": "new",
-                 |  "action": "complete",
-                 |  "name": "complete"
-                 |}
+          // ILM assigns the index's initial step asynchronously; retry until ES has caught up
+          // (a fixed-order call races the background ILM task and intermittently gets 400).
+          eventually {
+            val result = dev3IndexLifecycleManager.moveToLifecycleStep(
+              index,
+              currentStep = ujson.read(s"""
+                                          |{
+                                          |  "phase": "new",
+                                          |  "action": "complete",
+                                          |  "name": "complete"
+                                          |}
                """.stripMargin),
-            nextStep = ujson.read(
-              s"""
-                 |{
-                 |  "phase": "warm",
-                 |  "action": "forcemerge",
-                 |  "name": "forcemerge"
-                 |}
+              nextStep = ujson.read(
+                s"""
+                   |{
+                   |  "phase": "warm",
+                   |  "action": "forcemerge",
+                   |  "name": "forcemerge"
+                   |}
                """.stripMargin
+              )
             )
-          )
 
-          result should have statusCode 200
+            result should have statusCode 200
+          }
         }
         "no indices rule was used" in {
           val index = "dynamic_2"
           createIndexWithAppliedMergedPolicy(index)
 
-          val result = adminIndexLifecycleManager.moveToLifecycleStep(
-            index = "dynamic_2",
-            currentStep = ujson.read(
-              s"""
-                 |{
-                 |  "phase": "new",
-                 |  "action": "complete",
-                 |  "name": "complete"
-                 |}
+          // ILM assigns the index's initial step asynchronously; retry until ES has caught up
+          // (a fixed-order call races the background ILM task and intermittently gets 400).
+          eventually {
+            val result = adminIndexLifecycleManager.moveToLifecycleStep(
+              index = "dynamic_2",
+              currentStep = ujson.read(s"""
+                                          |{
+                                          |  "phase": "new",
+                                          |  "action": "complete",
+                                          |  "name": "complete"
+                                          |}
                """.stripMargin),
-            nextStep = ujson.read(
-              s"""
-                 |{
-                 |  "phase": "warm",
-                 |  "action": "forcemerge",
-                 |  "name": "forcemerge"
-                 |}
+              nextStep = ujson.read(
+                s"""
+                   |{
+                   |  "phase": "warm",
+                   |  "action": "forcemerge",
+                   |  "name": "forcemerge"
+                   |}
                """.stripMargin
+              )
             )
-          )
 
-          result should have statusCode 200
+            result should have statusCode 200
+          }
         }
       }
       "be forbidden" when {
         "user has no access to requested index" in {
           val result = dev3IndexLifecycleManager.moveToLifecycleStep(
             index = "index2",
-            currentStep = ujson.read(
-              s"""
-                 |{
-                 |  "phase": "new",
-                 |  "action": "complete",
-                 |  "name": "complete"
-                 |}
+            currentStep = ujson.read(s"""
+                                        |{
+                                        |  "phase": "new",
+                                        |  "action": "complete",
+                                        |  "name": "complete"
+                                        |}
                """.stripMargin),
             nextStep = ujson.read(
               s"""
@@ -351,7 +361,7 @@ class IndexLifecycleManagementApiSuite
           val response = adminIndexLifecycleManager.ilmExplain("*")
 
           response should have statusCode 200
-          response.indices.keys.toSet should contain allOf("index1", "index1_1", "index1_2", "index2", "index2_1")
+          response.indices.keys.toSet should contain allOf ("index1", "index1_1", "index1_2", "index2", "index2_1")
         }
       }
       "return empty result" when {
@@ -383,15 +393,14 @@ class IndexLifecycleManagementApiSuite
     adminIndexManager
       .putSettings(
         indexName = index,
-        settings = ujson.read(
-          s"""
-             |{
-             |  "index": {
-             |    "lifecycle": {
-             |      "name": "$policy"
-             |    }
-             |  }
-             |}""".stripMargin)
+        settings = ujson.read(s"""
+                                 |{
+                                 |  "index": {
+                                 |    "lifecycle": {
+                                 |      "name": "$policy"
+                                 |    }
+                                 |  }
+                                 |}""".stripMargin)
       )
       .force()
   }
@@ -435,7 +444,8 @@ class IndexLifecycleManagementApiSuite
           .force()
         val step = explain
           .indices(index)
-          .obj.get("step")
+          .obj
+          .get("step")
           .map(_.str)
         step.contains("ERROR")
       }
@@ -446,9 +456,11 @@ class IndexLifecycleManagementApiSuite
     super.beforeEach()
     adminIndexManager.removeIndex("dynamic*").force()
   }
+
 }
 
 object IndexLifecycleManagementApiSuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val document = ujson.read(s"""{"test": "abc"}""")
@@ -481,6 +493,7 @@ object IndexLifecycleManagementApiSuite {
   }
 
   private object ExamplePolicies {
+
     val forceMergePolicy: JSON = ujson.read {
       """
         |{
@@ -532,6 +545,7 @@ object IndexLifecycleManagementApiSuite {
         |  }
         |}""".stripMargin
     }
-  }
-}
 
+  }
+
+}

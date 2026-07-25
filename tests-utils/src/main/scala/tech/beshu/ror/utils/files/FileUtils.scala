@@ -27,7 +27,8 @@ object FileUtils {
   def calculateHash(dir: Path, excludedFiles: List[String] = Nil): String = {
     val digest = MessageDigest.getInstance("SHA-256")
 
-    val fileList = Files.walk(dir)
+    val fileList = Files
+      .walk(dir)
       .filter(Files.isRegularFile(_))
       .filter(f => !excludedFiles.exists(excluded => f.toFile.toString.endsWith(excluded)))
       .iterator()
@@ -57,8 +58,7 @@ object FileUtils {
           Files.createDirectories(path)
         } else {
           Files.createDirectories(path.getParent)
-          Files.copy(tarFile.getInputStream(entry), path,
-            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+          Files.copy(tarFile.getInputStream(entry), path, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
         }
       }
     } finally {

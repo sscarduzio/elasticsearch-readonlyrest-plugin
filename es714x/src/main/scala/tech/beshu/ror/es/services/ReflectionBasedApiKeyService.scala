@@ -32,20 +32,23 @@ class ReflectionBasedApiKeyService(threadPool: ThreadPool) extends ApiKeyService
 
   private lazy val underlying = ApiKeyServiceRef.getInstance match {
     case Success(ref) => new ApiKeyServiceRefAvailable(ref, threadPool)
-    case Failure(ex) => new ApiKeyServiceRefNotAvailable(ex)
+    case Failure(ex)  => new ApiKeyServiceRefNotAvailable(ex)
   }
 
-  override def validateToken(token: AuthorizationToken)
-                            (implicit requestId: RequestId): Task[Boolean] =
+  override def validateToken(token: AuthorizationToken)(
+      implicit requestId: RequestId
+  ): Task[Boolean] =
     underlying.validateToken(token)
+
 }
 
-private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any,
-                                        threadPool: ThreadPool)
-  extends ApiKeyService with RequestIdAwareLogging {
+private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any, threadPool: ThreadPool)
+    extends ApiKeyService
+    with RequestIdAwareLogging {
 
-  override def validateToken(token: AuthorizationToken)
-                            (implicit requestId: RequestId): Task[Boolean] = {
+  override def validateToken(token: AuthorizationToken)(
+      implicit requestId: RequestId
+  ): Task[Boolean] = {
     parseApiKey(token) match {
       case Success(Some(apiKey)) =>
         authenticateApiKey(apiKey)
@@ -66,13 +69,17 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any,
 
   private def authenticateApiKey(apiKeyCredentials: AnyRef): Task[Boolean] = {
     val listener = new ActionListenerToTaskAdapter[AnyRef]
-    on(apiKeyServiceRef).call("loadApiKeyAndValidateCredentials", threadPool.getThreadContext, apiKeyCredentials, listener)
-    listener
-      .result
+    on(apiKeyServiceRef).call(
+      "loadApiKeyAndValidateCredentials",
+      threadPool.getThreadContext,
+      apiKeyCredentials,
+      listener
+    )
+    listener.result
       .map(isAuthenticated)
       .onErrorRecover {
         case _: ElasticsearchSecurityException => false
-        case ex => throw ex
+        case ex                                => throw ex
       }
   }
 
@@ -80,14 +87,17 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any,
     Option(authenticationResult)
       .exists(result => on(result).call("isAuthenticated").get[Boolean])
   }
+
 }
 
 private class ApiKeyServiceRefNotAvailable(cause: Throwable) extends ApiKeyService {
 
-  override def validateToken(token: AuthorizationToken)
-                            (implicit requestId: RequestId): Task[Boolean] = Task.raiseError {
+  override def validateToken(token: AuthorizationToken)(
+      implicit requestId: RequestId
+  ): Task[Boolean] = Task.raiseError {
     new Exception("ApiKey Service Ref is not available. Please report the issue!", cause)
   }
+
 }
 
 private object ApiKeyServiceRef {
@@ -98,11 +108,11 @@ private object ApiKeyServiceRef {
       .map(c => onClass(c).call("get").get[AnyRef])
 
   private def loadBridgeClass(): Try[Class[_]] =
-    classLoaderCandidates.view
-      .flatMap { classLoader => Try(Class.forName(bridge, false, classLoader)).toOption }
-      .headOption match {
+    classLoaderCandidates.view.flatMap { classLoader =>
+      Try(Class.forName(bridge, false, classLoader)).toOption
+    }.headOption match {
       case Some(classLoader) => Success(classLoader)
-      case None => Failure(new IllegalStateException(s"Cannot load $bridge class"))
+      case None              => Failure(new IllegalStateException(s"Cannot load $bridge class"))
     }
 
   private def classLoaderCandidates: List[ClassLoader] = AccessControllerHelper.doPrivileged {

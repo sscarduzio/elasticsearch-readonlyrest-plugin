@@ -27,31 +27,30 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import java.util.regex.Pattern
 
-class UriRegexRule(val settings: Settings)
-  extends RegularRule {
+class UriRegexRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = UriRegexRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     Decision.permit(`with` = blockContext)(
-      when = settings
-        .uriPatterns
+      when = settings.uriPatterns
         .exists(variableMatchingRequestedUri(blockContext))
     )
   }
 
-  private def variableMatchingRequestedUri[B <: BlockContext](blockContext: B)
-                                                             (patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
+  private def variableMatchingRequestedUri[B <: BlockContext](
+      blockContext: B
+  )(patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
     patternVariable
       .resolve(blockContext)
       .exists(matchingResolvedPattern(blockContext.requestContext))
 
-  private def matchingResolvedPattern(requestContext: RequestContext)
-                                     (patterns: NonEmptyList[Pattern]): Boolean =
+  private def matchingResolvedPattern(requestContext: RequestContext)(patterns: NonEmptyList[Pattern]): Boolean =
     patterns
       .exists {
         _.matcher(requestContext.restRequest.path.value.value).find()
       }
+
 }
 
 object UriRegexRule {

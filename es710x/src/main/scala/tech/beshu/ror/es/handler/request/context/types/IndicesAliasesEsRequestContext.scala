@@ -32,31 +32,35 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
 
-class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
-                                     esContext: EsContext,
-                                     aclContext: AccessControlStaticContext,
-                                     override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[IndicesAliasesRequest](actionRequest, esContext, aclContext, threadPool) {
+class IndicesAliasesEsRequestContext(
+    actionRequest: IndicesAliasesRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[IndicesAliasesRequest](actionRequest, esContext, aclContext, threadPool) {
 
-  private lazy val originIndices = actionRequest
-    .getAliasActions.asScala
-    .flatMap { r =>
-      r.indices.asSafeSet.flatMap(RequestedIndex.fromString) ++
-        r.aliases.asSafeList.flatMap(RequestedIndex.fromString)
-    }
-    .toCovariantSet
+  private lazy val originIndices = actionRequest.getAliasActions.asScala.flatMap { r =>
+    r.indices.asSafeSet.flatMap(RequestedIndex.fromString) ++
+      r.aliases.asSafeList.flatMap(RequestedIndex.fromString)
+  }.toCovariantSet
 
-  override protected def requestedIndicesFrom(request: IndicesAliasesRequest): Set[RequestedIndex[ClusterIndexName]] = originIndices
+  override protected def requestedIndicesFrom(request: IndicesAliasesRequest): Set[RequestedIndex[ClusterIndexName]] =
+    originIndices
 
-  override protected def update(request: IndicesAliasesRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: IndicesAliasesRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     if (originIndices == filteredIndices.toCovariantSet) {
       Modified
     } else {
-      logger.error(s"Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")
+      logger.error(
+        s"Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue."
+      )
       ShouldBeInterrupted
     }
   }
+
 }

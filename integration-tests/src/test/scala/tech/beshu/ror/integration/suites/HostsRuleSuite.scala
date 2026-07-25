@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //TODO change test names. Current names are copies from old java integration tests
 class HostsRuleSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -44,9 +44,11 @@ class HostsRuleSuite
 
     response should have statusCode 403
   }
+
 }
 
 object HostsRuleSuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient, esVersion)
@@ -54,4 +56,5 @@ object HostsRuleSuite {
     indexManager.createIndex("empty_index").force()
     documentManager.createDoc(".kibana", "documents", 1, ujson.read("""{"id": "asd123"}""")).force()
   }
+
 }

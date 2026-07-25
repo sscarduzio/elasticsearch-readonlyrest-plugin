@@ -33,7 +33,7 @@ class ZeroKnowledgeDataStreamsFilterScalaAdapter(underlying: ZeroKnowledgeIndexF
       dataStreams
         .collect {
           case DataStreamName.Pattern(v) => v.value
-          case DataStreamName.Full(v) => v.value
+          case DataStreamName.Full(v)    => v.value
         }
         .asScala
         .asJava,
@@ -43,12 +43,15 @@ class ZeroKnowledgeDataStreamsFilterScalaAdapter(underlying: ZeroKnowledgeIndexF
     if (result) CheckResult.Ok(processedDataStreams.asScala.flatMap(DataStreamName.fromString).toCovariantSet)
     else CheckResult.Failed
   }
+
 }
 
 object ZeroKnowledgeDataStreamsFilterScalaAdapter {
   sealed trait CheckResult
+
   object CheckResult {
     final case class Ok(processedDataStreams: Set[DataStreamName]) extends CheckResult
     case object Failed extends CheckResult
   }
+
 }

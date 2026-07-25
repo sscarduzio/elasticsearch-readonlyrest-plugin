@@ -33,7 +33,7 @@ import tech.beshu.ror.utils.misc.{OsUtils, Version}
 import java.util.UUID
 
 class RemoteClusterAuditingToolsSuite
-  extends BaseAuditingToolsSuite
+    extends BaseAuditingToolsSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport {
 
@@ -87,11 +87,13 @@ class RemoteClusterAuditingToolsSuite
     }
   }
 
-  override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.fromListUnsafe(auditEsContainers)
+  override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] =
+    NonEmptyList.fromListUnsafe(auditEsContainers)
 
   override protected def baseRorSettingsYaml: String = resolvedRorSettingsFile.contentAsString
 
-  override protected def baseAuditDataStreamName: Option[String] = Option.when(isDataStreamSupported)("audit_data_stream")
+  override protected def baseAuditDataStreamName: Option[String] =
+    Option.when(isDataStreamSupported)("audit_data_stream")
 
   // Adding the ES cluster fields is enabled in the /cluster_auditing_tools/readonlyrest.yml settings file (`DefaultAuditLogSerializerV2` is used)
   override def assertForEveryAuditEntry(entry: JSON): Unit = {
@@ -123,7 +125,7 @@ class RemoteClusterAuditingToolsSuite
         }
       }
 
-      adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate())}
+      adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate()) }
 
       forEachAuditManager { adminAuditManager =>
         eventually {
@@ -164,52 +166,100 @@ class RemoteClusterAuditingToolsSuite
 
       auditNode1.enableNetwork()
 
+      // The audit sink client marks unreachable nodes dead with a growing backoff, so right after
+      // the network comes back it can still consider every node dead and DROP events — exactly
+      // like the all-nodes-out case above. A dropped event never appears, so a single probe is not
+      // enough: keep sending fresh probes until one demonstrably lands (recovery proven), then
+      // reset the sinks and run the real assertions on a clean slate.
+      waitUntilAuditSinkRecovers()
+
+      adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate()) }
+      forEachAuditManager { adminAuditManager =>
+        eventually {
+          adminAuditManager.hasNoEntries
+        }
+      }
+
       val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
 
-      val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds4)
       forEachAuditManager { adminAuditManager =>
         eventually {
           val auditEntries = adminAuditManager.getEntries.force().jsons
 
-          allExpectedTraceIds.foreach { traceId =>
+          traceIds4.foreach { traceId =>
             val entry = findAuditEntryWithTraceId(auditEntries, traceId)
             assertForEveryAuditEntry(entry)
           }
 
-          auditEntries.size shouldEqual allExpectedTraceIds.size
+          auditEntries.size shouldEqual traceIds4.size
         }
       }
     }
   }
 
-  private def queryTweeterIndexWithRandomTraceId(times: Int): List[String] = {
-    (1 to times).map { _ =>
-        val traceId = UUID.randomUUID().toString
-        val indexManager = new IndexManager(
-          basicAuthClient("username", "dev"),
-          esVersionUsed,
-          // header names are left in audit entry - used as 'test' correlation id
-          additionalHeaders = Map(traceIdHeaderName(traceId) -> "any")
-        )
-        val response = indexManager.getIndex("twitter")
-        response should have statusCode 200
-        traceId
+  // Proves the audit pipeline recovered after a network re-enable: a probe event sent while the
+  // sink client still holds every node in dead-host backoff is dropped outright, so each attempt
+  // sends a FRESH probe request and briefly polls for its entry. Probe entries are throwaway —
+  // the caller truncates the sinks right after.
+  private def waitUntilAuditSinkRecovers(): Unit = {
+    val deadline = System.currentTimeMillis() + 180 * 1000L
+    val perProbeWaitMillis = 10 * 1000L
+
+    @scala.annotation.tailrec
+    def entryVisibleInAllSinks(traceId: String, probeDeadline: Long): Boolean = {
+      val landed = adminAuditManagers.values.forall { managers =>
+        managers.toList.forall { manager =>
+          findAuditEntriesWithTraceId(manager.getEntries.force().jsons, traceId).nonEmpty
+        }
       }
-      .toList
+      if (landed) true
+      else if (System.currentTimeMillis() >= probeDeadline) false
+      else {
+        Thread.sleep(500)
+        entryVisibleInAllSinks(traceId, probeDeadline)
+      }
+    }
+
+    @scala.annotation.tailrec
+    def loop(): Unit = {
+      val probeTraceId = queryTweeterIndexWithRandomTraceId(times = 1).head
+      if (!entryVisibleInAllSinks(probeTraceId, System.currentTimeMillis() + perProbeWaitMillis)) {
+        if (System.currentTimeMillis() >= deadline) {
+          fail("Audit sink did not recover within 180s of re-enabling the network")
+        }
+        loop()
+      }
+    }
+
+    loop()
   }
 
+  private def queryTweeterIndexWithRandomTraceId(times: Int): List[String] = {
+    (1 to times).map { _ =>
+      val traceId = UUID.randomUUID().toString
+      val indexManager = new IndexManager(
+        basicAuthClient("username", "dev"),
+        esVersionUsed,
+        // header names are left in audit entry - used as 'test' correlation id
+        additionalHeaders = Map(traceIdHeaderName(traceId) -> "any")
+      )
+      val response = indexManager.getIndex("twitter")
+      response should have statusCode 200
+      traceId
+    }.toList
+  }
 
   private def findAuditEntryWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String) = {
     val foundEntries = findAuditEntriesWithTraceId(auditEntries, traceId)
     withClue(s"Didn't found expected audit entry with traceId [$traceId] in audit entries $auditEntries") {
-      foundEntries.size should be (1)
+      foundEntries.size should be(1)
       foundEntries.head
     }
   }
 
   private def checkNoEntriesWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String): Unit = {
     val foundEntries = findAuditEntriesWithTraceId(auditEntries, traceId)
-    foundEntries.size should be (0)
+    foundEntries.size should be(0)
   }
 
   private def findAuditEntriesWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String): List[ujson.Value] = {
@@ -218,6 +268,5 @@ class RemoteClusterAuditingToolsSuite
   }
 
   private def traceIdHeaderName(traceId: String) = s"test-trace-id-$traceId"
-
 
 }

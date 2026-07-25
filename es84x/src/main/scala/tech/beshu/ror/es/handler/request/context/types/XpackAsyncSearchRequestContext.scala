@@ -23,7 +23,13 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, IndexAttributeFilter, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{
+  ClusterIndexName,
+  FieldLevelSecurity,
+  Filter,
+  IndexAttributeFilter,
+  RequestedIndex
+}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
@@ -32,11 +38,12 @@ import tech.beshu.ror.es.handler.response.SearchHitOps.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
-                                             esContext: EsContext,
-                                             aclContext: AccessControlStaticContext,
-                                             override implicit val threadPool: ThreadPool)
-  extends BaseFilterableEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
+class XpackAsyncSearchRequestContext private (
+    actionRequest: ActionRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override implicit val threadPool: ThreadPool
+) extends BaseFilterableEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   private lazy val searchRequest = searchRequestFrom(actionRequest)
 
@@ -45,14 +52,15 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
   override protected def requestFieldsUsage: RequestFieldsUsage = searchRequest.checkFieldsUsage()
 
   override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] =
-    searchRequest
-      .indices.asSafeSet
+    searchRequest.indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
 
-  override protected def update(request: ActionRequest,
-                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                filter: Option[Filter],
-                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
+  override protected def update(
+      request: ActionRequest,
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult = {
     searchRequest
       .applyFilterToQuery(filter)
       .applyFieldLevelSecurity(fieldLevelSecurity)
@@ -64,11 +72,16 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
   private def searchRequestFrom(request: ActionRequest) = {
     Option(on(request).call("getSearchRequest").get[AnyRef]())
       .collect { case sr: SearchRequest => sr }
-      .getOrElse(throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot extract SearchRequest from SubmitAsyncSearchRequest request"))
+      .getOrElse(
+        throw new RequestSeemsToBeInvalid[ActionRequest](
+          "Cannot extract SearchRequest from SubmitAsyncSearchRequest request"
+        )
+      )
   }
 
-  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): ActionResponse = {
+  private def filterFieldsFromResponse(
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  )(actionResponse: ActionResponse): ActionResponse = {
     (searchResponseFrom(actionResponse), fieldLevelSecurity) match {
       case (Some(searchResponse), Some(definedFieldLevelSecurity)) =>
         searchResponse.getHits.getHits
@@ -87,15 +100,19 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
     Option(on(response).call("getSearchResponse").get[AnyRef]())
       .collect { case sr: SearchResponse => sr }
   }
+
 }
 
 object XpackAsyncSearchRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[XpackAsyncSearchRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("SubmitAsyncSearchRequest")) {
-      Some(new XpackAsyncSearchRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.threadPool))
+      Some(
+        new XpackAsyncSearchRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.threadPool)
+      )
     } else {
       None
     }
   }
+
 }

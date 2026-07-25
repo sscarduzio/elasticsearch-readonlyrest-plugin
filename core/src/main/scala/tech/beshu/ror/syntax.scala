@@ -20,11 +20,10 @@ import tech.beshu.ror.utils.set.{CovariantSet, CovariantSetConversions, Covarian
 
 import scala.collection.mutable
 
-object syntax
-  extends CovariantSetConversions
-  with CovariantSetInstances {
+object syntax extends CovariantSetConversions with CovariantSetInstances {
 
   type Set[A] = CovariantSet[A]
+
   object Set {
     def empty[A]: CovariantSet[A] = CovariantSet.empty
     def apply[A](elems: A*): CovariantSet[A] = CovariantSet.from(elems)
@@ -50,5 +49,7 @@ object syntax
       b.sizeHint(sizeHint)
       b
     }
+
   }
+
 }

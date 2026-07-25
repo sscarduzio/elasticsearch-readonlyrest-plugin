@@ -19,12 +19,14 @@ package tech.beshu.ror.utils.containers.images
 object domain {
 
   sealed trait Enabled[+T]
+
   object Enabled {
     final case class Yes[T](value: T) extends Enabled[T]
     case object No extends Enabled[Nothing]
   }
 
   sealed trait SourceFile
+
   object SourceFile {
     case object EsFile extends SourceFile
     case object RorFile extends SourceFile

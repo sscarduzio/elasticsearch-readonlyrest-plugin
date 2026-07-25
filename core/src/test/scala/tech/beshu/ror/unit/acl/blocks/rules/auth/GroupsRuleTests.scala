@@ -30,10 +30,20 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings as GroupsRulesSettings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{
+  AuthenticationImpersonationCustomSupport,
+  AuthorizationImpersonationCustomSupport
+}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableGroupsLogic,
+  RuntimeResolvableVariableCreator
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -46,56 +56,73 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.language.postfixOps
 
-trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
-  extends AnyWordSpecLike with BlockContextAssertion {
+trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpecLike with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+
   implicit val variableCreator: RuntimeResolvableVariableCreator =
-    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
+    new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty)
+    )
 
   protected def groupsLogicCreator: GroupIds => GL
 
   protected def createRule(settings: GroupsRulesSettings[GL], caseSensitivity: CaseSensitivity): BaseGroupsRule[GL]
 
-  protected final def resolvableGroupsLogic(groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]): RuntimeResolvableGroupsLogic[GL] = {
+  protected final def resolvableGroupsLogic(
+      groupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
+  ): RuntimeResolvableGroupsLogic[GL] = {
     RuntimeResolvableGroupsLogic.Simple(groupIds)
   }
 
-  def assertMatchRule(settings: GroupsRulesSettings[GL],
-                      loggedUser: Option[User.Id],
-                      preferredGroupId: Option[GroupId],
-                      caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled)
-                     (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, loggedUser, preferredGroupId, caseSensitivity, RuleCheckAssertion.RulePermitted(blockContextAssertion))
+  def assertMatchRule(
+      settings: GroupsRulesSettings[GL],
+      loggedUser: Option[User.Id],
+      preferredGroupId: Option[GroupId],
+      caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
+  )(blockContextAssertion: BlockContext => Unit): Unit =
+    assertRule(
+      settings,
+      loggedUser,
+      preferredGroupId,
+      caseSensitivity,
+      RuleCheckAssertion.RulePermitted(blockContextAssertion)
+    )
 
-  def assertNotMatchRule(settings: GroupsRulesSettings[GL],
-                         loggedUser: Option[User.Id],
-                         preferredGroupId: Option[GroupId],
-                         caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled,
-                         denialCause: Cause): Unit =
+  def assertNotMatchRule(
+      settings: GroupsRulesSettings[GL],
+      loggedUser: Option[User.Id],
+      preferredGroupId: Option[GroupId],
+      caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled,
+      denialCause: Cause
+  ): Unit =
     assertRule(settings, loggedUser, preferredGroupId, caseSensitivity, RuleCheckAssertion.RuleDenied(denialCause))
 
-  def assertRule(settings: GroupsRulesSettings[GL],
-                 loggedUser: Option[User.Id],
-                 preferredGroupId: Option[GroupId],
-                 caseSensitivity: CaseSensitivity,
-                 assertion: RuleCheckAssertion): Unit = {
+  def assertRule(
+      settings: GroupsRulesSettings[GL],
+      loggedUser: Option[User.Id],
+      preferredGroupId: Option[GroupId],
+      caseSensitivity: CaseSensitivity,
+      assertion: RuleCheckAssertion
+  ): Unit = {
     val rule = createRule(settings, caseSensitivity)
-    val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(
-      allHeaders = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
-      path = UriPath.auditEventPath
-    ))
+    val requestContext = MockRequestContext.metadata.copy(restRequest =
+      MockRestRequest(
+        allHeaders = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
+        path = UriPath.auditEventPath
+      )
+    )
     val blockContext = UserMetadataRequestBlockContext(
       block = mock[Block],
       requestContext = requestContext,
       blockMetadata = {
         val base = preferredGroupId match {
           case Some(groupId) => BlockMetadata.from(requestContext).withCurrentGroupId(groupId)
-          case None => BlockMetadata.from(requestContext)
+          case None          => BlockMetadata.from(requestContext)
         }
         loggedUser match {
           case Some(user) => base.withLoggedUser(DirectlyLoggedUser(user))
-          case None => base
+          case None       => base
         }
       },
       responseHeaders = Set.empty,
@@ -108,29 +135,33 @@ trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
     UniqueNonEmptyList.of(group(g1), gs.map(group): _*)
   }
 
-  def defaultOutputBlockContextAssertion(user: User.Id,
-                                         group: GroupId,
-                                         availableGroups: UniqueList[Group]): BlockContext => Unit = {
-    (blockContext: BlockContext) =>
-      assertBlockContext(blockContext)(
-        loggedUser = Some(DirectlyLoggedUser(user)),
-        currentGroup = Some(group),
-        availableGroups = availableGroups
-      )
+  def defaultOutputBlockContextAssertion(
+      user: User.Id,
+      group: GroupId,
+      availableGroups: UniqueList[Group]
+  ): BlockContext => Unit = { (blockContext: BlockContext) =>
+    assertBlockContext(blockContext)(
+      loggedUser = Some(DirectlyLoggedUser(user)),
+      currentGroup = Some(group),
+      availableGroups = availableGroups
+    )
   }
 
-  protected def createVariable[T: Convertible](text: NonEmptyString): Either[RuntimeResolvableVariableCreator.CreationError, RuntimeMultiResolvableVariable[T]] = {
+  protected def createVariable[T: Convertible](
+      text: NonEmptyString
+  ): Either[RuntimeResolvableVariableCreator.CreationError, RuntimeMultiResolvableVariable[T]] = {
     variableCreator.createMultiResolvableVariableFrom[T](text)
   }
 
   object authenticationRule {
 
-    def permitting(user: User.Id): AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
+    def permitting(user: User.Id): AuthenticationRule = new AuthenticationRule
+      with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
       override val localUsers: LocalUsers = LocalUsers.NotAvailable
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Permitted(blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
     }
 
@@ -139,7 +170,7 @@ trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
       override val localUsers: LocalUsers = LocalUsers.NotAvailable
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Denied(AuthenticationFailed("mocked - authn in authn rule fail")))
     }
 
@@ -148,61 +179,86 @@ trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
       override val localUsers: LocalUsers = LocalUsers.NotAvailable
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.raiseError(new Exception("Sth went wrong"))
     }
+
   }
 
   object authorizationRule {
 
-    def permitting(groups: NonEmptyList[Group]): AuthorizationRule = new AuthorizationRule with AuthorizationImpersonationCustomSupport {
+    def permitting(groups: NonEmptyList[Group]): AuthorizationRule = new AuthorizationRule
+      with AuthorizationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-        Task.now(Permitted(blockContext.withBlockMetadata(
-          _.withAvailableGroups(UniqueList.from(groups.toList))
-        )))
+      override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+        Task.now(
+          Permitted(
+            blockContext.withBlockMetadata(
+              _.withAvailableGroups(UniqueList.from(groups.toList))
+            )
+          )
+        )
       }
     }
 
     val denying: AuthorizationRule = new AuthorizationRule with AuthorizationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Denied(GroupsAuthorizationFailed("mocked - authz in authz rule fail")))
     }
+
   }
 
   object authRule {
 
-    def permitting(user: User.Id, groups: NonEmptyList[Group]): AuthRule = new AuthRule with AuthenticationRule with AuthorizationRule with AuthorizationImpersonationCustomSupport with AuthenticationImpersonationCustomSupport {
+    def permitting(user: User.Id, groups: NonEmptyList[Group]): AuthRule = new AuthRule
+      with AuthenticationRule
+      with AuthorizationRule
+      with AuthorizationImpersonationCustomSupport
+      with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
       override val localUsers: LocalUsers = LocalUsers.NotAvailable
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-        Task.now(Permitted(blockContext.withBlockMetadata(
-          _.withLoggedUser(DirectlyLoggedUser(user))
-        )))
+      override protected def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.now(
+          Permitted(
+            blockContext.withBlockMetadata(
+              _.withLoggedUser(DirectlyLoggedUser(user))
+            )
+          )
+        )
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-        Task.now(Permitted(blockContext.withBlockMetadata(
-          _.withAvailableGroups(UniqueList.from(groups.toList))
-        )))
+      override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.now(
+          Permitted(
+            blockContext.withBlockMetadata(
+              _.withAvailableGroups(UniqueList.from(groups.toList))
+            )
+          )
+        )
     }
 
-    val denying: AuthRule = new AuthRule with AuthenticationRule with AuthorizationRule with AuthorizationImpersonationCustomSupport with AuthenticationImpersonationCustomSupport {
+    val denying: AuthRule = new AuthRule
+      with AuthenticationRule
+      with AuthorizationRule
+      with AuthorizationImpersonationCustomSupport
+      with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
 
       override val localUsers: LocalUsers = LocalUsers.NotAvailable
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Denied(AuthenticationFailed("mocked - authn in auth rule fail")))
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Denied(GroupsAuthorizationFailed("mocked - authz in auth fail")))
     }
+
   }
+
 }

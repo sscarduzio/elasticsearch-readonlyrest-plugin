@@ -17,11 +17,11 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
+import tech.beshu.ror.utils.httpclient.RestClient
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneOffset}
-import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
-import tech.beshu.ror.utils.httpclient.RestClient
 
 object ElasticsearchTweetsInitializer extends ElasticsearchNodeDataInitializer {
 
@@ -29,9 +29,19 @@ object ElasticsearchTweetsInitializer extends ElasticsearchNodeDataInitializer {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
 
     createTweet(documentManager, 1, "cartman", "You can't be the dwarf character, Butters, I'm the dwarf.")
-    createPost(documentManager, 2, "morgan", "Let me tell you something my friend. Hope is a dangerous thing. Hope can drive a man insane.")
+    createPost(
+      documentManager,
+      2,
+      "morgan",
+      "Let me tell you something my friend. Hope is a dangerous thing. Hope can drive a man insane."
+    )
     createPost(documentManager, 1, "elon", "We're going to Mars!")
-    createTweet(documentManager, 3, "bong", "Alright! Check out this bad boy: 12 megabytes of RAM, 500 megabyte hard drive, built-in spreadhseet capabilities and a modem that transmits it over 28,000 bps.")
+    createTweet(
+      documentManager,
+      3,
+      "bong",
+      "Alright! Check out this bad boy: 12 megabytes of RAM, 500 megabyte hard drive, built-in spreadhseet capabilities and a modem that transmits it over 28,000 bps."
+    )
   }
 
   private def createTweet(manager: DocumentManager, id: Int, user: String, message: String) = {
@@ -43,12 +53,12 @@ object ElasticsearchTweetsInitializer extends ElasticsearchNodeDataInitializer {
   }
 
   private def jsonFrom(user: String, content: String) = {
-    ujson.read(
-      s"""{
-         |  "@timestamp": "${LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)}",
-         |  "user": "$user",
-         |  "post_date": "${LocalDateTime.now().format(DateTimeFormatter.BASIC_ISO_DATE)}",
-         |  "message": "$content"
-         |}""".stripMargin)
+    ujson.read(s"""{
+                  |  "@timestamp": "${LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)}",
+                  |  "user": "$user",
+                  |  "post_date": "${LocalDateTime.now().format(DateTimeFormatter.BASIC_ISO_DATE)}",
+                  |  "message": "$content"
+                  |}""".stripMargin)
   }
+
 }

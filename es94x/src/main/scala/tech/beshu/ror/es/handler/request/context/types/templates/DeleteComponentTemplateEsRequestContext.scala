@@ -18,7 +18,10 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import org.elasticsearch.action.admin.indices.template.delete.{DeleteIndexTemplateRequest, TransportDeleteComponentTemplateAction}
+import org.elasticsearch.action.admin.indices.template.delete.{
+  DeleteIndexTemplateRequest,
+  TransportDeleteComponentTemplateAction
+}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
@@ -31,14 +34,19 @@ import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestCon
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class DeleteComponentTemplateEsRequestContext(actionRequest: TransportDeleteComponentTemplateAction.Request,
-                                              esContext: EsContext,
-                                              override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[TransportDeleteComponentTemplateAction.Request, DeletingComponentTemplates](
-    actionRequest, esContext, threadPool
-  ) {
+class DeleteComponentTemplateEsRequestContext(
+    actionRequest: TransportDeleteComponentTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseTemplatesEsRequestContext[TransportDeleteComponentTemplateAction.Request, DeletingComponentTemplates](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
-  override protected def templateOperationFrom(request: TransportDeleteComponentTemplateAction.Request): DeletingComponentTemplates = {
+  override protected def templateOperationFrom(
+      request: TransportDeleteComponentTemplateAction.Request
+  ): DeletingComponentTemplates = {
     NonEmptyList.fromList(request.getNames) match {
       case Some(patterns) => DeletingComponentTemplates(patterns)
       case None => throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("No template name patterns found")
@@ -53,12 +61,14 @@ class DeleteComponentTemplateEsRequestContext(actionRequest: TransportDeleteComp
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
 
   extension (request: TransportDeleteComponentTemplateAction.Request)
+
     private def getNames: List[TemplateNamePattern] = {
       val names: Array[String] = on(request).call("names").get[Array[String]]
       names.asSafeList.flatMap(TemplateNamePattern.fromString)
@@ -67,4 +77,5 @@ class DeleteComponentTemplateEsRequestContext(actionRequest: TransportDeleteComp
     private def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
       on(request).set("names", names.toList.map(_.value.value).toArray)
     }
+
 }

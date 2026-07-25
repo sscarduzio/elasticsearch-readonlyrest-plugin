@@ -30,17 +30,22 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class PutComposableIndexTemplateEsRequestContext(actionRequest: PutComposableIndexTemplateAction.Request,
-                                                 esContext: EsContext,
-                                                 override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[PutComposableIndexTemplateAction.Request, AddingIndexTemplate](
-    actionRequest, esContext, threadPool
-  ) {
+class PutComposableIndexTemplateEsRequestContext(
+    actionRequest: PutComposableIndexTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseTemplatesEsRequestContext[PutComposableIndexTemplateAction.Request, AddingIndexTemplate](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
-  override protected def templateOperationFrom(request: PutComposableIndexTemplateAction.Request): AddingIndexTemplate = {
+  override protected def templateOperationFrom(
+      request: PutComposableIndexTemplateAction.Request
+  ): AddingIndexTemplate = {
     PutComposableIndexTemplateEsRequestContext.templateOperationFrom(request) match {
       case Right(operation) => operation
-      case Left(msg) => throw RequestSeemsToBeInvalid[PutComposableIndexTemplateAction.Request](msg)
+      case Left(msg)        => throw RequestSeemsToBeInvalid[PutComposableIndexTemplateAction.Request](msg)
     }
   }
 
@@ -48,11 +53,14 @@ class PutComposableIndexTemplateEsRequestContext(actionRequest: PutComposableInd
     // nothing to modify - if it wasn't blocked, we are good
     Modified
   }
+
 }
 
 object PutComposableIndexTemplateEsRequestContext {
 
-  private [types] def templateOperationFrom(request: PutComposableIndexTemplateAction.Request): Either[String, AddingIndexTemplate] = {
+  private[types] def templateOperationFrom(
+      request: PutComposableIndexTemplateAction.Request
+  ): Either[String, AddingIndexTemplate] = {
     for {
       name <- TemplateName
         .fromString(request.name())
@@ -64,4 +72,5 @@ object PutComposableIndexTemplateEsRequestContext {
         .flatMap(_.aliases().asSafeMap.keys.flatMap(RequestedIndex.fromString).toCovariantSet)
     } yield AddingIndexTemplate(name, patterns, aliases)
   }
+
 }

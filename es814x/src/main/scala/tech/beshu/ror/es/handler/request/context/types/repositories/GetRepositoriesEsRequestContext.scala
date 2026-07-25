@@ -27,18 +27,22 @@ import tech.beshu.ror.es.handler.request.context.types.BaseRepositoriesEsRequest
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class GetRepositoriesEsRequestContext(actionRequest: GetRepositoriesRequest,
-                                      esContext: EsContext,
-                                      override val threadPool: ThreadPool)
-  extends BaseRepositoriesEsRequestContext(actionRequest, esContext, threadPool) {
+class GetRepositoriesEsRequestContext(
+    actionRequest: GetRepositoriesRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseRepositoriesEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def repositoriesFrom(request: GetRepositoriesRequest): Set[RepositoryName] = {
     request.repositories().asSafeSet.flatMap(RepositoryName.from).orWildcardWhenEmpty
   }
 
-  override protected def update(request: GetRepositoriesRequest,
-                                repositories: NonEmptyList[RepositoryName]): ModificationResult = {
+  override protected def update(
+      request: GetRepositoriesRequest,
+      repositories: NonEmptyList[RepositoryName]
+  ): ModificationResult = {
     request.repositories(repositories.map(RepositoryName.toString).toList.toArray)
     Modified
   }
+
 }

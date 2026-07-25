@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //todo: change test names. Current names are copies from old java integration tests
 class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -40,25 +40,21 @@ class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
     wiremock(
       name = "GROUPS1",
       portWhenRunningOnWindows = 8080,
-      mappings =
-        "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
+      mappings = "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
       "/rev_proxy_groups_provider/wiremock_service1_morgan.json",
       "/rev_proxy_groups_provider/wiremock_service1_anyuser.json"
     ),
     wiremock(
       name = "GROUPS2",
       portWhenRunningOnWindows = 8081,
-      mappings =
-        "/rev_proxy_groups_provider/wiremock_service2_token.json",
+      mappings = "/rev_proxy_groups_provider/wiremock_service2_token.json",
       "/rev_proxy_groups_provider/wiremock_service2_anytoken.json",
     )
   )
 
   "testAuthenticationAndAuthorizationSuccessWithService1" in {
-    val indexManager = new IndexManager(
-      client = noBasicAuthClient,
-      esVersionUsed,
-      additionalHeaders = Map("X-Auth-Token" -> "cartman"))
+    val indexManager =
+      new IndexManager(client = noBasicAuthClient, esVersionUsed, additionalHeaders = Map("X-Auth-Token" -> "cartman"))
 
     val result = indexManager.getIndex("twitter")
 
@@ -66,10 +62,8 @@ class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
   }
 
   "testAuthenticationAndAuthorizationErrorWithService1" in {
-    val indexManager = new IndexManager(
-      client = noBasicAuthClient,
-      esVersionUsed,
-      additionalHeaders = Map("X-Auth-Token" -> "morgan"))
+    val indexManager =
+      new IndexManager(client = noBasicAuthClient, esVersionUsed, additionalHeaders = Map("X-Auth-Token" -> "morgan"))
 
     val result = indexManager.getIndex("twitter")
 
@@ -80,10 +74,12 @@ class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
     val indexManager = new IndexManager(
       client = noBasicAuthClient,
       esVersionUsed,
-      additionalHeaders = Map("X-Auth-Token" -> "29b3d166-1952-11e7-8b77-6c4008a76fc6"))
+      additionalHeaders = Map("X-Auth-Token" -> "29b3d166-1952-11e7-8b77-6c4008a76fc6")
+    )
 
     val result = indexManager.getIndex("facebook")
 
     result should have statusCode 200
   }
+
 }

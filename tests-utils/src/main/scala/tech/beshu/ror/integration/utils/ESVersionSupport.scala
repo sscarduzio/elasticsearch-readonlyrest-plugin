@@ -49,6 +49,7 @@ sealed trait ESVersionSupport extends EsModulePatterns {
   protected def stringTaggedAs(string: String, firstTestTag: Tag, otherTestTags: Tag*): T
 
   implicit final class ESVersionSupportOps(string: String) {
+
     def excludeES(esVersion: String, esVersions: String*): T = {
       stringTaggedAs(string, new ExcludeESModule(esVersion), esVersions.map(new ExcludeESModule(_)).toList: _*)
     }

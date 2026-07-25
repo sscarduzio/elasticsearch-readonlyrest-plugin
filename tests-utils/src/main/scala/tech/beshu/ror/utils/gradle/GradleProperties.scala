@@ -18,10 +18,9 @@ package tech.beshu.ror.utils.gradle
 
 import java.io.{File, FileInputStream}
 import java.util.Properties
-
 import scala.util.Try
 
-class GradleProperties private(properties: Properties) {
+class GradleProperties private (properties: Properties) {
   def getProperty(key: String): String = properties.getProperty(key)
 }
 
@@ -34,4 +33,5 @@ object GradleProperties {
     prop.load(input)
     new GradleProperties(prop)
   }.toOption
+
 }

@@ -39,14 +39,12 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.util.Base64
 
-class GroupsRuleAccessControlTests
-  extends AnyWordSpec
-    with BaseYamlLoadedAccessControlTest
-    with Inside {
+class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
   private val (pub, secret) = Random.generateRsaRandomKeys
 
-  override protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
+  override protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider =
+    new UnboundidLdapConnectionPoolProvider
 
   override protected def settingsYaml: String =
     s"""
@@ -215,10 +213,9 @@ class GroupsRuleAccessControlTests
           .withHeaders(header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes)))
           .copy(filteredIndices = Set(requestedIndex("g34_index")))
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
-        inside(result) {
-          case Allowed(blockContext) =>
-            blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user2"))))
-            blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group3"), group("group4")))
+        inside(result) { case Allowed(blockContext) =>
+          blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user2"))))
+          blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group3"), group("group4")))
         }
 
         history.blocks should have size 1
@@ -231,9 +228,11 @@ class GroupsRuleAccessControlTests
             .withHeaders(header("X-Auth-Token", "user1-proxy-id"))
             .copy(
               filteredIndices = Set(requestedIndex("g12_index")),
-              esServices = MockEsServices.`with`(MockEsClusterService(
-                allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
-              ))
+              esServices = MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+                )
+              )
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -251,9 +250,11 @@ class GroupsRuleAccessControlTests
             .withHeaders(header("X-Auth-Token", "user1-invalid"))
             .copy(
               filteredIndices = Set(requestedIndex("g12_index")),
-              esServices = MockEsServices.`with`(MockEsClusterService(
-                allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
-              ))
+              esServices = MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+                )
+              )
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
           inside(result) { case ForbiddenByMismatched(_) => }
@@ -265,17 +266,22 @@ class GroupsRuleAccessControlTests
     "jwt auth is used together with groups" should {
       "allow to proceed" when {
         "at least one of user's roles is declared in groups" in {
-          val jwt = Jwt(secret, claims = List(
-            "userId" := "user3",
-            "roles" := List("group5", "group6", "group7")
-          ))
+          val jwt = Jwt(
+            secret,
+            claims = List(
+              "userId" := "user3",
+              "roles" := List("group5", "group6", "group7")
+            )
+          )
           val request = MockRequestContext.indices
             .withHeaders(bearerHeader(jwt))
             .copy(
               filteredIndices = Set(requestedIndex("g*")),
-              esServices = MockEsServices.`with`(MockEsClusterService(
-                allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
-              ))
+              esServices = MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+                )
+              )
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -295,9 +301,11 @@ class GroupsRuleAccessControlTests
             .withHeaders(basicAuthHeader("morgan:user1"), currentGroupHeader("admin"))
             .copy(
               filteredIndices = Set(requestedIndex(".kibana")),
-              esServices = MockEsServices.`with`(MockEsClusterService(
-                allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
-              ))
+              esServices = MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
+                )
+              )
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -317,11 +325,16 @@ class GroupsRuleAccessControlTests
       "it's ror_kbn_auth rule" in {
         def metadataRequest(username: String) = {
           val request = MockRequestContext.metadata.withHeaders(
-            bearerHeader(Jwt(secret, claims = List(
-              "user" := username,
-              "groups" := List("example_group_ror_kbn_auth"),
-              "x-ror-origin" := "example_origin"
-            )))
+            bearerHeader(
+              Jwt(
+                secret,
+                claims = List(
+                  "user" := username,
+                  "groups" := List("example_group_ror_kbn_auth"),
+                  "x-ror-origin" := "example_origin"
+                )
+              )
+            )
           )
           acl.handleMetadataRequest(request).runSyncUnsafe()
         }
@@ -345,18 +358,25 @@ class GroupsRuleAccessControlTests
             groupMetadata1.kibanaPolicy should be(groupMetadata2.kibanaPolicy)
 
             groupMetadata1.metadataOrigin.blockContext.block.name should be(Block.Name("ror_kbn_auth in root of ACL"))
-            groupMetadata2.metadataOrigin.blockContext.block.name should be(Block.Name("local groups-based ror_kbn_auth"))
+            groupMetadata2.metadataOrigin.blockContext.block.name should be(
+              Block.Name("local groups-based ror_kbn_auth")
+            )
           }
         }
       }
       "it's jwt_auth rule" in {
         def metadataRequest(username: String) = {
           val request = MockRequestContext.metadata.withHeaders(
-            bearerHeader(Jwt(secret, claims = List(
-              "user" := username,
-              "groups" := List("example_group_jwt_auth"),
-              "x-ror-origin" := "example_origin"
-            )))
+            bearerHeader(
+              Jwt(
+                secret,
+                claims = List(
+                  "user" := username,
+                  "groups" := List("example_group_jwt_auth"),
+                  "x-ror-origin" := "example_origin"
+                )
+              )
+            )
           )
           acl.handleMetadataRequest(request).runSyncUnsafe()
         }
@@ -420,4 +440,5 @@ class GroupsRuleAccessControlTests
     fullLocalIndexWithAliases(fullIndexName("g34_index")),
     fullLocalIndexWithAliases(fullIndexName("g5_index"))
   )
+
 }

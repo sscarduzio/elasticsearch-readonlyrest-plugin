@@ -21,15 +21,13 @@ import tech.beshu.ror.accesscontrol.domain.EsConfigFile
 
 import scala.util.Try
 
-final case class EsEnv(configDir: File,
-                       modulesDir: File,
-                       esVersion: EsVersion,
-                       esNodeSettings: EsNodeSettings) {
+final case class EsEnv(configDir: File, modulesDir: File, esVersion: EsVersion, esNodeSettings: EsNodeSettings) {
 
   def isOssDistribution: Boolean = EsEnv.isOssDistribution(modulesDir)
 
   def elasticsearchConfig: EsConfigFile = EsConfigFile.default(this)
 }
+
 object EsEnv {
 
   def isOssDistribution(modulesDir: File): Boolean = {
@@ -39,4 +37,5 @@ object EsEnv {
       false
     }
   }
+
 }

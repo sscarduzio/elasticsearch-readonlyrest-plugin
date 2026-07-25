@@ -26,6 +26,7 @@ import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 import tech.beshu.ror.tools.core.utils.FileUtils.osPathToFile
+
 import scala.language.implicitConversions
 
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
@@ -74,7 +75,10 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
       val metadataContent = os.read(patchMetadataFilePath)
       EsPatchMetadataCodec.decode(metadataContent) match {
         case Right(metadata) => Some(metadata)
-        case Left(error) => throw new IllegalStateException(s"Cannot decode ROR patch metadata file: $error. File content: [$metadataContent]")
+        case Left(error)     =>
+          throw new IllegalStateException(
+            s"Cannot decode ROR patch metadata file: $error. File content: [$metadataContent]"
+          )
       }
     } else None
   }
@@ -94,10 +98,11 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
   def readCurrentRorVersion(): String = {
     val versionPattern = """^version=(.+)$""".r
     os.read
-      .lines(pluginPropertiesFilePath).toList
+      .lines(pluginPropertiesFilePath)
+      .toList
       .flatMap {
         case versionPattern(version) => Some(version)
-        case _ => None
+        case _                       => None
       }
       .headOption
       .getOrElse(throw new IllegalStateException(s"Cannot read ROR version from ${pluginPropertiesFilePath}"))
@@ -106,7 +111,5 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 }
 
 object RorPluginDirectory {
-  final case class EsPatchMetadata(rorVersion: String,
-                                   esVersion: SemVer,
-                                   patchedFilesMetadata: List[FilePatchMetadata])
+  final case class EsPatchMetadata(rorVersion: String, esVersion: SemVer, patchedFilesMetadata: List[FilePatchMetadata])
 }

@@ -24,19 +24,26 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRRUserMetadataAction(transportService: TransportService,
-                                    actionFilters: ActionFilters,
-                                    @unused constructorDiscriminator: Unit)
-  extends TransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
-    RRUserMetadataActionType.name, actionFilters, transportService.getTaskManager
-  ) {
+class TransportRRUserMetadataAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    @unused constructorDiscriminator: Unit
+) extends TransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
+      RRUserMetadataActionType.name,
+      actionFilters,
+      transportService.getTaskManager
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters) =
+  def this(transportService: TransportService, actionFilters: ActionFilters) =
     this(transportService, actionFilters, ())
 
-  override def doExecute(task: Task, request: RRUserMetadataRequest, listener: ActionListener[RRUserMetadataResponse]): Unit = {
+  override def doExecute(
+      task: Task,
+      request: RRUserMetadataRequest,
+      listener: ActionListener[RRUserMetadataResponse]
+  ): Unit = {
     // nothing to do here
   }
+
 }

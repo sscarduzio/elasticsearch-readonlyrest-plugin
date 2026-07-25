@@ -39,7 +39,8 @@ public class ZeroKnowledgeIndexFilter {
    * @param indicesWriter function to write indices in request.
    * @return can be allowed
    */
-  public boolean alterIndicesIfNecessaryAndCheck(Set<String> indices, StringPatternsMatcherJava matcher, Consumer<Set<String>> indicesWriter) {
+  public boolean alterIndicesIfNecessaryAndCheck(
+      Set<String> indices, StringPatternsMatcherJava matcher, Consumer<Set<String>> indicesWriter) {
     Set<String> modifiedIndices = alterIndicesIfNecessary(indices, matcher);
     if (modifiedIndices != null) {
       if (modifiedIndices.isEmpty()) {
@@ -52,7 +53,8 @@ public class ZeroKnowledgeIndexFilter {
     return true;
   }
 
-  private Set<String> alterIndicesIfNecessary(Set<String> indices, StringPatternsMatcherJava matcher) {
+  private Set<String> alterIndicesIfNecessary(
+      Set<String> indices, StringPatternsMatcherJava matcher) {
 
     boolean shouldReplace = false;
 
@@ -70,12 +72,16 @@ public class ZeroKnowledgeIndexFilter {
         return matcher.getPatterns();
       }
       if (indices.size() == 1) {
-        return matcher.getPatterns().stream().filter(m -> !m.contains(":")).collect(Collectors.toSet());
-      }
-      else {
+        return matcher.getPatterns().stream()
+            .filter(m -> !m.contains(":"))
+            .collect(Collectors.toSet());
+      } else {
         shouldReplace = true;
         indices.remove("*");
-        indices.addAll(matcher.getPatterns().stream().filter(m -> !m.contains(":")).collect(Collectors.toSet()));
+        indices.addAll(
+            matcher.getPatterns().stream()
+                .filter(m -> !m.contains(":"))
+                .collect(Collectors.toSet()));
       }
     }
 
@@ -86,7 +92,8 @@ public class ZeroKnowledgeIndexFilter {
         continue;
       }
 
-      StringPatternsMatcherJava revMatcher = new StringPatternsMatcherJava(Sets.newHashSet(i), matcher.getCaseSensitivity());
+      StringPatternsMatcherJava revMatcher =
+          new StringPatternsMatcherJava(Sets.newHashSet(i), matcher.getCaseSensitivity());
       Set<String> matched = revMatcher.filter(matcher.getPatterns());
 
       if (!matched.isEmpty()) {
@@ -94,12 +101,10 @@ public class ZeroKnowledgeIndexFilter {
         shouldReplace = true;
       }
     }
-    if (shouldReplace || ! Sets.symmetricDifference(newIndices,indices).isEmpty()) {
+    if (shouldReplace || !Sets.symmetricDifference(newIndices, indices).isEmpty()) {
       return newIndices;
-    }
-    else {
+    } else {
       return indices;
     }
   }
-
 }

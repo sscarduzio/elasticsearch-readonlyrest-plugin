@@ -15,11 +15,15 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
+
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeySha512Rule
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
@@ -42,7 +46,9 @@ class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKey
               |""".stripMargin,
           assertion = rule => {
             rule.settings.credentials should be {
-              HashedCredentials.HashedUserAndPassword("688aced3690d88ae780979585038f4c5072a8f7fce6a8edfdc8e63a6fbf1d5d4c420f60352f90e25d7932234eef8cf17c9d8c9e52dbdce4bad62477d396aa187")
+              HashedCredentials.HashedUserAndPassword(
+                "688aced3690d88ae780979585038f4c5072a8f7fce6a8edfdc8e63a6fbf1d5d4c420f60352f90e25d7932234eef8cf17c9d8c9e52dbdce4bad62477d396aa187"
+              )
             }
           }
         )
@@ -61,7 +67,10 @@ class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKey
               |""".stripMargin,
           assertion = rule => {
             rule.settings.credentials should be {
-              HashedCredentials.HashedOnlyPassword(User.Id("user1"), "688aced3690d88ae780979585038f4c5072a8f7fce6a8edfdc8e63a6fbf1d5d4c420f60352f90e25d7932234eef8cf17c9d8c9e52dbdce4bad62477d396aa187")
+              HashedCredentials.HashedOnlyPassword(
+                User.Id("user1"),
+                "688aced3690d88ae780979585038f4c5072a8f7fce6a8edfdc8e63a6fbf1d5d4c420f60352f90e25d7932234eef8cf17c9d8c9e52dbdce4bad62477d396aa187"
+              )
             }
           }
         )
@@ -70,43 +79,49 @@ class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKey
     "not be able to be loaded from settings" when {
       "no SHA512 auth key is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key_sha512:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key_sha512:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
-              """auth_key_sha512: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """auth_key_sha512: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
       "SHA512 auth key is empty" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key_sha512: ""
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key_sha512: ""
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
-              """auth_key_sha512: ""
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """auth_key_sha512: ""
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -124,32 +139,40 @@ class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKey
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(Message(
-              "Auth key rule credentials malformed (expected two non-empty values separated with colon)"
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                Message(
+                  "Auth key rule credentials malformed (expected two non-empty values separated with colon)"
+                )
+              )
+            )
           }
         )
       }
       "SHA512 auth secret part is empty" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key_sha512: "user1:"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key_sha512: "user1:"
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(Message(
-              "Auth key rule credentials malformed (expected two non-empty values separated with colon)"
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                Message(
+                  "Auth key rule credentials malformed (expected two non-empty values separated with colon)"
+                )
+              )
+            )
           }
         )
       }
     }
   }
+
 }

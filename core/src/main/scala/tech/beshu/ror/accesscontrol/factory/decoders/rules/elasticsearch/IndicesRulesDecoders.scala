@@ -21,9 +21,15 @@ import cats.implicits.*
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -34,9 +40,10 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 
-class IndicesRuleDecoders(variableCreator: RuntimeResolvableVariableCreator,
-                          uniqueIdentifierGenerator: UniqueIdentifierGenerator)
-  extends RuleBaseDecoderWithoutAssociatedFields[IndicesRule] {
+class IndicesRuleDecoders(
+    variableCreator: RuntimeResolvableVariableCreator,
+    uniqueIdentifierGenerator: UniqueIdentifierGenerator
+) extends RuleBaseDecoderWithoutAssociatedFields[IndicesRule] {
 
   private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
@@ -75,36 +82,40 @@ class IndicesRuleDecoders(variableCreator: RuntimeResolvableVariableCreator,
     }
   }
 
-  private implicit lazy val indexNameVariablesDecoder: Decoder[NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]] = {
+  private implicit lazy val indexNameVariablesDecoder
+      : Decoder[NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]] = {
     DecoderHelpers.decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]
   }
+
 }
 
 private object IndicesDecodersHelper {
+
   private implicit val indexNameConvertible: Convertible[ClusterIndexName] = new Convertible[ClusterIndexName] {
     override def convert: String => Either[Convertible.ConvertError, ClusterIndexName] = str =>
       ClusterIndexName
         .fromString(str)
         .toRight(Convertible.ConvertError("Index name cannot be empty"))
   }
-  implicit def indexNameValueDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[ClusterIndexName]] =
-    DecoderHelpers
-      .decodeStringLikeNonEmpty
-      .toSyncDecoder
-      .emapE { str =>
-        variableCreator
-          .createMultiResolvableVariableFrom[ClusterIndexName](str)
-          .left.map(error => RulesLevelCreationError(Message(error.show)))
-      }
-      .decoder
 
-  private[rules] def checkIfAlreadyResolvedIndexVariableContains(indicesVars: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
-                                                                 indexName: ClusterIndexName): Boolean = {
-    indicesVars
-      .find {
-        case AlreadyResolved(indices) => indices.contains_(indexName)
-        case ToBeResolved(_) => false
-      }
-      .isDefined
+  implicit def indexNameValueDecoder(
+      implicit variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder[RuntimeMultiResolvableVariable[ClusterIndexName]] =
+    DecoderHelpers.decodeStringLikeNonEmpty.toSyncDecoder.emapE { str =>
+      variableCreator
+        .createMultiResolvableVariableFrom[ClusterIndexName](str)
+        .left
+        .map(error => RulesLevelCreationError(Message(error.show)))
+    }.decoder
+
+  private[rules] def checkIfAlreadyResolvedIndexVariableContains(
+      indicesVars: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      indexName: ClusterIndexName
+  ): Boolean = {
+    indicesVars.find {
+      case AlreadyResolved(indices) => indices.contains_(indexName)
+      case ToBeResolved(_)          => false
+    }.isDefined
   }
+
 }

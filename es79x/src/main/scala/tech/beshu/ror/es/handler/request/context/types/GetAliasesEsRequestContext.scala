@@ -25,7 +25,10 @@ import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
+  AliasRequestBlockContext,
+  RandomIndexBasedOnBlockContextIndices
+}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
@@ -42,11 +45,12 @@ import tech.beshu.ror.utils.ScalaOps.*
 import java.util.List as JList
 import scala.jdk.CollectionConverters.*
 
-class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
-                                 esContext: EsContext,
-                                 aclContext: AccessControlStaticContext,
-                                 override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[AliasRequestBlockContext](esContext)
+class GetAliasesEsRequestContext(
+    actionRequest: GetAliasesRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[AliasRequestBlockContext](esContext)
     with EsRequest[AliasRequestBlockContext] {
 
   override def initialBlockContext(block: Block): AliasRequestBlockContext = AliasRequestBlockContext(
@@ -72,9 +76,11 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
         updateAliases(actionRequest, aliases)
         UpdateResponse.sync(updateAliasesResponse(aliases.includedOnly, _))
       case None =>
-        logger.error(s"At least one alias and one index has to be allowed. " +
-          s"Found allowed indices: [${blockContext.indices.show}]." +
-          s"Found allowed aliases: [${blockContext.aliases.show}]")
+        logger.error(
+          s"At least one alias and one index has to be allowed. " +
+            s"Found allowed indices: [${blockContext.indices.show}]." +
+            s"Found allowed aliases: [${blockContext.aliases.show}]"
+        )
         ShouldBeInterrupted
     }
   }
@@ -117,7 +123,8 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
 
   private lazy val discoveredIndices = {
     val indices = actionRequest
-      .indices().asSafeSet
+      .indices()
+      .asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
     logger.debug(s"Discovered indices: ${indices.show}")
@@ -132,11 +139,17 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     aliases
   }
 
-  private def updateIndices(request: GetAliasesRequest, indices: NonEmptyList[RequestedIndex[ClusterIndexName]]): Unit = {
+  private def updateIndices(
+      request: GetAliasesRequest,
+      indices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ): Unit = {
     request.indices(indices.stringify: _*)
   }
 
-  private def updateAliases(request: GetAliasesRequest, aliases: NonEmptyList[RequestedIndex[ClusterIndexName]]): Unit = {
+  private def updateAliases(
+      request: GetAliasesRequest,
+      aliases: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ): Unit = {
     if (isRequestedEmptyAliasesSet(request)) {
       // we don't need to do anything
     } else {
@@ -144,13 +157,14 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     }
   }
 
-  private def updateAliasesResponse(allowedAliases: Set[ClusterIndexName],
-                                    response: ActionResponse): ActionResponse = {
+  private def updateAliasesResponse(allowedAliases: Set[ClusterIndexName], response: ActionResponse): ActionResponse = {
     val aliases: ImmutableOpenMap[String, JList[AliasMetadata]] = response match {
       case aliasesResponse: GetAliasesResponse =>
         aliasesResponse.getAliases.filterOutNotAllowedAliases(allowedAliases)
       case other =>
-        logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetAliasesResponse].show}], was: [${other.getClass.show}]")
+        logger.error(
+          s"${id.show} Unexpected response type - expected: [${classOf[GetAliasesResponse].show}], was: [${other.getClass.show}]"
+        )
         ImmutableOpenMapOps.empty[String, JList[AliasMetadata]]
     }
     new GetAliasesResponse(aliases)

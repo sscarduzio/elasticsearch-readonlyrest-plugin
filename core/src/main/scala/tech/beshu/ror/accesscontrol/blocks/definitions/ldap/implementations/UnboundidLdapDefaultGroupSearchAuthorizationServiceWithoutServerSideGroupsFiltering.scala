@@ -18,18 +18,27 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, NestedGroupsConfig}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{
+  ConnectionError,
+  LdapConnectionConfig
+}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{
+  DefaultGroupSearch,
+  NestedGroupsConfig
+}
 import tech.beshu.ror.accesscontrol.domain.{Group, RequestId, User}
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.time.Clock
 
-class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering private(val underlying: LdapAuthorizationService.WithGroupsFiltering)
-  extends LdapAuthorizationService.WithoutGroupsFiltering {
-  
-  override def groupsOf(id: User.Id)(implicit requestId: RequestId): Task[UniqueList[Group]] =
+class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering private (
+    val underlying: LdapAuthorizationService.WithGroupsFiltering
+) extends LdapAuthorizationService.WithoutGroupsFiltering {
+
+  override def groupsOf(id: User.Id)(
+      implicit requestId: RequestId
+  ): Task[UniqueList[Group]] =
     underlying.groupsOf(id, Set.empty)
 
   override def ldapUsersService: LdapUsersService = underlying.ldapUsersService
@@ -42,15 +51,19 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroups
 
 object UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering {
 
-  def create(id: LdapService#Id,
-             ldapUsersService: LdapUsersService,
-             poolProvider: UnboundidLdapConnectionPoolProvider,
-             connectionConfig: LdapConnectionConfig,
-             groupsSearchFilter: DefaultGroupSearch,
-             nestedGroupsConfig: Option[NestedGroupsConfig])
-            (implicit clock: Clock): Task[Either[ConnectionError, LdapAuthorizationService.WithoutGroupsFiltering]] = {
+  def create(
+      id: LdapService#Id,
+      ldapUsersService: LdapUsersService,
+      poolProvider: UnboundidLdapConnectionPoolProvider,
+      connectionConfig: LdapConnectionConfig,
+      groupsSearchFilter: DefaultGroupSearch,
+      nestedGroupsConfig: Option[NestedGroupsConfig]
+  )(
+      implicit clock: Clock
+  ): Task[Either[ConnectionError, LdapAuthorizationService.WithoutGroupsFiltering]] = {
     UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering
       .create(id, ldapUsersService, poolProvider, connectionConfig, groupsSearchFilter, nestedGroupsConfig)
       .map(_.map(svc => new UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering(svc)))
   }
+
 }

@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.variables.startup
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariable.ResolvingError
 import tech.beshu.ror.providers.EnvVarsProvider
 
-private [startup] trait StartupResolvableVariable[RESULT] {
+private[startup] trait StartupResolvableVariable[RESULT] {
 
   def resolve(provider: EnvVarsProvider): Either[ResolvingError, RESULT]
 }

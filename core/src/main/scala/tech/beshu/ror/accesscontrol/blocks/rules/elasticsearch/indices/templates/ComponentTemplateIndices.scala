@@ -27,13 +27,13 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
-private[indices] trait ComponentTemplateIndices
-  extends RequestIdAwareLogging {
+private[indices] trait ComponentTemplateIndices extends RequestIdAwareLogging {
   this: AllTemplateIndices =>
 
-  protected def gettingComponentTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                         (implicit blockContext: TemplateRequestBlockContext,
-                                          allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  protected def gettingComponentTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* getting Component Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
@@ -53,10 +53,10 @@ private[indices] trait ComponentTemplateIndices
     }
   }
 
-  protected def addingComponentTemplate(newTemplateName: TemplateName,
-                                        aliases: Set[RequestedIndex[ClusterIndexName]])
-                                       (implicit blockContext: TemplateRequestBlockContext,
-                                        allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  protected def addingComponentTemplate(newTemplateName: TemplateName, aliases: Set[RequestedIndex[ClusterIndexName]])(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* adding Component Template [${newTemplateName.show}] with aliases
          | [${aliases.show}] ...""".oneLiner
@@ -77,9 +77,10 @@ private[indices] trait ComponentTemplateIndices
     }
   }
 
-  protected def deletingComponentTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                          (implicit blockContext: TemplateRequestBlockContext,
-                                           allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  protected def deletingComponentTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* deleting Component Templates with name patterns [${templateNamePatterns.show}] ..."""
     )
@@ -95,20 +96,22 @@ private[indices] trait ComponentTemplateIndices
           case PartialResult.Forbidden(_) =>
             Left(())
         }
-      case (rejected@Left(_), _) => rejected
+      case (rejected @ Left(_), _) => rejected
     }
     result match {
       case Left(_) | Right(Nil) =>
         Decision.deny(Cause.NotAuthorized)
       case Right(nonEmptyPatternsList) =>
-        val modifiedOperation = TemplateOperation.DeletingComponentTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
+        val modifiedOperation =
+          TemplateOperation.DeletingComponentTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
         Decision.permit(blockContext.withTemplateOperation(modifiedOperation))
     }
   }
 
-  private def deletingComponentTemplate(templateNamePattern: TemplateNamePattern)
-                                       (implicit blockContext: TemplateRequestBlockContext,
-                                        allowedIndices: AllowedIndices): PartialResult[TemplateNamePattern] = {
+  private def deletingComponentTemplate(templateNamePattern: TemplateNamePattern)(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): PartialResult[TemplateNamePattern] = {
     val foundTemplates = findTemplatesBy(namePattern = templateNamePattern, in = blockContext)
     if (foundTemplates.isEmpty) {
       logger.debug(
@@ -124,10 +127,13 @@ private[indices] trait ComponentTemplateIndices
     }
   }
 
-  private def canAddNewComponentTemplate(newTemplateName: TemplateName,
-                                         newTemplateAliases: Iterable[RequestedIndex[ClusterIndexName]])
-                                        (implicit blockContext: TemplateRequestBlockContext,
-                                         allowedIndices: AllowedIndices) = {
+  private def canAddNewComponentTemplate(
+      newTemplateName: TemplateName,
+      newTemplateAliases: Iterable[RequestedIndex[ClusterIndexName]]
+  )(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ) = {
     logger.debug(
       s"""* checking if Component Template [${newTemplateName.show}] can be added ..."""
     )
@@ -136,19 +142,21 @@ private[indices] trait ComponentTemplateIndices
       else {
         newTemplateAliases.forall { alias =>
           val allowed = isAliasAllowed(alias.name)
-          if (!allowed) logger.debug(
-            s"""STOP: one of Template's [${newTemplateName.show}]
+          if (!allowed)
+            logger.debug(
+              s"""STOP: one of Template's [${newTemplateName.show}]
                | alias [${alias.show}] is forbidden.""".oneLiner
-          )
+            )
           allowed
         }
       }
     allAliasesAllowed
   }
 
-  private def canModifyExistingComponentTemplate(existingTemplate: Template.ComponentTemplate)
-                                                (implicit blockContext: TemplateRequestBlockContext,
-                                                 allowedIndices: AllowedIndices) = {
+  private def canModifyExistingComponentTemplate(existingTemplate: Template.ComponentTemplate)(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ) = {
     logger.debug(
       s"* checking if Component Template [${existingTemplate.name.show}] can be modified by the user ..."
     )
@@ -157,11 +165,12 @@ private[indices] trait ComponentTemplateIndices
       else {
         existingTemplate.aliases.forall { alias =>
           val allowed = isAliasAllowed(alias)
-          if (!allowed) logger.debug(
-            s"""STOP: cannot allow to modify existing Component Template
+          if (!allowed)
+            logger.debug(
+              s"""STOP: cannot allow to modify existing Component Template
                | [${existingTemplate.name.show}], because its alias [${alias.show}] is not allowed by rule
                | (it means that user has no access to it)""".oneLiner
-          )
+            )
           allowed
         }
       }
@@ -173,17 +182,24 @@ private[indices] trait ComponentTemplateIndices
     in.requestContext.esServices.clusterService.componentTemplates.find(_.name == name)
   }
 
-  private def findTemplatesBy(namePattern: TemplateNamePattern, in: TemplateRequestBlockContext): Set[Template.ComponentTemplate] = {
+  private def findTemplatesBy(
+      namePattern: TemplateNamePattern,
+      in: TemplateRequestBlockContext
+  ): Set[Template.ComponentTemplate] = {
     findTemplatesBy(Set(namePattern), in)
   }
 
-  private def findTemplatesBy(namePatterns: Iterable[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.ComponentTemplate] = {
+  private def findTemplatesBy(
+      namePatterns: Iterable[TemplateNamePattern],
+      in: TemplateRequestBlockContext
+  ): Set[Template.ComponentTemplate] = {
     given RequestId = in.requestContext.id.toRequestId
     filterTemplates(namePatterns, in.requestContext.esServices.clusterService.componentTemplates)
   }
 
-  private def filterTemplatesNotAllowedAliases(templates: Set[Template])
-                                              (implicit allowedIndices: AllowedIndices): Set[Template] = {
+  private def filterTemplatesNotAllowedAliases(templates: Set[Template])(
+      implicit allowedIndices: AllowedIndices
+  ): Set[Template] = {
     templates.flatMap {
       case Template.ComponentTemplate(name, aliases) =>
         Set[Template](Template.ComponentTemplate(name, aliases.filter(isAliasAllowed)))
@@ -191,4 +207,5 @@ private[indices] trait ComponentTemplateIndices
         Set[Template](other)
     }
   }
+
 }

@@ -25,8 +25,8 @@ import org.apache.http.client.methods.{CloseableHttpResponse, HttpUriRequest}
 import org.apache.http.client.utils.URIBuilder
 import org.apache.http.config.SocketConfig
 import org.apache.http.conn.HttpHostConnectException
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory
 import org.apache.http.conn.ssl.NoopHostnameVerifier
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory
 import org.apache.http.impl.auth.BasicScheme
 import org.apache.http.impl.client.{HttpClientBuilder, HttpClients, StandardHttpRequestRetryHandler}
 import org.apache.http.message.BasicHeader
@@ -41,15 +41,9 @@ import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 import scala.util.Try
 
-class RestClient(ssl: Boolean,
-                 host: String,
-                 port: Int,
-                 basicAuth: Option[(String, String)],
-                 headers: Header*) {
+class RestClient(ssl: Boolean, host: String, port: Int, basicAuth: Option[(String, String)], headers: Header*) {
 
-  def this(ssl: Boolean,
-           host: String,
-           port: Int) = {
+  def this(ssl: Boolean, host: String, port: Int) = {
     this(ssl, host, port, None)
   }
 
@@ -65,17 +59,14 @@ class RestClient(ssl: Boolean,
     Resource
       .make(
         Task.delay(callExecute(request))
-      )(
-        response => Task.delay(response.close())
-      )
+      )(response => Task.delay(response.close()))
   }
 
   def executeSync[T](request: HttpUriRequest): Unit = {
     handle(request)(identity)
   }
 
-  def handle[T](request: HttpUriRequest)
-               (fromResponse: HttpResponse => T): T = {
+  def handle[T](request: HttpUriRequest)(fromResponse: HttpResponse => T): T = {
     executeAsync(request)
       .use(response => Task.delay(fromResponse(response)))
       .runSyncUnsafe()
@@ -104,10 +95,12 @@ class RestClient(ssl: Boolean,
       .setDefaultHeaders(headers.toSeq.asJava)
       .setDefaultSocketConfig(SocketConfig.custom().build())
       .setDefaultRequestConfig(
-        RequestConfig.custom()
+        RequestConfig
+          .custom()
           .setConnectTimeout(timeout * 1000)
           .setConnectionRequestTimeout(timeout * 1000)
-          .setSocketTimeout(timeout * 1000).build()
+          .setSocketTimeout(timeout * 1000)
+          .build()
       )
       .build()
   }
@@ -137,11 +130,12 @@ class RestClient(ssl: Boolean,
       .setPort(port)
       .setPath(("/" + path + "/").replaceAll("//", "/"))
     queryParams
-      .foldLeft(uriBuilder) {
-        case (builder, (name, value)) => builder.setParameter(name, value)
+      .foldLeft(uriBuilder) { case (builder, (name, value)) =>
+        builder.setParameter(name, value)
       }
       .build()
   }
+
 }
 
 object RestClient {
@@ -149,4 +143,5 @@ object RestClient {
   def bodyFrom(response: HttpResponse): String = {
     EntityUtils.toString(response.getEntity)
   }
+
 }

@@ -31,6 +31,7 @@ trait InOut {
 }
 
 object InOut {
+
   object ConsoleInOut extends InOut {
     override def print(str: String): Unit = Console.out.print(str)
 
@@ -42,4 +43,5 @@ object InOut {
 
     override def readLine(): Option[String] = Option(StdIn.readLine())
   }
+
 }

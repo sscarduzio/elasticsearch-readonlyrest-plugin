@@ -31,14 +31,17 @@ import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
-final case class RorSettingsSourcesConfig(settingsIndex: RorSettingsIndex,
-                                          settingsFile: RorSettingsFile,
-                                          settingsMaxSize: Information)
+final case class RorSettingsSourcesConfig(
+    settingsIndex: RorSettingsIndex,
+    settingsFile: RorSettingsFile,
+    settingsMaxSize: Information
+)
 
 object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
 
-  def from(esEnv: EsEnv)
-          (implicit systemContext: SystemContext): Task[Either[LoadingError, RorSettingsSourcesConfig]] = {
+  def from(esEnv: EsEnv)(
+      implicit systemContext: SystemContext
+  ): Task[Either[LoadingError, RorSettingsSourcesConfig]] = {
     implicit val rorBootSettingsDecoder: YamlLeafOrPropertyOrEnvDecoder[RorSettingsSourcesConfig] =
       decoders.rorSettingsSourcesConfigDecoder(systemContext, esEnv)
     loadSetting[RorSettingsSourcesConfig](esEnv, "ROR settings source settings")
@@ -64,8 +67,10 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
       val maxSize: NonEmptyString = nes("com.readonlyrest.settings.maxSize")
     }
 
-    def rorSettingsSourcesConfigDecoder(systemContext: SystemContext,
-                                        esEnv: EsEnv): YamlLeafOrPropertyOrEnvDecoder[RorSettingsSourcesConfig] = {
+    def rorSettingsSourcesConfigDecoder(
+        systemContext: SystemContext,
+        esEnv: EsEnv
+    ): YamlLeafOrPropertyOrEnvDecoder[RorSettingsSourcesConfig] = {
       for {
         settingsIndexName <- settingsIndexNameDecoder(systemContext)
         settingsFilePath <- settingsFileDecoder(systemContext)
@@ -130,4 +135,5 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
     }
 
   }
+
 }

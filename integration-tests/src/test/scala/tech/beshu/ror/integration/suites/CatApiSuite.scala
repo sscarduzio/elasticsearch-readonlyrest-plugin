@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class CatApiSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseTemplatesSuite
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -120,7 +120,7 @@ class CatApiSuite
         val indices = dev3CatManager.indices()
 
         indices should have statusCode 200
-        indices.results.map(_("index").str) should contain allOf("dev1_index", "dev2_index")
+        indices.results.map(_("index").str) should contain allOf ("dev1_index", "dev2_index")
       }
     }
     "return 404" when {
@@ -140,10 +140,10 @@ class CatApiSuite
   }
 
   indexTemplateApiTests("A /_cat/template API (legacy templates)")(new LegacyTemplateManager(_, esVersionUsed))
-  if (doesSupportIndexTemplates) indexTemplateApiTests("A /_cat/template API (index templates)")(new IndexTemplateManager(_, esVersionUsed))
+  if (doesSupportIndexTemplates)
+    indexTemplateApiTests("A /_cat/template API (index templates)")(new IndexTemplateManager(_, esVersionUsed))
 
-  private def indexTemplateApiTests(name: String)
-                                   (templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
+  private def indexTemplateApiTests(name: String)(templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
     val adminTemplateManager = templateManagerCreator(adminClient)
 
     s"$name" when {
@@ -372,7 +372,8 @@ class CatApiSuite
                     indexPatterns = NonEmptyList.of("custom_dev1_*")
                   )
 
-                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
+                  val dev1ClusterStateManager =
+                    new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
                   templates should have statusCode 200
@@ -384,7 +385,8 @@ class CatApiSuite
                     indexPatterns = NonEmptyList.of("dev1_*")
                   )
 
-                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
+                  val dev1ClusterStateManager =
+                    new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
                   templates should have statusCode 200
@@ -398,7 +400,8 @@ class CatApiSuite
                     indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                   )
 
-                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
+                  val dev1ClusterStateManager =
+                    new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
                   templates should have statusCode 200
@@ -410,7 +413,8 @@ class CatApiSuite
                     indexPatterns = NonEmptyList.of("dev1_index")
                   )
 
-                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
+                  val dev1ClusterStateManager =
+                    new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
                   templates should have statusCode 200
@@ -591,4 +595,5 @@ class CatApiSuite
       }
     }
   }
+
 }

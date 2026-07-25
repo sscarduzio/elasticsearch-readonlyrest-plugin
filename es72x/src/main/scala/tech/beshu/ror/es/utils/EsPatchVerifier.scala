@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.es.utils
 
-import tech.beshu.ror.utils.slf4j.Logging
 import org.elasticsearch.common.settings.Settings
 import tech.beshu.ror.tools.core.patches.PatchingVerifier
 import tech.beshu.ror.tools.core.patches.PatchingVerifier.Error.{CannotVerifyIfPatched, EsNotPatched}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.slf4j.Logging
 
 object EsPatchVerifier extends Logging {
 
   def verify(settings: Settings): Unit = doPrivileged {
     pathHomeFrom(settings).flatMap(PatchingVerifier.verify) match {
-      case Right(_) =>
-      case Left(e@EsNotPatched(_)) =>
+      case Right(_)                  =>
+      case Left(e @ EsNotPatched(_)) =>
         throw new IllegalStateException(e.message)
-      case Left(e@CannotVerifyIfPatched(_)) =>
+      case Left(e @ CannotVerifyIfPatched(_)) =>
         logger.warn(e.message)
     }
   }
@@ -37,7 +37,7 @@ object EsPatchVerifier extends Logging {
   private def pathHomeFrom(settings: Settings) =
     Option(settings.get("path.home")) match {
       case Some(esPath) => Right(esPath)
-      case None => Left(CannotVerifyIfPatched("No 'path.home' setting."))
+      case None         => Left(CannotVerifyIfPatched("No 'path.home' setting."))
     }
-}
 
+}

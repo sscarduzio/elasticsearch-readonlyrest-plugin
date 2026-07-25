@@ -6,6 +6,17 @@ docker_image_exists() {
   docker manifest inspect "$1" >/dev/null 2>&1
 }
 
+# Force-remove every container belonging to THIS CI job, scoped by the ror.ci-job=$ROR_CI_JOB_ID label so we
+# never touch a sibling CI job sharing the self-hosted Docker daemon. Single source of truth for "kill
+# this CI job's containers" — used by run-pipeline.sh's SIGTERM trap, the pipeline's always() cleanup
+# step, and the standalone orphan reaper. No-op if ROR_CI_JOB_ID is unset or nothing matches.
+function reap_ci_job_containers {
+  [ -n "${ROR_CI_JOB_ID:-}" ] || return 0
+  local ids
+  ids=$(docker ps -aq --filter "label=ror.ci-job=$ROR_CI_JOB_ID" 2>/dev/null)
+  [ -n "$ids" ] && docker rm -f $ids 2>/dev/null || true
+}
+
 # Repo of the ROR ES pre-build dev image. Must match each module's `preBuildDockerImageVersion` repo in
 # es<ver>x/build.gradle (that is where Gradle actually pushes the canonical <esVersion>-ror-<pluginVersion>).
 ES_DEV_IMAGE_REPO="beshultd/elasticsearch-readonlyrest-dev"
@@ -108,57 +119,76 @@ checkTagNotExist() {
 tag() {
   GIT_TAG="$1"
 
-  checkTagNotExist "$GIT_TAG"
+  checkTagNotExist "$GIT_TAG" || return 0
 
   echo "Tagging as $GIT_TAG"
   git config --global push.default matching
   git config --global user.email "support@readonlyrest.com"
-  git config --global user.name "Azure Pipeline"
+  git config --global user.name "CI"
   # -f overwrites any stale local tag from a previous failed push attempt
-  git tag -fa "$GIT_TAG" -m "Generated tag from Azure Pipeline build $TRAVIS_BUILD_NUMBER"
+  git tag -fa "$GIT_TAG" -m "Generated tag from CI build $TRAVIS_BUILD_NUMBER"
   git push origin "$GIT_TAG"
   return 0
 }
 
-# not used at the moment - it may be needed later,
-upload_using_aws_s3_uploader() {
-  LOCAL_FILE="$1"
-  S3_PATH="$2"
+# Upload a file to an S3-compatible store using the SigV4 curl uploader.
+#
+# The store is selected by the 3rd arg (default ARTIFACTS) and resolves the matching
+# ROR_<STORE>_STORE_* env vars, so the same logic serves both the artifacts store
+# (ROR_ARTIFACTS_STORE_*) and the libs store (ROR_LIBS_STORE_*). Each store keeps its
+# own endpoint, credentials, bucket, region and path-prefix.
+function upload_using_aws_s3_uploader {
+  local LOCAL_FILE="$1"
+  local S3_PATH STORE BUCKET PATH_PREFIX
+  S3_PATH=$(echo "$2" | sed 's:/*$::')
+  STORE="${3:-ARTIFACTS}"
 
-  STORE_ADDR="${ROR_ARTIFACTS_STORE_URL_OR_REGION:-}"
-  if [[ "$STORE_ADDR" =~ ^https?:// ]]; then
-    echo "ERROR: upload_using_aws_s3_uploader does not support URL endpoints; set ROR_ARTIFACTS_STORE_URL_OR_REGION to a region name (e.g. eu-west-1)"
+  if [[ ! -f "$LOCAL_FILE" ]]; then
+    echo "ERROR: artifact to upload not found (or not a regular file): $LOCAL_FILE"
     exit 1
   fi
 
-  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
-  REGION="${STORE_ADDR:-us-east-1}"
-  PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
+  # Indirectly resolve the store-specific env vars (e.g. ROR_LIBS_STORE_BUCKET).
+  local ENDPOINT_VAR="ROR_${STORE}_STORE_ENDPOINT_URL"
+  local AK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_ID"
+  local SK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_SECRET"
+  local BUCKET_VAR="ROR_${STORE}_STORE_BUCKET"
+  local REGION_VAR="ROR_${STORE}_STORE_REGION"
+  local PREFIX_VAR="ROR_${STORE}_STORE_PATH_PREFIX"
+
+  local ENDPOINT="${!ENDPOINT_VAR-}"
+  local AK="${!AK_VAR-}"
+  local SK="${!SK_VAR-}"
+  local REGION="${!REGION_VAR-}"
+  BUCKET="${!BUCKET_VAR-}"; BUCKET="${BUCKET:-beshu}"
+  PATH_PREFIX="${!PREFIX_VAR-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
-  "$CI_DIR"/s3-uploader.sh "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" "$BUCKET@$REGION" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}"
+
+  S3_ENDPOINT_URL="$ENDPOINT" \
+    "$CI_DIR"/s3-uploader.sh \
+      "$AK" "$SK" \
+      "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
 }
 
-upload_using_deltaglider_uploader() {
-  LOCAL_FILE="$1"
-  S3_PATH=$(echo "$2" | sed 's:/*$::')
-  FILE_NAME=$(basename "$LOCAL_FILE")
+function log_disk_usage {
+  local label="${1:-}"
+  echo "=== Disk usage ($label) ==="
+  df -h / || true
+  df -i / || true
 
-  STORE_ADDR="${ROR_ARTIFACTS_STORE_URL_OR_REGION:-}"
-  if [[ ! "$STORE_ADDR" =~ ^https?:// ]]; then
-    echo "ERROR: upload_using_deltaglider_uploader requires a URL endpoint; set ROR_ARTIFACTS_STORE_URL_OR_REGION to an http(s):// URL"
-    exit 1
-  fi
+  echo "--- Docker ---"
+  docker system df || true
+  docker ps -a || true
+  docker volume ls || true
 
-  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
-  PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
-  [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
-  DELTA_GLIDER_VERSION="6.1.1"
+  echo "--- Workspace build dirs ---"
+  du -sh */build 2>/dev/null || true
 
-  docker run --rm \
-    -e AWS_ENDPOINT_URL=$STORE_ADDR \
-    -e AWS_ACCESS_KEY_ID=$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID \
-    -e AWS_SECRET_ACCESS_KEY=$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET \
-    -v "$LOCAL_FILE":"/tmp/$FILE_NAME":ro \
-    beshultd/deltaglider:$DELTA_GLIDER_VERSION \
-    cp "/tmp/$FILE_NAME" "s3://$BUCKET/${PATH_PREFIX}${S3_PATH}/${FILE_NAME}"
+  echo "--- Temp dirs ---"
+  du -sh /tmp 2>/dev/null || true
+
+  echo "--- Gradle ---"
+  du -sh "$GRADLE_USER_HOME/caches" 2>/dev/null || du -sh "$HOME/.gradle/caches" 2>/dev/null || true
+
+  echo "=== End disk usage ==="
 }

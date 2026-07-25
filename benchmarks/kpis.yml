@@ -1,0 +1,174 @@
+# Elected performance KPIs — the reviewed contract of WHAT we track on the ACL hot paths.
+#
+# Each entry binds a KPI id to one benchmark method (with pinned @Param values) and a metric
+# (us_op = microseconds/op from JMH avgt; b_op = allocated bytes/op from `-prof gc`). The `gate`
+# field documents which gate WOULD enforce the KPI if the parked CI tooling is revived (branch
+# parked/perf-nightly-tools, see benchmarks/README.md) — no gate is live today. Live tooling:
+# `:benchmarks:jmhSmoke` runs every tier-1 entry below, and `:benchmarks:verifyKpis` checks that
+# every `benchmark:` entry still resolves to a compiled @Benchmark method.
+# Field calibration: realistic worst case is ~100 blocks / ~100 groups, so tier-1 KPIs pin the
+# canonical size at field max; the @Param axes around them make scaling curvature visible.
+
+kpis:
+  # --- Tier 1: product KPIs ---------------------------------------------------------------
+  - id: acl.eval.permit.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.acl.AclEvaluationBenchmark.permitPath{blocks=100}
+    metric: us_op
+    gate: nightly-median
+    rationale: End-to-end ACL permit at field-max block count, incl. the doPrivileged scheduler hop.
+
+  - id: acl.eval.permit.alloc
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.acl.AclEvaluationBenchmark.permitPath{blocks=100}
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Allocation pressure of the permit path; deterministic PR-level ratchet.
+
+  - id: acl.eval.deny.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.acl.AclEvaluationBenchmark.denyPath{blocks=100}
+    metric: us_op
+    gate: nightly-median
+    rationale: Deny walks ALL blocks - the "long ACL" complaint shape.
+
+  - id: acl.eval.deny.alloc
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.acl.AclEvaluationBenchmark.denyPath{blocks=100}
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Allocation pressure of the full deny walk.
+
+  - id: acl.enterprise.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.acl.EnterpriseScenarioBenchmark.permitPath
+    metric: us_op
+    gate: nightly-median
+    rationale: Worst real customer in one number - 100 blocks x 100 groups x 120 index patterns.
+
+  - id: acl.enterprise.alloc
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.acl.EnterpriseScenarioBenchmark.permitPath
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Allocation pressure of the composite enterprise scenario.
+
+  - id: acl.enterprise.deny.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.acl.EnterpriseScenarioBenchmark.denyPath
+    metric: us_op
+    gate: nightly-median
+    rationale: Worst real customer deny path - all 100 blocks x 100 groups x 120 patterns walked to exhaustion.
+
+  - id: indices.rule.match.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.IndicesRuleResolutionBenchmark.matchPath{patterns=100,requestedIndices=50}
+    metric: us_op
+    gate: nightly-median
+    rationale: Indices rule match path at field-max pattern count, the hottest ES-facing rule.
+
+  - id: indices.rule.match.alloc
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.IndicesRuleResolutionBenchmark.matchPath{patterns=100,requestedIndices=50}
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Per-request allocation of indices resolution + matching.
+
+  - id: indices.rule.wildcardExpansion.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.IndicesRuleResolutionBenchmark.wildcardExpansionPath{patterns=100,requestedIndices=50}
+    metric: us_op
+    gate: nightly-median
+    rationale: Wildcard request expanded against the cluster index list — the production hot path for `logs-*`-style requests.
+
+  - id: indices.rule.wildcardExpansion.alloc
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.IndicesRuleResolutionBenchmark.wildcardExpansionPath{patterns=100,requestedIndices=50}
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Per-request allocation of wildcard expansion + narrowing.
+
+  - id: groups.rule.eval.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.GroupsRuleBenchmark.matchPath{configuredGroups=100,userGroups=100}
+    metric: us_op
+    gate: nightly-median
+    rationale: Groups rule at 100x100 - per block, composes multiplicatively with long ACLs.
+
+  - id: groups.rule.eval.alloc
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.GroupsRuleBenchmark.matchPath{configuredGroups=100,userGroups=100}
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Allocation pressure of the groups rule at 100x100 - paid per block on long ACLs.
+
+  - id: jwt.verify.hmac.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.JwtVerificationBenchmark.hmac256
+    metric: us_op
+    gate: nightly-median
+    rationale: Full jwt_authentication rule check (HMAC-SHA256); feeds the claims-cache decision.
+
+  - id: jwt.verify.hmac.alloc
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.JwtVerificationBenchmark.hmac256
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Allocation pressure of HMAC-SHA256 jwt verification on the auth path.
+
+  - id: jwt.verify.rsa.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.JwtVerificationBenchmark.rsa2048
+    metric: us_op
+    gate: nightly-median
+    rationale: Full jwt_authentication rule check (RSA-2048) - the expensive verifier floor.
+
+  # --- Tier 2: micro KPIs (explain tier-1 inflections) ------------------------------------
+  - id: glob.match.many.time
+    tier: 2
+    benchmark: tech.beshu.ror.benchmarks.matchers.GlobPatternsMatcherBenchmark.matchEach_manyPatterns_caseSensitive
+    metric: us_op
+    gate: nightly-median
+    rationale: Innermost glob loop of index/action/name matching (2000 candidates/op).
+
+  - id: header.name.eq.time
+    tier: 2
+    benchmark: tech.beshu.ror.benchmarks.domain.HeaderNameEqBenchmark.findHeader
+    metric: us_op
+    gate: nightly-median
+    rationale: Case-insensitive header-name Eq paid per production Set[Header].find lookup.
+
+  - id: header.rule.match.time
+    tier: 2
+    benchmark: tech.beshu.ror.benchmarks.rules.HeaderRuleMatchBenchmark.matchPath{requirements=15}
+    metric: us_op
+    gate: nightly-median
+    rationale: headers_and check with many requirements against a 20-header request.
+
+  - id: basicauth.decode.time
+    tier: 2
+    benchmark: tech.beshu.ror.benchmarks.domain.BasicAuthDecodeBenchmark.decodePerRequest
+    metric: us_op
+    gate: nightly-median
+    rationale: Basic-auth header scan + Base64 decode as paid by 5 auth blocks per request.
+
+  - id: static.resolve.time
+    tier: 2
+    benchmark: tech.beshu.ror.benchmarks.rules.RuleStaticResolutionBenchmark.matchPath{configuredPatterns=30}
+    metric: us_op
+    gate: nightly-median
+    rationale: Statically-configured repositories rule check (shared shape with snapshots/data_streams).
+
+  - id: actions.rule.miss.time
+    tier: 2
+    benchmark: tech.beshu.ror.benchmarks.rules.ActionsRuleBenchmark.actionMissed
+    metric: us_op
+    gate: nightly-median
+    rationale: Actions-rule miss cost - paid once per block on the deny path.
+
+  - id: actions.rule.miss.alloc
+    tier: 2
+    benchmark: tech.beshu.ror.benchmarks.rules.ActionsRuleBenchmark.actionMissed
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Allocation pressure of an actions-rule miss - the per-block deny-path floor.

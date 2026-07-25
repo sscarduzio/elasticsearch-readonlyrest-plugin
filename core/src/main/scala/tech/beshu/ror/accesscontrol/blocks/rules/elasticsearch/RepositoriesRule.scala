@@ -20,30 +20,36 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule.{AllowedRepositories, Settings}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRepositoryFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.{RequestIdAwareLogging, ZeroKnowledgeIndexFilter}
 
-class RepositoriesRule(val settings: Settings)
-  extends RegularRule
-    with RequestIdAwareLogging {
+class RepositoriesRule(val settings: Settings) extends RegularRule with RequestIdAwareLogging {
 
   override val name: Rule.Name = RepositoriesRule.Name.name
 
-  private val zeroKnowledgeMatchFilter = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
+  private val zeroKnowledgeMatchFilter = new ZeroKnowledgeRepositoryFilterScalaAdapter(
+    new ZeroKnowledgeIndexFilter(true)
+  )
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  // Optimization: when the allowed repositories are pre-resolved, build the matcher once instead
+  // of per request.
+  private val staticAllowedRepositories: Option[AllowedRepositories] =
+    resolveAllIfPreResolved(settings.allowedRepositories.toNonEmptyList)
+      .map(repositories => AllowedRepositories.from(repositories.toList.toCovariantSet))
+
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.RepositoryRequestBlockContextUpdater =>
         checkRepositories(blockContext)
@@ -54,40 +60,49 @@ class RepositoriesRule(val settings: Settings)
     }
   }
 
-  private def checkRepositories[B <: BlockContext](blockContext: RepositoryRequestBlockContext)
-                                                  (implicit ev: RepositoryRequestBlockContext <:< B): Decision[B] = {
+  private def checkRepositories[B <: BlockContext](blockContext: RepositoryRequestBlockContext)(
+      implicit ev: RepositoryRequestBlockContext <:< B
+  ): Decision[B] = {
     checkAllowedRepositories(
-      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
+      allowedRepositoriesFor(blockContext),
       blockContext.repositories,
       blockContext.requestContext
     ) match {
       case Right(filteredRepositories) => Permitted(blockContext.withRepositories(filteredRepositories))
-      case Left(_) => Denied(Cause.NotAuthorized)
+      case Left(_)                     => Denied(Cause.NotAuthorized)
     }
   }
 
-  private def checkSnapshotRepositories[B <: BlockContext](blockContext: SnapshotRequestBlockContext)
-                                                          (implicit ev: SnapshotRequestBlockContext <:< B): Decision[B] = {
+  private def checkSnapshotRepositories[B <: BlockContext](blockContext: SnapshotRequestBlockContext)(
+      implicit ev: SnapshotRequestBlockContext <:< B
+  ): Decision[B] = {
     checkAllowedRepositories(
-      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
+      allowedRepositoriesFor(blockContext),
       blockContext.repositories,
       blockContext.requestContext
     ) match {
       case Right(filteredRepositories) => Permitted(blockContext.withRepositories(filteredRepositories))
-      case Left(_) => Denied(Cause.NotAuthorized)
+      case Left(_)                     => Denied(Cause.NotAuthorized)
     }
   }
 
-  private def checkAllowedRepositories(allowedRepositories: Set[RepositoryName],
-                                       repositoriesToCheck: Set[RepositoryName],
-                                       requestContext: RequestContext) = {
+  private def allowedRepositoriesFor(blockContext: BlockContext): AllowedRepositories =
+    staticAllowedRepositories.getOrElse {
+      AllowedRepositories.from(resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet)
+    }
+
+  private def checkAllowedRepositories(
+      allowedRepositories: AllowedRepositories,
+      repositoriesToCheck: Set[RepositoryName],
+      requestContext: RequestContext
+  ) = {
     implicit val requestContextImpl: RequestContext = requestContext
-    if (allowedRepositories.contains(RepositoryName.all) || allowedRepositories.contains(RepositoryName.wildcard)) {
+    if (allowedRepositories.hasWildcard) {
       Right(repositoriesToCheck)
     } else {
       zeroKnowledgeMatchFilter.check(
         repositoriesToCheck,
-        PatternsMatcher.create(allowedRepositories)
+        allowedRepositories.matcher
       ) match {
         case CheckResult.Ok(processedRepositories) if requestContext.isReadOnlyRequest =>
           Right(processedRepositories)
@@ -101,11 +116,14 @@ class RepositoriesRule(val settings: Settings)
           )
           Left(())
         case CheckResult.Failed =>
-          logger.debug(s"The processed repositories do not match the allowed repositories. The request will be rejected..")
+          logger.debug(
+            s"The processed repositories do not match the allowed repositories. The request will be rejected.."
+          )
           Left(())
       }
     }
   }
+
 }
 
 object RepositoriesRule {
@@ -115,4 +133,20 @@ object RepositoriesRule {
   }
 
   final case class Settings(allowedRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]])
+
+  // The matcher is lazy so the wildcard path (which short-circuits before matching) never builds it.
+  private final class AllowedRepositories private (val hasWildcard: Boolean, allowedRepositories: Set[RepositoryName]) {
+    lazy val matcher: PatternsMatcher[RepositoryName] = PatternsMatcher.create(allowedRepositories)
+  }
+
+  private object AllowedRepositories {
+
+    def from(allowedRepositories: Set[RepositoryName]): AllowedRepositories = {
+      val hasWildcard =
+        allowedRepositories.contains(RepositoryName.all) || allowedRepositories.contains(RepositoryName.wildcard)
+      new AllowedRepositories(hasWildcard, allowedRepositories)
+    }
+
+  }
+
 }

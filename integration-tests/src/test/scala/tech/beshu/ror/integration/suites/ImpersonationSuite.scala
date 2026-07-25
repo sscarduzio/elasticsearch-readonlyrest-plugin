@@ -20,7 +20,11 @@ import org.apache.commons.codec.binary.Base64
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers, SingletonPluginTestSupport}
+import tech.beshu.ror.integration.utils.{
+  ESVersionSupportForAnyFreeSpecLike,
+  SingletonLdapContainers,
+  SingletonPluginTestSupport
+}
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer}
@@ -30,23 +34,35 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 class ImpersonationSuite
-  extends AnyFreeSpec
+    extends AnyFreeSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyFreeSpecLike
     with BeforeAndAfterEach
-    with BeforeAndAfterAll 
+    with BeforeAndAfterAll
     with CustomScalaTestMatchers {
 
   override implicit val rorSettingsFileName: String = "/impersonation/readonlyrest.yml"
 
-  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ImpersonationSuite.nodeDataInitializer())
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(
+    ImpersonationSuite.nodeDataInitializer()
+  )
 
   override def clusterDependencies: List[DependencyDef] = List(
     ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
     ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
-    wiremock(name = "EXT1", portWhenRunningOnWindows = 8080, mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
-    wiremock(name = "EXT1", portWhenRunningOnWindows = 8081, mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
+    wiremock(
+      name = "EXT1",
+      portWhenRunningOnWindows = 8080,
+      mappings = "/impersonation/wiremock_service1_ext_user_1.json",
+      "/impersonation/wiremock_group_provider1_gpa_user_1.json"
+    ),
+    wiremock(
+      name = "EXT1",
+      portWhenRunningOnWindows = 8081,
+      mappings = "/impersonation/wiremock_service2_ext_user_2.json",
+      "/impersonation/wiremock_group_provider2_gpa_user_2.json"
+    ),
   )
 
   private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
@@ -117,35 +133,37 @@ class ImpersonationSuite
         }
         "when ldap service used in rule is not mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
-              s"""
-                 |{
-                 |  "services": [
-                 |    {
-                 |      "type": "LDAP",
-                 |      "name": "ldap2",
-                 |      "mock": {
-                 |        "users" : [
-                 |          {
-                 |            "name": "ldap_user_2",
-                 |            "groups": [
-                 |              {
-                 |                "id": "group1",
-                 |                "name": "group1"
-                 |              },
-                 |              {
-                 |                "id": "group3",
-                 |                "name": "group3"
-                 |              }
-                 |            ]
-                 |          }
-                 |        ]
-                 |      }
-                 |    }
-                 |  ]
-                 |}
+            .configureImpersonationMocks(
+              ujson.read(
+                s"""
+                   |{
+                   |  "services": [
+                   |    {
+                   |      "type": "LDAP",
+                   |      "name": "ldap2",
+                   |      "mock": {
+                   |        "users" : [
+                   |          {
+                   |            "name": "ldap_user_2",
+                   |            "groups": [
+                   |              {
+                   |                "id": "group1",
+                   |                "name": "group1"
+                   |              },
+                   |              {
+                   |                "id": "group3",
+                   |                "name": "group3"
+                   |              }
+                   |            ]
+                   |          }
+                   |        ]
+                   |      }
+                   |    }
+                   |  ]
+                   |}
              """.stripMargin
-            ))
+              )
+            )
             .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
@@ -159,35 +177,37 @@ class ImpersonationSuite
       "is supported" - {
         "when ldap service used in rule is mocked, the list of local users does not contain LDAP users" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
-              s"""
-                 |{
-                 |  "services": [
-                 |    {
-                 |      "type": "LDAP",
-                 |      "name": "ldap1",
-                 |      "mock": {
-                 |        "users" : [
-                 |          {
-                 |            "name": "ldap_user_1",
-                 |            "groups": [
-                 |              {
-                 |                "id": "group1",
-                 |                "name": "group1"
-                 |              },
-                 |              {
-                 |                "id": "group2",
-                 |                "name": "group2"
-                 |              }
-                 |            ]
-                 |          }
-                 |        ]
-                 |      }
-                 |    }
-                 |  ]
-                 |}
-                 |""".stripMargin
-            ))
+            .configureImpersonationMocks(
+              ujson.read(
+                s"""
+                   |{
+                   |  "services": [
+                   |    {
+                   |      "type": "LDAP",
+                   |      "name": "ldap1",
+                   |      "mock": {
+                   |        "users" : [
+                   |          {
+                   |            "name": "ldap_user_1",
+                   |            "groups": [
+                   |              {
+                   |                "id": "group1",
+                   |                "name": "group1"
+                   |              },
+                   |              {
+                   |                "id": "group2",
+                   |                "name": "group2"
+                   |              }
+                   |            ]
+                   |          }
+                   |        ]
+                   |      }
+                   |    }
+                   |  ]
+                   |}
+                   |""".stripMargin
+              )
+            )
             .forceOkStatus()
 
           val response = rorApiManager.currentRorLocalUsers
@@ -216,24 +236,26 @@ class ImpersonationSuite
         }
         "when external auth service used in rule is not mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
-              s"""
-                 |{
-                 |  "services": [
-                 |    {
-                 |      "type": "EXT_AUTHN",
-                 |      "name": "ext2",
-                 |      "mock": {
-                 |        "users" : [
-                 |          { "name": "ext_user_2" },
-                 |          { "name": "ext_user_2a" }
-                 |        ]
-                 |      }
-                 |    }
-                 |  ]
-                 |}
-                 |""".stripMargin
-            ))
+            .configureImpersonationMocks(
+              ujson.read(
+                s"""
+                   |{
+                   |  "services": [
+                   |    {
+                   |      "type": "EXT_AUTHN",
+                   |      "name": "ext2",
+                   |      "mock": {
+                   |        "users" : [
+                   |          { "name": "ext_user_2" },
+                   |          { "name": "ext_user_2a" }
+                   |        ]
+                   |      }
+                   |    }
+                   |  ]
+                   |}
+                   |""".stripMargin
+              )
+            )
             .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ext_user_1").foreach { searchManager =>
@@ -247,24 +269,26 @@ class ImpersonationSuite
       "is supported" - {
         "when external auth service used in rule is mocked, the list of local users does not contain external auth users" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
-              s"""
-                 |{
-                 |  "services": [
-                 |    {
-                 |      "type": "EXT_AUTHN",
-                 |      "name": "ext1",
-                 |      "mock": {
-                 |        "users": [
-                 |          { "name": "ext_user_1" },
-                 |          { "name": "ext_user_2" }
-                 |        ]
-                 |      }
-                 |    }
-                 |  ]
-                 |}
-                 |""".stripMargin
-            ))
+            .configureImpersonationMocks(
+              ujson.read(
+                s"""
+                   |{
+                   |  "services": [
+                   |    {
+                   |      "type": "EXT_AUTHN",
+                   |      "name": "ext1",
+                   |      "mock": {
+                   |        "users": [
+                   |          { "name": "ext_user_1" },
+                   |          { "name": "ext_user_2" }
+                   |        ]
+                   |      }
+                   |    }
+                   |  ]
+                   |}
+                   |""".stripMargin
+              )
+            )
             .forceOkStatus()
 
           val response = rorApiManager.currentRorLocalUsers
@@ -293,48 +317,50 @@ class ImpersonationSuite
         }
         "when external auth service used in rule is not mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
-              s"""
-                 |{
-                 |  "services": [
-                 |    {
-                 |      "type": "EXT_AUTHZ",
-                 |      "name": "grp2",
-                 |      "mock": {
-                 |        "users" : [
-                 |          {
-                 |            "name": "gpa_user_1",
-                 |            "groups": [
-                 |              {
-                 |                "id": "group4",
-                 |                "name": "group4"
-                 |              },
-                 |              {
-                 |                "id": "group5",
-                 |                "name": "group5"
-                 |              }
-                 |            ]
-                 |          },
-                 |          {
-                 |            "name": "gpa_user_1a",
-                 |            "groups": [
-                 |              {
-                 |                "id": "group4a",
-                 |                "name": "group4a"
-                 |              },
-                 |              {
-                 |                "id": "group5a",
-                 |                "name": "group5a"
-                 |              }
-                 |            ]
-                 |          }
-                 |        ]
-                 |      }
-                 |    }
-                 |  ]
-                 |}
-                 |""".stripMargin
-            ))
+            .configureImpersonationMocks(
+              ujson.read(
+                s"""
+                   |{
+                   |  "services": [
+                   |    {
+                   |      "type": "EXT_AUTHZ",
+                   |      "name": "grp2",
+                   |      "mock": {
+                   |        "users" : [
+                   |          {
+                   |            "name": "gpa_user_1",
+                   |            "groups": [
+                   |              {
+                   |                "id": "group4",
+                   |                "name": "group4"
+                   |              },
+                   |              {
+                   |                "id": "group5",
+                   |                "name": "group5"
+                   |              }
+                   |            ]
+                   |          },
+                   |          {
+                   |            "name": "gpa_user_1a",
+                   |            "groups": [
+                   |              {
+                   |                "id": "group4a",
+                   |                "name": "group4a"
+                   |              },
+                   |              {
+                   |                "id": "group5a",
+                   |                "name": "group5a"
+                   |              }
+                   |            ]
+                   |          }
+                   |        ]
+                   |      }
+                   |    }
+                   |  ]
+                   |}
+                   |""".stripMargin
+              )
+            )
             .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "gpa_user_1").foreach { searchManager =>
@@ -348,48 +374,50 @@ class ImpersonationSuite
       "is supported" - {
         "when external auth service used in rule is mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
-              s"""
-                 |{
-                 |  "services": [
-                 |    {
-                 |      "type": "EXT_AUTHZ",
-                 |      "name": "grp1",
-                 |      "mock": {
-                 |        "users" : [
-                 |          {
-                 |            "name": "gpa_user_1",
-                 |            "groups": [
-                 |              {
-                 |                "id": "group4",
-                 |                "name": "group4"
-                 |              },
-                 |              {
-                 |                "id": "group5",
-                 |                "name": "group5"
-                 |              }
-                 |            ]
-                 |          },
-                 |          {
-                 |            "name": "gpa_user_1a",
-                 |            "groups": [
-                 |              {
-                 |                "id": "group4a",
-                 |                "name": "group4a"
-                 |              },
-                 |              {
-                 |                "id": "group5a",
-                 |                "name": "group5a"
-                 |              }
-                 |            ]
-                 |          }
-                 |        ]
-                 |      }
-                 |    }
-                 |  ]
-                 |}
-                 |""".stripMargin
-            ))
+            .configureImpersonationMocks(
+              ujson.read(
+                s"""
+                   |{
+                   |  "services": [
+                   |    {
+                   |      "type": "EXT_AUTHZ",
+                   |      "name": "grp1",
+                   |      "mock": {
+                   |        "users" : [
+                   |          {
+                   |            "name": "gpa_user_1",
+                   |            "groups": [
+                   |              {
+                   |                "id": "group4",
+                   |                "name": "group4"
+                   |              },
+                   |              {
+                   |                "id": "group5",
+                   |                "name": "group5"
+                   |              }
+                   |            ]
+                   |          },
+                   |          {
+                   |            "name": "gpa_user_1a",
+                   |            "groups": [
+                   |              {
+                   |                "id": "group4a",
+                   |                "name": "group4a"
+                   |              },
+                   |              {
+                   |                "id": "group5a",
+                   |                "name": "group5a"
+                   |              }
+                   |            ]
+                   |          }
+                   |        ]
+                   |      }
+                   |    }
+                   |  ]
+                   |}
+                   |""".stripMargin
+              )
+            )
             .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "gpa_user_1").foreach { searchManager =>
@@ -404,35 +432,37 @@ class ImpersonationSuite
       "is not supported" - {
         "when ldap service used in internal auth rule is not mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
-              s"""
-                 |{
-                 |  "services": [
-                 |    {
-                 |      "type": "LDAP",
-                 |      "name": "ldap2",
-                 |      "mock": {
-                 |        "users" : [
-                 |          {
-                 |            "name": "ldap_user_2",
-                 |            "groups": [
-                 |              {
-                 |                "id": "group1",
-                 |                "name": "group1"
-                 |              },
-                 |              {
-                 |                "id": "group3",
-                 |                "name": "group3"
-                 |              }
-                 |            ]
-                 |          }
-                 |        ]
-                 |      }
-                 |    }
-                 |  ]
-                 |}
-                 |""".stripMargin
-            ))
+            .configureImpersonationMocks(
+              ujson.read(
+                s"""
+                   |{
+                   |  "services": [
+                   |    {
+                   |      "type": "LDAP",
+                   |      "name": "ldap2",
+                   |      "mock": {
+                   |        "users" : [
+                   |          {
+                   |            "name": "ldap_user_2",
+                   |            "groups": [
+                   |              {
+                   |                "id": "group1",
+                   |                "name": "group1"
+                   |              },
+                   |              {
+                   |                "id": "group3",
+                   |                "name": "group3"
+                   |              }
+                   |            ]
+                   |          }
+                   |        ]
+                   |      }
+                   |    }
+                   |  ]
+                   |}
+                   |""".stripMargin
+              )
+            )
             .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
@@ -453,35 +483,37 @@ class ImpersonationSuite
         }
         "when ldap service used in internal auth rule is mocked" in {
           rorApiManager
-            .configureImpersonationMocks(ujson.read(
-              s"""
-                 |{
-                 |  "services": [
-                 |    {
-                 |      "type": "LDAP",
-                 |      "name": "ldap1",
-                 |      "mock": {
-                 |        "users" : [
-                 |          {
-                 |            "name": "ldap_user_1",
-                 |            "groups": [
-                 |              {
-                 |                "id": "group1",
-                 |                "name": "group1"
-                 |              },
-                 |              {
-                 |                "id": "group2",
-                 |                "name": "group2"
-                 |              }
-                 |            ]
-                 |          }
-                 |        ]
-                 |      }
-                 |    }
-                 |  ]
-                 |}
-                 |""".stripMargin
-            ))
+            .configureImpersonationMocks(
+              ujson.read(
+                s"""
+                   |{
+                   |  "services": [
+                   |    {
+                   |      "type": "LDAP",
+                   |      "name": "ldap1",
+                   |      "mock": {
+                   |        "users" : [
+                   |          {
+                   |            "name": "ldap_user_1",
+                   |            "groups": [
+                   |              {
+                   |                "id": "group1",
+                   |                "name": "group1"
+                   |              },
+                   |              {
+                   |                "id": "group2",
+                   |                "name": "group2"
+                   |              }
+                   |            ]
+                   |          }
+                   |        ]
+                   |      }
+                   |    }
+                   |  ]
+                   |}
+                   |""".stripMargin
+              )
+            )
             .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
@@ -522,35 +554,37 @@ class ImpersonationSuite
     "mocks were invalidated" in {
       impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
         rorApiManager
-          .configureImpersonationMocks(ujson.read(
-            s"""
-               |{
-               |  "services": [
-               |    {
-               |      "type": "LDAP",
-               |      "name": "ldap1",
-               |      "mock": {
-               |        "users" : [
-               |          {
-               |            "name": "ldap_user_1",
-               |            "groups": [
-               |              {
-               |                "id": "group1",
-               |                "name": "group1"
-               |              },
-               |              {
-               |                "id": "group2",
-               |                "name": "group2"
-               |              }
-               |            ]
-               |          }
-               |        ]
-               |      }
-               |    }
-               |  ]
-               |}
-               |""".stripMargin
-          ))
+          .configureImpersonationMocks(
+            ujson.read(
+              s"""
+                 |{
+                 |  "services": [
+                 |    {
+                 |      "type": "LDAP",
+                 |      "name": "ldap1",
+                 |      "mock": {
+                 |        "users" : [
+                 |          {
+                 |            "name": "ldap_user_1",
+                 |            "groups": [
+                 |              {
+                 |                "id": "group1",
+                 |                "name": "group1"
+                 |              },
+                 |              {
+                 |                "id": "group2",
+                 |                "name": "group2"
+                 |              }
+                 |            ]
+                 |          }
+                 |        ]
+                 |      }
+                 |    }
+                 |  ]
+                 |}
+                 |""".stripMargin
+            )
+          )
           .forceOkStatus()
 
         val result1 = searchManager.search("test3_index")
@@ -571,35 +605,37 @@ class ImpersonationSuite
         loadTestSettings()
 
         rorApiManager
-          .configureImpersonationMocks(ujson.read(
-            s"""
-               |{
-               |  "services": [
-               |    {
-               |      "type": "LDAP",
-               |      "name": "ldap1",
-               |      "mock": {
-               |        "users" : [
-               |          {
-               |            "name": "ldap_user_1",
-               |            "groups": [
-               |              {
-               |                "id": "group1",
-               |                "name": "group1"
-               |              },
-               |              {
-               |                "id": "group2",
-               |                "name": "group2"
-               |              }
-               |            ]
-               |          }
-               |        ]
-               |      }
-               |    }
-               |  ]
-               |}
-               |""".stripMargin
-          ))
+          .configureImpersonationMocks(
+            ujson.read(
+              s"""
+                 |{
+                 |  "services": [
+                 |    {
+                 |      "type": "LDAP",
+                 |      "name": "ldap1",
+                 |      "mock": {
+                 |        "users" : [
+                 |          {
+                 |            "name": "ldap_user_1",
+                 |            "groups": [
+                 |              {
+                 |                "id": "group1",
+                 |                "name": "group1"
+                 |              },
+                 |              {
+                 |                "id": "group2",
+                 |                "name": "group2"
+                 |              }
+                 |            ]
+                 |          }
+                 |        ]
+                 |      }
+                 |    }
+                 |  ]
+                 |}
+                 |""".stripMargin
+            )
+          )
           .forceOkStatus()
 
         val result1 = searchManager.search("test3_index")
@@ -633,7 +669,9 @@ class ImpersonationSuite
         val result = apiManger.fetchUserMetadata("ent")
 
         result should have statusCode 403
-        result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"))
+        result.responseJson("error")("due_to").arr.map(_.str).toSet should be(
+          Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED")
+        )
       }
     }
     "return 403 and IMPERSONATION_NOT_ALLOWED when the impersonator is not allowed to impersonate a given user" in {
@@ -644,7 +682,9 @@ class ImpersonationSuite
         val result = apiManger.fetchUserMetadata("ent")
 
         result should have statusCode 403
-        result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"))
+        result.responseJson("error")("due_to").arr.map(_.str).toSet should be(
+          Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED")
+        )
       }
     }
     "return 403 and IMPERSONATION_NOT_SUPPORTED when there is no matched block and at least one don't support impersonation" in {
@@ -655,29 +695,37 @@ class ImpersonationSuite
         val result = apiManger.fetchUserMetadata("ent")
 
         result should have statusCode 403
-        result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"))
+        result.responseJson("error")("due_to").arr.map(_.str).toSet should be(
+          Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED")
+        )
       }
     }
   }
 
   private def impersonatingSearchManagers(user: String, pass: String, impersonatedUser: String) = {
     impersonatingManager(
-      user, pass, impersonatedUser,
+      user,
+      pass,
+      impersonatedUser,
       (client, _, additionalHeaders) => new SearchManager(client, esVersionUsed, additionalHeaders)
     )
   }
 
   private def impersonatingRorApiManagers(user: String, pass: String, impersonatedUser: String) = {
     impersonatingManager(
-      user, pass, impersonatedUser,
+      user,
+      pass,
+      impersonatedUser,
       (client, esVersion, additionalHeaders) => new RorApiManager(client, esVersion, additionalHeaders)
     )
   }
 
-  private def impersonatingManager[T](user: String,
-                                      pass: String,
-                                      impersonatedUser: String,
-                                      managerCreator: (RestClient, String, Map[String, String]) => T) = {
+  private def impersonatingManager[T](
+      user: String,
+      pass: String,
+      impersonatedUser: String,
+      managerCreator: (RestClient, String, Map[String, String]) => T
+  ) = {
     List(
       managerCreator(
         basicAuthClient(user, pass),
@@ -692,8 +740,10 @@ class ImpersonationSuite
     )
   }
 
-  private def authorizationHeaderWithRorMetadata(userCredentials: (String, String),
-                                                 headersToEncode: Map[String, String]) = {
+  private def authorizationHeaderWithRorMetadata(
+      userCredentials: (String, String),
+      headersToEncode: Map[String, String]
+  ) = {
     def encodeBase64(value: String): String =
       Base64.encodeBase64(value.getBytes, false).map(_.toChar).mkString
 
@@ -717,210 +767,214 @@ class ImpersonationSuite
 
   private def configureSomeMocksForAllExternalServices(): Unit = {
     rorApiManager
-      .configureImpersonationMocks(ujson.read(
-        s"""
-           |{
-           |  "services": [
-           |    {
-           |      "type": "LDAP",
-           |      "name": "ldap1",
-           |      "mock": {
-           |        "users" : [
-           |          {
-           |            "name": "ldap_user_1",
-           |            "groups": [
-           |              {
-           |                "id": "group1",
-           |                "name": "group1"
-           |              },
-           |              {
-           |                "id": "group2",
-           |                "name": "group2"
-           |              }
-           |            ]
-           |          }
-           |        ]
-           |      }
-           |    },
-           |    {
-           |      "type": "LDAP",
-           |      "name": "ldap2",
-           |      "mock": {
-           |        "users" : [
-           |          {
-           |            "name": "ldap_user_2",
-           |            "groups": [
-           |              {
-           |                "id": "group1",
-           |                "name": "group1"
-           |              },
-           |              {
-           |                "id": "group2",
-           |                "name": "group2"
-           |              }
-           |            ]
-           |          }
-           |        ]
-           |      }
-           |    },
-           |    {
-           |      "type": "EXT_AUTHN",
-           |      "name": "ext1",
-           |      "mock": {
-           |        "users": [
-           |          { "name": "ext_user_1" }
-           |        ]
-           |      }
-           |    },
-           |    {
-           |      "type": "EXT_AUTHN",
-           |      "name": "ext2",
-           |      "mock": {
-           |        "users": [
-           |          { "name": "ext_user_2" }
-           |        ]
-           |      }
-           |    },
-           |    {
-           |      "type": "EXT_AUTHZ",
-           |      "name": "grp1",
-           |      "mock": {
-           |        "users" : [
-           |          {
-           |            "name": "gpa_user_1",
-           |            "groups": [
-           |              {
-           |                "id": "group4",
-           |                "name": "group4"
-           |              },
-           |              {
-           |                "id": "group5",
-           |                "name": "group5"
-           |              }
-           |            ]
-           |          },
-           |          {
-           |            "name": "gpa_user_1a",
-           |            "groups": [
-           |              {
-           |                "id": "group4a",
-           |                "name": "group4a"
-           |              },
-           |              {
-           |                "id": "group5a",
-           |                "name": "group5a"
-           |              }
-           |            ]
-           |          }
-           |        ]
-           |      }
-           |    },
-           |    {
-           |      "type": "EXT_AUTHZ",
-           |      "name": "grp2",
-           |      "mock": {
-           |        "users" : [
-           |          {
-           |            "name": "gpa_user_2",
-           |            "groups": [
-           |              {
-           |                "id": "group4",
-           |                "name": "group4"
-           |              },
-           |              {
-           |                "id": "group5",
-           |                "name": "group5"
-           |              }
-           |            ]
-           |          },
-           |          {
-           |            "name": "gpa_user_2a",
-           |            "groups": [
-           |              {
-           |                "id": "group4a",
-           |                "name": "group4a"
-           |              },
-           |              {
-           |                "id": "group5a",
-           |                "name": "group5a"
-           |              }
-           |            ]
-           |          }
-           |        ]
-           |      }
-           |    }
-           |  ]
-           |}
-           |""".stripMargin
-      ))
+      .configureImpersonationMocks(
+        ujson.read(
+          s"""
+             |{
+             |  "services": [
+             |    {
+             |      "type": "LDAP",
+             |      "name": "ldap1",
+             |      "mock": {
+             |        "users" : [
+             |          {
+             |            "name": "ldap_user_1",
+             |            "groups": [
+             |              {
+             |                "id": "group1",
+             |                "name": "group1"
+             |              },
+             |              {
+             |                "id": "group2",
+             |                "name": "group2"
+             |              }
+             |            ]
+             |          }
+             |        ]
+             |      }
+             |    },
+             |    {
+             |      "type": "LDAP",
+             |      "name": "ldap2",
+             |      "mock": {
+             |        "users" : [
+             |          {
+             |            "name": "ldap_user_2",
+             |            "groups": [
+             |              {
+             |                "id": "group1",
+             |                "name": "group1"
+             |              },
+             |              {
+             |                "id": "group2",
+             |                "name": "group2"
+             |              }
+             |            ]
+             |          }
+             |        ]
+             |      }
+             |    },
+             |    {
+             |      "type": "EXT_AUTHN",
+             |      "name": "ext1",
+             |      "mock": {
+             |        "users": [
+             |          { "name": "ext_user_1" }
+             |        ]
+             |      }
+             |    },
+             |    {
+             |      "type": "EXT_AUTHN",
+             |      "name": "ext2",
+             |      "mock": {
+             |        "users": [
+             |          { "name": "ext_user_2" }
+             |        ]
+             |      }
+             |    },
+             |    {
+             |      "type": "EXT_AUTHZ",
+             |      "name": "grp1",
+             |      "mock": {
+             |        "users" : [
+             |          {
+             |            "name": "gpa_user_1",
+             |            "groups": [
+             |              {
+             |                "id": "group4",
+             |                "name": "group4"
+             |              },
+             |              {
+             |                "id": "group5",
+             |                "name": "group5"
+             |              }
+             |            ]
+             |          },
+             |          {
+             |            "name": "gpa_user_1a",
+             |            "groups": [
+             |              {
+             |                "id": "group4a",
+             |                "name": "group4a"
+             |              },
+             |              {
+             |                "id": "group5a",
+             |                "name": "group5a"
+             |              }
+             |            ]
+             |          }
+             |        ]
+             |      }
+             |    },
+             |    {
+             |      "type": "EXT_AUTHZ",
+             |      "name": "grp2",
+             |      "mock": {
+             |        "users" : [
+             |          {
+             |            "name": "gpa_user_2",
+             |            "groups": [
+             |              {
+             |                "id": "group4",
+             |                "name": "group4"
+             |              },
+             |              {
+             |                "id": "group5",
+             |                "name": "group5"
+             |              }
+             |            ]
+             |          },
+             |          {
+             |            "name": "gpa_user_2a",
+             |            "groups": [
+             |              {
+             |                "id": "group4a",
+             |                "name": "group4a"
+             |              },
+             |              {
+             |                "id": "group5a",
+             |                "name": "group5a"
+             |              }
+             |            ]
+             |          }
+             |        ]
+             |      }
+             |    }
+             |  ]
+             |}
+             |""".stripMargin
+        )
+      )
       .forceOkStatus()
   }
 
-  private lazy val impersonationNotSupportedResponse = ujson.read(
-    """
-      |{
-      |  "error":{
-      |    "root_cause":[
-      |      {
-      |        "type":"forbidden_response",
-      |        "reason":"Forbidden by ReadonlyREST",
-      |        "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"]
-      |      }
-      |    ],
-      |    "type":"forbidden_response",
-      |    "reason":"Forbidden by ReadonlyREST",
-      |    "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"]
-      |  },
-      |  "status":403
-      |}
+  private lazy val impersonationNotSupportedResponse =
+    ujson.read("""
+                 |{
+                 |  "error":{
+                 |    "root_cause":[
+                 |      {
+                 |        "type":"forbidden_response",
+                 |        "reason":"Forbidden by ReadonlyREST",
+                 |        "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"]
+                 |      }
+                 |    ],
+                 |    "type":"forbidden_response",
+                 |    "reason":"Forbidden by ReadonlyREST",
+                 |    "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"]
+                 |  },
+                 |  "status":403
+                 |}
     """.stripMargin)
 
-  private lazy val impersonationNotAllowedResponse = ujson.read(
-    """
-      |{
-      |  "error":{
-      |    "root_cause":[
-      |      {
-      |        "type":"forbidden_response",
-      |        "reason":"Forbidden by ReadonlyREST",
-      |        "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"]
-      |      }
-      |    ],
-      |    "type":"forbidden_response",
-      |    "reason":"Forbidden by ReadonlyREST",
-      |    "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"]
-      |  },
-      |  "status":403
-      |}
+  private lazy val impersonationNotAllowedResponse =
+    ujson.read("""
+                 |{
+                 |  "error":{
+                 |    "root_cause":[
+                 |      {
+                 |        "type":"forbidden_response",
+                 |        "reason":"Forbidden by ReadonlyREST",
+                 |        "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"]
+                 |      }
+                 |    ],
+                 |    "type":"forbidden_response",
+                 |    "reason":"Forbidden by ReadonlyREST",
+                 |    "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"]
+                 |  },
+                 |  "status":403
+                 |}
     """.stripMargin)
 
-  private lazy val testSettingsNotConfiguredResponse = ujson.read(
-    """
-      |{
-      |  "error":{
-      |    "root_cause":[
-      |      {
-      |        "type":"forbidden_response",
-      |        "reason":"Forbidden by ReadonlyREST",
-      |        "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
-      |      }
-      |    ],
-      |    "type":"forbidden_response",
-      |    "reason":"Forbidden by ReadonlyREST",
-      |    "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
-      |  },
-      |  "status":403
-      |}
-      |""".stripMargin)
+  private lazy val testSettingsNotConfiguredResponse = ujson.read("""
+                                                                    |{
+                                                                    |  "error":{
+                                                                    |    "root_cause":[
+                                                                    |      {
+                                                                    |        "type":"forbidden_response",
+                                                                    |        "reason":"Forbidden by ReadonlyREST",
+                                                                    |        "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
+                                                                    |      }
+                                                                    |    ],
+                                                                    |    "type":"forbidden_response",
+                                                                    |    "reason":"Forbidden by ReadonlyREST",
+                                                                    |    "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
+                                                                    |  },
+                                                                    |  "status":403
+                                                                    |}
+                                                                    |""".stripMargin)
+
 }
 
 object ImpersonationSuite {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test3_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test4_index", 1, ujson.read("""{"hello":"world"}""")).force()
-  }
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer =
+    (esVersion: String, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test3_index", 1, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test4_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    }
+
 }

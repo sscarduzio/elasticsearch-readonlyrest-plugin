@@ -1,11 +1,7 @@
 name: Claude Code Review
 
-# Automated PR review by Claude Code.
-#
-# Trigger: every PR opened/updated by repo owners/members/collaborators.
-# External-fork PRs are skipped (see `if:` below) to prevent prompt injection
-# from untrusted PR content. The bot reads CLAUDE.md (project conventions +
-# explicit review methodology) before reviewing.
+# Automated PR review by Claude Code. Opt-in: fires only when the head commit message
+# contains "@claude review". External-fork PRs are skipped (prompt-injection guard).
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
@@ -31,8 +27,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Review is opt-in: run only when the PR's head commit message asks for it.
+      - name: Gate on "@claude review" in head commit message
+        id: gate
+        run: |
+          MSG=$(git log -1 --format=%B ${{ github.event.pull_request.head.sha }} 2>/dev/null || true)
+          if printf '%s' "$MSG" | grep -qiF '@claude review'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Head commit message lacks '@claude review' — skipping review."
+          fi
+
       - name: Run Claude Code Review
         id: claude-review
+        if: steps.gate.outputs.run == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -71,17 +80,13 @@ jobs:
             or `scala-cli` (see the "What to actively hunt for" section in the skill).
 
             **Step 4 — post the review** using `gh pr comment ${{ github.event.pull_request.number }} --body-file <path>`.
-            Format strictly per the "Output format" section of the skill:
+            Format strictly per the "Output format" section of the skill — BE CONCISE:
+            findings only (severity, `file:line`, what to change, why in 1–2 sentences),
+            open questions only if they'd change a finding, and a HARD CAP of ~30 lines /
+            ~350 words for the whole review. No audit-trail narrative, no praise section.
 
-            1. **What I checked** — your audit trail (3–8 bullets)
-            2. **Findings** — ordered by severity, with file:line, evidence, suggestion
-            3. **What looks good** — one or two genuine sentences
-            4. **Open questions** — anything you couldn't determine from the diff alone
-
-            **Hard rule:** do NOT post `"No issues found"` without backing. If after
-            thorough investigation there genuinely are no issues, your response must
-            enumerate what you checked and why each area passed. A bare "No issues
-            found" response will be treated as a failed review.
+            **Hard rule:** never a bare `"No issues found"` — the no-issues form is ONE
+            line naming the 3–5 highest-risk things you verified.
 
             **Hard rule:** if you hit an obstacle (tool error, file too large, ambiguous
             code), say so explicitly in the review. Never silently skip.

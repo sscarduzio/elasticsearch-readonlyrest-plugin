@@ -25,8 +25,9 @@ import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps.*
 
-class RRTestSettingsRequest(request: TestSettingsApi.TestSettingsRequest,
-                            esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
+class RRTestSettingsRequest(request: TestSettingsApi.TestSettingsRequest, esRestRequest: RestRequest)
+    extends ActionRequest
+    with RorActionRequest {
 
   def getTestSettingsRequest: RorApiRequest[TestSettingsApi.TestSettingsRequest] =
     RorApiRequest(request, loggerUser)
@@ -56,5 +57,5 @@ object RRTestSettingsRequest {
       request
     )
   }
-}
 
+}

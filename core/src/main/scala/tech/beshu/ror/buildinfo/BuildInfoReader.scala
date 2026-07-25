@@ -27,6 +27,7 @@ import java.util.{Objects, Properties}
 import scala.util.Try
 
 final case class BuildInfo(esVersion: String, pluginVersion: String)
+
 object BuildInfoReader {
   private val filename = "/ror-build-info.properties"
 
@@ -50,12 +51,16 @@ object BuildInfoReader {
   }
 
   private def tryWithResources[A <: AutoCloseable, B](closeable: A, use: A => B): Task[B] = {
-      Resource.fromAutoCloseable(Task.pure(closeable))
-        .use(c => Task.pure(use(c)))
+    Resource
+      .fromAutoCloseable(Task.pure(closeable))
+      .use(c => Task.pure(use(c)))
   }
 
   private def createResource(filename: String) =
-    requireNonNull(this.getClass.getResourceAsStream(filename), s"file '${filename.show}' is expected to be present in plugin jar, but it wasn't found.")
+    requireNonNull(
+      this.getClass.getResourceAsStream(filename),
+      s"file '${filename.show}' is expected to be present in plugin jar, but it wasn't found."
+    )
 
   private def loadProperties(inputStream: InputStream) = {
     val props = new Properties()
@@ -69,5 +74,5 @@ object BuildInfoReader {
   private def requireNonNull[A](a: A, message: String): Task[A] = Task {
     Objects.requireNonNull(a, message)
   }
-}
 
+}

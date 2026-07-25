@@ -57,5 +57,4 @@ public interface RequestContextShim {
   Optional<String> getLoggedInUserName();
 
   boolean involvesIndices();
-
 }

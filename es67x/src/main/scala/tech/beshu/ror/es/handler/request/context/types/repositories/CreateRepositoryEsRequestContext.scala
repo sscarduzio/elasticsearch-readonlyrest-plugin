@@ -29,10 +29,11 @@ import tech.beshu.ror.es.handler.request.context.types.BaseRepositoriesEsRequest
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-class CreateRepositoryEsRequestContext(actionRequest: PutRepositoryRequest,
-                                       esContext: EsContext,
-                                       override val threadPool: ThreadPool)
-  extends BaseRepositoriesEsRequestContext(actionRequest, esContext, threadPool) {
+class CreateRepositoryEsRequestContext(
+    actionRequest: PutRepositoryRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseRepositoriesEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def repositoriesFrom(request: PutRepositoryRequest): Set[RepositoryName] = Set {
     RepositoryName
@@ -40,12 +41,17 @@ class CreateRepositoryEsRequestContext(actionRequest: PutRepositoryRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[PutRepositoryRequest]("Repository name is empty"))
   }
 
-  override protected def update(request: PutRepositoryRequest,
-                                repositories: NonEmptyList[RepositoryName]): ModificationResult = {
+  override protected def update(
+      request: PutRepositoryRequest,
+      repositories: NonEmptyList[RepositoryName]
+  ): ModificationResult = {
     if (repositories.tail.nonEmpty) {
-      logger.warn(s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+      logger.warn(
+        s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]"
+      )
     }
     request.name(RepositoryName.toString(repositories.head))
     Modified
   }
+
 }

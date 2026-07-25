@@ -24,7 +24,10 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
+  BasedOnBlockContextOnly,
+  FlsAtLuceneLevelApproach
+}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -34,35 +37,47 @@ import tech.beshu.ror.es.utils.SqlRequestHelper
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
-                                         esContext: EsContext,
-                                         aclContext: AccessControlStaticContext,
-                                         override val threadPool: ThreadPool)
-  extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, threadPool) {
+class SqlIndicesEsRequestContext private (
+    actionRequest: ActionRequest with CompositeIndicesRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](
+      actionRequest,
+      esContext,
+      aclContext,
+      threadPool
+    ) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
   private lazy val sqlIndicesExtractResult = SqlRequestHelper.indicesFrom(actionRequest)
 
-  override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
+  override protected def requestedIndicesFrom(
+      request: ActionRequest with CompositeIndicesRequest
+  ): Set[RequestedIndex[ClusterIndexName]] = {
     sqlIndicesExtractResult.map(_.indices.flatMap(RequestedIndex.fromString)) match {
       case Right(indices) => indices
-      case Left(_) => Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
+      case Left(_)        => Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
     }
   }
 
-  override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                filter: Option[Filter],
-                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
+  override protected def update(
+      request: ActionRequest with CompositeIndicesRequest,
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult = {
     modifyRequestIndices(request, filteredRequestedIndices)
     applyFieldLevelSecurityTo(request, fieldLevelSecurity)
     applyFilterTo(request, filter)
     UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
   }
 
-  private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,
-                                   indices: NonEmptyList[RequestedIndex[ClusterIndexName]]): CompositeIndicesRequest = {
+  private def modifyRequestIndices(
+      request: ActionRequest with CompositeIndicesRequest,
+      indices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ): CompositeIndicesRequest = {
     sqlIndicesExtractResult match {
       case Right(sqlIndices) =>
         val indicesStrings = indices.stringify.toCovariantSet
@@ -77,8 +92,10 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     }
   }
 
-  private def applyFieldLevelSecurityTo(request: ActionRequest with CompositeIndicesRequest,
-                                        fieldLevelSecurity: Option[FieldLevelSecurity]) = {
+  private def applyFieldLevelSecurityTo(
+      request: ActionRequest with CompositeIndicesRequest,
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ) = {
     fieldLevelSecurity match {
       case Some(definedFields) =>
         definedFields.strategy match {
@@ -93,8 +110,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     }
   }
 
-  private def applyFieldLevelSecurityTo(response: ActionResponse,
-                                        fieldLevelSecurity: Option[FieldLevelSecurity]) = {
+  private def applyFieldLevelSecurityTo(response: ActionResponse, fieldLevelSecurity: Option[FieldLevelSecurity]) = {
     fieldLevelSecurity match {
       case Some(fls) =>
         SqlRequestHelper.modifyResponseAccordingToFieldLevelSecurity(response, fls)
@@ -103,27 +119,31 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     }
   }
 
-  private def applyFilterTo(request: ActionRequest with CompositeIndicesRequest,
-                            filter: Option[Filter]) = {
+  private def applyFilterTo(request: ActionRequest with CompositeIndicesRequest, filter: Option[Filter]) = {
     import tech.beshu.ror.es.handler.request.SearchRequestOps.*
     Option(on(request).call("filter").get[QueryBuilder])
       .wrapQueryBuilder(filter)
       .foreach { qb => on(request).set("filter", qb) }
     request
   }
+
 }
 
 object SqlIndicesEsRequestContext {
+
   def unapply(arg: ReflectionBasedActionRequest): Option[SqlIndicesEsRequestContext] = {
     if (arg.esContext.channel.restRequest.path.isXpackSqlQueryPath) {
-      Some(new SqlIndicesEsRequestContext(
-        arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
-        arg.esContext,
-        arg.aclContext,
-        arg.threadPool
-      ))
+      Some(
+        new SqlIndicesEsRequestContext(
+          arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
+          arg.esContext,
+          arg.aclContext,
+          arg.threadPool
+        )
+      )
     } else {
       None
     }
   }
+
 }

@@ -26,18 +26,21 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 
-class GetRollupCapsEsRequestContext private(actionRequest: ActionRequest,
-                                           esContext: EsContext,
-                                           aclContext: AccessControlStaticContext,
-                                           override val threadPool: ThreadPool)
-  extends BaseSingleIndexEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
+class GetRollupCapsEsRequestContext private (
+    actionRequest: ActionRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseSingleIndexEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndexFrom(request: ActionRequest): RequestedIndex[ClusterIndexName] = {
     val indexStr = on(request).call("getIndexPattern").get[String]()
     RequestedIndex.fromString(indexStr) match {
       case Some(index) => index
-      case None =>
-        throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot get non-empty index pattern from GetRollupCapsAction$Request")
+      case None        =>
+        throw new RequestSeemsToBeInvalid[ActionRequest](
+          "Cannot get non-empty index pattern from GetRollupCapsAction$Request"
+        )
     }
   }
 
@@ -45,15 +48,19 @@ class GetRollupCapsEsRequestContext private(actionRequest: ActionRequest,
     on(request).set("indexPattern", index.stringify)
     Modified
   }
+
 }
 
 object GetRollupCapsEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[GetRollupCapsEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getName.endsWith("GetRollupCapsAction$Request")) {
-      Some(new GetRollupCapsEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.threadPool))
+      Some(
+        new GetRollupCapsEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.threadPool)
+      )
     } else {
       None
     }
   }
+
 }

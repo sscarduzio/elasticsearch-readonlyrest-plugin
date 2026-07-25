@@ -28,6 +28,7 @@ assert JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) :
 rootProject.name = 'readonlyrest'
 include 'ror-managed-libs'
 include 'audit'
+include 'benchmarks'
 include 'core'
 include 'es67x'
 include 'es70x'

@@ -40,7 +40,7 @@ class IndexModuleOps(indexModule: IndexModule) {
     Try {
       indexModule.setSearcherWrapper(readerWrapperFactory)
     } match {
-      case Success(()) => ()
+      case Success(())                                      => ()
       case Failure(_: AlreadySetException) if triesLeft > 0 =>
         on(indexModule).set("indexSearcherWrapper", new LuceneSetOnce[IndexSearcherWrapperFactory]())
         doOverwrite(readerWrapperFactory, triesLeft - 1)
@@ -48,6 +48,7 @@ class IndexModuleOps(indexModule: IndexModule) {
         throw ex
     }
   }
+
 }
 
 object IndexModuleOps {

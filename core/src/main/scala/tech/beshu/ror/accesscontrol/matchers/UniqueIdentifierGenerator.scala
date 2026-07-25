@@ -26,7 +26,9 @@ trait UniqueIdentifierGenerator {
 }
 
 object RandomBasedUniqueIdentifierGenerator extends UniqueIdentifierGenerator {
+
   override def generate(numOfChars: Refined[Int, Positive]): String = {
     Random.alphanumeric.take(numOfChars.value).mkString("")
   }
+
 }

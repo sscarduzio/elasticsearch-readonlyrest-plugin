@@ -16,17 +16,16 @@
  */
 package tech.beshu.ror.es
 
-import java.util.concurrent.atomic.AtomicReference
-import java.util.function.Supplier
 import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.repositories.RepositoriesService
 
+import java.util.concurrent.atomic.AtomicReference
+import java.util.function.Supplier
 import scala.annotation.unused
 
-class RepositoriesServiceInterceptor(repositoriesService: RepositoriesService,
-                                     @unused constructorDiscriminator: Unit)
-  extends AbstractLifecycleComponent() {
+class RepositoriesServiceInterceptor(repositoriesService: RepositoriesService, @unused constructorDiscriminator: Unit)
+    extends AbstractLifecycleComponent() {
 
   @Inject
   def this(repositoriesService: RepositoriesService) = {
@@ -39,15 +38,18 @@ class RepositoriesServiceInterceptor(repositoriesService: RepositoriesService,
   override def doStop(): Unit = {}
   override def doClose(): Unit = {}
 }
+
 object RepositoriesServiceInterceptor {
   val repositoriesServiceSupplier: RepositoriesServiceSupplier = new RepositoriesServiceSupplier
 }
 
 class RepositoriesServiceSupplier extends Supplier[Option[RepositoriesService]] {
   private val repositoriesServiceAtomicReference = new AtomicReference(Option.empty[RepositoriesService])
+
   override def get(): Option[RepositoriesService] = repositoriesServiceAtomicReference.get() match {
     case Some(value) => Option(value)
-    case None => Option.empty
+    case None        => Option.empty
   }
+
   def update(service: RepositoriesService): Unit = repositoriesServiceAtomicReference.set(Some(service))
 }

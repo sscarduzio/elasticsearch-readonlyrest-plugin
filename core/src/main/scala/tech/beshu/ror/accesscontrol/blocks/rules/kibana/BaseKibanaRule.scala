@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import cats.Id
 import cats.data.ReaderT
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
@@ -27,9 +28,11 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.regex.Pattern
+import scala.concurrent.ExecutionContext.global
 import scala.util.Try
 
 trait KibanaRelatedRule {
@@ -37,21 +40,23 @@ trait KibanaRelatedRule {
 }
 
 abstract class BaseKibanaRule(val settings: Settings)
-  extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
+    extends RegularRule
+    with KibanaRelatedRule
+    with RequestIdAwareLogging {
 
   import BaseKibanaRule.*
 
   protected lazy val shouldMatch: ProcessingContext = {
     isUnrestrictedAccessConfigured ||
-      isUserMetadataRequest ||
-      isDevNullKibanaRelated ||
-      isRoAction ||
-      isClusterAction ||
-      emptyIndicesMatch ||
-      isKibanaSimpleData ||
-      isRoNonStrictCase ||
-      isAdminAccessEligible ||
-      isKibanaIndexRequest
+    isUserMetadataRequest ||
+    isDevNullKibanaRelated ||
+    isRoAction ||
+    isClusterAction ||
+    emptyIndicesMatch ||
+    isKibanaSimpleData ||
+    isRoNonStrictCase ||
+    isAdminAccessEligible ||
+    isKibanaIndexRequest
   }
 
   private lazy val isUnrestrictedAccessConfigured = ProcessingContext.create { (bc, _) =>
@@ -71,8 +76,8 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private lazy val isKibanaIndexRequest = {
     kibanaCanBeModified &&
-      isTargetingKibana &&
-      (isRoAction || isRwAction || isIndicesWriteAction)
+    isTargetingKibana &&
+    (isRoAction || isRwAction || isIndicesWriteAction)
   }
 
   private lazy val isAdminAccessEligible: ProcessingContext = {
@@ -88,9 +93,9 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private lazy val isRequestAllowedForAdminAccess = {
     doesRequestContainNoIndices ||
-      isRequestRelatedToRorIndex ||
-      isRequestRelatedToIndexManagementPath ||
-      isRequestRelatedToTagsPath
+    isRequestRelatedToRorIndex ||
+    isRequestRelatedToIndexManagementPath ||
+    isRequestRelatedToTagsPath
   }
 
   private lazy val doesRequestContainNoIndices = ProcessingContext.create { (bc, _) =>
@@ -102,10 +107,10 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private lazy val isRoNonStrictCase = {
     isTargetingKibana &&
-      isAccessOtherThanRoStrictConfigured &&
-      kibanaCannotBeModified &&
-      isNonStrictAllowedPath &&
-      isNonStrictAction
+    isAccessOtherThanRoStrictConfigured &&
+    kibanaCannotBeModified &&
+    isNonStrictAllowedPath &&
+    isNonStrictAction
   }
 
   private lazy val isAccessOtherThanRoStrictConfigured = ProcessingContext.create { (bc, _) =>
@@ -122,20 +127,16 @@ abstract class BaseKibanaRule(val settings: Settings)
   private lazy val emptyIndicesMatch = {
     doesRequestContainNoIndices && {
       (kibanaCanBeModified && isRwAction) ||
-        (isAdminAccessConfigured && isAdminAction)
+      (isAdminAccessConfigured && isAdminAction)
     }
   }
 
   // Save UI state in discover & Short urls
   private lazy val isNonStrictAllowedPath = ProcessingContext.create { (bc, kibanaIndexName) =>
     val path = bc.requestContext.restRequest.path
-    val nonStrictAllowedPaths = Try(Pattern.compile(
-      "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
-        .replace("@kibana_index", kibanaIndexName.stringify)
-    )).toOption
-    val result = nonStrictAllowedPaths match {
+    val result = nonStrictAllowedPathsPatternFor(kibanaIndexName) match {
       case Some(paths) => paths.matcher(path.value.value).find()
-      case None => false
+      case None        => false
     }
     given BlockContext = bc
     logger.debug(s"Is non strict allowed path? ${result.show}")
@@ -166,10 +167,7 @@ abstract class BaseKibanaRule(val settings: Settings)
   }
 
   private def isRequestRelatedToTagsPath(pathPart: String) = ProcessingContext.create { (bc, _) =>
-    val result = bc
-      .requestContext
-      .restRequest
-      .allHeaders
+    val result = bc.requestContext.restRequest.allHeaders
       .find(_.name === Header.Name.kibanaRequestPath)
       .exists(_.value.value.contains(s"/$pathPart/"))
     given BlockContext = bc
@@ -185,7 +183,7 @@ abstract class BaseKibanaRule(val settings: Settings)
   private def isRelatedToSingleIndex(index: ClusterIndexName) = ProcessingContext.create { (bc, _) =>
     val result = bc.indices.headOption match {
       case Some(requestedIndex) if requestedIndex.name == index => true
-      case Some(_) | None => false
+      case Some(_) | None                                       => false
     }
     given BlockContext = bc
     logger.debug(s"Is related to single index '${index.nonEmptyStringify}'? ${result.show}")
@@ -194,9 +192,9 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private lazy val isRelatedToKibanaSampleDataIndex = ProcessingContext.create { (bc, _) =>
     val result = bc.indices.toList match {
-      case Nil => false
+      case Nil         => false
       case head :: Nil => kibanaSampleDataIndexMatcher.`match`(head.name)
-      case _ => false
+      case _           => false
     }
     given BlockContext = bc
     logger.debug(s"Is related to Kibana sample data index? ${result.show}")
@@ -205,9 +203,9 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private lazy val isRelatedToKibanaSampleDataStream = ProcessingContext.create { (bc, _) =>
     val result = bc.dataStreams.toList match {
-      case Nil => false
+      case Nil         => false
       case head :: Nil => kibanaSampleDataStreamMatcher.`match`(head)
-      case _ => false
+      case _           => false
     }
     given BlockContext = bc
     logger.debug(s"Is related to Kibana sample data index? ${result.show}")
@@ -260,7 +258,7 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private lazy val kibanaCanBeModified = ProcessingContext.create { (bc, _) =>
     val result = settings.access match {
-      case RO | ROStrict | ApiOnly => false
+      case RO | ROStrict | ApiOnly   => false
       case RW | Admin | Unrestricted => true
     }
     given BlockContext = bc
@@ -272,16 +270,51 @@ abstract class BaseKibanaRule(val settings: Settings)
 
 object BaseKibanaRule {
 
-  abstract class Settings(val access: KibanaAccess,
-                          val rorIndex: RorSettingsIndex)
+  abstract class Settings(val access: KibanaAccess, val rorIndex: RorSettingsIndex)
+
+  // The regex only varies by the Kibana index name (typically a single, static value),
+  // so the compiled Pattern is cached per Kibana index instead of being recompiled on
+  // every non-strict path check.
+  private val nonStrictAllowedPathsRegexTemplate =
+    "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
+
+  private val nonStrictAllowedPathsPatternCache: Cache[KibanaIndexName, Option[Pattern]] =
+    doPrivileged {
+      Caffeine
+        .newBuilder()
+        .executor(global)
+        .maximumSize(1000)
+        .build[KibanaIndexName, Option[Pattern]]()
+    }
+
+  private def nonStrictAllowedPathsPatternFor(kibanaIndexName: KibanaIndexName): Option[Pattern] = {
+    // Caffeine's atomic loader guarantees the pattern is compiled at most once per
+    // Kibana index even under concurrent access. `None` (the compile-failure sentinel)
+    // is a valid non-null value, so it is stored and retrieved like any other entry.
+    nonStrictAllowedPathsPatternCache.get(
+      kibanaIndexName,
+      _ =>
+        Try(
+          Pattern.compile(
+            // `@kibana_index` only ever appears as a literal path segment in the template, so the index
+            // name is quoted: any regex metacharacter in it (e.g. the `.` in `.kibana`) must match
+            // literally, never act as a pattern. Without quoting, `.` would match any char and names
+            // containing `(`, `[`, `\`, ... would compile to a wrong pattern or fail to compile.
+            nonStrictAllowedPathsRegexTemplate.replace("@kibana_index", Pattern.quote(kibanaIndexName.stringify))
+          )
+        ).toOption
+    )
+  }
 
   type ProcessingContext = ReaderT[Id, (BlockContext, KibanaIndexName), Boolean]
+
   object ProcessingContext {
     def create(func: (BlockContext, KibanaIndexName) => Boolean): ProcessingContext =
       ReaderT[Id, (BlockContext, KibanaIndexName), Boolean] { case (bc, i) => func(bc, i) }
   }
 
   implicit class ProcessingContextBooleanOps(val context1: ProcessingContext) extends AnyVal {
+
     def &&(context2: ProcessingContext): ProcessingContext =
       ProcessingContext.create { case (blockContext, kibanaIndexName) =>
         context1(blockContext, kibanaIndexName) && context2(blockContext, kibanaIndexName)
@@ -296,5 +329,7 @@ object BaseKibanaRule {
       ProcessingContext.create { case (blockContext, kibanaIndexName) =>
         !context1(blockContext, kibanaIndexName)
       }
+
   }
+
 }

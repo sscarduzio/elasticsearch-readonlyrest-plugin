@@ -29,19 +29,21 @@ import tech.beshu.ror.syntax.*
 
 import scala.annotation.unused
 
-class GeneralNonIndexEsRequestContext(@unused actionRequest: ActionRequest,
-                                      esContext: EsContext,
-                                      override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext)
+class GeneralNonIndexEsRequestContext(
+    @unused actionRequest: ActionRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext)
     with EsRequest[GeneralNonIndexRequestBlockContext] {
 
-  override def initialBlockContext(block: Block): GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
-    block = block,
-    requestContext = this,
-    blockMetadata = BlockMetadata.from(this),
-    responseHeaders = Set.empty,
-    responseTransformations = List.empty
-  )
+  override def initialBlockContext(block: Block): GeneralNonIndexRequestBlockContext =
+    GeneralNonIndexRequestBlockContext(
+      block = block,
+      requestContext = this,
+      blockMetadata = BlockMetadata.from(this),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
+    )
 
   override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = None
 

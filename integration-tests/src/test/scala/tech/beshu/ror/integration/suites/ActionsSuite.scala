@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class ActionsSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -33,11 +33,13 @@ class ActionsSuite
 
   override implicit val rorSettingsFileName: String = "/actions/readonlyrest.yml"
 
-  override val nodeDataInitializer = Some { (esVersion, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
-  }}
+  override val nodeDataInitializer = Some { (esVersion, adminRestClient: RestClient) =>
+    {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    }
+  }
 
   private lazy val actionManager = new DocumentManager(basicAuthClient("any", "whatever"), esVersionUsed)
 
@@ -53,4 +55,5 @@ class ActionsSuite
       }
     }
   }
+
 }

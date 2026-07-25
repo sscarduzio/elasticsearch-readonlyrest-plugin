@@ -31,27 +31,34 @@ import tech.beshu.ror.syntax.*
 
 import scala.jdk.CollectionConverters.*
 
-class ResizeEsRequestContext(actionRequest: ResizeRequest,
-                             esContext: EsContext,
-                             aclContext: AccessControlStaticContext,
-                             override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ResizeRequest](actionRequest, esContext, aclContext, threadPool) {
+class ResizeEsRequestContext(
+    actionRequest: ResizeRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[ResizeRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: ResizeRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    (request.getSourceIndex :: request.getTargetIndexRequest.index() :: request.getTargetIndexRequest.aliases().asScala.map(_.name()).toList)
+    (request.getSourceIndex :: request.getTargetIndexRequest
+      .index() :: request.getTargetIndexRequest.aliases().asScala.map(_.name()).toList)
       .flatMap(RequestedIndex.fromString)
       .toCovariantSet
   }
 
-  override protected def update(request: ResizeRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: ResizeRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     val notAllowedIndices = requestedIndicesFrom(actionRequest) -- filteredIndices.toCovariantSet
     if (notAllowedIndices.isEmpty) {
       Modified
     } else {
-      throw new IllegalStateException(s"Resize request is write request and such requests need all indices to be allowed. Not allowed indices=[${notAllowedIndices.show}]")
+      throw new IllegalStateException(
+        s"Resize request is write request and such requests need all indices to be allowed. Not allowed indices=[${notAllowedIndices.show}]"
+      )
     }
   }
+
 }

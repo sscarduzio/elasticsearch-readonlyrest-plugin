@@ -19,7 +19,10 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.http
 import org.scalatest.matchers.should.Matchers.*
 import squants.information.Bytes
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -30,16 +33,15 @@ class MaxBodyLengthRuleSettingsTests extends BaseRuleSettingsDecoderTest[MaxBody
     "be able to be loaded from settings" when {
       "max body length > 0 is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    max_body_length: 1000
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    max_body_length: 1000
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.maxContentLength should be(Bytes(1000))
           }
@@ -47,16 +49,15 @@ class MaxBodyLengthRuleSettingsTests extends BaseRuleSettingsDecoderTest[MaxBody
       }
       "max body length == 0 is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    max_body_length: 0
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    max_body_length: 0
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.maxContentLength should be(Bytes(0))
           }
@@ -66,43 +67,46 @@ class MaxBodyLengthRuleSettingsTests extends BaseRuleSettingsDecoderTest[MaxBody
     "not be able to be loaded from settings" when {
       "max body length field is defined, but no value it set" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    max_body_length:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    max_body_length:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
-              """max_body_length: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """max_body_length: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
       "max body length < 0 is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    max_body_length: -100
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    max_body_length: -100
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(Message("Invalid max body length: -100")))
+            errors.head should be(RulesLevelCreationError(Message("Invalid max body length: -100")))
           }
         )
       }
     }
   }
+
 }

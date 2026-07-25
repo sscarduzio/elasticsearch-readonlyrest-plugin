@@ -18,20 +18,25 @@ package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditIndexTemplate}
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.accesscontrol.audit.JsonAuditSerializer
+import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditIndexTemplate, SinkName}
+import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.es.services.IndexBasedAuditSinkService
 
 import java.time.Clock
 
-private[audit] final class EsIndexBasedAuditSink private(serializer: AuditLogSerializer,
-                                                         rorAuditIndexTemplate: RorAuditIndexTemplate,
-                                                         auditSinkService: IndexBasedAuditSinkService)
-                                                        (implicit clock: Clock)
-  extends BaseAuditSink(serializer) {
+private[audit] final class EsIndexBasedAuditSink private (
+    sinkName: SinkName,
+    serializer: JsonAuditSerializer,
+    rorAuditIndexTemplate: RorAuditIndexTemplate,
+    auditSinkService: IndexBasedAuditSinkService
+)(
+    implicit clock: Clock
+) extends JsonBasedAuditSink(sinkName, serializer) {
 
-  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
-                               (implicit requestId: RequestId): Task[Unit] = Task {
+  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
+      implicit requestId: RequestId
+  ): Task[Unit] = Task {
     auditSinkService.submit(
       indexName = rorAuditIndexTemplate.indexName(clock.instant()),
       documentId = event.requestContext.id,
@@ -44,9 +49,15 @@ private[audit] final class EsIndexBasedAuditSink private(serializer: AuditLogSer
 
 object EsIndexBasedAuditSink {
 
-  def apply(serializer: AuditLogSerializer,
-            indexTemplate: RorAuditIndexTemplate,
-            auditSinkService: IndexBasedAuditSinkService)(implicit clock: Clock): EsIndexBasedAuditSink = {
-    new EsIndexBasedAuditSink(serializer, indexTemplate, auditSinkService)
+  def apply(
+      sinkName: SinkName,
+      serializer: JsonAuditSerializer,
+      indexTemplate: RorAuditIndexTemplate,
+      auditSinkService: IndexBasedAuditSinkService
+  )(
+      implicit clock: Clock
+  ): EsIndexBasedAuditSink = {
+    new EsIndexBasedAuditSink(sinkName, serializer, indexTemplate, auditSinkService)
   }
+
 }

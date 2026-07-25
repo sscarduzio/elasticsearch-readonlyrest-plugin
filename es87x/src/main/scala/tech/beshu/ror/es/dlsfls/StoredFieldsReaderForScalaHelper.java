@@ -21,9 +21,10 @@ import org.apache.lucene.index.StoredFieldVisitor;
 
 import java.io.IOException;
 
-// hack: we need this class because when we try to call `clone` from Scala, the java.Object#clone is called and
-//       compiler tells us that protected method cannot be called. The method is overridden in the StoredFieldsReader
-//       class and should be visible as a public one. But it's not. That's why we need this helper.
+// hack: we need this class because when we try to call `clone` from Scala, the java.Object#clone
+//       is called and compiler tells us that protected method cannot be called.
+//       The method is overridden in the StoredFieldsReader class and
+//       should be visible as a public one. But it's not. That's why we need this helper.
 public class StoredFieldsReaderForScalaHelper extends StoredFieldsReader {
 
   private final StoredFieldsReader underlying;
@@ -55,5 +56,4 @@ public class StoredFieldsReaderForScalaHelper extends StoredFieldsReader {
   public StoredFieldsReader cloneUnderlying() {
     return underlying.clone();
   }
-
 }

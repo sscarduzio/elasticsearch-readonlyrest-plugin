@@ -17,29 +17,33 @@
 package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
-import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{
+  DoNotFetchSource,
+  Exclude,
+  Include
+}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class FieldRuleMGetApiSourceFilteringSuite
-  extends FieldRuleSourceFilteringSuite
-    with SingletonPluginTestSupport {
+class FieldRuleMGetApiSourceFilteringSuite extends FieldRuleSourceFilteringSuite with SingletonPluginTestSupport {
 
   override protected type CALL_RESULT = DocumentManager#MGetResult
 
-  override protected def fetchDocument(client: RestClient,
-                                       index: String,
-                                       clientSourceParams: Option[ClientSourceOptions]): DocumentManager#MGetResult = {
+  override protected def fetchDocument(
+      client: RestClient,
+      index: String,
+      clientSourceParams: Option[ClientSourceOptions]
+  ): DocumentManager#MGetResult = {
     val documentManager = new DocumentManager(client, esVersionUsed)
 
     val queryParams = clientSourceParams match {
       case Some(DoNotFetchSource) => Map("_source" -> "false")
-      case Some(Include(field)) => Map("_source_includes" -> field)
-      case Some(Exclude(field)) => Map("_source_excludes" -> field)
-      case None => Map.empty[String, String]
+      case Some(Include(field))   => Map("_source_includes" -> field)
+      case Some(Exclude(field))   => Map("_source_excludes" -> field)
+      case None                   => Map.empty[String, String]
     }
 
     documentManager.mGet(
@@ -60,4 +64,5 @@ class FieldRuleMGetApiSourceFilteringSuite
   override protected def sourceOfFirstDoc(result: DocumentManager#MGetResult): Option[JSON] = {
     result.docs.head.obj.get("_source")
   }
+
 }

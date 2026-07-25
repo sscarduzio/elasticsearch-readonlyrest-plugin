@@ -35,7 +35,9 @@ object GlobalStaticSettingsDecoder {
       forbiddenRequestMessage <- decoderFor[String]("response_if_req_forbidden")
       flsEngine <- decoderFor[FlsEngine]("fls_engine")
       userIdCaseSensitivity <- decoderFor[CaseSensitivity]("username_case_sensitivity")
-      usersDefinitionDuplicateUsernamesValidationEnabled <- decoderFor[Boolean]("users_section_duplicate_usernames_detection")
+      usersDefinitionDuplicateUsernamesValidationEnabled <- decoderFor[Boolean](
+        "users_section_duplicate_usernames_detection"
+      )
     } yield GlobalSettings(
       showBasicAuthPrompt.getOrElse(false),
       forbiddenRequestMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
@@ -47,29 +49,37 @@ object GlobalStaticSettingsDecoder {
   }
 
   private implicit val flsEngineDecoder: Decoder[FlsEngine] = {
-    Decoder.decodeString
-      .toSyncDecoder
+    Decoder.decodeString.toSyncDecoder
       .emapE[FlsEngine] {
-        case "lucene" => Right(GlobalSettings.FlsEngine.Lucene)
+        case "lucene"         => Right(GlobalSettings.FlsEngine.Lucene)
         case "es_with_lucene" => Right(GlobalSettings.FlsEngine.ESWithLucene)
-        case "es" => Right(GlobalSettings.FlsEngine.ES)
-        case unknown => Left(CoreCreationError.GeneralReadonlyrestSettingsError(Message(
-          // we don't officially say the `lucene` is supported, that's why it is omitted in the error message
-          s"Unknown fls engine: '$unknown'. Supported: 'es_with_lucene'(default), 'es'."
-        )))
+        case "es"             => Right(GlobalSettings.FlsEngine.ES)
+        case unknown          =>
+          Left(
+            CoreCreationError.GeneralReadonlyrestSettingsError(
+              Message(
+                // we don't officially say the `lucene` is supported, that's why it is omitted in the error message
+                s"Unknown fls engine: '$unknown'. Supported: 'es_with_lucene'(default), 'es'."
+              )
+            )
+          )
       }
       .decoder
   }
 
-  implicit private val usernameCaseMappingDecoder: Decoder[CaseSensitivity] = {
-    Decoder.decodeString
-      .toSyncDecoder
+  private implicit val usernameCaseMappingDecoder: Decoder[CaseSensitivity] = {
+    Decoder.decodeString.toSyncDecoder
       .emapE[CaseSensitivity] {
         case "case_insensitive" => Right(CaseSensitivity.Disabled)
-        case "case_sensitive" => Right(CaseSensitivity.Enabled)
-        case unknown => Left(CoreCreationError.GeneralReadonlyrestSettingsError(Message(
-          s"Unknown username case mapping: '$unknown'. Supported: 'case_insensitive', 'case_sensitive'(default)."
-        )))
+        case "case_sensitive"   => Right(CaseSensitivity.Enabled)
+        case unknown            =>
+          Left(
+            CoreCreationError.GeneralReadonlyrestSettingsError(
+              Message(
+                s"Unknown username case mapping: '$unknown'. Supported: 'case_insensitive', 'case_sensitive'(default)."
+              )
+            )
+          )
       }
       .decoder
   }

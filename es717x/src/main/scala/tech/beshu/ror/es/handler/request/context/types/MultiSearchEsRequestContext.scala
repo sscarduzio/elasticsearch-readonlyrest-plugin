@@ -25,11 +25,11 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
@@ -42,34 +42,34 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
 
-class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
-                                  esContext: EsContext,
-                                  override implicit val threadPool: ThreadPool)
-  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext)
+class MultiSearchEsRequestContext(
+    actionRequest: MultiSearchRequest,
+    esContext: EsContext,
+    override implicit val threadPool: ThreadPool
+) extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
-    block = block,
-    requestContext = this,
-    blockMetadata = BlockMetadata.from(this),
-    responseHeaders = Set.empty,
-    responseTransformations = List.empty,
-    indexPacks = discoveredIndexPacks,
-    filter = None,
-    fieldLevelSecurity = None,
-    requestFieldsUsage = requestFieldsUsage
-  )
+  override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext =
+    FilterableMultiRequestBlockContext(
+      block = block,
+      requestContext = this,
+      blockMetadata = BlockMetadata.from(this),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      indexPacks = discoveredIndexPacks,
+      filter = None,
+      fieldLevelSecurity = None,
+      requestFieldsUsage = requestFieldsUsage
+    )
 
   override lazy val indexAttributes: IndexAttributeFilter =
     IndexAttributeFilter.from(actionRequest.requests().asScala.map(indexAttributesFrom))
 
   override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
-    discoveredIndexPacks
-      .flatMap {
-        case Indices.Found(indices) => indices
-        case Indices.NotFound => Set.empty
-      }
-      .toCovariantSet
+    discoveredIndexPacks.flatMap {
+      case Indices.Found(indices) => indices
+      case Indices.NotFound       => Set.empty
+    }.toCovariantSet
   }
 
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {
@@ -83,8 +83,10 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
         }
       ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
     } else {
-      logger.error(s"Cannot alter MultiSearchRequest request, because origin request contained different number of" +
-        s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
+      logger.error(
+        s"Cannot alter MultiSearchRequest request, because origin request contained different number of" +
+          s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request"
+      )
       ShouldBeInterrupted
     }
   }
@@ -102,8 +104,9 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
   }
 
-  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): ActionResponse = {
+  private def filterFieldsFromResponse(
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  )(actionResponse: ActionResponse): ActionResponse = {
     (actionResponse, fieldLevelSecurity) match {
       case (response: MultiSearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
         response.getResponses
@@ -128,22 +131,24 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
 
   private def indexPacksFrom(request: MultiSearchRequest): List[Indices] = {
     request
-      .requests().asScala
+      .requests()
+      .asScala
       .map { request => Indices.Found(indicesFrom(request)) }
       .toList
   }
 
   private def indicesFrom(request: SearchRequest) = {
-    request
-      .indices.asSafeSet
+    request.indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
 
-  private def updateRequest(request: SearchRequest,
-                            indexPack: Indices,
-                            filter: Option[Filter],
-                            fieldLevelSecurity: Option[FieldLevelSecurity]) = {
+  private def updateRequest(
+      request: SearchRequest,
+      indexPack: Indices,
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ) = {
     indexPack match {
       case Indices.Found(indices) =>
         updateRequestWithIndices(request, indices)
@@ -157,7 +162,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[RequestedIndex[ClusterIndexName]]) = {
     indices.toList match {
-      case Nil => updateRequestWithNonExistingIndex(request)
+      case Nil                 => updateRequestWithNonExistingIndex(request)
       case nonEmptyIndicesList => request.indices(nonEmptyIndicesList.stringify: _*)
     }
   }
@@ -167,4 +172,5 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     val notExistingIndex = originRequestIndices.randomNonexistentLocalIndex()
     request.indices(notExistingIndex.stringify)
   }
+
 }

@@ -27,7 +27,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AnyOfGroupsRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.NotAllOfGroupsRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.NotAnyOfGroupsRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableGroupsLogic,
+  RuntimeResolvableVariableCreator
+}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{NegativeGroupsLogic, PositiveGroupsLogic}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupIdLike, GroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
@@ -37,44 +41,53 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.BaseGroupsRuleDecoder.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 
-private[auth] class BaseGroupsRuleDecoder(implicit ruleName: Rule.Name,
-                                          usersDefinitions: Definitions[UserDef],
-                                          userIdCaseSensitivity: CaseSensitivity,
-                                          variableCreator: RuntimeResolvableVariableCreator)
-  extends GroupsLogicRepresentationDecoder[
-    Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic]],
-    Either[RulesLevelCreationError, BaseGroupsRule[PositiveGroupsLogic]],
-    Either[RulesLevelCreationError, BaseGroupsRule[NegativeGroupsLogic]],
-    Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic.AllOf]],
-    Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic.AnyOf]],
-    Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic.NotAllOf]],
-    Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic.NotAnyOf]],
-  ](createCombinedGroupsRule)
+private[auth] class BaseGroupsRuleDecoder(
+    implicit ruleName: Rule.Name,
+    usersDefinitions: Definitions[UserDef],
+    userIdCaseSensitivity: CaseSensitivity,
+    variableCreator: RuntimeResolvableVariableCreator
+) extends GroupsLogicRepresentationDecoder[
+      Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic]],
+      Either[RulesLevelCreationError, BaseGroupsRule[PositiveGroupsLogic]],
+      Either[RulesLevelCreationError, BaseGroupsRule[NegativeGroupsLogic]],
+      Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic.AllOf]],
+      Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic.AnyOf]],
+      Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic.NotAllOf]],
+      Either[RulesLevelCreationError, BaseGroupsRule[GroupsLogic.NotAnyOf]],
+    ](createCombinedGroupsRule)
 
 private[auth] object BaseGroupsRuleDecoder {
 
-  private def createCombinedGroupsRule(positive: Either[RulesLevelCreationError, BaseGroupsRule[PositiveGroupsLogic]],
-                                       negative: Either[RulesLevelCreationError, BaseGroupsRule[NegativeGroupsLogic]])
-                                      (implicit ruleName: Rule.Name,
-                                       usersDefinitions: Definitions[UserDef],
-                                       userIdCaseSensitivity: CaseSensitivity): Either[RulesLevelCreationError, CombinedLogicGroupsRule] = {
+  private def createCombinedGroupsRule(
+      positive: Either[RulesLevelCreationError, BaseGroupsRule[PositiveGroupsLogic]],
+      negative: Either[RulesLevelCreationError, BaseGroupsRule[NegativeGroupsLogic]]
+  )(
+      implicit ruleName: Rule.Name,
+      usersDefinitions: Definitions[UserDef],
+      userIdCaseSensitivity: CaseSensitivity
+  ): Either[RulesLevelCreationError, CombinedLogicGroupsRule] = {
     for {
       positiveLogic <- positive
       negativeLogic <- negative
       userDefsNel <- userDefs
     } yield {
-      val logic = RuntimeResolvableGroupsLogic.Combined(positiveLogic.settings.permittedGroupsLogic, negativeLogic.settings.permittedGroupsLogic)
+      val logic = RuntimeResolvableGroupsLogic.Combined(
+        positiveLogic.settings.permittedGroupsLogic,
+        negativeLogic.settings.permittedGroupsLogic
+      )
       val settings = BaseGroupsRule.Settings(logic, userDefsNel)
       new CombinedLogicGroupsRule(settings)(userIdCaseSensitivity)
     }
   }
 
   implicit def baseGroupsRuleDecoder[
-    GL <: GroupsLogic : GroupsLogic.Creator : BaseGroupsRule.Creator
-  ](implicit ruleName: Rule.Name,
-    usersDefinitions: Definitions[UserDef],
-    userIdCaseSensitivity: CaseSensitivity,
-    variableCreator: RuntimeResolvableVariableCreator): Decoder[Either[RulesLevelCreationError, BaseGroupsRule[GL]]] = {
+      GL <: GroupsLogic: GroupsLogic.Creator: BaseGroupsRule.Creator
+  ](
+      implicit ruleName: Rule.Name,
+      usersDefinitions: Definitions[UserDef],
+      userIdCaseSensitivity: CaseSensitivity,
+      variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder[Either[RulesLevelCreationError, BaseGroupsRule[GL]]] = {
     DecoderHelpers
       .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
       .map(RuntimeResolvableGroupsLogic.Simple[GL](_))
@@ -86,8 +99,10 @@ private[auth] object BaseGroupsRuleDecoder {
       }
   }
 
-  private def userDefs(implicit ruleName: Rule.Name,
-                       usersDefinitions: Definitions[UserDef]): Either[RulesLevelCreationError, NonEmptyList[UserDef]] = {
+  private def userDefs(
+      implicit ruleName: Rule.Name,
+      usersDefinitions: Definitions[UserDef]
+  ): Either[RulesLevelCreationError, NonEmptyList[UserDef]] = {
     Either.fromOption(
       NonEmptyList.fromList(usersDefinitions.items),
       RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ruleName.show}` requires them.")),

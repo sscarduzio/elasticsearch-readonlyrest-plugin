@@ -27,27 +27,27 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 class UserDefinitionsValidator(globalSettings: GlobalSettings) {
 
   def validate(definitions: Definitions[UserDef]): Either[NonEmptyList[ValidationError], Unit] = {
-    if(globalSettings.usersDefinitionDuplicateUsernamesValidationEnabled) {
+    if (globalSettings.usersDefinitionDuplicateUsernamesValidationEnabled) {
       validateNonDuplicatedUsernames(definitions)
     } else {
       Right(())
     }
   }
 
-  private def validateNonDuplicatedUsernames(definitions: Definitions[UserDef]): Either[NonEmptyList[ValidationError], Unit] = {
+  private def validateNonDuplicatedUsernames(
+      definitions: Definitions[UserDef]
+  ): Either[NonEmptyList[ValidationError], Unit] = {
     val localUsersPerUserDefinition: List[UniqueNonEmptyList[User.Id]] =
-      definitions
-        .items
+      definitions.items
         .flatMap { definition =>
           UniqueNonEmptyList.from(definition.usernames.patterns.filterNot(_.containsWildcard).map(_.value))
         }
 
     val validationErrors =
-      localUsersPerUserDefinition
-        .flatten
+      localUsersPerUserDefinition.flatten
         .groupBy(identity)
-        .filter {
-          case (_, userIdOccurrences) => userIdOccurrences.length > 1
+        .filter { case (_, userIdOccurrences) =>
+          userIdOccurrences.length > 1
         }
         .keys
         .map { userId =>
@@ -59,6 +59,7 @@ class UserDefinitionsValidator(globalSettings: GlobalSettings) {
   }
 
 }
+
 object UserDefinitionsValidator {
 
   sealed trait ValidationError

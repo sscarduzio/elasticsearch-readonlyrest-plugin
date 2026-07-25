@@ -21,28 +21,35 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{
+  ConnectionError,
+  LdapConnectionConfig
+}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.NestedGroupsConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.ops.logs.*
 import tech.beshu.ror.accesscontrol.domain.{RequestId, User}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
-class UnboundidLdapUsersService private(override val id: LdapService#Id,
-                                        connectionPool: UnboundidLdapConnectionPool,
-                                        userSearchFiler: UserSearchFilterConfig,
-                                        override val serviceTimeout: PositiveFiniteDuration)
-  extends LdapUsersService with RequestIdAwareLogging {
+class UnboundidLdapUsersService private (
+    override val id: LdapService#Id,
+    connectionPool: UnboundidLdapConnectionPool,
+    userSearchFiler: UserSearchFilterConfig,
+    override val serviceTimeout: PositiveFiniteDuration
+) extends LdapUsersService
+    with RequestIdAwareLogging {
 
-  override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] = {
+  override def ldapUserBy(userId: User.Id)(
+      implicit requestId: RequestId
+  ): Task[Option[LdapUser]] = {
     userSearchFiler.userIdAttribute match {
-      case UserIdAttribute.OptimizedCn => createLdapUser(userId)
-      case attribute@UserIdAttribute.CustomAttribute(_) => fetchLdapUser(userId, attribute)
+      case UserIdAttribute.OptimizedCn                    => createLdapUser(userId)
+      case attribute @ UserIdAttribute.CustomAttribute(_) => fetchLdapUser(userId, attribute)
     }
   }
 
@@ -51,17 +58,20 @@ class UnboundidLdapUsersService private(override val id: LdapService#Id,
       Some {
         LdapUser(
           id = userId,
-          dn = Dn(NonEmptyString.unsafeFrom(
-            s"cn=${userId.value.value},${userSearchFiler.searchUserBaseDN.value.value}"
-          )),
+          dn = Dn(
+            NonEmptyString.unsafeFrom(
+              s"cn=${userId.value.value},${userSearchFiler.searchUserBaseDN.value.value}"
+            )
+          ),
           confirmed = false
         )
       }
     }
   }
 
-  private def fetchLdapUser(userId: User.Id, uidAttribute: UserIdAttribute.CustomAttribute)
-                           (implicit requestId: RequestId) = {
+  private def fetchLdapUser(userId: User.Id, uidAttribute: UserIdAttribute.CustomAttribute)(
+      implicit requestId: RequestId
+  ) = {
     connectionPool
       .process(searchUserLdapRequest(_, userSearchFiler.searchUserBaseDN, uidAttribute, userId), serviceTimeout)
       .flatMap {
@@ -70,7 +80,7 @@ class UnboundidLdapUsersService private(override val id: LdapService#Id,
           Task.now(None)
         case Right(user :: Nil) =>
           Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
-        case Right(all@user :: _) =>
+        case Right(all @ user :: _) =>
           logger.warn(s"LDAP search user - more than one user was returned: ${all.toSet.show}. Picking first")
           Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
         case Left(errorResult) =>
@@ -79,99 +89,130 @@ class UnboundidLdapUsersService private(override val id: LdapService#Id,
       }
   }
 
-  private def searchUserLdapRequest(listener: AsyncSearchResultListener,
-                                    searchUserBaseDN: Dn,
-                                    uidAttribute: UserIdAttribute.CustomAttribute,
-                                    userId: User.Id)
-                                   (implicit requestId: RequestId): LDAPRequest = {
+  private def searchUserLdapRequest(
+      listener: AsyncSearchResultListener,
+      searchUserBaseDN: Dn,
+      uidAttribute: UserIdAttribute.CustomAttribute,
+      userId: User.Id
+  )(
+      implicit requestId: RequestId
+  ): LDAPRequest = {
     val baseDn = searchUserBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = s"${uidAttribute.name.value}=${Filter.encodeValue(userId.value.value)}"
     logger.debug(s"LDAP search [base DN: ${baseDn.show}, scope: ${scope.show}, search filter: ${searchFilter.show}]")
     new SearchRequest(listener, baseDn, scope, searchFilter)
   }
+
 }
 
 object UnboundidLdapUsersService {
-  def create(id: LdapService#Id,
-             poolProvider: UnboundidLdapConnectionPoolProvider,
-             connectionConfig: LdapConnectionConfig,
-             userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapUsersService]] = {
+
+  def create(
+      id: LdapService#Id,
+      poolProvider: UnboundidLdapConnectionPoolProvider,
+      connectionConfig: LdapConnectionConfig,
+      userSearchFiler: UserSearchFilterConfig
+  ): Task[Either[ConnectionError, UnboundidLdapUsersService]] = {
     UnboundidLdapConnectionPoolProvider
       .connectWithOptionalBindingTest(poolProvider, connectionConfig)
-      .map(_.map(connectionPool =>
-        new UnboundidLdapUsersService(
-          id = id,
-          connectionPool = connectionPool,
-          userSearchFiler = userSearchFiler,
-          serviceTimeout = connectionConfig.requestTimeout
+      .map(
+        _.map(connectionPool =>
+          new UnboundidLdapUsersService(
+            id = id,
+            connectionPool = connectionPool,
+            userSearchFiler = userSearchFiler,
+            serviceTimeout = connectionConfig.requestTimeout
+          )
         )
-      ))
+      )
   }
+
 }
 
 final case class LdapUnexpectedResult(code: ResultCode, cause: String)
-  extends Throwable(s"LDAP returned code: ${code.getName.show} [${code.intValue().show}], cause: ${cause.show}")
+    extends Throwable(s"LDAP returned code: ${code.getName.show} [${code.intValue().show}], cause: ${cause.show}")
 
 final case class UserSearchFilterConfig(searchUserBaseDN: Dn, userIdAttribute: UserIdAttribute)
+
 object UserSearchFilterConfig {
 
   sealed trait UserIdAttribute
+
   object UserIdAttribute {
     case object OptimizedCn extends UserIdAttribute // optimization means: skipping user search
     final case class CustomAttribute(name: NonEmptyString) extends UserIdAttribute
   }
+
 }
 
-final case class UserGroupsSearchFilterConfig(mode: UserGroupsSearchMode,
-                                              nestedGroupsConfig: Option[NestedGroupsConfig])
+final case class UserGroupsSearchFilterConfig(
+    mode: UserGroupsSearchMode,
+    nestedGroupsConfig: Option[NestedGroupsConfig]
+)
+
 object UserGroupsSearchFilterConfig {
 
   sealed trait UserGroupsSearchMode
+
   object UserGroupsSearchMode {
 
-    final case class DefaultGroupSearch(searchGroupBaseDN: Dn,
-                                        groupSearchFilter: GroupSearchFilter,
-                                        groupAttribute: GroupAttribute,
-                                        uniqueMemberAttribute: UniqueMemberAttribute,
-                                        groupAttributeIsDN: Boolean,
-                                        serverSideGroupsFiltering: Boolean)
-      extends UserGroupsSearchMode
+    final case class DefaultGroupSearch(
+        searchGroupBaseDN: Dn,
+        groupSearchFilter: GroupSearchFilter,
+        groupAttribute: GroupAttribute,
+        uniqueMemberAttribute: UniqueMemberAttribute,
+        groupAttributeIsDN: Boolean,
+        serverSideGroupsFiltering: Boolean
+    ) extends UserGroupsSearchMode
 
-    final case class GroupsFromUserEntry(searchGroupBaseDN: Dn,
-                                         groupSearchFilter: GroupSearchFilter,
-                                         groupIdAttribute: GroupIdAttribute,
-                                         groupsFromUserAttribute: GroupsFromUserAttribute)
-      extends UserGroupsSearchMode
+    final case class GroupsFromUserEntry(
+        searchGroupBaseDN: Dn,
+        groupSearchFilter: GroupSearchFilter,
+        groupIdAttribute: GroupIdAttribute,
+        groupsFromUserAttribute: GroupsFromUserAttribute
+    ) extends UserGroupsSearchMode
 
     final case class GroupSearchFilter(value: NonEmptyString)
+
     object GroupSearchFilter {
       val default: GroupSearchFilter = GroupSearchFilter(nes("(objectClass=*)"))
     }
-    final case class GroupAttribute(id: GroupIdAttribute,
-                                    name: GroupNameAttribute)
+
+    final case class GroupAttribute(id: GroupIdAttribute, name: GroupNameAttribute)
 
     final case class GroupIdAttribute(value: NonEmptyString)
+
     object GroupIdAttribute {
       val default: GroupIdAttribute = GroupIdAttribute(nes("cn"))
     }
+
     final case class GroupNameAttribute(value: NonEmptyString)
+
     object GroupNameAttribute {
       def from(groupIdAttribute: GroupIdAttribute): GroupNameAttribute = GroupNameAttribute(groupIdAttribute.value)
     }
+
     final case class UniqueMemberAttribute(value: NonEmptyString)
+
     object UniqueMemberAttribute {
       val default: UniqueMemberAttribute = UniqueMemberAttribute(nes("uniqueMember"))
     }
+
     final case class GroupsFromUserAttribute(value: NonEmptyString)
+
     object GroupsFromUserAttribute {
       val default: GroupsFromUserAttribute = GroupsFromUserAttribute(nes("memberOf"))
     }
 
-    final case class NestedGroupsConfig(nestedLevels: Int Refined Positive,
-                                        searchGroupBaseDN: Dn,
-                                        groupSearchFilter: GroupSearchFilter,
-                                        memberAttribute: UniqueMemberAttribute,
-                                        groupAttribute: GroupAttribute)
+    final case class NestedGroupsConfig(
+        nestedLevels: Int Refined Positive,
+        searchGroupBaseDN: Dn,
+        groupSearchFilter: GroupSearchFilter,
+        memberAttribute: UniqueMemberAttribute,
+        groupAttribute: GroupAttribute
+    )
+
   }
+
 }

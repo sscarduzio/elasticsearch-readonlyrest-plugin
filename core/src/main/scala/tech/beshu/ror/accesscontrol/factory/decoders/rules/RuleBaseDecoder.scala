@@ -22,14 +22,17 @@ import io.circe.{ACursor, Decoder, HCursor}
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder.DecodingContext
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-sealed abstract class RuleDecoder[T <: Rule : RuleName] extends Decoder[RuleDecoder.Result[T]] {
+sealed abstract class RuleDecoder[T <: Rule: RuleName] extends Decoder[RuleDecoder.Result[T]] {
 
   def associatedFields: Set[String]
 
@@ -52,17 +55,18 @@ sealed abstract class RuleDecoder[T <: Rule : RuleName] extends Decoder[RuleDeco
   }
 
   private def decode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[RuleDefinition[T]] = {
-    doDecode(value, associatedFieldsJson)
-      .left
-      .map(df => df.overrideDefaultErrorWith(RulesLevelCreationError {
-        value.up.focus match {
-          case Some(json) =>
-            MalformedValue(json)
-          case None =>
-            val ruleName = df.history.headOption.collect { case df: DownField => df.k }.getOrElse("")
-            Message(s"Malformed rule ${ruleName.show}")
-        }
-      }))
+    doDecode(value, associatedFieldsJson).left
+      .map(df =>
+        df.overrideDefaultErrorWith(RulesLevelCreationError {
+          value.up.focus match {
+            case Some(json) =>
+              MalformedValue(json)
+            case None =>
+              val ruleName = df.history.headOption.collect { case df: DownField => df.k }.getOrElse("")
+              Message(s"Malformed rule ${ruleName.show}")
+          }
+        })
+      )
   }
 
   protected def doDecode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[RuleDefinition[T]]
@@ -79,11 +83,12 @@ object RuleDecoder {
 
     case object OnlyValueForTheRuleName extends DecodingContext
   }
+
 }
 
 object RuleBaseDecoder {
 
-  abstract class RuleBaseDecoderWithoutAssociatedFields[T <: Rule : RuleName] extends RuleDecoder[T] {
+  abstract class RuleBaseDecoderWithoutAssociatedFields[T <: Rule: RuleName] extends RuleDecoder[T] {
 
     protected def decoder: Decoder[RuleDefinition[T]]
 
@@ -93,7 +98,7 @@ object RuleBaseDecoder {
       decoder.tryDecode(value)
   }
 
-  abstract class RuleBaseDecoderWithAssociatedFields[T <: Rule : RuleName, S] extends RuleDecoder[T] {
+  abstract class RuleBaseDecoderWithAssociatedFields[T <: Rule: RuleName, S] extends RuleDecoder[T] {
 
     def ruleDecoderCreator: S => Decoder[RuleDefinition[T]]
 
@@ -105,5 +110,7 @@ object RuleBaseDecoder {
         rule <- ruleDecoderCreator(decodedAssociatedFields).tryDecode(value)
       } yield rule
     }
+
   }
+
 }

@@ -4,14 +4,14 @@ usage()
 {
     cat <<USAGE
 ##########################################################################
-Script taken from https://www.aws.ps/how-to-upload-file-to-s3-using-curl
+Originally adapted from https://www.aws.ps/how-to-upload-file-to-s3-using-curl
+(since modified for ROR: custom S3_ENDPOINT_URL, SigV4 date-scope fix, no ACL/MD5).
 
-Simple script uploading a file to S3. Supports AWS signature version 4, custom
-region, permissions and mime-types. Uses Content-MD5 header to guarantee
-uncorrupted file transfer.
+Simple script uploading a file to S3 (or any S3-compatible endpoint). Supports AWS
+signature version 4, custom region, a custom endpoint, and mime-types.
 
 Usage:
-  `basename $0` aws_ak aws_sk bucket srcfile targfile [acl] [mime_type]
+  `basename $0` aws_ak aws_sk bucket srcfile targfile [mime_type]
 
 Where <arg> is one of:
   aws_ak     access key ('' for upload to public writable bucket)
@@ -19,8 +19,11 @@ Where <arg> is one of:
   bucket     bucket name (with optional @region suffix, default is us-east-1)
   srcfile    path to source file
   targfile   path to target (dir if it ends with '/', relative to bucket root)
-  acl        s3 access permissions (default: public-read)
   mime_type  optional mime-type (tries to guess if omitted)
+
+Optional environment variables:
+  S3_ENDPOINT_URL  custom S3-compatible endpoint (uses path-style addressing).
+                   Defaults to https://<bucket>.s3.amazonaws.com/ when unset.
 
 Dependencies:
   To run, this shell script depends on command-line curl and openssl, as well
@@ -44,7 +47,7 @@ USAGE
 guessmime()
 {
     mime=`file -b --mime-type $1`
-    if [ "$mime" = "text/plain" ]; then
+    if [ "$mime" = "text/plain" ] || [ "$mime" = "application/octet-stream" ]; then
         case $1 in
             *.zip)           mime=application/zip;;
             *.sh)            mime=text/plain;;
@@ -71,58 +74,77 @@ bucket=`printf $3 | awk 'BEGIN{FS="@"}{print $1}'`                       # bucke
 region=`printf $3 | awk 'BEGIN{FS="@"}{print ($2==""?"us-east-1":$2)}'`  # region name
 srcfile="$4"                                                             # source file
 targfile=`echo -n "$5" | sed "s/\/$/\/$(basename $srcfile)/"`            # target file
-acl=${6:-'public-read'}                                                  # s3 perms
-mime=${7:-"`guessmime "$srcfile"`"}                                      # mime type
-md5=`openssl md5 -binary "$srcfile" | openssl base64`
+mime=${6:-"`guessmime "$srcfile"`"}                                      # mime type
 
 
 # Create signature if not public upload.
 key_and_sig_args=''
 if [ "$aws_ak" != "" ] && [ "$aws_sk" != "" ]; then
 
-    # Need current and file upload expiration date. Handle GNU and BSD date command style to get tomorrow's date.
+    # SigV4 requires the credential scope date to match the request date.
+    # `today_s` is used for both signing and the X-Amz-Credential field.
+    # `expdate` is the policy expiration (tomorrow), unrelated to the credential date.
     date=`date -u +%Y%m%dT%H%M%SZ`
+    today_s=`date -u +%Y%m%d`
     expdate=`if ! date -v+1d +%Y-%m-%d 2>/dev/null; then date -d tomorrow +%Y-%m-%d; fi`
-    expdate_s=`printf $expdate | sed s/-//g` # without dashes, as we need both formats below
     service='s3'
 
     # Generate policy and sign with secret key following AWS Signature version 4, below
-    p=$(cat <<POLICY | openssl base64
+    # -A suppresses base64 line wrapping (some S3-compatible proxies reject wrapped policies).
+    p=$(cat <<POLICY | openssl base64 -A
 { "expiration": "${expdate}T12:00:00.000Z",
   "conditions": [
-    {"acl": "$acl" },
     {"bucket": "$bucket" },
     ["starts-with", "\$key", ""],
     ["starts-with", "\$content-type", ""],
     ["content-length-range", 1, `ls -l -H "$srcfile" | awk '{print $5}' | head -1`],
-    {"content-md5": "$md5" },
     {"x-amz-date": "$date" },
-    {"x-amz-credential": "$aws_ak/$expdate_s/$region/$service/aws4_request" },
+    {"x-amz-credential": "$aws_ak/$today_s/$region/$service/aws4_request" },
     {"x-amz-algorithm": "AWS4-HMAC-SHA256" }
   ]
 }
 POLICY
     )
 
-    # AWS4-HMAC-SHA256 signature
-    s=`printf "$expdate_s"   | openssl sha256 -hmac "AWS4$aws_sk"           -hex | awk '{print $NF}'`
+    # AWS4-HMAC-SHA256 signature.
+    # `awk '{print $NF}'` extracts just the hex digest from openssl output, which
+    # may be either "(stdin)= <hex>" (LibreSSL) or "SHA2-256(stdin)= <hex>" (OpenSSL 3+).
+    s=`printf "$today_s"     | openssl sha256 -hmac "AWS4$aws_sk"           -hex | awk '{print $NF}'`
     s=`printf "$region"      | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
     s=`printf "$service"     | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
     s=`printf "aws4_request" | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
     s=`printf "$p"           | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
 
-    key_and_sig_args="-F X-Amz-Credential=$aws_ak/$expdate_s/$region/$service/aws4_request -F X-Amz-Algorithm=AWS4-HMAC-SHA256 -F X-Amz-Signature=$s -F X-Amz-Date=${date}"
+    # Policy goes here (not the curl line) so it's only sent when we actually signed — an
+    # anonymous upload (empty keys) leaves $p unset and must not send an empty Policy= field.
+    key_and_sig_args="-F X-Amz-Credential=$aws_ak/$today_s/$region/$service/aws4_request -F X-Amz-Algorithm=AWS4-HMAC-SHA256 -F X-Amz-Signature=$s -F X-Amz-Date=${date} -F Policy=$p"
+fi
+
+# Determine upload URL.
+# - If S3_ENDPOINT_URL is set (e.g. for the DGP proxy) use path-style addressing: ${endpoint}/${bucket}/
+# - Otherwise default to AWS virtual-hosted-style: https://${bucket}.s3.amazonaws.com/
+if [ -n "${S3_ENDPOINT_URL:-}" ]; then
+    upload_url="${S3_ENDPOINT_URL%/}/${bucket}/"
+else
+    upload_url="https://${bucket}.s3.amazonaws.com/"
 fi
 
 # Upload. Supports anonymous upload if bucket is public-writable, and keys are set to ''.
-echo "Uploading: $srcfile ($mime) to $bucket:$targfile"
-curl -vvv                       \
-    -# -kf                      \
-    -F key=$targfile            \
-    -F acl=$acl                 \
+echo "Uploading: $srcfile ($mime) to $upload_url$targfile"
+# Default: quiet upload that still fails loud. `-f` makes curl exit non-zero on HTTP >=400
+# (so callers detect failures) but it also SUPPRESSES the response body.
+# Set S3_UPLOADER_DEBUG=1 to debug: adds `-v` (verbose, incl. the full TLS handshake trace —
+# very noisy on curl 8.x/OpenSSL) and drops `-f` so curl prints the server's error XML.
+# `-v` is deliberately OFF by default, otherwise every upload floods the CI log with TLS traces.
+if [ -n "${S3_UPLOADER_DEBUG:-}" ]; then
+    CURL_FLAGS="-v -S"
+else
+    CURL_FLAGS="-f"
+fi
+curl                            \
+    -# -k $CURL_FLAGS           \
+    -F "key=$targfile"          \
     $key_and_sig_args           \
-    -F "Policy=$p"              \
-    -F "Content-MD5=$md5"       \
     -F "Content-Type=$mime"     \
     -F "file=@$srcfile"         \
-    https://${bucket}.s3.amazonaws.com/
+    "$upload_url"

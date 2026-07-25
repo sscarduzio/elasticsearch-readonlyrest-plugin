@@ -37,13 +37,21 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.Impersona
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{
+  ExternalAuthenticationService,
+  ExternalGroupsProviderService,
+  ImpersonatorDef
+}
 import tech.beshu.ror.accesscontrol.blocks.metadata.KibanaPolicy
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{
+  ExternalAuthenticationServiceMock,
+  ExternalGroupsProviderServiceMock,
+  LdapServiceMock
+}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
@@ -54,7 +62,10 @@ import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{api, bearer}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{
+  FullLocalDataStreamWithAliases,
+  FullRemoteDataStreamWithAliases
+}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
@@ -135,10 +146,12 @@ object TestsUtils {
 
   def group(str: String): Group = Group.from(GroupId(NonEmptyString.unsafeFrom(str)))
 
-  def group(id: String, name: String): Group = Group(GroupId(NonEmptyString.unsafeFrom(id)), GroupName(NonEmptyString.unsafeFrom(name)))
+  def group(id: String, name: String): Group =
+    Group(GroupId(NonEmptyString.unsafeFrom(id)), GroupName(NonEmptyString.unsafeFrom(name)))
 
   def requestedIndex(str: NonEmptyString): RequestedIndex[ClusterIndexName] =
-    RequestedIndex.fromString(str.value)
+    RequestedIndex
+      .fromString(str.value)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create RequestedIndex from '$str'"))
 
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
@@ -148,8 +161,10 @@ object TestsUtils {
   def fullLocalIndexWithAliases(fullIndexName: IndexName.Full): FullLocalIndexWithAliases =
     fullLocalIndexWithAliases(fullIndexName, Set.empty)
 
-  def fullLocalIndexWithAliases(fullIndexName: IndexName.Full,
-                                aliasesNames: Set[IndexName.Full]): FullLocalIndexWithAliases =
+  def fullLocalIndexWithAliases(
+      fullIndexName: IndexName.Full,
+      aliasesNames: Set[IndexName.Full]
+  ): FullLocalIndexWithAliases =
     new FullLocalIndexWithAliases(fullIndexName, IndexAttribute.Opened, aliasesNames)
 
   def fullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full): FullLocalDataStreamWithAliases =
@@ -158,15 +173,20 @@ object TestsUtils {
       aliasesNames = Set.empty,
     )
 
-  def fullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,
-                                     aliasesNames: Set[DataStreamName.Full]): FullLocalDataStreamWithAliases =
+  def fullLocalDataStreamWithAliases(
+      dataStreamName: DataStreamName.Full,
+      aliasesNames: Set[DataStreamName.Full]
+  ): FullLocalDataStreamWithAliases =
     FullLocalDataStreamWithAliases(
       dataStreamName = dataStreamName,
       aliasesNames = aliasesNames,
       backingIndices = Set(IndexName.Full(NonEmptyString.unsafeFrom(".ds-" + dataStreamName.value.value)))
     )
 
-  def fullRemoteDataStream(clusterName: ClusterName.Full, dataStreamName: DataStreamName.Full): FullRemoteDataStreamWithAliases =
+  def fullRemoteDataStream(
+      clusterName: ClusterName.Full,
+      dataStreamName: DataStreamName.Full
+  ): FullRemoteDataStreamWithAliases =
     FullRemoteDataStreamWithAliases(
       clusterName = clusterName,
       dataStreamName = dataStreamName,
@@ -188,11 +208,14 @@ object TestsUtils {
 
   def userId(str: NonEmptyString): User.Id = User.Id(str)
 
-  implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
+  implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration =
+    Duration.ofMillis(duration.toMillis)
 
-  def impersonatorDefFrom(userIdPattern: NonEmptyString,
-                          impersonatorCredentials: Credentials,
-                          impersonatedUsersIdPatterns: NonEmptyList[NonEmptyString]): ImpersonatorDef = {
+  def impersonatorDefFrom(
+      userIdPattern: NonEmptyString,
+      impersonatorCredentials: Credentials,
+      impersonatedUsersIdPatterns: NonEmptyList[NonEmptyString]
+  ): ImpersonatorDef = {
     ImpersonatorDef(
       userIdPatterns(userIdPattern.toString),
       new AuthKeyRule(
@@ -200,60 +223,80 @@ object TestsUtils {
         CaseSensitivity.Enabled,
         Impersonation.Disabled
       ),
-      ImpersonatedUsers(userIdPatterns(impersonatedUsersIdPatterns.head.toString, impersonatedUsersIdPatterns.map(_.toString).tail: _*))
+      ImpersonatedUsers(
+        userIdPatterns(impersonatedUsersIdPatterns.head.toString, impersonatedUsersIdPatterns.map(_.toString).tail: _*)
+      )
     )
   }
 
   def mocksProviderForLdapFrom(map: Map[LdapService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
     new MocksProvider {
-      override def ldapServiceWith(id: LdapService.Name)
-                                  (implicit context: RequestId): Option[LdapServiceMock] = {
+      override def ldapServiceWith(id: LdapService.Name)(
+          implicit context: RequestId
+      ): Option[LdapServiceMock] = {
         map
           .get(id)
-          .map(r => LdapServiceMock {
-            r.map { case (userId, groups) => LdapUserMock(userId, groups) }.toCovariantSet
-          })
+          .map(r =>
+            LdapServiceMock {
+              r.map { case (userId, groups) => LdapUserMock(userId, groups) }.toCovariantSet
+            }
+          )
       }
 
-      override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
-                                                    (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
+      override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)(
+          implicit context: RequestId
+      ): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
-                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = None
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)(
+          implicit context: RequestId
+      ): Option[ExternalGroupsProviderServiceMock] = None
     }
   }
 
-  def mocksProviderForExternalAuthnServiceFrom(map: Map[definitions.ExternalAuthenticationService.Name, Set[User.Id]]): MocksProvider = {
+  def mocksProviderForExternalAuthnServiceFrom(
+      map: Map[definitions.ExternalAuthenticationService.Name, Set[User.Id]]
+  ): MocksProvider = {
     new MocksProvider {
-      override def ldapServiceWith(id: LdapService.Name)
-                                  (implicit context: RequestId): Option[LdapServiceMock] = None
+      override def ldapServiceWith(id: LdapService.Name)(
+          implicit context: RequestId
+      ): Option[LdapServiceMock] = None
 
-      override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
-                                                    (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = {
+      override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)(
+          implicit context: RequestId
+      ): Option[ExternalAuthenticationServiceMock] = {
         map
           .get(id)
           .map(users => ExternalAuthenticationServiceMock(users.map(ExternalAuthenticationUserMock.apply)))
       }
 
-      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
-                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = None
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)(
+          implicit context: RequestId
+      ): Option[ExternalGroupsProviderServiceMock] = None
     }
   }
 
-  def mocksProviderForExternalAuthzServiceFrom(map: Map[ExternalGroupsProviderService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+  def mocksProviderForExternalAuthzServiceFrom(
+      map: Map[ExternalGroupsProviderService.Name, Map[User.Id, Set[Group]]]
+  ): MocksProvider = {
     new MocksProvider {
-      override def ldapServiceWith(id: LdapService.Name)(implicit context: RequestId): Option[LdapServiceMock] = None
+      override def ldapServiceWith(id: LdapService.Name)(
+          implicit context: RequestId
+      ): Option[LdapServiceMock] = None
 
-      override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
-                                                    (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
+      override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)(
+          implicit context: RequestId
+      ): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
-                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = {
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)(
+          implicit context: RequestId
+      ): Option[ExternalGroupsProviderServiceMock] = {
         map
           .get(id)
-          .map(r => ExternalGroupsProviderServiceMock {
-            r.map { case (userId, groups) => ExternalGroupsProviderServiceUserMock(userId, groups) }.toCovariantSet
-          })
+          .map(r =>
+            ExternalGroupsProviderServiceMock {
+              r.map { case (userId, groups) => ExternalGroupsProviderServiceUserMock(userId, groups) }.toCovariantSet
+            }
+          )
       }
     }
   }
@@ -261,23 +304,24 @@ object TestsUtils {
   trait BlockContextAssertion extends MockFactory {
     this: TestSuite =>
 
-    def assertBlockContext(blockContext: BlockContext)
-                          (loggedUser: Option[LoggedUser] = None,
-                           currentGroup: Option[GroupId] = None,
-                           availableGroups: UniqueList[Group] = UniqueList.empty,
-                           kibanaPolicy: Option[KibanaPolicy] = None,
-                           userOrigin: Option[UserOrigin] = None,
-                           jwt: Option[Jwt.Payload] = None,
-                           responseHeaders: Set[Header] = Set.empty,
-                           responseTransformations: List[ResponseTransformation] = List.empty,
-                           indices: Set[RequestedIndex[ClusterIndexName]] = Set.empty,
-                           indexPacks: List[Indices] = List.empty,
-                           aliases: Set[ClusterIndexName] = Set.empty,
-                           repositories: Set[RepositoryName] = Set.empty,
-                           snapshots: Set[SnapshotName] = Set.empty,
-                           dataStreams: Set[DataStreamName] = Set.empty,
-                           templates: Set[TemplateOperation] = Set.empty,
-                           filter: Option[Filter] = None): Unit = {
+    def assertBlockContext(blockContext: BlockContext)(
+        loggedUser: Option[LoggedUser] = None,
+        currentGroup: Option[GroupId] = None,
+        availableGroups: UniqueList[Group] = UniqueList.empty,
+        kibanaPolicy: Option[KibanaPolicy] = None,
+        userOrigin: Option[UserOrigin] = None,
+        jwt: Option[Jwt.Payload] = None,
+        responseHeaders: Set[Header] = Set.empty,
+        responseTransformations: List[ResponseTransformation] = List.empty,
+        indices: Set[RequestedIndex[ClusterIndexName]] = Set.empty,
+        indexPacks: List[Indices] = List.empty,
+        aliases: Set[ClusterIndexName] = Set.empty,
+        repositories: Set[RepositoryName] = Set.empty,
+        snapshots: Set[SnapshotName] = Set.empty,
+        dataStreams: Set[DataStreamName] = Set.empty,
+        templates: Set[TemplateOperation] = Set.empty,
+        filter: Option[Filter] = None
+    ): Unit = {
       blockContext.blockMetadata.loggedUser should be(loggedUser)
       blockContext.blockMetadata.availableGroups should contain allElementsOf availableGroups
       blockContext.blockMetadata.currentGroupId should be(currentGroup)
@@ -287,10 +331,10 @@ object TestsUtils {
       blockContext.responseHeaders should be(responseHeaders)
       blockContext.responseTransformations should be(responseTransformations)
       blockContext match {
-        case _: UserMetadataRequestBlockContext =>
-        case _: RorApiRequestBlockContext =>
+        case _: UserMetadataRequestBlockContext    =>
+        case _: RorApiRequestBlockContext          =>
         case _: GeneralNonIndexRequestBlockContext =>
-        case bc: DataStreamRequestBlockContext =>
+        case bc: DataStreamRequestBlockContext     =>
           bc.dataStreams should be(dataStreams)
         case bc: RepositoryRequestBlockContext =>
           bc.repositories should be(repositories)
@@ -315,9 +359,11 @@ object TestsUtils {
           bc.aliases should be(aliases)
       }
     }
+
   }
 
   sealed trait RuleCheckAssertion
+
   object RuleCheckAssertion {
     final case class RulePermitted(blockContextAssertion: BlockContext => Unit) extends RuleCheckAssertion
     final case class RuleDenied(cause: Cause) extends RuleCheckAssertion
@@ -325,7 +371,8 @@ object TestsUtils {
   }
 
   extension (rule: Rule) {
-    def checkAndAssert[B <: BlockContext : BlockContextUpdater](blockContext: B, assertion: RuleCheckAssertion): Unit = {
+
+    def checkAndAssert[B <: BlockContext: BlockContextUpdater](blockContext: B, assertion: RuleCheckAssertion): Unit = {
       import monix.execution.Scheduler.Implicits.global
       val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
       assertion match {
@@ -338,6 +385,7 @@ object TestsUtils {
           result should be(Failure(ex))
       }
     }
+
   }
 
   def headerFrom(nameAndValue: (String, String)): Header = {
@@ -358,7 +406,7 @@ object TestsUtils {
   def headerNameFrom(name: String): Header.Name = {
     NonEmptyString.unapply(name) match {
       case Some(nameNes) => Header.Name(nameNes)
-      case None => throw new IllegalArgumentException(s"Cannot convert $name to Header.Name")
+      case None          => throw new IllegalArgumentException(s"Cannot convert $name to Header.Name")
     }
   }
 
@@ -374,14 +422,14 @@ object TestsUtils {
 
   def apiKeyFrom(value: String): ApiKey = NonEmptyString.from(value) match {
     case Right(v) => ApiKey(v)
-    case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to ApiKey")
+    case Left(_)  => throw new IllegalArgumentException(s"Cannot convert $value to ApiKey")
   }
 
   def authorizationTokenFrom(value: String): AuthorizationToken = (for {
     nes <- NonEmptyString.from(value)
     token <- AuthorizationToken.from(nes).toRight("Cannot create authorization token")
   } yield token) match {
-    case Right(v) => v
+    case Right(v)  => v
     case Left(msg) => throw new IllegalArgumentException(s"Cannot convert $value to AuthorizationToken; $msg")
   }
 
@@ -395,7 +443,7 @@ object TestsUtils {
 
   def urlFrom(value: String): Url = Url.parseTry(value) match {
     case Success(url) => url
-    case Failure(ex) => throw new IllegalArgumentException(s"Cannot parse $value to Url: ${ex.getMessage}")
+    case Failure(ex)  => throw new IllegalArgumentException(s"Cannot parse $value to Url: ${ex.getMessage}")
   }
 
   extension [T](value: T) {
@@ -405,8 +453,10 @@ object TestsUtils {
   def rorSettingsFromUnsafe(yamlContent: String): RawRorSettings = {
     new RawRorSettingsYamlParser(Megabytes(1))
       .fromString(yamlContent)
-      .left.map { e => new IllegalStateException(s"Error: $e") }
-      .toTry.get
+      .left
+      .map { e => new IllegalStateException(s"Error: $e") }
+      .toTry
+      .get
   }
 
   def rorSettingsFromResource(resource: String): RawRorSettings = {
@@ -442,14 +492,13 @@ object TestsUtils {
         clusterName = "testEsCluster",
         nodeName = "testEsNode",
         xpackSecurityEnabled = xpackSecurityEnabled
-      ))
+      )
+    )
   }
 
   private given Using.Releasable[File] = _.delete(swallowIOExceptions = true)
 
-  def withEsEnv[T](esConfigYaml: String,
-                   additionalFiles: Map[String, String] = Map.empty)
-                  (f: (EsEnv, File) => T): T =
+  def withEsEnv[T](esConfigYaml: String, additionalFiles: Map[String, String] = Map.empty)(f: (EsEnv, File) => T): T =
     Using.resource(File.newTemporaryDirectory()) { configDir =>
       (configDir / "elasticsearch.yml").writeText(esConfigYaml)
       additionalFiles.foreach { case (name, content) =>
@@ -472,12 +521,16 @@ object TestsUtils {
   }
 
   extension [ERROR, SUCCESS](eitherT: EitherT[Task, ERROR, SUCCESS]) {
-    def valueOrThrowIllegalState()(using scheduler: Scheduler): SUCCESS = {
+
+    def valueOrThrowIllegalState()(
+        using scheduler: Scheduler
+    ): SUCCESS = {
       eitherT.value.runSyncUnsafe() match {
         case Right(value) => value
-        case Left(error) => throw new IllegalStateException(s"$error")
+        case Left(error)  => throw new IllegalStateException(s"$error")
       }
     }
+
   }
 
   implicit def unsafeNes(str: String): NonEmptyString = NonEmptyString.unsafeFrom(str)
@@ -489,4 +542,5 @@ object TestsUtils {
       )
     )
   }
+
 }

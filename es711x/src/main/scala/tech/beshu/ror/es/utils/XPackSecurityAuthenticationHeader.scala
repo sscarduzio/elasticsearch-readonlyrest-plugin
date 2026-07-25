@@ -72,4 +72,5 @@ object XPackSecurityAuthenticationHeader {
       Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
     }
   }
+
 }

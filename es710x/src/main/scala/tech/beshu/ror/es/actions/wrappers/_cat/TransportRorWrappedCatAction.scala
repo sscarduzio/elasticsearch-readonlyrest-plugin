@@ -24,20 +24,27 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRorWrappedCatAction(transportService: TransportService,
-                                   actionFilters: ActionFilters,
-                                   @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RorWrappedCatRequest, RorWrappedCatResponse](
-    RorWrappedCatActionType.name, transportService, actionFilters, RorWrappedCatActionType.exceptionReader
-  ) {
+class TransportRorWrappedCatAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RorWrappedCatRequest, RorWrappedCatResponse](
+      RorWrappedCatActionType.name,
+      transportService,
+      actionFilters,
+      RorWrappedCatActionType.exceptionReader
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters) =
+  def this(transportService: TransportService, actionFilters: ActionFilters) =
     this(transportService, actionFilters, ())
 
-  override def doExecute(task: Task, request: RorWrappedCatRequest,
-                         listener: ActionListener[RorWrappedCatResponse]): Unit = {
+  override def doExecute(
+      task: Task,
+      request: RorWrappedCatRequest,
+      listener: ActionListener[RorWrappedCatResponse]
+  ): Unit = {
     listener.onResponse(new RorWrappedCatResponse)
   }
+
 }

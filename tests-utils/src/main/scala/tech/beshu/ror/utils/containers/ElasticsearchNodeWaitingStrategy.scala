@@ -28,13 +28,14 @@ import tech.beshu.ror.utils.misc.{EsStartupChecker, OsUtils, Version}
 import scala.language.postfixOps
 import scala.util.Try
 
-class ElasticsearchNodeWaitingStrategy(esVersion: String,
-                                       esPort: Int,
-                                       containerName: String,
-                                       restClient: Coeval[RestClient],
-                                       initializer: ElasticsearchNodeDataInitializer,
-                                       strategy: AwaitingReadyStrategy)
-  extends AbstractWaitStrategy
+class ElasticsearchNodeWaitingStrategy(
+    esVersion: String,
+    esPort: Int,
+    containerName: String,
+    restClient: Coeval[RestClient],
+    initializer: ElasticsearchNodeDataInitializer,
+    strategy: AwaitingReadyStrategy
+) extends AbstractWaitStrategy
     with StrictLogging {
 
   override def waitUntilReady(): Unit = {
@@ -84,13 +85,15 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
           .waitForStart()
       case CurrentOs.OtherThanWindows =>
         val esRestApiWaitStrategy = new HttpWaitStrategy()
-          .usingTls().allowInsecure()
+          .usingTls()
+          .allowInsecure()
           .forPort(esPort)
           .forPath("/")
           .forStatusCodeMatching(_ => true)
         Try(esRestApiWaitStrategy.waitUntilReady(waitStrategyTarget)).isSuccess
     }
   }
+
 }
 
 object ElasticsearchNodeWaitingStrategy {
@@ -101,4 +104,5 @@ object ElasticsearchNodeWaitingStrategy {
     case object ImmediatelyTreatAsReady extends AwaitingReadyStrategy
     case object WaitForEsRestApiResponsive extends AwaitingReadyStrategy
   }
+
 }

@@ -24,22 +24,30 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRRTestSettingsAction(transportService: TransportService,
-                                    actionFilters: ActionFilters,
-                                    @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRTestSettingsRequest, RRTestSettingsResponse](
-    RRTestSettingsActionType.name, transportService, actionFilters, () => new RRTestSettingsRequest()
-  ) {
+class TransportRRTestSettingsAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRTestSettingsRequest, RRTestSettingsResponse](
+      RRTestSettingsActionType.name,
+      transportService,
+      actionFilters,
+      () => new RRTestSettingsRequest()
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters) = {
+  def this(transportService: TransportService, actionFilters: ActionFilters) = {
     this(transportService, actionFilters, ())
   }
 
   private val handler = new RRTestSettingsActionHandler()
 
-  override def doExecute(task: Task, request: RRTestSettingsRequest, listener: ActionListener[RRTestSettingsResponse]): Unit = {
+  override def doExecute(
+      task: Task,
+      request: RRTestSettingsRequest,
+      listener: ActionListener[RRTestSettingsResponse]
+  ): Unit = {
     handler.handle(request, listener)
   }
+
 }

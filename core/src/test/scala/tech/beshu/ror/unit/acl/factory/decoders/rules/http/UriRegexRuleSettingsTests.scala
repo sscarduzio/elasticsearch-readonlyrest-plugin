@@ -25,11 +25,14 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.ToBeResolved
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 
 class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule] with MockFactory {
 
@@ -37,20 +40,26 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
     "be able to be loaded from settings" when {
       "single uri pattern is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    uri_re: "^/secret-idx/.*"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    uri_re: "^/secret-idx/.*"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
-            val resolvedPatten = rule.settings
-              .uriPatterns.head
-              .resolve(UserMetadataRequestBlockContext(mock[Block], mock[RequestContext], BlockMetadata.empty, Set.empty, List.empty))
+            val resolvedPatten = rule.settings.uriPatterns.head
+              .resolve(
+                UserMetadataRequestBlockContext(
+                  mock[Block],
+                  mock[RequestContext],
+                  BlockMetadata.empty,
+                  Set.empty,
+                  List.empty
+                )
+              )
               .map(_.head.pattern())
 
             resolvedPatten shouldBe Right("^/secret-idx/.*")
@@ -59,23 +68,30 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
       }
       "rule is defined as list of patterns" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    uri_re: ["^/secret-idx/.*", "^/secret/.*"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    uri_re: ["^/secret-idx/.*", "^/secret/.*"]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
-            val patternsAsStrings = rule
-              .settings.uriPatterns
-              .map(_
-                .resolve(UserMetadataRequestBlockContext(mock[Block], mock[RequestContext], BlockMetadata.empty, Set.empty, List.empty))
-                .map(_.head.pattern)
-                .toOption.get
+            val patternsAsStrings = rule.settings.uriPatterns
+              .map(
+                _.resolve(
+                  UserMetadataRequestBlockContext(
+                    mock[Block],
+                    mock[RequestContext],
+                    BlockMetadata.empty,
+                    Set.empty,
+                    List.empty
+                  )
+                )
+                  .map(_.head.pattern)
+                  .toOption
+                  .get
               )
             patternsAsStrings shouldBe NonEmptySet.of("^/secret-idx/.*", "^/secret/.*")
           }
@@ -83,17 +99,16 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
       }
       "uri pattern is defined with variable" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    uri_re: "^/user/@{user}/.*"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key: user:pass
+                   |    uri_re: "^/user/@{user}/.*"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.uriPatterns.head shouldBe a[ToBeResolved[_]]
           }
@@ -101,17 +116,16 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
       }
       "uri pattern is defined with multi variable" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    uri_re: ["^/user/@explode{user}/.*"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key: user:pass
+                   |    uri_re: ["^/user/@explode{user}/.*"]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.uriPatterns.head shouldBe a[ToBeResolved[_]]
           }
@@ -121,37 +135,39 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
     "not be able to be loaded from settings" when {
       "no uri pattern is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    uri_re:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    uri_re:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """uri_re: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """uri_re: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
       "pattern is malformed" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    uri_re: "abc["
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    uri_re: "abc["
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot compile pattern: abc[")))
@@ -161,16 +177,15 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
 
       "some of patterns present in list is malformed" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    uri_re: ["^/secret-idx/.*", "abc["]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    uri_re: ["^/secret-idx/.*", "abc["]
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot compile pattern: abc[")))
@@ -179,4 +194,5 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
       }
     }
   }
+
 }

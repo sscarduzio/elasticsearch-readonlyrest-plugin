@@ -16,15 +16,16 @@
  */
 package tech.beshu.ror.es.actions.rrauditevent.rest
 
-import org.elasticsearch.xcontent.XContentBuilder
 import org.elasticsearch.rest.action.RestBuilderListener
 import org.elasticsearch.rest.{RestChannel, RestResponse, RestStatus}
+import org.elasticsearch.xcontent.XContentBuilder
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventResponse
 
 class RestRRAuditEventActionResponseBuilder(channel: RestChannel)
-  extends RestBuilderListener[RRAuditEventResponse](channel) {
+    extends RestBuilderListener[RRAuditEventResponse](channel) {
 
   override def buildResponse(response: RRAuditEventResponse, builder: XContentBuilder): RestResponse = {
     new RestResponse(RestStatus.NO_CONTENT, "")
   }
+
 }

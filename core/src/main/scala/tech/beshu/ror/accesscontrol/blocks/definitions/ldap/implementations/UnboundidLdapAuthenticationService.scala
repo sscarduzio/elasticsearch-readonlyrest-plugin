@@ -20,8 +20,16 @@ import com.unboundid.ldap.sdk.{LDAPBindException, ResultCode, SimpleBindRequest}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapService, LdapUser, LdapUsersService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{
+  ConnectionError,
+  LdapConnectionConfig
+}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{
+  LdapAuthenticationService,
+  LdapService,
+  LdapUser,
+  LdapUsersService
+}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, RequestId, User}
 import tech.beshu.ror.implicits.*
@@ -31,25 +39,31 @@ import tech.beshu.ror.utils.TaskOps.*
 
 import java.time.Clock
 
-class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
-                                                 override val ldapUsersService: LdapUsersService,
-                                                 connectionPool: UnboundidLdapConnectionPool,
-                                                 override val serviceTimeout: PositiveFiniteDuration)
-                                                (implicit clock: Clock)
-  extends LdapAuthenticationService with RequestIdAwareLogging {
+class UnboundidLdapAuthenticationService private (
+    override val id: LdapService#Id,
+    override val ldapUsersService: LdapUsersService,
+    connectionPool: UnboundidLdapConnectionPool,
+    override val serviceTimeout: PositiveFiniteDuration
+)(
+    implicit clock: Clock
+) extends LdapAuthenticationService
+    with RequestIdAwareLogging {
 
-  override def authenticate(user: User.Id, secret: PlainTextSecret)
-                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
+  override def authenticate(user: User.Id, secret: PlainTextSecret)(
+      implicit requestId: RequestId
+  ): Task[AuthenticationResult] = {
     Task.measure(
       doAuthenticate(user, secret),
-      measurement => Task.delay {
-        logger.debug(s"LDAP authentication took ${measurement.show}")
-      }
+      measurement =>
+        Task.delay {
+          logger.debug(s"LDAP authentication took ${measurement.show}")
+        }
     )
   }
 
-  private def doAuthenticate(user: User.Id, secret: PlainTextSecret)
-                            (implicit requestId: RequestId) = {
+  private def doAuthenticate(user: User.Id, secret: PlainTextSecret)(
+      implicit requestId: RequestId
+  ) = {
     ldapUsersService
       .ldapUserBy(user)
       .flatMap {
@@ -60,14 +74,15 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
       }
   }
 
-  private def ldapAuthenticate(user: LdapUser, password: PlainTextSecret)
-                              (implicit requestId: RequestId) = {
+  private def ldapAuthenticate(user: LdapUser, password: PlainTextSecret)(
+      implicit requestId: RequestId
+  ) = {
     logger.debug(s"LDAP simple bind [user DN: ${user.dn.show}]")
     connectionPool
       .asyncBind(new SimpleBindRequest(user.dn.value.value, password.value.value))
       .map(_.getResultCode == ResultCode.SUCCESS)
       .map {
-        case true => Right(DirectlyLoggedUser(user.id))
+        case true  => Right(DirectlyLoggedUser(user.id))
         case false => Left(AuthenticationFailed("LDAP bind failed"))
       }
       .onError { case ex =>
@@ -78,22 +93,31 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
           Left(AuthenticationFailed("Invalid LDAP credentials"))
       }
   }
+
 }
+
 object UnboundidLdapAuthenticationService {
-  def create(id: LdapService#Id,
-             ldapUsersService: LdapUsersService,
-             poolProvider: UnboundidLdapConnectionPoolProvider,
-             connectionConfig: LdapConnectionConfig)
-            (implicit clock: Clock): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
+
+  def create(
+      id: LdapService#Id,
+      ldapUsersService: LdapUsersService,
+      poolProvider: UnboundidLdapConnectionPoolProvider,
+      connectionConfig: LdapConnectionConfig
+  )(
+      implicit clock: Clock
+  ): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
     UnboundidLdapConnectionPoolProvider
       .connectWithOptionalBindingTest(poolProvider, connectionConfig)
-      .map(_.map(connectionPool =>
-        new UnboundidLdapAuthenticationService(
-          id = id,
-          ldapUsersService = ldapUsersService,
-          connectionPool = connectionPool,
-          serviceTimeout = connectionConfig.requestTimeout
+      .map(
+        _.map(connectionPool =>
+          new UnboundidLdapAuthenticationService(
+            id = id,
+            ldapUsersService = ldapUsersService,
+            connectionPool = connectionPool,
+            serviceTimeout = connectionConfig.requestTimeout
+          )
         )
-      ))
+      )
   }
+
 }

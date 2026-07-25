@@ -48,7 +48,7 @@ object ThreadContextOps {
       val headerName = header.name.value.value
       Option(threadContext.getHeader(headerName)) match {
         case Some(_) => // header already present, do not overwrite
-        case None =>
+        case None    =>
           val capturedRequestHeaders = currentRequestHeadersExcluding(headerName)
           stashAndRestore(currentTransients(nonAuthTransientNames), currentResponseHeaders, capturedRequestHeaders)
           threadContext.putHeader(headerName, header.value.value)
@@ -77,13 +77,17 @@ object ThreadContextOps {
       threadContext.getHeaders.asScala.view.filterNot(_._1 == excludedName)
     }
 
-    private def stashAndRestore(transients: Iterable[(String, AnyRef)],
-                                responseHeaders: Iterable[(String, String)],
-                                requestHeaders: Iterable[(String, String)] = Iterable.empty): Unit = {
+    private def stashAndRestore(
+        transients: Iterable[(String, AnyRef)],
+        responseHeaders: Iterable[(String, String)],
+        requestHeaders: Iterable[(String, String)] = Iterable.empty
+    ): Unit = {
       threadContext.stashContext() // clear thread context (StoredContext intentionally discarded)
       transients.foreach { case (k, v) => threadContext.putTransient(k, v) }
       responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
       requestHeaders.foreach { case (k, v) => if (threadContext.getHeader(k) == null) threadContext.putHeader(k, v) }
     }
+
   }
+
 }

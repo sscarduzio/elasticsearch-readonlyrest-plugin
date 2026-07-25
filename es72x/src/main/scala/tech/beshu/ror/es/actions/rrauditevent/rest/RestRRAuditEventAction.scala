@@ -21,8 +21,8 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.xcontent.XContentHelper
-import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.*
+import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.constants
@@ -32,14 +32,14 @@ import scala.util.Try
 
 @Inject
 class RestRRAuditEventAction(settings: Settings, controller: RestController)
-  extends BaseRestHandler(settings) with RestHandler {
+    extends BaseRestHandler(settings)
+    with RestHandler {
 
   register("POST", constants.AUDIT_EVENT_COLLECTOR_PATH)
 
   override val getName: String = "ror-audit-event-collector-handler"
 
-  override def prepareRequest(request: RestRequest,
-                              client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
+  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
     private val rorAuditRequest = for {
       _ <- validateContentSize(request)
       json <- validateBodyJson(request)
@@ -80,7 +80,7 @@ class RestRRAuditEventAction(settings: Settings, controller: RestController)
   }
 
   private class AuditEventRequestPayloadTooLarge(maxContentSize: Information)
-    extends ElasticsearchException(s"Max request content allowed = ${maxContentSize.toKilobits}KB") {
+      extends ElasticsearchException(s"Max request content allowed = ${maxContentSize.toKilobits}KB") {
     override def status(): RestStatus = RestStatus.REQUEST_ENTITY_TOO_LARGE
   }
 

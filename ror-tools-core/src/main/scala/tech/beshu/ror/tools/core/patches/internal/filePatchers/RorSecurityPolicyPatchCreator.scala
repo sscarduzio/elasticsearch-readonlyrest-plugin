@@ -20,21 +20,26 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
 import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, RorPluginDirectory}
 
-private[patches] class RorSecurityPolicyPatchCreator private(patchingSteps: Iterable[FileModifier])
-  extends FilePatchCreator[RorSecurityPolicyPatch] {
+private[patches] class RorSecurityPolicyPatchCreator private (patchingSteps: Iterable[FileModifier])
+    extends FilePatchCreator[RorSecurityPolicyPatch] {
 
-  override def create(rorPluginDirectory: RorPluginDirectory,
-                      esVersion: SemVer): RorSecurityPolicyPatch =
+  override def create(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer): RorSecurityPolicyPatch =
     new RorSecurityPolicyPatch(rorPluginDirectory, patchingSteps)
 }
+
 object RorSecurityPolicyPatchCreator {
-  def apply(patchingSteps: FileModifier*): RorSecurityPolicyPatchCreator = new RorSecurityPolicyPatchCreator(patchingSteps)
+
+  def apply(patchingSteps: FileModifier*): RorSecurityPolicyPatchCreator = new RorSecurityPolicyPatchCreator(
+    patchingSteps
+  )
+
 }
 
-private[patches] class RorSecurityPolicyPatch(rorPluginDirectory: RorPluginDirectory,
-                                              patchingSteps: Iterable[FileModifier])
-  extends FileModifiersBasedPatch(
-    rorPluginDirectory = rorPluginDirectory,
-    fileToPatchPath = rorPluginDirectory.securityPolicyPath,
-    patchingSteps = patchingSteps
-  )
+private[patches] class RorSecurityPolicyPatch(
+    rorPluginDirectory: RorPluginDirectory,
+    patchingSteps: Iterable[FileModifier]
+) extends FileModifiersBasedPatch(
+      rorPluginDirectory = rorPluginDirectory,
+      fileToPatchPath = rorPluginDirectory.securityPolicyPath,
+      patchingSteps = patchingSteps
+    )

@@ -51,7 +51,18 @@ object constants {
   val FIELDS_TRANSIENT = "_fields"
 
   val FIELDS_ALWAYS_ALLOW: MutableSet[String] = MutableSet(
-    "_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index"
+    "_id",
+    "_uid",
+    "_type",
+    "_version",
+    "_seq_no",
+    "_primary_term",
+    "_parent",
+    "_routing",
+    "_timestamp",
+    "_ttl",
+    "_size",
+    "_index"
   )
 
   val AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = nes("'readonlyrest_audit-'yyyy-MM-dd")
@@ -61,4 +72,5 @@ object constants {
     val serviceAccountTokenServiceSupport = EsVersion(7, 14, 0)
     val apiKeyServiceSupport = EsVersion(7, 14, 0)
   }
+
 }

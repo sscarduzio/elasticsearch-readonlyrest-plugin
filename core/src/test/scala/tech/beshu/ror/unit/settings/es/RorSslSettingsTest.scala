@@ -34,8 +34,7 @@ import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.{FileBas
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, nes, withEsEnv, withTempConfigDir}
 import tech.beshu.ror.utils.{SSLCertHelper, TestsEnvVarsProvider, TestsPropertiesProvider}
 
-class RorSslSettingsTest
-  extends AnyWordSpec with Inside {
+class RorSslSettingsTest extends AnyWordSpec with Inside {
 
   "A ReadonlyREST ES API SSL settings" should {
     "be loaded from elasticsearch config file" when {
@@ -57,7 +56,16 @@ class RorSslSettingsTest
             |""".stripMargin
         )
         inside(ssl.externalSsl) {
-          case Some(ExternalSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+          case Some(
+                ExternalSslSettings(
+                  KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)),
+                  Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))),
+                  allowedProtocols,
+                  allowedCiphers,
+                  clientAuthenticationEnabled,
+                  FipsMode.NonFips
+                )
+              ) =>
             keystoreFile.value.name should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -87,7 +95,16 @@ class RorSslSettingsTest
             |""".stripMargin
         )
         inside(ssl.externalSsl) {
-          case Some(ExternalSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+          case Some(
+                ExternalSslSettings(
+                  KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)),
+                  Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))),
+                  allowedProtocols,
+                  allowedCiphers,
+                  clientAuthenticationEnabled,
+                  FipsMode.NonFips
+                )
+              ) =>
             keystoreFile.value.name should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("123456"))
             keyPass should be(KeyPass("12"))
@@ -113,7 +130,16 @@ class RorSslSettingsTest
             |""".stripMargin
         )
         inside(ssl.externalSsl) {
-          case Some(ExternalSslSettings(FileBasedSettings(serverCertificateKeyFile, serverCertificateFile), Some(ClientCertificateSettings.FileBasedSettings(clientTrustedCertificateFile)), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+          case Some(
+                ExternalSslSettings(
+                  FileBasedSettings(serverCertificateKeyFile, serverCertificateFile),
+                  Some(ClientCertificateSettings.FileBasedSettings(clientTrustedCertificateFile)),
+                  allowedProtocols,
+                  allowedCiphers,
+                  clientAuthenticationEnabled,
+                  FipsMode.NonFips
+                )
+              ) =>
             serverCertificateKeyFile.value.name should be("server_certificate_key.pem")
             serverCertificateFile.value.name should be("server_certificate.pem")
             clientTrustedCertificateFile.value.name should be("client_certificate.pem")
@@ -127,14 +153,23 @@ class RorSslSettingsTest
         "PKCS#8 EC private key" in {
           val ssl = forceLoad(
             s"""
-              |xpack.security.enabled: false
-              |readonlyrest.ssl.enable: true
-              |readonlyrest.ssl.server_certificate_file: "${(certsDir / "pkcs8-ec-cert.pem").pathAsString}"
-              |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "pkcs8-ec-key.pem").pathAsString}"
-              |""".stripMargin
+               |xpack.security.enabled: false
+               |readonlyrest.ssl.enable: true
+               |readonlyrest.ssl.server_certificate_file: "${(certsDir / "pkcs8-ec-cert.pem").pathAsString}"
+               |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "pkcs8-ec-key.pem").pathAsString}"
+               |""".stripMargin
           )
           inside(ssl.externalSsl) {
-            case Some(sslSettings @ ExternalSslSettings(FileBasedSettings(serverCertificateKeyFile, serverCertificateFile), None, _, _, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+            case Some(
+                  sslSettings @ ExternalSslSettings(
+                    FileBasedSettings(serverCertificateKeyFile, serverCertificateFile),
+                    None,
+                    _,
+                    _,
+                    clientAuthenticationEnabled,
+                    FipsMode.NonFips
+                  )
+                ) =>
               serverCertificateKeyFile.value.name should be("pkcs8-ec-key.pem")
               serverCertificateFile.value.name should be("pkcs8-ec-cert.pem")
               assertServerSslContextCreatedCorrectly(sslSettings, clientAuthenticationEnabled)
@@ -143,14 +178,23 @@ class RorSslSettingsTest
         "traditional EC private key" in {
           val ssl = forceLoad(
             s"""
-              |xpack.security.enabled: false
-              |readonlyrest.ssl.enable: true
-              |readonlyrest.ssl.server_certificate_file: "${(certsDir / "traditional-ec-cert.pem").pathAsString}"
-              |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "traditional-ec-key.pem").pathAsString}"
-              |""".stripMargin
+               |xpack.security.enabled: false
+               |readonlyrest.ssl.enable: true
+               |readonlyrest.ssl.server_certificate_file: "${(certsDir / "traditional-ec-cert.pem").pathAsString}"
+               |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "traditional-ec-key.pem").pathAsString}"
+               |""".stripMargin
           )
           inside(ssl.externalSsl) {
-            case Some(sslSettings @ ExternalSslSettings(FileBasedSettings(serverCertificateKeyFile, serverCertificateFile), None, _, _, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+            case Some(
+                  sslSettings @ ExternalSslSettings(
+                    FileBasedSettings(serverCertificateKeyFile, serverCertificateFile),
+                    None,
+                    _,
+                    _,
+                    clientAuthenticationEnabled,
+                    FipsMode.NonFips
+                  )
+                ) =>
               serverCertificateKeyFile.value.name should be("traditional-ec-key.pem")
               serverCertificateFile.value.name should be("traditional-ec-cert.pem")
               assertServerSslContextCreatedCorrectly(sslSettings, clientAuthenticationEnabled)
@@ -159,14 +203,23 @@ class RorSslSettingsTest
         "traditional RSA private key" in {
           val ssl = forceLoad(
             s"""
-              |xpack.security.enabled: false
-              |readonlyrest.ssl.enable: true
-              |readonlyrest.ssl.server_certificate_file: "${(certsDir / "traditional-rsa-cert.pem").pathAsString}"
-              |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "traditional-rsa-key.pem").pathAsString}"
-              |""".stripMargin
+               |xpack.security.enabled: false
+               |readonlyrest.ssl.enable: true
+               |readonlyrest.ssl.server_certificate_file: "${(certsDir / "traditional-rsa-cert.pem").pathAsString}"
+               |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "traditional-rsa-key.pem").pathAsString}"
+               |""".stripMargin
           )
           inside(ssl.externalSsl) {
-            case Some(sslSettings @ ExternalSslSettings(FileBasedSettings(serverCertificateKeyFile, serverCertificateFile), None, _, _, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+            case Some(
+                  sslSettings @ ExternalSslSettings(
+                    FileBasedSettings(serverCertificateKeyFile, serverCertificateFile),
+                    None,
+                    _,
+                    _,
+                    clientAuthenticationEnabled,
+                    FipsMode.NonFips
+                  )
+                ) =>
               serverCertificateKeyFile.value.name should be("traditional-rsa-key.pem")
               serverCertificateFile.value.name should be("traditional-rsa-cert.pem")
               assertServerSslContextCreatedCorrectly(sslSettings, clientAuthenticationEnabled)
@@ -178,23 +231,32 @@ class RorSslSettingsTest
       "elasticsearch config file doesn't contain ROR SSL section" in {
         val ssl = forceLoad(
           esConfigYaml = """
-            |node.name: n1_it
-            |cluster.initial_master_nodes: n1_it
-            |xpack.security.enabled: false
-            |""".stripMargin,
+                           |node.name: n1_it
+                           |cluster.initial_master_nodes: n1_it
+                           |xpack.security.enabled: false
+                           |""".stripMargin,
           rorSettingsYaml = """
-            |readonlyrest:
-            |  ssl:
-            |    enable: true
-            |    keystore_file: "ror-keystore.jks"
-            |    keystore_pass: readonlyrest1
-            |    key_pass: readonlyrest2
-            |    truststore_file: "ror-truststore.jks"
-            |    truststore_pass: readonlyrest3
-            |""".stripMargin
+                              |readonlyrest:
+                              |  ssl:
+                              |    enable: true
+                              |    keystore_file: "ror-keystore.jks"
+                              |    keystore_pass: readonlyrest1
+                              |    key_pass: readonlyrest2
+                              |    truststore_file: "ror-truststore.jks"
+                              |    truststore_pass: readonlyrest3
+                              |""".stripMargin
         )
         inside(ssl.externalSsl) {
-          case Some(ExternalSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+          case Some(
+                ExternalSslSettings(
+                  KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)),
+                  Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))),
+                  allowedProtocols,
+                  allowedCiphers,
+                  clientAuthenticationEnabled,
+                  FipsMode.NonFips
+                )
+              ) =>
             keystoreFile.value.name should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -253,7 +315,16 @@ class RorSslSettingsTest
           |""".stripMargin
       )
       inside(ssl.externalSsl) {
-        case Some(ExternalSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), None, _, _, _, FipsMode.SslOnly)) =>
+        case Some(
+              ExternalSslSettings(
+                KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)),
+                None,
+                _,
+                _,
+                _,
+                FipsMode.SslOnly
+              )
+            ) =>
           keystoreFile.value.name should be("ror-keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
@@ -269,14 +340,23 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           envVars = Map(
-            nes("ES_SETTING_READONLYREST_SSL_ENABLE")        -> "true",
+            nes("ES_SETTING_READONLYREST_SSL_ENABLE") -> "true",
             nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE") -> "ror-keystore.jks",
             nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__PASS") -> "readonlyrest1",
-            nes("ES_SETTING_READONLYREST_SSL_KEY__PASS")      -> "readonlyrest2"
+            nes("ES_SETTING_READONLYREST_SSL_KEY__PASS") -> "readonlyrest2"
           )
         )
         inside(ssl.externalSsl) {
-          case Some(ExternalSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+          case Some(
+                ExternalSslSettings(
+                  KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)),
+                  None,
+                  allowedProtocols,
+                  allowedCiphers,
+                  clientAuthenticationEnabled,
+                  FipsMode.NonFips
+                )
+              ) =>
             keystoreFile.value.name should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -294,14 +374,25 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           envVars = Map(
-            nes("ES_SETTING_READONLYREST_SSL__INTERNODE_ENABLE")        -> "true",
+            nes("ES_SETTING_READONLYREST_SSL__INTERNODE_ENABLE") -> "true",
             nes("ES_SETTING_READONLYREST_SSL__INTERNODE_KEYSTORE__FILE") -> "ror-keystore.jks",
             nes("ES_SETTING_READONLYREST_SSL__INTERNODE_KEYSTORE__PASS") -> "readonlyrest1",
-            nes("ES_SETTING_READONLYREST_SSL__INTERNODE_KEY__PASS")      -> "readonlyrest2"
+            nes("ES_SETTING_READONLYREST_SSL__INTERNODE_KEY__PASS") -> "readonlyrest2"
           )
         )
         inside(ssl.internodeSsl) {
-          case Some(InternodeSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled, FipsMode.NonFips)) =>
+          case Some(
+                InternodeSslSettings(
+                  KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)),
+                  None,
+                  allowedProtocols,
+                  allowedCiphers,
+                  clientAuthenticationEnabled,
+                  certificateVerificationEnabled,
+                  hostnameVerificationEnabled,
+                  FipsMode.NonFips
+                )
+              ) =>
             keystoreFile.value.name should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -321,11 +412,11 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           envVars = Map(
-            nes("ES_SETTING_READONLYREST_FIPS__MODE")         -> "SSL_ONLY",
-            nes("ES_SETTING_READONLYREST_SSL_ENABLE")        -> "true",
+            nes("ES_SETTING_READONLYREST_FIPS__MODE") -> "SSL_ONLY",
+            nes("ES_SETTING_READONLYREST_SSL_ENABLE") -> "true",
             nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE") -> "ror-keystore.jks",
             nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__PASS") -> "readonlyrest1",
-            nes("ES_SETTING_READONLYREST_SSL_KEY__PASS")      -> "readonlyrest2"
+            nes("ES_SETTING_READONLYREST_SSL_KEY__PASS") -> "readonlyrest2"
           )
         )
         inside(ssl.externalSsl) {
@@ -342,14 +433,23 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           properties = Map(
-            nes("readonlyrest.ssl.enable")        -> "true",
+            nes("readonlyrest.ssl.enable") -> "true",
             nes("readonlyrest.ssl.keystore_file") -> "ror-keystore.jks",
             nes("readonlyrest.ssl.keystore_pass") -> "readonlyrest1",
-            nes("readonlyrest.ssl.key_pass")      -> "readonlyrest2"
+            nes("readonlyrest.ssl.key_pass") -> "readonlyrest2"
           )
         )
         inside(ssl.externalSsl) {
-          case Some(ExternalSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+          case Some(
+                ExternalSslSettings(
+                  KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)),
+                  None,
+                  allowedProtocols,
+                  allowedCiphers,
+                  clientAuthenticationEnabled,
+                  FipsMode.NonFips
+                )
+              ) =>
             keystoreFile.value.name should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -367,14 +467,25 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           properties = Map(
-            nes("readonlyrest.ssl_internode.enable")        -> "true",
+            nes("readonlyrest.ssl_internode.enable") -> "true",
             nes("readonlyrest.ssl_internode.keystore_file") -> "ror-keystore.jks",
             nes("readonlyrest.ssl_internode.keystore_pass") -> "readonlyrest1",
-            nes("readonlyrest.ssl_internode.key_pass")      -> "readonlyrest2"
+            nes("readonlyrest.ssl_internode.key_pass") -> "readonlyrest2"
           )
         )
         inside(ssl.internodeSsl) {
-          case Some(InternodeSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled, FipsMode.NonFips)) =>
+          case Some(
+                InternodeSslSettings(
+                  KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)),
+                  None,
+                  allowedProtocols,
+                  allowedCiphers,
+                  clientAuthenticationEnabled,
+                  certificateVerificationEnabled,
+                  hostnameVerificationEnabled,
+                  FipsMode.NonFips
+                )
+              ) =>
             keystoreFile.value.name should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -394,11 +505,11 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           properties = Map(
-            nes("readonlyrest.fips_mode")         -> "SSL_ONLY",
-            nes("readonlyrest.ssl.enable")        -> "true",
+            nes("readonlyrest.fips_mode") -> "SSL_ONLY",
+            nes("readonlyrest.ssl.enable") -> "true",
             nes("readonlyrest.ssl.keystore_file") -> "ror-keystore.jks",
             nes("readonlyrest.ssl.keystore_pass") -> "readonlyrest1",
-            nes("readonlyrest.ssl.key_pass")      -> "readonlyrest2"
+            nes("readonlyrest.ssl.key_pass") -> "readonlyrest2"
           )
         )
         inside(ssl.externalSsl) {
@@ -409,20 +520,21 @@ class RorSslSettingsTest
     "not be able to load" when {
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
-          inside(load(
-            """
-              |node.name: n1_it
-              |cluster.initial_master_nodes: n1_it
-              |xpack.security.enabled: false
-              |
-              |readonlyrest:
-              |  ssl:
-              |    keystore_pass: readonlyrest1
-              |    key_pass: readonlyrest2
-              |""".stripMargin
-          )) {
-            case Left(MalformedSettings(_, message)) =>
-              message should include("'keystore_file' is required when keystore based SSL settings are used")
+          inside(
+            load(
+              """
+                |node.name: n1_it
+                |cluster.initial_master_nodes: n1_it
+                |xpack.security.enabled: false
+                |
+                |readonlyrest:
+                |  ssl:
+                |    keystore_pass: readonlyrest1
+                |    key_pass: readonlyrest2
+                |""".stripMargin
+            )
+          ) { case Left(MalformedSettings(_, message)) =>
+            message should include("'keystore_file' is required when keystore based SSL settings are used")
           }
         }
       }
@@ -441,39 +553,40 @@ class RorSslSettingsTest
               |""".stripMargin
           )
           (configDir / "readonlyrest.yml").writeText("readonlyrest:\n")
-          val esNodeSettings = EsNodeSettings(clusterName = "testEsCluster", nodeName = "testEsNode", xpackSecurityEnabled = false)
+          val esNodeSettings =
+            EsNodeSettings(clusterName = "testEsCluster", nodeName = "testEsNode", xpackSecurityEnabled = false)
           val esEnv = EsEnv(configDir, configDir, defaultEsVersionForTests, esNodeSettings)
           implicit val systemContext: SystemContext = SystemContext.default
           val error = RorSslSettings.load(esEnv, RorSettingsFile(configDir / "readonlyrest.yml")).runSyncUnsafe()
-          inside(error) {
-            case Left(error: LoadingError.MalformedSettings) =>
-              error.message should startWith("Cannot parse file")
+          inside(error) { case Left(error: LoadingError.MalformedSettings) =>
+            error.message should startWith("Cannot parse file")
           }
         }
       }
       "SSL settings contain both pem and truststore based configuration" in {
-        inside(load(
-          """
-            |node.name: n1_it
-            |cluster.initial_master_nodes: n1_it
-            |xpack.security.enabled: false
-            |
-            |readonlyrest:
-            |  ssl:
-            |    enable: true
-            |    keystore_file: "keystore.jks"
-            |    keystore_pass: readonlyrest1
-            |    key_pass: readonlyrest2
-            |    server_certificate_file: "server_certificate.pem"
-            |    server_certificate_key_file: "server_certificate_key.pem"
-            |    truststore_file: "truststore.jks"
-            |    truststore_pass: readonlyrest3
-            |""".stripMargin
-        )) {
-          case Left(MalformedSettings(_, message)) =>
-            message should include(
-              "Field sets [server_certificate_key_file, server_certificate_file] and [keystore_file, keystore_pass, key_alias, key_pass] could not be present in the same settings section"
-            )
+        inside(
+          load(
+            """
+              |node.name: n1_it
+              |cluster.initial_master_nodes: n1_it
+              |xpack.security.enabled: false
+              |
+              |readonlyrest:
+              |  ssl:
+              |    enable: true
+              |    keystore_file: "keystore.jks"
+              |    keystore_pass: readonlyrest1
+              |    key_pass: readonlyrest2
+              |    server_certificate_file: "server_certificate.pem"
+              |    server_certificate_key_file: "server_certificate_key.pem"
+              |    truststore_file: "truststore.jks"
+              |    truststore_pass: readonlyrest3
+              |""".stripMargin
+          )
+        ) { case Left(MalformedSettings(_, message)) =>
+          message should include(
+            "Field sets [server_certificate_key_file, server_certificate_file] and [keystore_file, keystore_pass, key_alias, key_pass] could not be present in the same settings section"
+          )
         }
       }
     }
@@ -498,7 +611,18 @@ class RorSslSettingsTest
           |""".stripMargin
       )
       inside(ssl.internodeSsl) {
-        case Some(InternodeSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), truststoreConfiguration, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled, FipsMode.NonFips)) =>
+        case Some(
+              InternodeSslSettings(
+                KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)),
+                truststoreConfiguration,
+                allowedProtocols,
+                allowedCiphers,
+                clientAuthenticationEnabled,
+                certificateVerificationEnabled,
+                hostnameVerificationEnabled,
+                FipsMode.NonFips
+              )
+            ) =>
           keystoreFile.value.name should be("ror-keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
@@ -529,7 +653,18 @@ class RorSslSettingsTest
           |""".stripMargin
       )
       inside(ssl.internodeSsl) {
-        case Some(InternodeSslSettings(FileBasedSettings(serverCertificateKeyFile, serverCertificateFile), Some(ClientCertificateSettings.FileBasedSettings(clientTrustedCertificateFile)), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled, FipsMode.NonFips)) =>
+        case Some(
+              InternodeSslSettings(
+                FileBasedSettings(serverCertificateKeyFile, serverCertificateFile),
+                Some(ClientCertificateSettings.FileBasedSettings(clientTrustedCertificateFile)),
+                allowedProtocols,
+                allowedCiphers,
+                clientAuthenticationEnabled,
+                certificateVerificationEnabled,
+                hostnameVerificationEnabled,
+                FipsMode.NonFips
+              )
+            ) =>
           serverCertificateKeyFile.value.name should be("server_certificate_key.pem")
           serverCertificateFile.value.name should be("server_certificate.pem")
           clientTrustedCertificateFile.value.name should be("client_certificate.pem")
@@ -545,25 +680,36 @@ class RorSslSettingsTest
       "elasticsearch config file doesn't contain ROR ssl section" in {
         val ssl = forceLoad(
           esConfigYaml = """
-            |node.name: n1_it
-            |cluster.initial_master_nodes: n1_it
-            |xpack.security.enabled: false
-            |""".stripMargin,
+                           |node.name: n1_it
+                           |cluster.initial_master_nodes: n1_it
+                           |xpack.security.enabled: false
+                           |""".stripMargin,
           rorSettingsYaml = """
-            |readonlyrest:
-            |  ssl_internode:
-            |    enable: true
-            |    keystore_file: "ror-keystore.jks"
-            |    keystore_pass: readonlyrest1
-            |    key_pass: readonlyrest2
-            |    truststore_file: "ror-truststore.jks"
-            |    truststore_pass: readonlyrest3
-            |    certificate_verification: true
-            |    hostname_verification: true
-            |""".stripMargin
+                              |readonlyrest:
+                              |  ssl_internode:
+                              |    enable: true
+                              |    keystore_file: "ror-keystore.jks"
+                              |    keystore_pass: readonlyrest1
+                              |    key_pass: readonlyrest2
+                              |    truststore_file: "ror-truststore.jks"
+                              |    truststore_pass: readonlyrest3
+                              |    certificate_verification: true
+                              |    hostname_verification: true
+                              |""".stripMargin
         )
         inside(ssl.internodeSsl) {
-          case Some(InternodeSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled, FipsMode.NonFips)) =>
+          case Some(
+                InternodeSslSettings(
+                  KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)),
+                  Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))),
+                  allowedProtocols,
+                  allowedCiphers,
+                  clientAuthenticationEnabled,
+                  certificateVerificationEnabled,
+                  hostnameVerificationEnabled,
+                  FipsMode.NonFips
+                )
+              ) =>
             keystoreFile.value.name should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -627,98 +773,102 @@ class RorSslSettingsTest
           |    hostname_verification: true
           |""".stripMargin
       )
-      inside(ssl) {
-        case RorSslSettings.ExternalAndInternodeSslSettings(external, internode) =>
-          inside(external.serverCertificateSettings) {
-            case KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)) =>
-              keystoreFile.value.name should be("ror-keystore.jks")
-              keystorePassword should be(KeystorePassword("readonlyrest1"))
-              keyPass should be(KeyPass("readonlyrest2"))
-          }
-          external.fipsMode should be(FipsMode.NonFips)
-          inside(internode.serverCertificateSettings) {
-            case KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)) =>
-              keystoreFile.value.name should be("ror-internode-keystore.jks")
-              keystorePassword should be(KeystorePassword("readonlyrest3"))
-              keyPass should be(KeyPass("readonlyrest4"))
-          }
-          internode.certificateVerificationEnabled should be(true)
-          internode.hostnameVerificationEnabled should be(true)
+      inside(ssl) { case RorSslSettings.ExternalAndInternodeSslSettings(external, internode) =>
+        inside(external.serverCertificateSettings) {
+          case KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)) =>
+            keystoreFile.value.name should be("ror-keystore.jks")
+            keystorePassword should be(KeystorePassword("readonlyrest1"))
+            keyPass should be(KeyPass("readonlyrest2"))
+        }
+        external.fipsMode should be(FipsMode.NonFips)
+        inside(internode.serverCertificateSettings) {
+          case KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)) =>
+            keystoreFile.value.name should be("ror-internode-keystore.jks")
+            keystorePassword should be(KeystorePassword("readonlyrest3"))
+            keyPass should be(KeyPass("readonlyrest4"))
+        }
+        internode.certificateVerificationEnabled should be(true)
+        internode.hostnameVerificationEnabled should be(true)
       }
     }
     "not be able to load" when {
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
-          inside(load(
-            """
-              |node.name: n1_it
-              |cluster.initial_master_nodes: n1_it
-              |xpack.security.enabled: false
-              |
-              |readonlyrest:
-              |  ssl_internode:
-              |    keystore_pass: readonlyrest1
-              |    key_pass: readonlyrest2
-              |""".stripMargin
-          )) {
-            case Left(MalformedSettings(_, message)) =>
-              message should include("'keystore_file' is required when keystore based SSL settings are used")
+          inside(
+            load(
+              """
+                |node.name: n1_it
+                |cluster.initial_master_nodes: n1_it
+                |xpack.security.enabled: false
+                |
+                |readonlyrest:
+                |  ssl_internode:
+                |    keystore_pass: readonlyrest1
+                |    key_pass: readonlyrest2
+                |""".stripMargin
+            )
+          ) { case Left(MalformedSettings(_, message)) =>
+            message should include("'keystore_file' is required when keystore based SSL settings are used")
           }
         }
       }
       "XPack Security is enabled and SSL is declared in elasticsearch config" in {
-        inside(load(
-          """
-            |node.name: n1_it
-            |cluster.initial_master_nodes: n1_it
-            |xpack.security.enabled: true
-            |
-            |readonlyrest:
-            |  force_load_from_file: true
-            |  ssl_internode:
-            |    enable: true
-            |    keystore_file: "ror-keystore.jks"
-            |    keystore_pass: readonlyrest1
-            |    key_pass: readonlyrest2
-            |""".stripMargin
-        )) {
-          case Left(MalformedSettings(_, message)) =>
-            message should include("Cannot use ROR SSL when XPack Security is enabled")
+        inside(
+          load(
+            """
+              |node.name: n1_it
+              |cluster.initial_master_nodes: n1_it
+              |xpack.security.enabled: true
+              |
+              |readonlyrest:
+              |  force_load_from_file: true
+              |  ssl_internode:
+              |    enable: true
+              |    keystore_file: "ror-keystore.jks"
+              |    keystore_pass: readonlyrest1
+              |    key_pass: readonlyrest2
+              |""".stripMargin
+          )
+        ) { case Left(MalformedSettings(_, message)) =>
+          message should include("Cannot use ROR SSL when XPack Security is enabled")
         }
       }
       "XPack Security is enabled and SSL is declared in readonlyrest settings file" in {
-        inside(load(
-          esConfigYaml = """
-            |node.name: n1_it
-            |cluster.initial_master_nodes: n1_it
-            |xpack.security.enabled: true
-            |
-            |readonlyrest:
-            |  force_load_from_file: true
-            |""".stripMargin,
-          rorSettingsYaml = """
-            |readonlyrest:
-            |  ssl_internode:
-            |    enable: true
-            |    keystore_file: "ror-keystore.jks"
-            |    keystore_pass: readonlyrest1
-            |    key_pass: readonlyrest2
-            |    truststore_file: "ror-truststore.jks"
-            |    truststore_pass: readonlyrest3
-            |    certificate_verification: true
-            |""".stripMargin
-        )) {
-          case Left(MalformedSettings(_, message)) =>
-            message should include("Cannot use ROR SSL when XPack Security is enabled")
+        inside(
+          load(
+            esConfigYaml = """
+                             |node.name: n1_it
+                             |cluster.initial_master_nodes: n1_it
+                             |xpack.security.enabled: true
+                             |
+                             |readonlyrest:
+                             |  force_load_from_file: true
+                             |""".stripMargin,
+            rorSettingsYaml = """
+                                |readonlyrest:
+                                |  ssl_internode:
+                                |    enable: true
+                                |    keystore_file: "ror-keystore.jks"
+                                |    keystore_pass: readonlyrest1
+                                |    key_pass: readonlyrest2
+                                |    truststore_file: "ror-truststore.jks"
+                                |    truststore_pass: readonlyrest3
+                                |    certificate_verification: true
+                                |""".stripMargin
+          )
+        ) { case Left(MalformedSettings(_, message)) =>
+          message should include("Cannot use ROR SSL when XPack Security is enabled")
         }
       }
     }
   }
 
-  private def forceLoad(esConfigYaml: String,
-                        rorSettingsYaml: String = basicRorSettings,
-                        properties: Map[NonEmptyString, String] = Map.empty,
-                        envVars: Map[NonEmptyString, String] = Map.empty) = {
+  private def forceLoad(
+      esConfigYaml: String,
+      rorSettingsYaml: String = basicRorSettings,
+      properties: Map[NonEmptyString, String] = Map.empty,
+      envVars: Map[NonEmptyString, String] = Map.empty
+  ) = {
     load(esConfigYaml, rorSettingsYaml, properties, envVars) match {
       case Right(Some(sslSettings)) => sslSettings
       case Right(None)              => throw new IllegalStateException("No SSL settings to load")
@@ -726,20 +876,25 @@ class RorSslSettingsTest
     }
   }
 
-  private def load(esConfigYaml: String,
-                   rorSettingsYaml: String = basicRorSettings,
-                   properties: Map[NonEmptyString, String] = Map.empty,
-                   envVars: Map[NonEmptyString, String] = Map.empty) = {
+  private def load(
+      esConfigYaml: String,
+      rorSettingsYaml: String = basicRorSettings,
+      properties: Map[NonEmptyString, String] = Map.empty,
+      envVars: Map[NonEmptyString, String] = Map.empty
+  ) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties),
-      envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)
+      envVarsProvider = TestsEnvVarsProvider.usingMap(envVars)
     )
     withEsEnv(esConfigYaml, Map("readonlyrest.yml" -> rorSettingsYaml)) { (esEnv, configDir) =>
       RorSslSettings.load(esEnv, RorSettingsFile(configDir / "readonlyrest.yml")).runSyncUnsafe()
     }
   }
 
-  private def assertServerSslContextCreatedCorrectly(sslSettings: ExternalSslSettings, clientAuthenticationEnabled: Boolean): Unit = {
+  private def assertServerSslContextCreatedCorrectly(
+      sslSettings: ExternalSslSettings,
+      clientAuthenticationEnabled: Boolean
+  ): Unit = {
     val sslContext = SSLCertHelper.prepareServerSSLContext(sslSettings, clientAuthenticationEnabled)
     sslContext should not be null
     sslContext.isServer should be(true)

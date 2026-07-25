@@ -22,7 +22,8 @@ import org.objectweb.asm.util.{ASMifier, TraceClassVisitor}
 import java.io.{PrintWriter, StringWriter}
 import scala.util.Using
 
-private [modifiers] trait AsmDebug {
+private[modifiers] trait AsmDebug {
+
   protected def debug(bytecode: Array[Byte]): Unit = {
     println {
       s"""ASMified bytecode produced by ${this.getClass.getSimpleName}:
@@ -42,4 +43,5 @@ private [modifiers] trait AsmDebug {
     }
     stringWriter.toString
   }
+
 }

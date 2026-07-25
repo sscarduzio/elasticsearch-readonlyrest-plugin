@@ -17,9 +17,9 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.collect.ImmutableOpenMap
+import tech.beshu.ror.syntax.*
 
 import scala.jdk.CollectionConverters.*
-import tech.beshu.ror.syntax.*
 
 object EsCollectionsScalaUtils {
 
@@ -33,7 +33,8 @@ object EsCollectionsScalaUtils {
       Option(value) match {
         case Some(map) =>
           map
-            .keySet().asScala
+            .keySet()
+            .asScala
             .map { key =>
               (key, map.get(key))
             }
@@ -41,9 +42,11 @@ object EsCollectionsScalaUtils {
         case None =>
           List.empty
       }
+
   }
 
   object ImmutableOpenMapOps {
+
     def from[K, V](map: Map[K, V]): ImmutableOpenMap[K, V] = {
       ImmutableOpenMap
         .builder[K, V]()
@@ -54,4 +57,5 @@ object EsCollectionsScalaUtils {
     def empty[K, V]: ImmutableOpenMap[K, V] =
       from(Map.empty)
   }
+
 }

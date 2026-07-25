@@ -23,10 +23,10 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
-import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersAndRule
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.http.{BaseHeaderRule, HeadersAndRule}
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
@@ -206,11 +206,18 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
   private def assertMatchRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]], requestHeaders: Set[Header]) =
     assertRule(configuredHeaders, requestHeaders, isMatched = true)
 
-  private def assertNotMatchRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]], requestHeaders: Set[Header]) =
+  private def assertNotMatchRule(
+      configuredHeaders: NonEmptySet[AccessRequirement[Header]],
+      requestHeaders: Set[Header]
+  ) =
     assertRule(configuredHeaders, requestHeaders, isMatched = false)
 
-  private def assertRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]], requestHeaders: Set[Header], isMatched: Boolean) = {
-    val rule = new HeadersAndRule(HeadersAndRule.Settings(configuredHeaders))
+  private def assertRule(
+      configuredHeaders: NonEmptySet[AccessRequirement[Header]],
+      requestHeaders: Set[Header],
+      isMatched: Boolean
+  ) = {
+    val rule = new HeadersAndRule(BaseHeaderRule.Settings(configuredHeaders))
     val restRequest = mock[RestRequest]
     (() => restRequest.allHeaders).expects().returning(requestHeaders)
     (() => restRequest.path).expects().returning(UriPath.from("/_cat/indices"))
@@ -229,4 +236,5 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
       else Denied(NotAuthorized)
     }
   }
+
 }

@@ -19,13 +19,12 @@ package tech.beshu.ror.integration.suites.fields.querydsl
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.TestUjson.ujson
 
-class FieldRuleSearchQueryDSLSuite
-  extends FieldRuleQueryDSLSuite
-    with SingletonPluginTestSupport {
+class FieldRuleSearchQueryDSLSuite extends FieldRuleQueryDSLSuite with SingletonPluginTestSupport {
 
   override protected def assertNoSearchHitsReturnedFor(index: String, query: String): Unit = {
     val result = searchManager.search(index, ujson.read(query))
     result should have statusCode 200
     result.searchHits.isEmpty shouldBe true
   }
+
 }

@@ -22,7 +22,6 @@ import eu.rekawek.toxiproxy.model.{ToxicDirection, toxic}
 import eu.rekawek.toxiproxy.{Proxy, ToxiproxyClient}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.testcontainers.containers.Network
 import org.testcontainers.containers.wait.strategy.{WaitStrategy, WaitStrategyTarget}
 import tech.beshu.ror.utils.containers.ToxiproxyContainer.{httpApiPort, proxiedPort}
 import tech.beshu.ror.utils.misc.ScalaUtils.*
@@ -32,13 +31,14 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerServicePort: Int)
-  extends GenericContainer(
-    dockerImage = "ghcr.io/shopify/toxiproxy:2.12.0",
-    exposedPorts = Seq(httpApiPort, proxiedPort),
-    waitStrategy = Some(new ToxiproxyApiWaitStrategy())
-  ) with LazyLogging {
+    extends GenericContainer(
+      dockerImage = "ghcr.io/shopify/toxiproxy:2.12.0",
+      exposedPorts = Seq(httpApiPort, proxiedPort),
+      waitStrategy = Some(new ToxiproxyApiWaitStrategy())
+    )
+    with LazyLogging {
 
-  container.setNetwork(Network.SHARED)
+  container.setNetwork(TestNetwork.perJvm)
   container.withStartupTimeout(Duration.ofSeconds(120))
 
   private var innerContainerProxy: Option[Proxy] = None
@@ -112,6 +112,7 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
 
     proxy
   }
+
 }
 
 private class ToxiproxyApiWaitStrategy extends WaitStrategy with LazyLogging {
@@ -149,6 +150,7 @@ private class ToxiproxyApiWaitStrategy extends WaitStrategy with LazyLogging {
     this.startupTimeout = startupTimeout
     this
   }
+
 }
 
 object ToxiproxyContainer {

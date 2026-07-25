@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{AbstractQueryBuilder, QueryBuilder, QueryBuilders}
 import org.elasticsearch.search.aggregations.AggregatorFactories
@@ -26,8 +25,16 @@ import org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuil
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsedField, UsingFields}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{
+  CannotExtractFields,
+  NotUsingFields,
+  UsedField,
+  UsingFields
+}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
+  BasedOnBlockContextOnly,
+  FlsAtLuceneLevelApproach
+}
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.handler.request.queries.QueryFieldsUsage.Ops as QueryFieldsUsageOps
@@ -36,6 +43,7 @@ import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.Ops a
 import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.instances.*
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.UUID
 import scala.jdk.CollectionConverters.*
@@ -44,8 +52,9 @@ object SearchRequestOps extends RequestIdAwareLogging {
 
   implicit class QueryBuilderOps(val builder: Option[QueryBuilder]) extends AnyVal {
 
-    def wrapQueryBuilder(filter: Option[Filter])
-                        (implicit requestId: RequestContext.Id): Option[QueryBuilder] = {
+    def wrapQueryBuilder(filter: Option[Filter])(
+        implicit requestId: RequestContext.Id
+    ): Option[QueryBuilder] = {
       filter match {
         case Some(definedFilter) =>
           val filterQuery = QueryBuilders.wrapperQuery(definedFilter.value.value)
@@ -57,23 +66,28 @@ object SearchRequestOps extends RequestIdAwareLogging {
       }
     }
 
-    private def provideNewQueryWithAppliedFilter(queryBuilder: Option[QueryBuilder],
-                                                 filterQuery: QueryBuilder): AbstractQueryBuilder[_] = {
+    private def provideNewQueryWithAppliedFilter(
+        queryBuilder: Option[QueryBuilder],
+        filterQuery: QueryBuilder
+    ): AbstractQueryBuilder[_] = {
       queryBuilder match {
         case Some(requestedQuery) =>
-          QueryBuilders.boolQuery()
+          QueryBuilders
+            .boolQuery()
             .must(requestedQuery)
             .filter(filterQuery)
         case None =>
           QueryBuilders.constantScoreQuery(filterQuery)
       }
     }
+
   }
 
   implicit class FilterOps(val request: SearchRequest) extends AnyVal {
 
-    def applyFilterToQuery(filter: Option[Filter])
-                          (implicit requestId: RequestContext.Id): SearchRequest = {
+    def applyFilterToQuery(filter: Option[Filter])(
+        implicit requestId: RequestContext.Id
+    ): SearchRequest = {
       Option(request.source().query())
         .wrapQueryBuilder(filter)
         .foreach { newQueryBuilder =>
@@ -81,13 +95,15 @@ object SearchRequestOps extends RequestIdAwareLogging {
         }
       request
     }
+
   }
 
   implicit class FieldsOps(val request: SearchRequest) extends AnyVal {
 
-    def applyFieldLevelSecurity(fieldLevelSecurity: Option[FieldLevelSecurity])
-                               (implicit threadPool: ThreadPool,
-                                requestId: RequestContext.Id): SearchRequest = {
+    def applyFieldLevelSecurity(fieldLevelSecurity: Option[FieldLevelSecurity])(
+        implicit threadPool: ThreadPool,
+        requestId: RequestContext.Id
+    ): SearchRequest = {
       fieldLevelSecurity match {
         case Some(definedFields) =>
           definedFields.strategy match {
@@ -138,10 +154,13 @@ object SearchRequestOps extends RequestIdAwareLogging {
       }
     }
 
-    private def disableCaching(implicit requestId: RequestContext.Id) = {
+    private def disableCaching(
+        implicit requestId: RequestContext.Id
+    ) = {
       logger.debug(s"ACL uses context header for fields rule, will disable request cache for SearchRequest")
       request.requestCache(false)
     }
+
   }
 
   private implicit class SearchSourceBuilderOps(val builder: SearchSourceBuilder) extends AnyVal {
@@ -156,7 +175,9 @@ object SearchRequestOps extends RequestIdAwareLogging {
       }
     }
 
-    def modifyNotAllowedFieldsInAggregations(notAllowedFields: NonEmptyList[UsedField.SpecificField]): SearchSourceBuilder = {
+    def modifyNotAllowedFieldsInAggregations(
+        notAllowedFields: NonEmptyList[UsedField.SpecificField]
+    ): SearchSourceBuilder = {
       def modifyBuilder(aggregatorFactoryBuilder: AggregatorFactories.Builder) = {
         import org.joor.Reflect.*
         on(builder).set("aggregations", aggregatorFactoryBuilder)
@@ -168,8 +189,7 @@ object SearchRequestOps extends RequestIdAwareLogging {
           builder
         case Some(aggregations) =>
           val aggregatorFactoryBuilder = new AggregatorFactories.Builder()
-          aggregations
-            .getAggregatorFactories.asScala
+          aggregations.getAggregatorFactories.asScala
             .foreach {
               case f: ValuesSourceAggregationBuilder[_] if notAllowedFields.find(s => s.value == f.field()).isDefined =>
                 aggregatorFactoryBuilder.addAggregator(f.field(s"${f.field()}_${UUID.randomUUID().toString}"))
@@ -184,7 +204,7 @@ object SearchRequestOps extends RequestIdAwareLogging {
 
     def fieldsUsageInQuery: RequestFieldsUsage = {
       Option(builder.query()) match {
-        case None => NotUsingFields
+        case None        => NotUsingFields
         case Some(query) => query.fieldsUsage
       }
     }
@@ -196,11 +216,10 @@ object SearchRequestOps extends RequestIdAwareLogging {
         case Some(aggregations) =>
           NonEmptyList
             .fromList {
-              aggregations
-                .getAggregatorFactories.asScala
+              aggregations.getAggregatorFactories.asScala
                 .flatMap {
                   case builder: ValuesSourceAggregationBuilder[_] => Option(builder.field()) :: Nil
-                  case _ => Nil
+                  case _                                          => Nil
                 }
                 .flatten
                 .map(UsedField.apply)
@@ -210,5 +229,7 @@ object SearchRequestOps extends RequestIdAwareLogging {
             .getOrElse(NotUsingFields)
       }
     }
+
   }
+
 }

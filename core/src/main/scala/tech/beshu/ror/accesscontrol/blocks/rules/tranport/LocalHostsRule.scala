@@ -25,13 +25,11 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.Address
 
-class LocalHostsRule(val settings: Settings,
-                     resolver: HostnameResolver)
-  extends BaseHostsRule(resolver) {
+class LocalHostsRule(val settings: Settings, resolver: HostnameResolver) extends BaseHostsRule(resolver) {
 
   override val name: Rule.Name = LocalHostsRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     checkAllowedAddresses(blockContext)(
       allowedAddresses = settings.allowedAddresses,
       addressToCheck = blockContext.requestContext.restRequest.localAddress

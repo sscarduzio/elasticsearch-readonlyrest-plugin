@@ -28,7 +28,7 @@ public class QueryAuditLogSerializer extends DefaultAuditLogSerializer {
 
   @Override
   public Map<String, ?> createLoggableEntry(ResponseContext rc) {
-    Map<String, Object> map = (Map<String, Object>)super.createLoggableEntry(rc);
+    Map<String, Object> map = (Map<String, Object>) super.createLoggableEntry(rc);
 
     map.put("content", rc.getRequestContext().getContent());
 

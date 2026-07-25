@@ -33,9 +33,8 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, No
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, toClaimsOps}
 import tech.beshu.ror.implicits.*
 
-final class JwtAuthenticationRule(val settings: Settings,
-                                  override val userIdCaseSensitivity: CaseSensitivity)
-  extends AuthenticationRule
+final class JwtAuthenticationRule(val settings: Settings, override val userIdCaseSensitivity: CaseSensitivity)
+    extends AuthenticationRule
     with AuthenticationImpersonationCustomSupport
     with BaseJwtRule {
 
@@ -43,33 +42,37 @@ final class JwtAuthenticationRule(val settings: Settings,
 
   override val localUsers: LocalUsers = LocalUsers.NotAvailable
 
-  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+  override protected[rules] def authenticate[B <: BlockContext: BlockContextUpdater](
+      blockContext: B
+  ): Task[Decision[B]] = {
     processUsingJwtToken(blockContext, settings.jwt, AuthenticationFailed.apply) { payload =>
       authenticate(blockContext, payload)
     }
   }
 
-  override protected[rules] def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+  override protected[rules] def postAuthenticateAction[B <: BlockContext: BlockContextUpdater](
+      blockContext: B
+  ): Task[Decision[B]] = {
     doPostAuthAction(blockContext, settings.jwt, AuthenticationFailed.apply)
   }
 
-  private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                    payload: Jwt.Payload) = {
+  private def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B, payload: Jwt.Payload) = {
     val result = payload.claims.userIdClaim(settings.jwt.userClaim)
     logClaimSearchResults(blockContext, result)
     result match {
       case Found(userId) =>
-        Right(blockContext.withBlockMetadata(
-          _.withLoggedUser(DirectlyLoggedUser(userId))
-            .withJwtToken(payload)
-        ))
+        Right(
+          blockContext.withBlockMetadata(
+            _.withLoggedUser(DirectlyLoggedUser(userId))
+              .withJwtToken(payload)
+          )
+        )
       case NotFound =>
         Left(Cause.AuthenticationFailed(s"User claim '${settings.jwt.userClaim.name.show}' not found in JWT"))
     }
   }
 
-  private def logClaimSearchResults[B <: BlockContext](blockContext: B,
-                                                       user: ClaimSearchResult[User.Id]): Unit = {
+  private def logClaimSearchResults[B <: BlockContext](blockContext: B, user: ClaimSearchResult[User.Id]): Unit = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     logger.debug(s"[${requestId.show}] JWT resolved user for claim ${settings.jwt.userClaim.name.show}: ${user.show}")
   }

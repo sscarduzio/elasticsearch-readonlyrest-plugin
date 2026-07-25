@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.utils
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import squants.information.Megabytes
-import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.FromString
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -66,9 +66,11 @@ class FromStringTest extends AnyWordSpec {
       FromString.nonNegativeFiniteDuration.decode("-1s") should be(Left("Duration '-1s' must be non-negative"))
     }
     "fail for an infinite duration" in {
-      FromString.nonNegativeFiniteDuration.decode("Inf") should be(Left(
-        "Cannot parse 'Inf' as a duration. Expected a finite duration like '5s', '1m'"
-      ))
+      FromString.nonNegativeFiniteDuration.decode("Inf") should be(
+        Left(
+          "Cannot parse 'Inf' as a duration. Expected a finite duration like '5s', '1m'"
+        )
+      )
     }
     "decode a bare integer as seconds" in {
       FromString.nonNegativeFiniteDuration.decode("5") should be(Right((5 seconds).toRefinedNonNegativeUnsafe))
@@ -77,9 +79,11 @@ class FromStringTest extends AnyWordSpec {
       FromString.nonNegativeFiniteDuration.decode("0") should be(Right((0 seconds).toRefinedNonNegativeUnsafe))
     }
     "fail for a non-duration string" in {
-      FromString.nonNegativeFiniteDuration.decode("not-a-duration") should be(Left(
-        "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
-      ))
+      FromString.nonNegativeFiniteDuration.decode("not-a-duration") should be(
+        Left(
+          "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
+        )
+      )
     }
   }
 
@@ -91,18 +95,24 @@ class FromStringTest extends AnyWordSpec {
       FromString.positiveFiniteDuration.decode("10") should be(Right((10 seconds).toRefinedPositiveUnsafe))
     }
     "fail for zero duration" in {
-      FromString.positiveFiniteDuration.decode("0s") should be(Left("Duration '0s' must be positive (greater than zero)"))
+      FromString.positiveFiniteDuration.decode("0s") should be(
+        Left("Duration '0s' must be positive (greater than zero)")
+      )
     }
     "fail for bare zero integer" in {
       FromString.positiveFiniteDuration.decode("0") should be(Left("Duration '0' must be positive (greater than zero)"))
     }
     "fail for a negative duration" in {
-      FromString.positiveFiniteDuration.decode("-5s") should be(Left("Duration '-5s' must be positive (greater than zero)"))
+      FromString.positiveFiniteDuration.decode("-5s") should be(
+        Left("Duration '-5s' must be positive (greater than zero)")
+      )
     }
     "fail for an infinite duration" in {
-      FromString.positiveFiniteDuration.decode("Inf") should be(Left(
-        "Cannot parse 'Inf' as a duration. Expected a finite duration like '5s', '1m'"
-      ))
+      FromString.positiveFiniteDuration.decode("Inf") should be(
+        Left(
+          "Cannot parse 'Inf' as a duration. Expected a finite duration like '5s', '1m'"
+        )
+      )
     }
   }
 
@@ -138,9 +148,11 @@ class FromStringTest extends AnyWordSpec {
       FromString.information.decode("3 MB") should be(Right(Megabytes(3)))
     }
     "fail for an unrecognised format" in {
-      FromString.information.decode("lots") should be(Left(
-        "Cannot parse 'lots' as a data size. Expected format like '1 MB', '512 KB'"
-      ))
+      FromString.information.decode("lots") should be(
+        Left(
+          "Cannot parse 'lots' as a data size. Expected format like '1 MB', '512 KB'"
+        )
+      )
     }
   }
 
@@ -149,9 +161,12 @@ class FromStringTest extends AnyWordSpec {
       FromString.string.map(_.length).decode("hello") should be(Right(5))
     }
     "propagate a decoding failure without applying the function" in {
-      FromString.nonNegativeInt.map(_.value * 2).decode("bad") should be(Left(
-        "Cannot convert 'bad' to non-negative integer"
-      ))
+      FromString.nonNegativeInt.map(_.value * 2).decode("bad") should be(
+        Left(
+          "Cannot convert 'bad' to non-negative integer"
+        )
+      )
     }
   }
+
 }

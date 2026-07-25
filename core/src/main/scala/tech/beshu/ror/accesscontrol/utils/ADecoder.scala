@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 
 import scala.annotation.tailrec
 
-sealed abstract class ADecoder[F[_] : Functor, A] {
+sealed abstract class ADecoder[F[_]: Functor, A] {
 
   type DECODER[T] <: ADecoder[F, T]
   type CREATOR <: ADecoderCreator[F, DECODER]
@@ -58,7 +58,7 @@ sealed abstract class ADecoder[F[_] : Functor, A] {
       apply(c).map(_.left.map { df =>
         val error = df.aclCreationError.map(e => newErrorCreator(e.reason)) match {
           case Some(newError) => newError
-          case None => newErrorCreator(defaultErrorReason)
+          case None           => newErrorCreator(defaultErrorReason)
         }
         df.withMessage(AclCreationErrorCoders.stringify(error))
       })
@@ -84,7 +84,7 @@ sealed abstract class ADecoder[F[_] : Functor, A] {
       apply(c).map(_.left.map { df =>
         df.aclCreationError.map(e => newErrorCreator(e.reason)) match {
           case Some(newError) => df.withMessage(AclCreationErrorCoders.stringify(newError))
-          case None => df
+          case None           => df
         }
       })
     }
@@ -99,7 +99,10 @@ trait ADecoderCreator[F[_], DECODER[_] <: ADecoder[F, _]] {
 
   def from[A](decoder: Decoder[A]): DECODER[A]
 
-  def list[A](implicit decoder: ADecoder[F, A]): DECODER[List[A]]
+  def list[A](
+      implicit decoder: ADecoder[F, A]
+  ): DECODER[List[A]]
+
 }
 
 sealed abstract class AsyncDecoder[A] extends ADecoder[Task, A] {
@@ -114,17 +117,20 @@ sealed abstract class AsyncDecoder[A] extends ADecoder[Task, A] {
   override def tryDecode(c: ACursor): Task[Either[DecodingFailure, A]] = {
     c match {
       case hc: HCursor => apply(hc)
-      case _ => Task.now(Left(
-        DecodingFailure("Attempt to decode value on failed cursor", c.history)
-      ))
+      case _           =>
+        Task.now(
+          Left(
+            DecodingFailure("Attempt to decode value on failed cursor", c.history)
+          )
+        )
     }
   }
 
   override def map[B](f: A => B): AsyncDecoder[B] = {
     AsyncDecoderCreator.instance { c =>
       tryDecode(c).map {
-        case Right(a) => Right(f(a))
-        case l@Left(_) => l.asInstanceOf[Decoder.Result[B]]
+        case Right(a)    => Right(f(a))
+        case l @ Left(_) => l.asInstanceOf[Decoder.Result[B]]
       }
     }
   }
@@ -132,11 +138,12 @@ sealed abstract class AsyncDecoder[A] extends ADecoder[Task, A] {
   override def emap[B](f: A => Either[String, B]): AsyncDecoder[B] = {
     AsyncDecoderCreator.instance { c =>
       tryDecode(c).map {
-        case Right(a) => f(a) match {
-          case r@Right(_) => r.asInstanceOf[Decoder.Result[B]]
-          case Left(message) => Left(DecodingFailure(message, c.history))
-        }
-        case l@Left(_) => l.asInstanceOf[Decoder.Result[B]]
+        case Right(a) =>
+          f(a) match {
+            case r @ Right(_)  => r.asInstanceOf[Decoder.Result[B]]
+            case Left(message) => Left(DecodingFailure(message, c.history))
+          }
+        case l @ Left(_) => l.asInstanceOf[Decoder.Result[B]]
       }
     }
   }
@@ -144,11 +151,12 @@ sealed abstract class AsyncDecoder[A] extends ADecoder[Task, A] {
   override def flatMap[B](f: A => AsyncDecoder[B]): AsyncDecoder[B] = {
     AsyncDecoderCreator.instance { c =>
       tryDecode(c).flatMap {
-        case Right(a) => f(a).tryDecode(c)
-        case l@Left(_) => Task.now(l.asInstanceOf[Decoder.Result[B]])
+        case Right(a)    => f(a).tryDecode(c)
+        case l @ Left(_) => Task.now(l.asInstanceOf[Decoder.Result[B]])
       }
     }
   }
+
 }
 
 object AsyncDecoderCreator extends ADecoderCreator[Task, AsyncDecoder] {
@@ -171,20 +179,22 @@ object AsyncDecoderCreator extends ADecoderCreator[Task, AsyncDecoder] {
     override def apply(c: HCursor): Task[Either[DecodingFailure, A]] = Task(decoder.apply(c))
   }
 
-  override def list[A](implicit decoder: ADecoder[Task, A]): AsyncDecoder[List[A]] = new AsyncDecoder[List[A]] {
+  override def list[A](
+      implicit decoder: ADecoder[Task, A]
+  ): AsyncDecoder[List[A]] = new AsyncDecoder[List[A]] {
 
     override def apply(c: HCursor): Task[Either[DecodingFailure, List[A]]] = {
       if (c.downArray.succeeded) {
         cursors(c.downArray)
-          .foldLeft(List.newBuilder[Task[Either[DecodingFailure, A]]]) {
-            case (acc, current) => acc += decoder(current.asInstanceOf[HCursor])
+          .foldLeft(List.newBuilder[Task[Either[DecodingFailure, A]]]) { case (acc, current) =>
+            acc += decoder(current.asInstanceOf[HCursor])
           }
           .result()
           .sequence
           .map { decodingResults =>
             val failures = decodingResults.collect { case Left(error) => error }
             failures match {
-              case Nil => Right(decodingResults.collect { case Right(value) => value })
+              case Nil        => Right(decodingResults.collect { case Right(value) => value })
               case error :: _ => Left(error)
             }
           }
@@ -204,6 +214,7 @@ object AsyncDecoderCreator extends ADecoderCreator[Task, AsyncDecoder] {
       collectCursor(current, Vector.empty)
     }
   }
+
 }
 
 sealed class SyncDecoder[A](val decoder: Decoder[A]) extends ADecoder[Id, A] {
@@ -236,6 +247,9 @@ object SyncDecoderCreator extends ADecoderCreator[Id, SyncDecoder] {
   override def from[A](decoder: Decoder[A]): SyncDecoder[A] =
     new SyncDecoder(decoder)
 
-  override def list[A](implicit decoder: ADecoder[Id, A]): SyncDecoder[List[A]] =
+  override def list[A](
+      implicit decoder: ADecoder[Id, A]
+  ): SyncDecoder[List[A]] =
     new SyncDecoder(Decoder.decodeList[A](from(decoder).decoder))
+
 }

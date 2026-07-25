@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
 
 trait BaseTemplatesSuite
-  extends BaseSingleNodeEsClusterTest
+    extends BaseSingleNodeEsClusterTest
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with LazyLogging {
@@ -50,21 +50,21 @@ trait BaseTemplatesSuite
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    originLegacyTemplateNames = adminLegacyTemplateManager
-      .getTemplates.force()
+    originLegacyTemplateNames = adminLegacyTemplateManager.getTemplates
+      .force()
       .templates
       .map(_.name)
     if (doesSupportIndexTemplates) {
       logger.info(s"Found origin Legacy Templates: [${originLegacyTemplateNames.mkString(",")}]")
-      originIndexTemplateNames = adminIndexTemplateManager
-        .getTemplates.force()
+      originIndexTemplateNames = adminIndexTemplateManager.getTemplates
+        .force()
         .templates
         .map(_.name)
     }
     logger.info(s"Found origin Index Templates: [${originIndexTemplateNames.mkString(",")}]")
     if (doesSupportComponentTemplates) {
-      originComponentTemplateNames = adminComponentTemplateManager
-        .getTemplates.force()
+      originComponentTemplateNames = adminComponentTemplateManager.getTemplates
+        .force()
         .templates
         .map(_.name)
       logger.info(s"Found origin Component Templates: [${originComponentTemplateNames.mkString(",")}]")
@@ -100,48 +100,54 @@ trait BaseTemplatesSuite
   }
 
   private def truncateLegacyTemplates(): Unit = {
-    adminLegacyTemplateManager
-      .getTemplates.force()
+    adminLegacyTemplateManager.getTemplates
+      .force()
       .templates
       .foreach { template =>
         if (!originLegacyTemplateNames.contains(template.name))
           adminLegacyTemplateManager.deleteTemplate(template.name).force()
       }
     waitForCondition("Waiting for removing all Legacy Templates") {
-      adminLegacyTemplateManager
-        .getTemplates.force().templates.map(_.name)
+      adminLegacyTemplateManager.getTemplates
+        .force()
+        .templates
+        .map(_.name)
         .diff(originLegacyTemplateNames)
         .isEmpty
     }
   }
 
   private def truncateIndexTemplates(): Unit = {
-    adminIndexTemplateManager
-      .getTemplates.force()
+    adminIndexTemplateManager.getTemplates
+      .force()
       .templates
       .foreach { template =>
         if (!originIndexTemplateNames.contains(template.name))
           adminIndexTemplateManager.deleteTemplate(template.name).force()
       }
     waitForCondition("Waiting for removing all Index Templates") {
-      adminIndexTemplateManager
-        .getTemplates.force().templates.map(_.name)
+      adminIndexTemplateManager.getTemplates
+        .force()
+        .templates
+        .map(_.name)
         .diff(originIndexTemplateNames)
         .isEmpty
     }
   }
 
   private def truncateComponentTemplates(): Unit = {
-    adminComponentTemplateManager
-      .getTemplates.force()
+    adminComponentTemplateManager.getTemplates
+      .force()
       .templates
       .foreach { template =>
         if (!originComponentTemplateNames.contains(template.name))
           adminComponentTemplateManager.deleteTemplate(template.name).force()
       }
     waitForCondition("Waiting for removing all Component Templates") {
-      adminComponentTemplateManager
-        .getTemplates.force().templates.map(_.name)
+      adminComponentTemplateManager.getTemplates
+        .force()
+        .templates
+        .map(_.name)
         .diff(originComponentTemplateNames)
         .isEmpty
     }
@@ -186,4 +192,5 @@ trait BaseTemplatesSuite
   protected def doesSupportIndexTemplates: Boolean = {
     Version.greaterOrEqualThan(esVersionUsed, 7, 8, 0)
   }
+
 }

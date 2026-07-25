@@ -20,8 +20,8 @@ import com.dimafeng.testcontainers.SingleContainer
 import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
 import org.apache.http.message.BasicHeader
+import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
-import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
@@ -40,14 +40,15 @@ import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
-abstract class EsContainer(val esVersion: String,
-                           val esConfig: Elasticsearch.Config,
-                           val startedClusterDependencies: StartedClusterDependencies,
-                           val elasticsearch: Elasticsearch,
-                           val initializer: ElasticsearchNodeDataInitializer,
-                           val additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
-                           val awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
-  extends SingleContainer[GenericContainer[_]]
+abstract class EsContainer(
+    val esVersion: String,
+    val esConfig: Elasticsearch.Config,
+    val startedClusterDependencies: StartedClusterDependencies,
+    val elasticsearch: Elasticsearch,
+    val initializer: ElasticsearchNodeDataInitializer,
+    val additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
+    val awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness
+) extends SingleContainer[GenericContainer[_]]
     with ClientProvider
     with StrictLogging {
 
@@ -73,7 +74,7 @@ abstract class EsContainer(val esVersion: String,
         val slf4jConsumer = new Slf4jLogConsumer(logger.underlying)
         val logConsumer: Consumer[OutputFrame] = additionalLogConsumer match {
           case Some(additional) => new CompositeLogConsumer(slf4jConsumer, additional)
-          case scala.None => slf4jConsumer
+          case scala.None       => slf4jConsumer
         }
         val waitStrategy = new ElasticsearchNodeWaitingStrategy(
           esVersion = esVersion,
@@ -88,11 +89,16 @@ abstract class EsContainer(val esVersion: String,
         container.addExposedPort(9300)
         container.addExposedPort(8000)
         container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
-        container.setNetwork(Network.SHARED)
+        container.setNetwork(TestNetwork.perJvm)
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
         // Share host's cgroup namespace to avoid JDK cgroup v2 NPE in nested Docker containers on CI
         container.withCreateContainerCmdModifier { cmd =>
           cmd.getHostConfig.withCgroupnsMode("host")
+        }
+        // Stamp this CI job's id so cleanup reaps ONLY this CI job's containers, never a sibling's on the
+        // shared self-hosted Docker daemon. Absent off-CI -> no label, no-op.
+        Option(System.getenv("ROR_CI_JOB_ID")).filter(_.nonEmpty).foreach { legId =>
+          container.withLabel("ror.ci-job", legId)
         }
         EsContainerImplementation.Linux(
           esImage = esImage,
@@ -102,7 +108,7 @@ abstract class EsContainer(val esVersion: String,
   }
 
   override implicit val container: GenericContainer[_] = containerImplementation match {
-    case EsContainerImplementation.Windows(container) => container
+    case EsContainerImplementation.Windows(container)        => container
     case EsContainerImplementation.Linux(esImage, container) => container
   }
 
@@ -111,19 +117,22 @@ abstract class EsContainer(val esVersion: String,
       case EsContainerImplementation.Windows(_) =>
         ()
       case EsContainerImplementation.Linux(esImage, _) =>
-        dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
+        // Best-effort: an image still referenced by a sibling container can't be removed (Docker 409)
+        // — swallow it; this node's own uniquely-tagged image is what we reclaim.
+        try dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
+        catch { case scala.util.control.NonFatal(_) => () }
     }
   }
 
   def sslEnabled: Boolean
 
   def ip: String = containerImplementation match {
-    case EsContainerImplementation.Windows(_) => "localhost"
+    case EsContainerImplementation.Windows(_)          => "localhost"
     case EsContainerImplementation.Linux(_, container) => container.getHost
   }
 
   def port: Integer = containerImplementation match {
-    case EsContainerImplementation.Windows(container) => container.getPort
+    case EsContainerImplementation.Windows(container)  => container.getPort
     case EsContainerImplementation.Linux(_, container) => container.getMappedPort(9200)
   }
 
@@ -138,18 +147,45 @@ abstract class EsContainer(val esVersion: String,
     case BasicAuth(user, password) => new RestClient(sslEnabled, ip, port, Some(user, password))
     case Token(token) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader("Authorization", token))
     case Header(name, value) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader(name, value))
-    case None => new RestClient(sslEnabled, ip, port, Option.empty)
+    case None                => new RestClient(sslEnabled, ip, port, Option.empty)
   }
 
   override def start(): Unit = {
     try {
       super.start()
     } catch {
+      case ex: Throwable if isDockerParentImageBuildRace(ex) =>
+        retryStartAfterDockerParentImageBuildRace(ex)
       case ex: Throwable =>
         logger.error("Container starting error", ex)
         throw ex
     }
   }
+
+  // Known docker classic-builder race: two sharded test JVMs concurrently building images that
+  // share parent layers can fail the export with "unknown parent image ID" (moby bug). It's
+  // transient — the parent exists once the sibling's build settles — so one delayed retry
+  // re-resolves the image cleanly.
+  private def retryStartAfterDockerParentImageBuildRace(cause: Throwable): Unit = {
+    logger.warn("Docker parent-image build race detected - retrying container start once", cause)
+    Thread.sleep(5000)
+    try {
+      super.start()
+    } catch {
+      case retryEx: Throwable =>
+        logger.error("Container starting error (after parent-image-race retry)", retryEx)
+        throw retryEx
+    }
+  }
+
+  private def isDockerParentImageBuildRace(ex: Throwable): Boolean = {
+    Iterator
+      .iterate(ex)(_.getCause)
+      .takeWhile(_ != null)
+      .take(10)
+      .exists(t => Option(t.getMessage).exists(_.contains("unknown parent image ID")))
+  }
+
 }
 
 object EsContainer {
@@ -170,7 +206,8 @@ object EsContainer {
   object EsContainerImplementation {
     final case class Windows(container: WindowsPseudoEsContainer) extends EsContainerImplementation
 
-    final case class Linux(esImage: ImageFromDockerfile, container: GenericContainer[_]) extends EsContainerImplementation
+    final case class Linux(esImage: ImageFromDockerfile, container: GenericContainer[_])
+        extends EsContainerImplementation
   }
 
 }

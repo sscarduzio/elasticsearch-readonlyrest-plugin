@@ -45,8 +45,8 @@ import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import org.elasticsearch.transport.netty4.Netty4Utils
+import org.elasticsearch.transport.netty4.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import org.elasticsearch.transport.{SharedGroupFactory, Transport, TransportInterceptor}
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
@@ -80,7 +80,7 @@ import scala.language.postfixOps
 
 @Inject
 class ReadonlyRestPlugin(s: Settings, p: Path)
-  extends Plugin
+    extends Plugin
     with ScriptPlugin
     with ActionPlugin
     with IngestPlugin
@@ -91,6 +91,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   EsPatchVerifier.verify(s)
 
   constants.FIELDS_ALWAYS_ALLOW.add(IgnoredFieldMapper.NAME)
+
   // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
   // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
   // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception
@@ -102,10 +103,12 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
+
   private val esConfigBasedRorSettings = EsConfigBasedRorSettings
     .from(EsEnvProvider.create(environment))
     .map(_.fold(e => throw new ElasticsearchException(e.show), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
+
   private val esInitListener = new EsInitListener
   private val groupFactory = new SetOnce[SharedGroupFactory]
 
@@ -113,17 +116,19 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   esConfigBasedRorSettings.ssl.foreach(SecurityProviderConfiguratorForFips.configureIfRequired)
 
-  override def createComponents(client: Client,
-                                clusterService: ClusterService,
-                                threadPool: ThreadPool,
-                                resourceWatcherService: ResourceWatcherService,
-                                scriptService: ScriptService,
-                                xContentRegistry: NamedXContentRegistry,
-                                environment: Environment,
-                                nodeEnvironment: NodeEnvironment,
-                                namedWriteableRegistry: NamedWriteableRegistry,
-                                indexNameExpressionResolver: IndexNameExpressionResolver,
-                                repositoriesServiceSupplier: Supplier[RepositoriesService]): util.Collection[AnyRef] = {
+  override def createComponents(
+      client: Client,
+      clusterService: ClusterService,
+      threadPool: ThreadPool,
+      resourceWatcherService: ResourceWatcherService,
+      scriptService: ScriptService,
+      xContentRegistry: NamedXContentRegistry,
+      environment: Environment,
+      nodeEnvironment: NodeEnvironment,
+      namedWriteableRegistry: NamedWriteableRegistry,
+      indexNameExpressionResolver: IndexNameExpressionResolver,
+      repositoriesServiceSupplier: Supplier[RepositoriesService]
+  ): util.Collection[AnyRef] = {
     doPrivileged {
       ilaf = new IndexLevelActionFilter(
         clusterService,
@@ -164,37 +169,60 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[Setting[_]](Setting.groupSetting("readonlyrest.", Setting.Property.Dynamic, Setting.Property.NodeScope)).asJava
   }
 
-  override def getHttpTransports(settings: Settings,
-                                 threadPool: ThreadPool,
-                                 bigArrays: BigArrays,
-                                 pageCacheRecycler: PageCacheRecycler,
-                                 circuitBreakerService: CircuitBreakerService,
-                                 xContentRegistry: NamedXContentRegistry,
-                                 networkService: NetworkService,
-                                 dispatcher: HttpServerTransport.Dispatcher,
-                                 clusterSettings: ClusterSettings): util.Map[String, Supplier[HttpServerTransport]] = {
-    esConfigBasedRorSettings
-      .ssl.flatMap(_.externalSsl)
+  override def getHttpTransports(
+      settings: Settings,
+      threadPool: ThreadPool,
+      bigArrays: BigArrays,
+      pageCacheRecycler: PageCacheRecycler,
+      circuitBreakerService: CircuitBreakerService,
+      xContentRegistry: NamedXContentRegistry,
+      networkService: NetworkService,
+      dispatcher: HttpServerTransport.Dispatcher,
+      clusterSettings: ClusterSettings
+  ): util.Map[String, Supplier[HttpServerTransport]] = {
+    esConfigBasedRorSettings.ssl
+      .flatMap(_.externalSsl)
       .map { ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings))
+          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(
+            settings,
+            networkService,
+            bigArrays,
+            threadPool,
+            xContentRegistry,
+            dispatcher,
+            ssl,
+            clusterSettings,
+            getSharedGroupFactory(settings)
+          )
         }
       }
       .toMap
       .asJava
   }
 
-  override def getTransports(settings: Settings,
-                             threadPool: ThreadPool,
-                             pageCacheRecycler: PageCacheRecycler,
-                             circuitBreakerService: CircuitBreakerService,
-                             namedWriteableRegistry: NamedWriteableRegistry,
-                             networkService: NetworkService): util.Map[String, Supplier[Transport]] = {
-    esConfigBasedRorSettings
-      .ssl.flatMap(_.internodeSsl)
+  override def getTransports(
+      settings: Settings,
+      threadPool: ThreadPool,
+      pageCacheRecycler: PageCacheRecycler,
+      circuitBreakerService: CircuitBreakerService,
+      namedWriteableRegistry: NamedWriteableRegistry,
+      networkService: NetworkService
+  ): util.Map[String, Supplier[Transport]] = {
+    esConfigBasedRorSettings.ssl
+      .flatMap(_.internodeSsl)
       .map { ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, ssl, getSharedGroupFactory(settings))
+          override def get(): Transport = new SSLNetty4InternodeServerTransport(
+            settings,
+            threadPool,
+            pageCacheRecycler,
+            circuitBreakerService,
+            namedWriteableRegistry,
+            networkService,
+            ssl,
+            getSharedGroupFactory(settings)
+          )
         }
       }
       .toMap
@@ -202,7 +230,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   private def getSharedGroupFactory(settings: Settings): SharedGroupFactory = {
-    this.groupFactory.getOrElse(new SharedGroupFactory(settings))
+    this.groupFactory
+      .getOrElse(new SharedGroupFactory(settings))
       .ensuring(_.getSettings == settings, "Different settings than originally provided")
   }
 
@@ -222,13 +251,15 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     ).asJava
   }
 
-  override def getRestHandlers(settings: Settings,
-                               restController: RestController,
-                               clusterSettings: ClusterSettings,
-                               indexScopedSettings: IndexScopedSettings,
-                               settingsFilter: SettingsFilter,
-                               indexNameExpressionResolver: IndexNameExpressionResolver,
-                               nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
+  override def getRestHandlers(
+      settings: Settings,
+      restController: RestController,
+      clusterSettings: ClusterSettings,
+      indexScopedSettings: IndexScopedSettings,
+      settingsFilter: SettingsFilter,
+      indexNameExpressionResolver: IndexNameExpressionResolver,
+      nodesInCluster: Supplier[DiscoveryNodes]
+  ): util.List[RestHandler] = {
     import tech.beshu.ror.es.utils.RestControllerOps.*
     restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
     List[RestHandler](
@@ -240,8 +271,10 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     ).asJava
   }
 
-  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry,
-                                        threadContext: ThreadContext): util.List[TransportInterceptor] = {
+  override def getTransportInterceptors(
+      namedWriteableRegistry: NamedWriteableRegistry,
+      threadContext: ThreadContext
+  ): util.List[TransportInterceptor] = {
     List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
   }
 

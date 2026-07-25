@@ -30,29 +30,35 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, LocalUsers, RequestId, User}
 import tech.beshu.ror.syntax.*
 
-final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[Credentials],
-                        override implicit val userIdCaseSensitivity: CaseSensitivity,
-                        override val impersonation: Impersonation)
-  extends BasicAuthenticationRule(settings) {
+final class AuthKeyRule(
+    override val settings: BasicAuthenticationRule.Settings[Credentials],
+    override implicit val userIdCaseSensitivity: CaseSensitivity,
+    override val impersonation: Impersonation
+) extends BasicAuthenticationRule(settings) {
 
   override val name: Rule.Name = AuthKeyRule.Name.name
 
-  override protected def compare(configuredCredentials: Credentials,
-                                 credentials: Credentials): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] = Task.delay {
+  override protected def compare(
+      configuredCredentials: Credentials,
+      credentials: Credentials
+  ): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] = Task.delay {
     for {
       _ <- Either.cond(
         configuredCredentials.user == credentials.user,
-        (), AuthenticationFailed("Username mismatch")
+        (),
+        AuthenticationFailed("Username mismatch")
       )
       _ <- Either.cond(
         configuredCredentials.secret == credentials.secret,
-        (), AuthenticationFailed("Invalid password")
+        (),
+        AuthenticationFailed("Invalid password")
       )
     } yield DirectlyLoggedUser(credentials.user)
   }
 
-  override def exists(user: User.Id, mocksProvider: MocksProvider)
-                     (implicit requestId: RequestId): Task[UserExistence] = Task.now {
+  override def exists(user: User.Id, mocksProvider: MocksProvider)(
+      implicit requestId: RequestId
+  ): Task[UserExistence] = Task.now {
     if (user === settings.credentials.user) UserExistence.Exists
     else UserExistence.NotExist
   }
@@ -61,7 +67,9 @@ final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[
 }
 
 object AuthKeyRule {
+
   implicit case object Name extends RuleName[AuthKeyRule] {
     override val name = Rule.Name("auth_key")
   }
+
 }

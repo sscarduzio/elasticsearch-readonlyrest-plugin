@@ -22,6 +22,7 @@ import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.AccessMode
 import tech.beshu.ror.fls.FieldsPolicy
+
 import scala.jdk.CollectionConverters.*
 
 object FieldsFiltering {
@@ -31,11 +32,12 @@ object FieldsFiltering {
   final case class NonMetadataDocumentFields[T](value: Map[String, T])
   final case class MetadataDocumentFields[T](value: Map[String, T])
 
-  final case class NewFilteredDocumentFields[T](nonMetadataDocumentFields: NonMetadataDocumentFields[T],
-                                                metadataDocumentFields: MetadataDocumentFields[T])
+  final case class NewFilteredDocumentFields[T](
+      nonMetadataDocumentFields: NonMetadataDocumentFields[T],
+      metadataDocumentFields: MetadataDocumentFields[T]
+  )
 
-  def filterSource(sourceAsMap: Map[String, _],
-                   fieldsRestrictions: FieldsRestrictions): NewFilteredSource = {
+  def filterSource(sourceAsMap: Map[String, _], fieldsRestrictions: FieldsRestrictions): NewFilteredSource = {
     val (excluding, including) = splitFieldsByAccessMode(fieldsRestrictions)
     val filteredSource = XContentMapValues.filter(sourceAsMap.asJava, including.toArray, excluding.toArray)
     val newContent = XContentFactory
@@ -44,14 +46,15 @@ object FieldsFiltering {
     NewFilteredSource(BytesReference.bytes(newContent))
   }
 
-  def filterNonMetadataDocumentFields[T](nonMetadataDocumentFields: NonMetadataDocumentFields[T],
-                                         fieldsRestrictions: FieldsRestrictions): NonMetadataDocumentFields[T] = {
+  def filterNonMetadataDocumentFields[T](
+      nonMetadataDocumentFields: NonMetadataDocumentFields[T],
+      fieldsRestrictions: FieldsRestrictions
+  ): NonMetadataDocumentFields[T] = {
     val policy = new FieldsPolicy(fieldsRestrictions)
 
     NonMetadataDocumentFields {
-      nonMetadataDocumentFields.value.filter {
-        case (key, _) =>
-          policy.canKeep(key)
+      nonMetadataDocumentFields.value.filter { case (key, _) =>
+        policy.canKeep(key)
       }
     }
   }
@@ -60,4 +63,5 @@ object FieldsFiltering {
     case AccessMode.Whitelist => (List.empty, fields.documentFields.map(_.value.value).toList)
     case AccessMode.Blacklist => (fields.documentFields.map(_.value.value).toList, List.empty)
   }
+
 }

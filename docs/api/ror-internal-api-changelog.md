@@ -1,5 +1,13 @@
 # ROR INTERNAL API CHANGELOG
 
+## 4.1.0
+
+Changes:
+
+* endpoint GET `/_readonlyrest/metadata/user`:
+
+    The `kibana.index` field is now always present in the response. When a matched block does not explicitly declare a Kibana index, the default index (`.kibana`) is returned instead of the field being omitted. The field is now marked as required.
+
 ## 4.0.0
 
 Changes:

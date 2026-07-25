@@ -17,22 +17,24 @@
 package tech.beshu.ror.es
 
 import monix.execution.atomic.Atomic
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
 import org.elasticsearch.rest.RestResponse
-import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentParserConfiguration, XContentType}
 import org.elasticsearch.xcontent.cbor.CborXContent
 import org.elasticsearch.xcontent.json.JsonXContent
 import org.elasticsearch.xcontent.smile.SmileXContent
 import org.elasticsearch.xcontent.yaml.YamlXContent
+import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentParserConfiguration, XContentType}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.jdk.CollectionConverters.*
 
 trait ResponseFieldsFiltering {
   this: RequestIdAwareLogging =>
 
-  private val responseFieldsRestrictions: Atomic[Option[ResponseFieldsRestrictions]] = Atomic(None: Option[ResponseFieldsRestrictions])
+  private val responseFieldsRestrictions: Atomic[Option[ResponseFieldsRestrictions]] = Atomic(
+    None: Option[ResponseFieldsRestrictions]
+  )
 
   def setResponseFieldRestrictions(responseFieldsRestrictions: ResponseFieldsRestrictions): Unit = {
     this.responseFieldsRestrictions.set(Some(responseFieldsRestrictions))
@@ -47,7 +49,10 @@ trait ResponseFieldsFiltering {
     }
   }
 
-  private def filterRestResponse(response: RestResponse, fieldsRestrictions: ResponseFieldsRestrictions): RestResponse = {
+  private def filterRestResponse(
+      response: RestResponse,
+      fieldsRestrictions: ResponseFieldsRestrictions
+  ): RestResponse = {
     val (includes, excludes) = fieldsRestrictions.mode match {
       case AccessMode.Whitelist =>
         (fieldsRestrictions.responseFields.toSet.map(_.value.value), Set.empty[String])
@@ -55,10 +60,13 @@ trait ResponseFieldsFiltering {
         (Set.empty[String], fieldsRestrictions.responseFields.toSet.map(_.value.value))
     }
     val xContent =
-      if(response.contentType().contains(XContentType.JSON.mediaTypeWithoutParameters())) JsonXContent.jsonXContent
-      else if (response.contentType().contains(XContentType.YAML.mediaTypeWithoutParameters())) YamlXContent.yamlXContent
-      else if (response.contentType().contains(XContentType.CBOR.mediaTypeWithoutParameters())) CborXContent.cborXContent
-      else if (response.contentType().contains(XContentType.SMILE.mediaTypeWithoutParameters())) SmileXContent.smileXContent
+      if (response.contentType().contains(XContentType.JSON.mediaTypeWithoutParameters())) JsonXContent.jsonXContent
+      else if (response.contentType().contains(XContentType.YAML.mediaTypeWithoutParameters()))
+        YamlXContent.yamlXContent
+      else if (response.contentType().contains(XContentType.CBOR.mediaTypeWithoutParameters()))
+        CborXContent.cborXContent
+      else if (response.contentType().contains(XContentType.SMILE.mediaTypeWithoutParameters()))
+        SmileXContent.smileXContent
       else throw new IllegalStateException("Unknown response content type")
 
     val parser = xContent.createParser(
@@ -73,4 +81,5 @@ trait ResponseFieldsFiltering {
     contentBuilder.flush()
     new RestResponse(response.status(), contentBuilder)
   }
+
 }

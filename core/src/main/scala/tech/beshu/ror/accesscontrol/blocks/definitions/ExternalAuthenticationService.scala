@@ -37,31 +37,38 @@ import java.nio.charset.Charset
 trait ExternalAuthenticationService extends Item {
   override type Id = Name
 
-  def authenticate(credentials: Credentials)
-                  (implicit requestId: RequestId): Task[AuthenticationResult]
+  def authenticate(credentials: Credentials)(
+      implicit requestId: RequestId
+  ): Task[AuthenticationResult]
+
   def serviceTimeout: PositiveFiniteDuration
 
   override val idShow: Show[Name] = Show.show(_.value.value)
 }
+
 object ExternalAuthenticationService {
 
   type AuthenticationResult = Either[AuthenticationFailed, DirectlyLoggedUser]
 
   final case class Name(value: NonEmptyString)
+
   object Name {
     implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
   }
+
 }
 
-class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
-                                                 url: Url,
-                                                 successStatusCode: Int,
-                                                 override val serviceTimeout: PositiveFiniteDuration,
-                                                 httpClient: HttpClient)
-  extends ExternalAuthenticationService {
+class BasicAuthHttpExternalAuthenticationService(
+    override val id: ExternalAuthenticationService#Id,
+    url: Url,
+    successStatusCode: Int,
+    override val serviceTimeout: PositiveFiniteDuration,
+    httpClient: HttpClient
+) extends ExternalAuthenticationService {
 
-  override def authenticate(credentials: Credentials)
-                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
+  override def authenticate(credentials: Credentials)(
+      implicit requestId: RequestId
+  ): Task[AuthenticationResult] = {
     val basicAuthHeader = BasicAuth.fromCredentials(credentials).header
     httpClient
       .send(
@@ -75,21 +82,26 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
         Either.cond(
           response.status == successStatusCode,
           DirectlyLoggedUser(credentials.user),
-          AuthenticationFailed(s"Service ${id.show} returned ${response.status.show} instead of ${successStatusCode.show}")
+          AuthenticationFailed(
+            s"Service ${id.show} returned ${response.status.show} instead of ${successStatusCode.show}"
+          )
         )
       }
   }
+
 }
 
-class JwtExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
-                                       url: Url,
-                                       successStatusCode: Int,
-                                       override val serviceTimeout: PositiveFiniteDuration,
-                                       httpClient: HttpClient)
-  extends ExternalAuthenticationService {
+class JwtExternalAuthenticationService(
+    override val id: ExternalAuthenticationService#Id,
+    url: Url,
+    successStatusCode: Int,
+    override val serviceTimeout: PositiveFiniteDuration,
+    httpClient: HttpClient
+) extends ExternalAuthenticationService {
 
-  override def authenticate(credentials: Credentials)
-                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
+  override def authenticate(credentials: Credentials)(
+      implicit requestId: RequestId
+  ): Task[AuthenticationResult] = {
     httpClient
       .send(
         HttpClient.Request(
@@ -102,15 +114,19 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
         Either.cond(
           response.status == successStatusCode,
           DirectlyLoggedUser(credentials.user),
-          AuthenticationFailed(s"JWT validation service returned ${response.status.show} instead of ${successStatusCode.show}")
+          AuthenticationFailed(
+            s"JWT validation service returned ${response.status.show} instead of ${successStatusCode.show}"
+          )
         )
       }
   }
+
 }
 
-class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthenticationService,
-                                                      ttl: PositiveFiniteDuration)
-  extends ExternalAuthenticationService {
+class CacheableExternalAuthenticationServiceDecorator(
+    underlying: ExternalAuthenticationService,
+    ttl: PositiveFiniteDuration
+) extends ExternalAuthenticationService {
 
   private val cacheableAuthentication =
     new AsyncCacheableActionWithKeyMappingAndTimeout[Credentials, HashedUserCredentials, AuthenticationResult](
@@ -121,17 +137,22 @@ class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthen
 
   override val id: ExternalAuthenticationService#Id = underlying.id
 
-  override def authenticate(credentials: Credentials)
-                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
+  override def authenticate(credentials: Credentials)(
+      implicit requestId: RequestId
+  ): Task[AuthenticationResult] = {
     cacheableAuthentication.call(credentials, serviceTimeout)
   }
 
   private def hashCredential(credentials: Credentials) = {
-    HashedUserCredentials(credentials.user, Hashing.sha256.hashString(credentials.secret.value.value, Charset.defaultCharset).toString)
+    HashedUserCredentials(
+      credentials.user,
+      Hashing.sha256.hashString(credentials.secret.value.value, Charset.defaultCharset).toString
+    )
   }
 
-  private def authenticateAction(credentials: Credentials)
-                                (implicit requestId: RequestId) = {
+  private def authenticateAction(credentials: Credentials)(
+      implicit requestId: RequestId
+  ) = {
     underlying.authenticate(credentials)
   }
 

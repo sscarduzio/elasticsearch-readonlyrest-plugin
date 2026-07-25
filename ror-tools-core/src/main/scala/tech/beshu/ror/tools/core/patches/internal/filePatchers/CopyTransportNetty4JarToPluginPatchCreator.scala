@@ -21,15 +21,13 @@ import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, FilePatch, RorPluginDirectory}
 
 private[patches] object CopyTransportNetty4JarToPluginPatchCreator
-  extends FilePatchCreator[CopyTransportNetty4JarToPluginPatch] {
+    extends FilePatchCreator[CopyTransportNetty4JarToPluginPatch] {
 
-  override def create(rorPluginDirectory: RorPluginDirectory,
-                      esVersion: SemVer): CopyTransportNetty4JarToPluginPatch =
+  override def create(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer): CopyTransportNetty4JarToPluginPatch =
     new CopyTransportNetty4JarToPluginPatch(rorPluginDirectory)
 }
 
-private[patches] class CopyTransportNetty4JarToPluginPatch(rorPluginDirectory: RorPluginDirectory)
-  extends FilePatch {
+private[patches] class CopyTransportNetty4JarToPluginPatch(rorPluginDirectory: RorPluginDirectory) extends FilePatch {
 
   override def backup(): Unit = ()
 
@@ -42,7 +40,9 @@ private[patches] class CopyTransportNetty4JarToPluginPatch(rorPluginDirectory: R
             FileModifiersBasedPatch.addPatchedByRorVersionPropertyToJarManifest(rorPluginDirectory, copiedJarFile)
             List(FilePatchMetadata.forPath(copiedJarFile))
           case None =>
-            throw new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to transport netty4 jar not copied to ROR directory")
+            throw new IllegalStateException(
+              s"ReadonlyREST plugin cannot be patched due to transport netty4 jar not copied to ROR directory"
+            )
         }
       case None =>
         throw new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")
@@ -54,4 +54,5 @@ private[patches] class CopyTransportNetty4JarToPluginPatch(rorPluginDirectory: R
       os.remove
     }
   }
+
 }

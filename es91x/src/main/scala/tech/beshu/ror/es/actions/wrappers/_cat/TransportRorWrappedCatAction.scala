@@ -26,22 +26,29 @@ import org.elasticsearch.transport.TransportService
 import java.util.concurrent.Executor
 import scala.annotation.unused
 
-class TransportRorWrappedCatAction(transportService: TransportService,
-                                   actionFilters: ActionFilters,
-                                   executor: Executor,
-                                   @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RorWrappedCatRequest, RorWrappedCatResponse](
-    RorWrappedCatActionType.name, transportService, actionFilters, RorWrappedCatActionType.exceptionReader[RorWrappedCatRequest], executor
-  ) {
+class TransportRorWrappedCatAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    executor: Executor,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RorWrappedCatRequest, RorWrappedCatResponse](
+      RorWrappedCatActionType.name,
+      transportService,
+      actionFilters,
+      RorWrappedCatActionType.exceptionReader[RorWrappedCatRequest],
+      executor
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters,
-           threadPool: ThreadPool) =
+  def this(transportService: TransportService, actionFilters: ActionFilters, threadPool: ThreadPool) =
     this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
 
-  override def doExecute(task: Task, request: RorWrappedCatRequest,
-                         listener: ActionListener[RorWrappedCatResponse]): Unit = {
+  override def doExecute(
+      task: Task,
+      request: RorWrappedCatRequest,
+      listener: ActionListener[RorWrappedCatResponse]
+  ): Unit = {
     listener.onResponse(new RorWrappedCatResponse)
   }
+
 }

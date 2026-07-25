@@ -21,6 +21,7 @@ import org.elasticsearch.xcontent.json.JsonXContent
 import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentParser, XContentParserConfiguration}
 
 final class XContentJsonParserFactory(xContent: NamedXContentRegistry) {
+
   private val parserConfig =
     XContentParserConfiguration.EMPTY
       .withDeprecationHandler(LoggingDeprecationHandler.INSTANCE)
@@ -32,4 +33,5 @@ final class XContentJsonParserFactory(xContent: NamedXContentRegistry) {
       ujson.write(json)
     )
   }
+
 }

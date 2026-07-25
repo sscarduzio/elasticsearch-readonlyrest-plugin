@@ -32,16 +32,23 @@ import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamS
 
 import scala.concurrent.duration.DurationInt
 
-
-class DataStreamServiceTest
-  extends AnyWordSpec
-    with MockFactory {
+class DataStreamServiceTest extends AnyWordSpec with MockFactory {
 
   private val auditDs = RorAuditDataStream.default
-  private val expectedLifecyclePolicyName = NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-lifecycle-policy")
-  private val expectedMappingsTemplateName = TemplateName(NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-mappings"))
-  private val expectedSettingsTemplateName = TemplateName(NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-settings"))
-  private val expectedIndexTemplateName = TemplateName(NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-template"))
+  private val expectedLifecyclePolicyName =
+    NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-lifecycle-policy")
+
+  private val expectedMappingsTemplateName = TemplateName(
+    NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-mappings")
+  )
+
+  private val expectedSettingsTemplateName = TemplateName(
+    NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-settings")
+  )
+
+  private val expectedIndexTemplateName = TemplateName(
+    NonEmptyString.unsafeFrom(s"${auditDs.dataStream.value.value}-template")
+  )
 
   private type MockFun = MockableDataStreamService => Unit
 
@@ -60,7 +67,7 @@ class DataStreamServiceTest
         val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
         val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-        result should be (Right(()))
+        result should be(Right(()))
       }
       "attempt to create data stream with success" when {
         "all resources available immediately" in {
@@ -79,23 +86,24 @@ class DataStreamServiceTest
           val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
           val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-          result should be (Right(()))
+          result should be(Right(()))
         }
         "lifecycle policy test" in {
-          def createDataStreamService(indexLifecycleManagementMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
-            List[MockFun](_.mockCheckDataStreamExists(doesNotExist, checkedOnce)) ++
-              indexLifecycleManagementMocks ++
-              List[MockFun](
-                _.mockCheckMappingsTemplateExists(doesNotExist, checkedOnce),
-                _.mockCreateMappingsTemplate(Acknowledged),
-                _.mockCheckSettingsTemplateExists(doesNotExist, checkedOnce),
-                _.mockCreateSettingsTemplate(Acknowledged),
-                _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
-                _.mockCreateIndexTemplate(Acknowledged),
-                _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
-                _.mockCreateDataStream(Acknowledged),
-              )
-          )
+          def createDataStreamService(indexLifecycleManagementMocks: Seq[MockFun]): DataStreamService =
+            createMockedDataStreamService(
+              List[MockFun](_.mockCheckDataStreamExists(doesNotExist, checkedOnce)) ++
+                indexLifecycleManagementMocks ++
+                List[MockFun](
+                  _.mockCheckMappingsTemplateExists(doesNotExist, checkedOnce),
+                  _.mockCreateMappingsTemplate(Acknowledged),
+                  _.mockCheckSettingsTemplateExists(doesNotExist, checkedOnce),
+                  _.mockCreateSettingsTemplate(Acknowledged),
+                  _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
+                  _.mockCreateIndexTemplate(Acknowledged),
+                  _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                  _.mockCreateDataStream(Acknowledged),
+                )
+            )
 
           val createLifecyclePolicyImmediately: List[MockFun] = List(
             _.mockCheckLifecyclePolicyExists(doesNotExist, checkedOnce),
@@ -134,25 +142,26 @@ class DataStreamServiceTest
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result should be (Right(()))
+            result should be(Right(()))
           }
         }
         "component mappings tests" in {
-          def createDataStreamService(componentMappingsMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
-            List[MockFun](
-              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
-              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce)
-            ) ++
-              componentMappingsMocks ++
+          def createDataStreamService(componentMappingsMocks: Seq[MockFun]): DataStreamService =
+            createMockedDataStreamService(
               List[MockFun](
-                _.mockCheckSettingsTemplateExists(doesNotExist, checkedOnce),
-                _.mockCreateSettingsTemplate(Acknowledged),
-                _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
-                _.mockCreateIndexTemplate(Acknowledged),
                 _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
-                _.mockCreateDataStream(Acknowledged),
-              )
-          )
+                _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce)
+              ) ++
+                componentMappingsMocks ++
+                List[MockFun](
+                  _.mockCheckSettingsTemplateExists(doesNotExist, checkedOnce),
+                  _.mockCreateSettingsTemplate(Acknowledged),
+                  _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
+                  _.mockCreateIndexTemplate(Acknowledged),
+                  _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                  _.mockCreateDataStream(Acknowledged),
+                )
+            )
 
           val createComponentMappingsImmediately: List[MockFun] = List(
             _.mockCheckMappingsTemplateExists(doesNotExist, checkedOnce),
@@ -191,24 +200,25 @@ class DataStreamServiceTest
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result should be (Right(()))
+            result should be(Right(()))
           }
         }
         "component settings test" in {
-          def createDataStreamService(componentSettingsMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
-            List[MockFun](
-              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
-              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
-              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce)
-            ) ++
-              componentSettingsMocks ++
+          def createDataStreamService(componentSettingsMocks: Seq[MockFun]): DataStreamService =
+            createMockedDataStreamService(
               List[MockFun](
-                _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
-                _.mockCreateIndexTemplate(Acknowledged),
                 _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
-                _.mockCreateDataStream(Acknowledged),
-              )
-          )
+                _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+                _.mockCheckMappingsTemplateExists(doesExist, checkedOnce)
+              ) ++
+                componentSettingsMocks ++
+                List[MockFun](
+                  _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
+                  _.mockCreateIndexTemplate(Acknowledged),
+                  _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                  _.mockCreateDataStream(Acknowledged),
+                )
+            )
 
           val alreadyExists: List[MockFun] = List(
             _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
@@ -252,23 +262,24 @@ class DataStreamServiceTest
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result should be (Right(()))
+            result should be(Right(()))
           }
         }
         "index template test" in {
-          def createDataStreamService(indexTemplateMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
-            List[MockFun](
-              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
-              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
-              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
-              _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
-            ) ++
-              indexTemplateMocks ++
+          def createDataStreamService(indexTemplateMocks: Seq[MockFun]): DataStreamService =
+            createMockedDataStreamService(
               List[MockFun](
                 _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
-                _.mockCreateDataStream(Acknowledged),
-              )
-          )
+                _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+                _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
+                _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
+              ) ++
+                indexTemplateMocks ++
+                List[MockFun](
+                  _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                  _.mockCreateDataStream(Acknowledged),
+                )
+            )
 
           val createIndexTemplateImmediately: List[MockFun] = List(
             _.mockCheckIndexTemplateExists(doesNotExist, checkedOnce),
@@ -307,7 +318,7 @@ class DataStreamServiceTest
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result should be (Right(()))
+            result should be(Right(()))
           }
         }
         "data stream test" in {
@@ -359,16 +370,17 @@ class DataStreamServiceTest
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result should be (Right(()))
+            result should be(Right(()))
           }
         }
       }
       "attempt to create data stream and fail" when {
         "lifecycle policy creation fails" in {
-          def createDataStreamService(indexLifecycleManagementMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
-            List[MockFun](_.mockCheckDataStreamExists(doesNotExist, checkedOnce)) ++
-              indexLifecycleManagementMocks
-          )
+          def createDataStreamService(indexLifecycleManagementMocks: Seq[MockFun]): DataStreamService =
+            createMockedDataStreamService(
+              List[MockFun](_.mockCheckDataStreamExists(doesNotExist, checkedOnce)) ++
+                indexLifecycleManagementMocks
+            )
 
           val failAfterExhaustedRetries = List[MockFun](
             _.mockCheckLifecyclePolicyExists(doesNotExist, checkedOnce),
@@ -384,20 +396,30 @@ class DataStreamServiceTest
             val service = createDataStreamService(indexLifecycleManagementMocks)
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
-            val expectedFailureReason = s"Unable to determine if the index lifecycle policy with ID '${expectedLifecyclePolicyName.value}' has been created"
+            val expectedFailureReason =
+              s"Unable to determine if the index lifecycle policy with ID '${expectedLifecyclePolicyName.value}' has been created"
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result should be (Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"))))
+            result should be(
+              Left(
+                NonEmptyList.of(
+                  ErrorMessage(
+                    s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"
+                  )
+                )
+              )
+            )
           }
         }
         "component mappings creation fails" in {
-          def createDataStreamService(componentMappingsMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
-            List[MockFun](
-              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
-              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce)
-            ) ++
-              componentMappingsMocks
-          )
+          def createDataStreamService(componentMappingsMocks: Seq[MockFun]): DataStreamService =
+            createMockedDataStreamService(
+              List[MockFun](
+                _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce)
+              ) ++
+                componentMappingsMocks
+            )
 
           val failAfterExhaustedRetries =
             List[MockFun](
@@ -414,21 +436,31 @@ class DataStreamServiceTest
             val service = createDataStreamService(indexLifecycleManagementMocks)
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
-            val expectedFailureReason = s"Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created"
+            val expectedFailureReason =
+              s"Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created"
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result should be (Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"))))
+            result should be(
+              Left(
+                NonEmptyList.of(
+                  ErrorMessage(
+                    s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"
+                  )
+                )
+              )
+            )
           }
         }
         "component settings creation fails" in {
-          def createDataStreamService(componentSettingsMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
-            List[MockFun](
-              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
-              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
-              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
-            ) ++
-              componentSettingsMocks
-          )
+          def createDataStreamService(componentSettingsMocks: Seq[MockFun]): DataStreamService =
+            createMockedDataStreamService(
+              List[MockFun](
+                _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+                _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
+              ) ++
+                componentSettingsMocks
+            )
 
           val failAfterExhaustedRetries =
             List[MockFun](
@@ -445,22 +477,32 @@ class DataStreamServiceTest
             val service = createDataStreamService(componentSettingsMocks)
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
-            val expectedFailureReason = "Unable to determine if component template with ID 'readonlyrest_audit-settings' has been created"
+            val expectedFailureReason =
+              "Unable to determine if component template with ID 'readonlyrest_audit-settings' has been created"
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result should be (Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"))))
+            result should be(
+              Left(
+                NonEmptyList.of(
+                  ErrorMessage(
+                    s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"
+                  )
+                )
+              )
+            )
           }
         }
         "index template creation fails" in {
-          def createDataStreamService(indexTemplateMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
-            List[MockFun](
-              _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
-              _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
-              _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
-              _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
-            ) ++
-              indexTemplateMocks
-          )
+          def createDataStreamService(indexTemplateMocks: Seq[MockFun]): DataStreamService =
+            createMockedDataStreamService(
+              List[MockFun](
+                _.mockCheckDataStreamExists(doesNotExist, checkedOnce),
+                _.mockCheckLifecyclePolicyExists(doesExist, checkedOnce),
+                _.mockCheckMappingsTemplateExists(doesExist, checkedOnce),
+                _.mockCheckSettingsTemplateExists(doesExist, checkedOnce),
+              ) ++
+                indexTemplateMocks
+            )
 
           val failAfterExhaustedRetries =
             List[MockFun](
@@ -477,10 +519,19 @@ class DataStreamServiceTest
             val service = createDataStreamService(indexTemplateMocks)
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
-            val expectedFailureReason = "Unable to determine if index template with ID 'readonlyrest_audit-template' has been created"
+            val expectedFailureReason =
+              "Unable to determine if index template with ID 'readonlyrest_audit-template' has been created"
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result should be (Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"))))
+            result should be(
+              Left(
+                NonEmptyList.of(
+                  ErrorMessage(
+                    s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"
+                  )
+                )
+              )
+            )
           }
         }
         "data stream creation fails" in {
@@ -510,10 +561,19 @@ class DataStreamServiceTest
             val service = createDataStreamService(indexTemplateMocks)
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
-            val expectedFailureReason = "Unable to determine if data stream with ID 'readonlyrest_audit' has been created"
+            val expectedFailureReason =
+              "Unable to determine if data stream with ID 'readonlyrest_audit' has been created"
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result should be (Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"))))
+            result should be(
+              Left(
+                NonEmptyList.of(
+                  ErrorMessage(
+                    s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"
+                  )
+                )
+              )
+            )
           }
         }
       }
@@ -546,6 +606,7 @@ class DataStreamServiceTest
   }
 
   extension (service: MockableDataStreamService) {
+
     def mockCheckLifecyclePolicyExists(result: Boolean, times: Int): Unit = {
       (service.ilmPolicyExists _)
         .expects(expectedLifecyclePolicyName)
@@ -582,7 +643,6 @@ class DataStreamServiceTest
         .once()
     }
 
-
     def mockCheckSettingsTemplateExists(result: Boolean, times: Int): Unit = {
       (service.componentTemplateExists _)
         .expects(expectedSettingsTemplateName)
@@ -600,7 +660,6 @@ class DataStreamServiceTest
         .returns(result)
         .once()
     }
-
 
     def mockCheckIndexTemplateExists(result: Boolean, times: Int): Unit = {
       (service.indexTemplateExists _)
@@ -639,7 +698,9 @@ class DataStreamServiceTest
   class MockableDataStreamService extends DataStreamService {
 
     override protected val retryConfig: RetryConfig = RetryConfig(
-      initialDelay = 1.milliseconds, backoffScaler = 1, maxRetries = 5
+      initialDelay = 1.milliseconds,
+      backoffScaler = 1,
+      maxRetries = 5
     )
 
     def dataStreamExists(dataStreamName: DataStreamName.Full): Boolean =
@@ -678,22 +739,30 @@ class DataStreamServiceTest
     override protected final def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean] =
       Task.delay(ilmPolicyExists(policyId))
 
-    override protected final def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] =
+    override protected final def createIndexLifecyclePolicy(
+        policy: DataStreamSettings.LifecyclePolicy
+    ): Task[CreationResult] =
       Task.delay(createIlmPolicy(policy))
 
     override protected final def checkComponentTemplateExists(templateName: TemplateName): Task[Boolean] =
       Task.delay(componentTemplateExists(templateName))
 
-    override protected final def createComponentTemplateForMappings(settings: DataStreamSettings.ComponentTemplateMappings): Task[CreationResult] =
+    override protected final def createComponentTemplateForMappings(
+        settings: DataStreamSettings.ComponentTemplateMappings
+    ): Task[CreationResult] =
       Task.delay(createMappingsTemplate(settings))
 
-    override protected final def createComponentTemplateForIndex(settings: DataStreamSettings.ComponentTemplateSettings): Task[CreationResult] =
+    override protected final def createComponentTemplateForIndex(
+        settings: DataStreamSettings.ComponentTemplateSettings
+    ): Task[CreationResult] =
       Task.delay(createSettingsTemplate(settings))
 
     override protected final def checkIndexTemplateExists(templateName: TemplateName): Task[Boolean] =
       Task.delay(indexTemplateExists(templateName))
 
-    override protected final def createIndexTemplate(settings: DataStreamSettings.IndexTemplateSettings): Task[CreationResult] =
+    override protected final def createIndexTemplate(
+        settings: DataStreamSettings.IndexTemplateSettings
+    ): Task[CreationResult] =
       Task.delay(createTemplate(settings))
 
     private def throwErrorWhenNotMocked: Nothing = throw new IllegalStateException("Method was not mocked")

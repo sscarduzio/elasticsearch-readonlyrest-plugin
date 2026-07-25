@@ -21,7 +21,10 @@ import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.Utils.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function.*
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionDefinition.{FunctionArg, PartialApplyError}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionDefinition.{
+  FunctionArg,
+  PartialApplyError
+}
 
 import java.util.Locale
 import java.util.regex.PatternSyntaxException
@@ -39,7 +42,8 @@ object domain {
   }
 
   object FunctionDefinition {
-    def apply[F <: Function : FunctionPartialApply](name: NonEmptyString): FunctionDefinition = {
+
+    def apply[F <: Function: FunctionPartialApply](name: NonEmptyString): FunctionDefinition = {
       new FunctionDefinition {
         override def functionName: FunctionName = FunctionName(name)
 
@@ -65,11 +69,13 @@ object domain {
     sealed trait NoArgsFunction extends Function
 
     final class FunctionChain(functions: NonEmptyList[Function]) extends Function {
+
       override def apply(value: String): String = {
         functions.tail.foldLeft(functions.head.apply(value)) { (result, f) =>
           f.apply(result)
         }
       }
+
     }
 
     final class ReplaceAll(regex: Regex, replacement: String) extends Function {
@@ -77,9 +83,11 @@ object domain {
     }
 
     final class ReplaceFirst(regex: Regex, replacement: String) extends Function {
+
       def apply(value: String): String = {
         value.replaceFirst(regex.regex, replacement)
       }
+
     }
 
     final class ToUpperCase extends NoArgsFunction {
@@ -89,6 +97,7 @@ object domain {
     final class ToLowerCase extends NoArgsFunction {
       def apply(value: String): String = value.toLowerCase(Locale.US)
     }
+
   }
 
   sealed trait FunctionPartialApply[F <: Function] {
@@ -97,6 +106,7 @@ object domain {
   }
 
   object FunctionPartialApply {
+
     implicit val replaceAllPartialApply: FunctionPartialApply[ReplaceAll] = new FunctionPartialApply[ReplaceAll] {
       override def argsCount: Int = 2
 
@@ -151,8 +161,9 @@ object domain {
 
     private def patternErrorFor(ex: Throwable): String = ex match {
       case ex: PatternSyntaxException => ex.getPrettyMessage
-      case other => other.getMessage
+      case other                      => other.getMessage
     }
+
   }
 
 }

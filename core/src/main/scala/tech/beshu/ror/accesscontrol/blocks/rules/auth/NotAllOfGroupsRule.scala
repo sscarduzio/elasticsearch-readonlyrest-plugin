@@ -1,4 +1,3 @@
-
 /*
  *    This file is part of ReadonlyREST.
  *
@@ -23,9 +22,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.{Creator, Settings}
 import tech.beshu.ror.accesscontrol.domain.*
 
-class NotAllOfGroupsRule(override val settings: Settings[GroupsLogic.NotAllOf])
-                        (override implicit val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule[GroupsLogic.NotAllOf](NotAllOfGroupsRule.SimpleSyntaxName.name, settings)
+class NotAllOfGroupsRule(override val settings: Settings[GroupsLogic.NotAllOf])(
+    override implicit val userIdCaseSensitivity: CaseSensitivity
+) extends BaseGroupsRule[GroupsLogic.NotAllOf](NotAllOfGroupsRule.SimpleSyntaxName.name, settings)
 
 object NotAllOfGroupsRule {
   implicit val notAllOfCreator: Creator[GroupsLogic.NotAllOf] = new NotAllOfGroupsRule(_)(_)
@@ -37,4 +36,5 @@ object NotAllOfGroupsRule {
   case object SimpleSyntaxName extends RuleName[NotAllOfGroupsRule] {
     override val name: Name = Rule.Name("groups_not_all_of")
   }
+
 }

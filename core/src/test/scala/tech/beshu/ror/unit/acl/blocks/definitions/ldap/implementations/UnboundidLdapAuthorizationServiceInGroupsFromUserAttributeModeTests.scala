@@ -27,7 +27,11 @@ import org.scalatest.{BeforeAndAfterAll, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{
+  BindRequestUser,
+  ConnectionMethod,
+  LdapHost
+}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
@@ -42,7 +46,7 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeWhenUserIdAttributeIsUidTests
-  extends UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests {
+    extends UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests {
 
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.CustomAttribute("uid")
   override protected val jesusUserId: User.Id = User.Id("jesus")
@@ -51,7 +55,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeWhenUserIdAt
 }
 
 class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeWhenUserIdAttributeIsCnTests
-  extends UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests {
+    extends UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests {
 
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.OptimizedCn
   override protected val jesusUserId: User.Id = User.Id("Jesus Christ")
@@ -60,13 +64,13 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeWhenUserIdAt
 }
 
 abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BeforeAndAfterAll
     with Inside
     with Eventually
     with WithDummyRequestIdSupport {
 
-  implicit override val patienceConfig: PatienceConfig =
+  override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
   private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
@@ -81,8 +85,11 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
       "returns non empty set of groups" when {
         "user has groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(jesusUserId).runSyncUnsafe() should contain only(
-              group("europe"), group("north america"), group("south america"), group("africa")
+            godAndRegionsLdapAuthorizationService.groupsOf(jesusUserId).runSyncUnsafe() should contain only (
+              group("europe"),
+              group("north america"),
+              group("south america"),
+              group("africa")
             )
           }
         }
@@ -97,12 +104,16 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(spaghettiUserId).runSyncUnsafe() should be (UniqueList.empty[Group])
+            godAndRegionsLdapAuthorizationService.groupsOf(spaghettiUserId).runSyncUnsafe() should be(
+              UniqueList.empty[Group]
+            )
           }
         }
         "there is no user with given name" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
+            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(
+              UniqueList.empty[Group]
+            )
           }
         }
       }
@@ -114,12 +125,14 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
     val ldapId = Name("ldap1")
     val ldapConnectionConfig = createLdapConnectionConfig(ldapId)
     val result = for {
-      usersService <- EitherT(UnboundidLdapUsersService.create(
-        id = ldapId,
-        poolProvider = ldapConnectionPoolProvider,
-        connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), userIdAttribute)
-      ))
+      usersService <- EitherT(
+        UnboundidLdapUsersService.create(
+          id = ldapId,
+          poolProvider = ldapConnectionPoolProvider,
+          connectionConfig = ldapConnectionConfig,
+          userSearchFiler = UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), userIdAttribute)
+        )
+      )
       authorizationService <- EitherT(
         UnboundidLdapGroupsFromUserEntryAuthorizationService
           .create(
@@ -145,12 +158,14 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
     val ldapId = Name("ldap2")
     val ldapConnectionConfig = createLdapConnectionConfig(ldapId)
     val result = for {
-      usersService <- EitherT(UnboundidLdapUsersService.create(
-        id = ldapId,
-        poolProvider = ldapConnectionPoolProvider,
-        connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), userIdAttribute)
-      ))
+      usersService <- EitherT(
+        UnboundidLdapUsersService.create(
+          id = ldapId,
+          poolProvider = ldapConnectionPoolProvider,
+          connectionConfig = ldapConnectionConfig,
+          userSearchFiler = UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), userIdAttribute)
+        )
+      )
       authorizationService <- EitherT(
         UnboundidLdapGroupsFromUserEntryAuthorizationService
           .create(
@@ -164,13 +179,15 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
               GroupIdAttribute("cn"),
               GroupsFromUserAttribute("memberOf"),
             ),
-            nestedGroupsConfig = Some(NestedGroupsConfig(
-              nestedLevels = positiveInt(1),
-              Dn("ou=Roles,dc=example,dc=com"),
-              GroupSearchFilter("(objectClass=*)"),
-              UniqueMemberAttribute("uniqueMember"),
-              GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
-            ))
+            nestedGroupsConfig = Some(
+              NestedGroupsConfig(
+                nestedLevels = positiveInt(1),
+                Dn("ou=Roles,dc=example,dc=com"),
+                GroupSearchFilter("(objectClass=*)"),
+                UniqueMemberAttribute("uniqueMember"),
+                GroupAttribute(GroupIdAttribute("cn"), GroupNameAttribute("cn")),
+              )
+            )
           )
       )
     } yield authorizationService

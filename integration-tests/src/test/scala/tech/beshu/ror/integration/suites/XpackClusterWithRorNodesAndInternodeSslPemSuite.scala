@@ -20,8 +20,9 @@ import tech.beshu.ror.integration.suites.base.XpackClusterWithRorNodesAndInterno
 import tech.beshu.ror.integration.utils.PluginTestSupport
 
 class XpackClusterWithRorNodesAndInternodeSslPemSuite
-  extends XpackClusterWithRorNodesAndInternodeSslSuite
+    extends XpackClusterWithRorNodesAndInternodeSslSuite
     with PluginTestSupport {
 
-  override implicit val rorSettingsFileName: String = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_pem.yml"
+  override implicit val rorSettingsFileName: String =
+    "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_pem.yml"
 }

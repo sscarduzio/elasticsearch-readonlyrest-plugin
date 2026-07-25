@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweet
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class DisabledAuditingToolsSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -62,4 +62,5 @@ class DisabledAuditingToolsSuite
       }
     }
   }
+
 }

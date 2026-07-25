@@ -26,18 +26,21 @@ import org.elasticsearch.transport.TransportService
 import java.util.concurrent.Executor
 import scala.annotation.unused
 
-class TransportRRAdminAction(transportService: TransportService,
-                             actionFilters: ActionFilters,
-                             executor: Executor,
-                             @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
-    RRAdminActionType.name, transportService, actionFilters, RRAdminActionType.exceptionReader[RRAdminRequest], executor
-  ) {
+class TransportRRAdminAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    executor: Executor,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
+      RRAdminActionType.name,
+      transportService,
+      actionFilters,
+      RRAdminActionType.exceptionReader[RRAdminRequest],
+      executor
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters,
-           threadPool: ThreadPool) = {
+  def this(transportService: TransportService, actionFilters: ActionFilters, threadPool: ThreadPool) = {
     this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
   }
 
@@ -46,4 +49,5 @@ class TransportRRAdminAction(transportService: TransportService,
   override def doExecute(task: Task, request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     handler.handle(request, listener)
   }
+
 }

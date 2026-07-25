@@ -23,7 +23,7 @@ import tech.beshu.ror.utils.elasticsearch.CatManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class UriRegexRuleSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -66,4 +66,5 @@ class UriRegexRuleSuite
     val result = manager.healthCheck()
     result should have statusCode status
   }
+
 }

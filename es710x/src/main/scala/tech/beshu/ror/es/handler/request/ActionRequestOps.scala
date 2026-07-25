@@ -25,10 +25,10 @@ object ActionRequestOps {
   implicit class RequestOps(val actionRequest: ActionRequest) extends AnyVal {
 
     def notDataStreamRelated: Boolean = {
-      !RequestOps
-        .dataStreamRequests
+      !RequestOps.dataStreamRequests
         .contains(actionRequest.getClass.getCanonicalName)
     }
+
   }
 
   private object RequestOps {

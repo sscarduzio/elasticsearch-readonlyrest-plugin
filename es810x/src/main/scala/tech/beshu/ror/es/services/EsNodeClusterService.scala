@@ -38,7 +38,10 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{
+  FullLocalDataStreamWithAliases,
+  FullRemoteDataStreamWithAliases
+}
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.services.EsClusterService.*
@@ -46,9 +49,9 @@ import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.function.Supplier
@@ -56,14 +59,16 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
-class EsNodeClusterService(nodeName: String,
-                           clusterService: ClusterService,
-                           remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
-                           repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
-                           nodeClient: NodeClient,
-                           threadPool: ThreadPool)
-                          (implicit val scheduler: Scheduler)
-  extends EsClusterService
+class EsNodeClusterService(
+    nodeName: String,
+    clusterService: ClusterService,
+    remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
+    repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
+    nodeClient: NodeClient,
+    threadPool: ThreadPool
+)(
+    implicit val scheduler: Scheduler
+) extends EsClusterService
     with RequestIdAwareLogging {
 
   import EsNodeClusterService.*
@@ -71,7 +76,7 @@ class EsNodeClusterService(nodeName: String,
   private val localClusterSnapshotAtomic: Atomic[LocalClusterSnapshot] = Atomic {
     Option(clusterService.state) match {
       case Some(state) => LocalClusterSnapshot.from(state.metadata())
-      case None => LocalClusterSnapshot.empty
+      case None        => LocalClusterSnapshot.empty
     }
   }
 
@@ -85,18 +90,21 @@ class EsNodeClusterService(nodeName: String,
     }
   })
 
-  override def remoteClustersConfigured(implicit id: RequestId): Boolean = {
+  override def remoteClustersConfigured(
+      implicit id: RequestId
+  ): Boolean = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) => remoteClusterService.isCrossClusterSearchEnabled
-      case None => false
+      case None                       => false
     }
   }
 
-  override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = {
+  override def allRemoteClusterNames(
+      implicit id: RequestId
+  ): Set[ClusterName.Full] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
-        remoteClusterService
-          .getRemoteConnectionInfos.toList.asScala
+        remoteClusterService.getRemoteConnectionInfos.toList.asScala
           .map(_.getClusterAlias)
           .flatMap(ClusterName.Full.fromString)
           .toCovariantSet
@@ -105,19 +113,26 @@ class EsNodeClusterService(nodeName: String,
     }
   }
 
-  override def indexOrAliasUuids(indexOrAlias: IndexOrAlias)
-                                (implicit id: RequestId): Set[IndexUuid] = {
+  override def indexOrAliasUuids(indexOrAlias: IndexOrAlias)(
+      implicit id: RequestId
+  ): Set[IndexUuid] = {
     val lookup = clusterService.state.metadata.getIndicesLookup
     lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getUUID).toCovariantSet
   }
 
-  override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] =
+  override def allIndicesAndAliases(
+      implicit id: RequestId
+  ): Set[FullLocalIndexWithAliases] =
     localClusterSnapshotAtomic.get().indices.raw
 
-  override def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot =
+  override def localIndicesSnapshot(
+      implicit id: RequestId
+  ): LocalIndicesSnapshot =
     localClusterSnapshotAtomic.get().indices
 
-  override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] = {
+  override def allRemoteIndicesAndAliases(
+      implicit id: RequestId
+  ): Task[Set[FullRemoteIndexWithAliases]] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         provideAllRemoteIndices(remoteClusterService)
@@ -126,13 +141,19 @@ class EsNodeClusterService(nodeName: String,
     }
   }
 
-  override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] =
+  override def allDataStreamsAndAliases(
+      implicit id: RequestId
+  ): Set[FullLocalDataStreamWithAliases] =
     localClusterSnapshotAtomic.get().dataStreams.raw
 
-  override def localDataStreamsSnapshot(implicit id: RequestId): LocalDataStreamsSnapshot =
+  override def localDataStreamsSnapshot(
+      implicit id: RequestId
+  ): LocalDataStreamsSnapshot =
     localClusterSnapshotAtomic.get().dataStreams
 
-  override def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]] =
+  override def allRemoteDataStreamsAndAliases(
+      implicit id: RequestId
+  ): Task[Set[FullRemoteDataStreamWithAliases]] =
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         provideAllRemoteDataStreams(remoteClusterService)
@@ -140,10 +161,13 @@ class EsNodeClusterService(nodeName: String,
         Task.now(Set.empty)
     }
 
-  override def legacyTemplates(implicit id: RequestId): Set[Template.LegacyTemplate] = {
+  override def legacyTemplates(
+      implicit id: RequestId
+  ): Set[Template.LegacyTemplate] = {
     val templates = clusterService.state.metadata().templates()
     templates
-      .keySet().asScala
+      .keySet()
+      .asScala
       .flatMap { templateNameString =>
         val templateMetaData = templates.get(templateNameString)
         for {
@@ -157,10 +181,13 @@ class EsNodeClusterService(nodeName: String,
       .toCovariantSet
   }
 
-  override def indexTemplates(implicit id: RequestId): Set[Template.IndexTemplate] = {
+  override def indexTemplates(
+      implicit id: RequestId
+  ): Set[Template.IndexTemplate] = {
     val templates = clusterService.state.metadata().templatesV2()
     templates
-      .keySet().asScala
+      .keySet()
+      .asScala
       .flatMap { templateNameString =>
         val templateMetaData = templates.get(templateNameString)
         for {
@@ -175,27 +202,38 @@ class EsNodeClusterService(nodeName: String,
       .toCovariantSet
   }
 
-  override def componentTemplates(implicit id: RequestId): Set[Template.ComponentTemplate] = {
+  override def componentTemplates(
+      implicit id: RequestId
+  ): Set[Template.ComponentTemplate] = {
     val templates = clusterService.state.metadata().componentTemplates()
     templates
-      .keySet().asScala
+      .keySet()
+      .asScala
       .flatMap { templateNameString =>
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toCovariantSet
+          aliases = templateMetaData
+            .template()
+            .aliases()
+            .asSafeMap
+            .values
+            .flatMap(a => ClusterIndexName.fromString(a.alias()))
+            .toCovariantSet
         } yield Template.ComponentTemplate(templateName, aliases)
       }
       .toCovariantSet
   }
 
-  override def allSnapshots(implicit id: RequestId): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] = {
+  override def allSnapshots(
+      implicit id: RequestId
+  ): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] = {
     determineAllSnapshots().view.mapValues(_.map(_.map(_.name))).toMap
   }
 
-  override def snapshotIndices(repositoryName: RepositoryName.Full,
-                               snapshotName: SnapshotName.Full)
-                              (implicit id: RequestId): Task[Set[ClusterIndexName]] = {
+  override def snapshotIndices(repositoryName: RepositoryName.Full, snapshotName: SnapshotName.Full)(
+      implicit id: RequestId
+  ): Task[Set[ClusterIndexName]] = {
     determineAllSnapshots().get(repositoryName) match {
       case Some(getSnapshots) =>
         val snapshotNameMatcher = PatternsMatcher.create((snapshotName: SnapshotName) :: Nil)
@@ -216,16 +254,19 @@ class EsNodeClusterService(nodeName: String,
     }
   }
 
-  private def determineAllSnapshots()(implicit requestId: RequestId): Map[RepositoryName.Full, Task[Set[Snapshot]]] = {
+  private def determineAllSnapshots()(
+      implicit requestId: RequestId
+  ): Map[RepositoryName.Full, Task[Set[Snapshot]]] = {
     val repositoriesMetadata: RepositoriesMetadata = clusterService.state().metadata().custom(RepositoriesMetadata.TYPE)
     repositoriesMetadata
-      .repositories().asSafeList
+      .repositories()
+      .asSafeList
       .flatMap { repositoryMetadata =>
         RepositoryName
           .from(repositoryMetadata.name())
           .flatMap {
             case r: RepositoryName.Full => Some(r)
-            case _ => None
+            case _                      => None
           }
           .map { name =>
             (name, allSnapshotsFrom(name))
@@ -234,36 +275,34 @@ class EsNodeClusterService(nodeName: String,
       .toMap
   }
 
-  override def verifyDocumentAccessibility(document: Document,
-                                           filter: Filter)
-                                          (implicit id: RequestId): Task[DocumentAccessibility] = {
+  override def verifyDocumentAccessibility(document: Document, filter: Filter)(
+      implicit id: RequestId
+  ): Task[DocumentAccessibility] = {
     createSearchRequest(filter, document)
       .call(extractAccessibilityFrom)
-      .onErrorRecover {
-        case ex =>
-          logger.error(s"Could not verify get request. Blocking document", ex)
-          Inaccessible
+      .onErrorRecover { case ex =>
+        logger.error(s"Could not verify get request. Blocking document", ex)
+        Inaccessible
       }
   }
 
-  override def verifyDocumentsAccessibility(documents: NonEmptyList[Document],
-                                            filter: Filter)
-                                           (implicit id: RequestId): Task[DocumentsAccessibility] = {
+  override def verifyDocumentsAccessibility(documents: NonEmptyList[Document], filter: Filter)(
+      implicit id: RequestId
+  ): Task[DocumentsAccessibility] = {
     createMultiSearchRequest(filter, documents)
       .call(extractResultsFromSearchResponse)
-      .onErrorRecover {
-        case ex =>
-          logger.error(s"Could not verify documents returned by multi get response. Blocking all returned documents", ex)
-          blockAllDocsReturned(documents)
+      .onErrorRecover { case ex =>
+        logger.error(s"Could not verify documents returned by multi get response. Blocking all returned documents", ex)
+        blockAllDocsReturned(documents)
       }
       .map(results => zip(results, documents))
   }
 
-  private def provideAllRemoteDataStreams(remoteClusterService: RemoteClusterService)
-                                         (implicit requestId: RequestId) = {
+  private def provideAllRemoteDataStreams(remoteClusterService: RemoteClusterService)(
+      implicit requestId: RequestId
+  ) = {
     val remoteClusterFullNames =
-      remoteClusterService
-        .getRegisteredRemoteClusterNames.asSafeSet
+      remoteClusterService.getRegisteredRemoteClusterNames.asSafeSet
         .flatMap(ClusterName.Full.fromString)
 
     Task
@@ -273,9 +312,12 @@ class EsNodeClusterService(nodeName: String,
       .map(_.flatten.toCovariantSet)
   }
 
-  private def resolveAllRemoteDataStreams(remoteClusterName: ClusterName.Full,
-                                          remoteClusterService: RemoteClusterService)
-                                         (implicit requestId: RequestId): Task[List[FullRemoteDataStreamWithAliases]] = {
+  private def resolveAllRemoteDataStreams(
+      remoteClusterName: ClusterName.Full,
+      remoteClusterService: RemoteClusterService
+  )(
+      implicit requestId: RequestId
+  ): Task[List[FullRemoteDataStreamWithAliases]] = {
     getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
       case Failure(_) =>
         logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
@@ -288,17 +330,18 @@ class EsNodeClusterService(nodeName: String,
     }
   }
 
-  private def remoteDataStreamsFrom(response: ResolveIndexAction.Response,
-                                    remoteClusterName: ClusterName.Full): List[FullRemoteDataStreamWithAliases] = {
+  private def remoteDataStreamsFrom(
+      response: ResolveIndexAction.Response,
+      remoteClusterName: ClusterName.Full
+  ): List[FullRemoteDataStreamWithAliases] = {
     val aliasesPerIndex: Map[IndexName.Full, Set[IndexName.Full]] = aliasesPerIndexFrom(response.getAliases.asSafeList)
-    response
-      .getDataStreams.asSafeList
+    response.getDataStreams.asSafeList
       .flatMap { resolvedDataStream =>
-        IndexName.Full.fromString(resolvedDataStream.getName)
+        IndexName.Full
+          .fromString(resolvedDataStream.getName)
           .map { dataStreamName =>
             val backingIndices =
-              resolvedDataStream
-                .getBackingIndices.asSafeList
+              resolvedDataStream.getBackingIndices.asSafeList
                 .flatMap(IndexName.Full.fromString)
                 .toCovariantSet
 
@@ -317,11 +360,11 @@ class EsNodeClusterService(nodeName: String,
       }
   }
 
-  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService)
-                                     (implicit requestId: RequestId) = {
+  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService)(
+      implicit requestId: RequestId
+  ) = {
     val remoteClusterFullNames =
-      remoteClusterService
-        .getRegisteredRemoteClusterNames.asSafeSet
+      remoteClusterService.getRegisteredRemoteClusterNames.asSafeSet
         .flatMap(ClusterName.Full.fromString)
 
     Task
@@ -331,9 +374,9 @@ class EsNodeClusterService(nodeName: String,
       .map(_.flatten.toCovariantSet)
   }
 
-  private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full,
-                                      remoteClusterService: RemoteClusterService)
-                                     (implicit requestId: RequestId) = {
+  private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full, remoteClusterService: RemoteClusterService)(
+      implicit requestId: RequestId
+  ) = {
     getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
       case Failure(_) =>
         logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
@@ -341,8 +384,7 @@ class EsNodeClusterService(nodeName: String,
       case Success(client) =>
         resolveRemoteIndicesUsing(client)
           .map { response =>
-            response
-              .getIndices.asSafeList
+            response.getIndices.asSafeList
               .flatMap { resolvedIndex =>
                 toFullRemoteIndexWithAliases(resolvedIndex, remoteClusterName)
               }
@@ -350,8 +392,10 @@ class EsNodeClusterService(nodeName: String,
     }
   }
 
-  private def getRemoteClusterClient(remoteClusterService: RemoteClusterService,
-                                     remoteClusterName: ClusterName.Full) = {
+  private def getRemoteClusterClient(
+      remoteClusterService: RemoteClusterService,
+      remoteClusterName: ClusterName.Full
+  ) = {
     Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterName.value.value, scheduler))
   }
 
@@ -373,18 +417,21 @@ class EsNodeClusterService(nodeName: String,
     Task.fromCancelablePromise(promise)
   }
 
-  private def toFullRemoteIndexWithAliases(resolvedIndex: ResolvedIndex,
-                                           remoteClusterName: ClusterName.Full) = {
+  private def toFullRemoteIndexWithAliases(resolvedIndex: ResolvedIndex, remoteClusterName: ClusterName.Full) = {
     IndexName.Full
       .fromString(resolvedIndex.getName)
       .map { index =>
-        new FullRemoteIndexWithAliases(remoteClusterName, index, indexAttributeFrom(resolvedIndex), aliasesFrom(resolvedIndex))
+        new FullRemoteIndexWithAliases(
+          remoteClusterName,
+          index,
+          indexAttributeFrom(resolvedIndex),
+          aliasesFrom(resolvedIndex)
+        )
       }
   }
 
   private def aliasesFrom(resolvedIndex: ResolvedIndex) = {
-    resolvedIndex
-      .getAliases.asSafeList
+    resolvedIndex.getAliases.asSafeList
       .flatMap(IndexName.Full.fromString)
       .toCovariantSet
   }
@@ -393,8 +440,7 @@ class EsNodeClusterService(nodeName: String,
     val result = mutable.HashMap.empty[IndexName.Full, mutable.Builder[IndexName.Full, Set[IndexName.Full]]]
     resolvedAliases.foreach { resolvedAlias =>
       IndexName.Full.fromString(resolvedAlias.getName).foreach { aliasName =>
-        resolvedAlias
-          .getIndices.asSafeList
+        resolvedAlias.getIndices.asSafeList
           .flatMap(IndexName.Full.fromString)
           .foreach { index =>
             result.getOrElseUpdate(index, CovariantSet.newBuilder) += aliasName
@@ -405,24 +451,24 @@ class EsNodeClusterService(nodeName: String,
   }
 
   private def indexAttributeFrom(resolvedIndex: ResolvedIndex): IndexAttribute = {
-    resolvedIndex
-      .getAttributes.toCovariantSet
+    resolvedIndex.getAttributes.toCovariantSet
       .find(_.toLowerCase == "CLOSED") match {
       case Some(_) => IndexAttribute.Closed
-      case None => IndexAttribute.Opened
+      case None    => IndexAttribute.Opened
     }
   }
 
-  private def allSnapshotsFrom(repository: RepositoryName.Full)
-                              (implicit requestId: RequestId): Task[Set[Snapshot]] = {
+  private def allSnapshotsFrom(repository: RepositoryName.Full)(
+      implicit requestId: RequestId
+  ): Task[Set[Snapshot]] = {
     repositoriesServiceSupplier.get() match {
       case Some(repositoriesService) =>
         repositoriesService
           .getSnapshotIds(repository)
           .map { ids =>
             ids.flatMap { snapshotId =>
-              snapshotFullNameFrom(snapshotId).map {
-                name => Snapshot(name, repositoriesService.getSnapshotIndices(repository, snapshotId))
+              snapshotFullNameFrom(snapshotId).map { name =>
+                Snapshot(name, repositoriesService.getSnapshotIndices(repository, snapshotId))
               }
             }
           }
@@ -436,18 +482,16 @@ class EsNodeClusterService(nodeName: String,
     SnapshotName
       .from(id.getName)
       .flatMap {
-        case SnapshotName.Wildcard => None
-        case SnapshotName.All => None
+        case SnapshotName.Wildcard   => None
+        case SnapshotName.All        => None
         case SnapshotName.Pattern(_) => None
-        case f: SnapshotName.Full => Some(f)
+        case f: SnapshotName.Full    => Some(f)
       }
   }
 
-  private final class Snapshot(val name: SnapshotName.Full,
-                               val fetchIndices: Task[Set[ClusterIndexName]])
+  private final class Snapshot(val name: SnapshotName.Full, val fetchIndices: Task[Set[ClusterIndexName]])
 
-  private def createSearchRequest(filter: Filter,
-                                  document: Document): SearchRequestBuilder = {
+  private def createSearchRequest(filter: Filter, document: Document): SearchRequestBuilder = {
     val wrappedQueryFromFilter = QueryBuilders.wrapperQuery(filter.value.value)
     val composedQuery = QueryBuilders
       .boolQuery()
@@ -464,8 +508,7 @@ class EsNodeClusterService(nodeName: String,
     else Accessible
   }
 
-  private def createMultiSearchRequest(definedFilter: Filter,
-                                       documents: NonEmptyList[Document]) = {
+  private def createMultiSearchRequest(definedFilter: Filter, documents: NonEmptyList[Document]) = {
     documents
       .map(createSearchRequest(definedFilter, _))
       .foldLeft(nodeClient.prepareMultiSearch())(_ add _)
@@ -476,8 +519,7 @@ class EsNodeClusterService(nodeName: String,
   }
 
   private def extractResultsFromSearchResponse(multiSearchResponse: MultiSearchResponse) = {
-    multiSearchResponse
-      .getResponses
+    multiSearchResponse.getResponses
       .map(resolveAccessibilityBasedOnSearchResult)
       .toList
   }
@@ -488,8 +530,7 @@ class EsNodeClusterService(nodeName: String,
     else Accessible
   }
 
-  private def zip(results: List[DocumentAccessibility],
-                  documents: NonEmptyList[Document]) = {
+  private def zip(results: List[DocumentAccessibility], documents: NonEmptyList[Document]) = {
     documents.toList
       .zip(results)
       .toMap
@@ -499,9 +540,11 @@ class EsNodeClusterService(nodeName: String,
 
 object EsNodeClusterService {
 
-  private final class LocalClusterSnapshot private(val version: Long,
-                                                   val indices: LocalIndicesSnapshot,
-                                                   val dataStreams: LocalDataStreamsSnapshot)
+  private final class LocalClusterSnapshot private (
+      val version: Long,
+      val indices: LocalIndicesSnapshot,
+      val dataStreams: LocalDataStreamsSnapshot
+  )
 
   private object LocalClusterSnapshot {
 
@@ -522,7 +565,8 @@ object EsNodeClusterService {
     private def extractIndicesAndAliasesFrom(metadata: Metadata) = {
       val indices = metadata.getIndices
       indices
-        .keySet().asScala
+        .keySet()
+        .asScala
         .flatMap { index =>
           val indexMetaData = indices.get(index)
           IndexName.Full
@@ -533,7 +577,7 @@ object EsNodeClusterService {
                 indexName,
                 indexMetaData.getState match {
                   case IndexMetadata.State.CLOSE => IndexAttribute.Closed
-                  case IndexMetadata.State.OPEN => IndexAttribute.Opened
+                  case IndexMetadata.State.OPEN  => IndexAttribute.Opened
                 },
                 aliases
               )
@@ -544,25 +588,23 @@ object EsNodeClusterService {
 
     private def extractDataStreamsAndAliases(metadata: Metadata): Set[FullLocalDataStreamWithAliases] = {
       val aliasesPerDataStream = aliasesPerDataStreamFrom(metadata)
-      backingIndicesPerDataStreamFrom(metadata)
-        .map { case (dataStreamName, backingIndices) =>
-          FullLocalDataStreamWithAliases(
-            dataStreamName = dataStreamName,
-            aliasesNames = aliasesPerDataStream.getOrElse(dataStreamName, Set.empty),
-            backingIndices = backingIndices
-          )
-        }
-        .toCovariantSet
+      backingIndicesPerDataStreamFrom(metadata).map { case (dataStreamName, backingIndices) =>
+        FullLocalDataStreamWithAliases(
+          dataStreamName = dataStreamName,
+          aliasesNames = aliasesPerDataStream.getOrElse(dataStreamName, Set.empty),
+          backingIndices = backingIndices
+        )
+      }.toCovariantSet
     }
 
     private def aliasesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[DataStreamName.Full]] = {
-      val result = mutable.HashMap.empty[DataStreamName.Full, mutable.Builder[DataStreamName.Full, Set[DataStreamName.Full]]]
+      val result =
+        mutable.HashMap.empty[DataStreamName.Full, mutable.Builder[DataStreamName.Full, Set[DataStreamName.Full]]]
       val dataStreamAliases = metadata.dataStreamAliases()
       dataStreamAliases.keySet().forEach { aliasName =>
         val dataStreamAlias = dataStreamAliases.get(aliasName)
         DataStreamName.Full.fromString(dataStreamAlias.getName).foreach { alias =>
-          dataStreamAlias
-            .getDataStreams.asScala
+          dataStreamAlias.getDataStreams.asScala
             .flatMap(DataStreamName.Full.fromString)
             .foreach { ds =>
               result.getOrElseUpdate(ds, CovariantSet.newBuilder) += alias
@@ -575,12 +617,12 @@ object EsNodeClusterService {
     private def backingIndicesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[IndexName.Full]] = {
       val dataStreams = metadata.dataStreams()
       dataStreams
-        .keySet().asScala
+        .keySet()
+        .asScala
         .flatMap { dataStreamName =>
           val dataStream = dataStreams.get(dataStreamName)
           val backingIndices =
-            dataStream
-              .getIndices.asScala
+            dataStream.getIndices.asScala
               .map(_.getName)
               .flatMap(IndexName.Full.fromString)
               .toCovariantSet
@@ -610,14 +652,19 @@ object EsNodeClusterService {
 
     private def indicesFrom(snapshotInfo: SnapshotInfo) = {
       val allIndices = snapshotInfo
-        .indices().asScala.toCovariantSet
+        .indices()
+        .asScala
+        .toCovariantSet
         .flatMap(ClusterIndexName.fromString)
       val featureStateIndices = snapshotInfo
-        .featureStates().asScala.toCovariantSet
+        .featureStates()
+        .asScala
+        .toCovariantSet
         .flatMap(_.getIndices.asScala.toCovariantSet)
         .flatMap(ClusterIndexName.fromString)
       allIndices.diff(featureStateIndices)
     }
+
   }
 
 }

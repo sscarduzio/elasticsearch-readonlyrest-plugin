@@ -23,16 +23,19 @@ import tech.beshu.ror.utils.RefinedUtils.nes
 final case class RorSettingsIndex(index: IndexName.Full) extends AnyVal {
   def toLocal: ClusterIndexName.Local = ClusterIndexName.Local(index)
 }
+
 object RorSettingsIndex {
   val default: RorSettingsIndex = RorSettingsIndex(IndexName.Full(nes(".readonlyrest")))
 }
 
 final case class RorSettingsFile(file: File) extends AnyVal
+
 object RorSettingsFile {
   def default(esEnv: EsEnv): RorSettingsFile = RorSettingsFile(esEnv.configDir / "readonlyrest.yml")
 }
 
 final case class EsConfigFile(file: File) extends AnyVal
+
 object EsConfigFile {
   def default(esEnv: EsEnv): EsConfigFile = EsConfigFile(esEnv.configDir / "elasticsearch.yml")
 }

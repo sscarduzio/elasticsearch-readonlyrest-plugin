@@ -20,4 +20,5 @@ import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.*
 
 sealed trait ResponseTransformation
 
-final case class FilteredResponseFields(responseFieldsRestrictions: ResponseFieldsRestrictions) extends ResponseTransformation
+final case class FilteredResponseFields(responseFieldsRestrictions: ResponseFieldsRestrictions)
+    extends ResponseTransformation

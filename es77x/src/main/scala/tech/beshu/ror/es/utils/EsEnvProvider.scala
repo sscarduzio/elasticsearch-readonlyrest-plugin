@@ -31,7 +31,8 @@ object EsEnvProvider {
     EsEnv(
       configDir = File(environment.configFile()),
       modulesDir = modulesDir,
-      esVersion = EsVersion(major = Version.CURRENT.major, minor = Version.CURRENT.minor, revision = Version.CURRENT.revision),
+      esVersion =
+        EsVersion(major = Version.CURRENT.major, minor = Version.CURRENT.minor, revision = Version.CURRENT.revision),
       esNodeSettings = EsNodeSettings(
         nodeName = Node.NODE_NAME_SETTING.get(settings),
         clusterName = ClusterName.CLUSTER_NAME_SETTING.get(settings).value(),
@@ -41,4 +42,5 @@ object EsEnvProvider {
       ),
     )
   }
+
 }

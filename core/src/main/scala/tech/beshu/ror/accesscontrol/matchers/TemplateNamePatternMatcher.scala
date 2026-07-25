@@ -26,12 +26,15 @@ class TemplateNamePatternMatcher(templateNames: Set[TemplateNamePattern]) {
   def `match`(value: TemplateName): Boolean =
     TemplateNamePattern.fromString(value.value.value) match {
       case Some(t) => availableTemplatesMatcher.`match`(t)
-      case None => false
+      case None    => false
     }
+
 }
 
 object TemplateNamePatternMatcher {
+
   def create(templateNames: Set[TemplateNamePattern]): TemplateNamePatternMatcher = {
     new TemplateNamePatternMatcher(templateNames)
   }
+
 }

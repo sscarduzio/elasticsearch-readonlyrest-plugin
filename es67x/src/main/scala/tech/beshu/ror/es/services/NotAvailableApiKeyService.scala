@@ -21,8 +21,10 @@ import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
 
 object NotAvailableApiKeyService extends ApiKeyService {
 
-  override def validateToken(token: AuthorizationToken)
-                            (implicit requestId: RequestId): Task[Boolean] = Task.raiseError {
+  override def validateToken(token: AuthorizationToken)(
+      implicit requestId: RequestId
+  ): Task[Boolean] = Task.raiseError {
     new Exception("ApiKey Service is not available in ROR version for your Elasticsearch version")
   }
+
 }

@@ -35,29 +35,35 @@ import tech.beshu.ror.syntax.*
 
 import java.util.regex.Pattern
 
-final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
-                            override implicit val userIdCaseSensitivity: CaseSensitivity,
-                            override val impersonation: Impersonation)
-  extends BasicAuthenticationRule(settings) {
+final class AuthKeyUnixRule(
+    override val settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
+    override implicit val userIdCaseSensitivity: CaseSensitivity,
+    override val impersonation: Impersonation
+) extends BasicAuthenticationRule(settings) {
 
   override val name: Rule.Name = AuthKeyUnixRule.Name.name
 
-  override protected def compare(configuredCredentials: UnixHashedCredentials,
-                                 credentials: Credentials): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] = Task {
+  override protected def compare(
+      configuredCredentials: UnixHashedCredentials,
+      credentials: Credentials
+  ): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] = Task {
     for {
       _ <- Either.cond(
         configuredCredentials.userId == credentials.user,
-        (), AuthenticationFailed("Username mismatch")
+        (),
+        AuthenticationFailed("Username mismatch")
       )
       _ <- Either.cond(
         configuredCredentials.from(credentials).contains(configuredCredentials),
-        (), AuthenticationFailed("Invalid password")
+        (),
+        AuthenticationFailed("Invalid password")
       )
     } yield DirectlyLoggedUser(credentials.user)
   }
 
-  override def exists(user: User.Id, mocksProvider: MocksProvider)
-                     (implicit requestId: RequestId): Task[UserExistence] = Task.now {
+  override def exists(user: User.Id, mocksProvider: MocksProvider)(
+      implicit requestId: RequestId
+  ): Task[UserExistence] = Task.now {
     if (user === settings.credentials.userId) UserExistence.Exists
     else UserExistence.NotExist
   }
@@ -74,6 +80,7 @@ object AuthKeyUnixRule {
   private val pattern = Pattern.compile("((?:[^$]*\\$){3}[^$]*).*")
 
   final case class UnixHashedCredentials(userId: User.Id, hash: NonEmptyString) {
+
     def from(credentials: Credentials): Option[UnixHashedCredentials] = {
       roundHash(credentials).map(UnixHashedCredentials(credentials.user, _))
     }
@@ -83,6 +90,7 @@ object AuthKeyUnixRule {
       if (m.find) NonEmptyString.unapply(crypt(credentials.secret.value.value, m.group(1)))
       else None
     }
+
   }
 
 }

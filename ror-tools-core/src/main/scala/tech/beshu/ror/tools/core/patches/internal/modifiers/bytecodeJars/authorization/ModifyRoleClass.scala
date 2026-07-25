@@ -26,8 +26,8 @@ import java.io.InputStream
   It replaces the implementation of the checkIndicesAction(...), checkClusterAction(...), and grants(...) methods
   so that they always return true, causing the Role to grant access to any requested index action,
   cluster action, and cluster privilege, regardless of the actual role configuration.
-*/
-private [patches] object ModifyRoleClass extends BytecodeJarModifier {
+ */
+private[patches] object ModifyRoleClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -44,14 +44,15 @@ private [patches] object ModifyRoleClass extends BytecodeJarModifier {
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "checkIndicesAction" =>
           new CheckIndicesActionMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
@@ -63,10 +64,10 @@ private [patches] object ModifyRoleClass extends BytecodeJarModifier {
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
-  private class CheckIndicesActionMethodReturningTrue(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+  private class CheckIndicesActionMethodReturningTrue(underlying: MethodVisitor) extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -82,16 +83,23 @@ private [patches] object ModifyRoleClass extends BytecodeJarModifier {
       underlying.visitLabel(label1)
 
       // locals
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/Role;", null, label0, label1, 0)
+      underlying.visitLocalVariable(
+        "this",
+        "Lorg/elasticsearch/xpack/core/security/authz/permission/Role;",
+        null,
+        label0,
+        label1,
+        0
+      )
       underlying.visitLocalVariable("action", "Ljava/lang/String;", null, label0, label1, 1)
 
       underlying.visitMaxs(1, 2)
       underlying.visitEnd()
     }
+
   }
 
-  private class CheckClusterActionMethodReturningTrue(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+  private class CheckClusterActionMethodReturningTrue(underlying: MethodVisitor) extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -107,18 +115,39 @@ private [patches] object ModifyRoleClass extends BytecodeJarModifier {
       underlying.visitLabel(label1)
 
       // locals
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/SimpleRole;", null, label0, label1, 0)
+      underlying.visitLocalVariable(
+        "this",
+        "Lorg/elasticsearch/xpack/core/security/authz/permission/SimpleRole;",
+        null,
+        label0,
+        label1,
+        0
+      )
       underlying.visitLocalVariable("action", "Ljava/lang/String;", null, label0, label1, 1)
-      underlying.visitLocalVariable("request", "Lorg/elasticsearch/transport/TransportRequest;", null, label0, label1, 2)
-      underlying.visitLocalVariable("authentication", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label0, label1, 3)
+      underlying.visitLocalVariable(
+        "request",
+        "Lorg/elasticsearch/transport/TransportRequest;",
+        null,
+        label0,
+        label1,
+        2
+      )
+      underlying.visitLocalVariable(
+        "authentication",
+        "Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
+        null,
+        label0,
+        label1,
+        3
+      )
 
       underlying.visitMaxs(1, 4)
       underlying.visitEnd()
     }
+
   }
 
-  private class GrantsMethodReturningTrue(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+  private class GrantsMethodReturningTrue(underlying: MethodVisitor) extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -134,12 +163,27 @@ private [patches] object ModifyRoleClass extends BytecodeJarModifier {
       underlying.visitLabel(label1)
 
       // locals
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/SimpleRole;", null, label0, label1, 0)
-      underlying.visitLocalVariable("clusterPrivilege", "Lorg/elasticsearch/xpack/core/security/authz/privilege/ClusterPrivilege;", null, label0, label1, 1)
+      underlying.visitLocalVariable(
+        "this",
+        "Lorg/elasticsearch/xpack/core/security/authz/permission/SimpleRole;",
+        null,
+        label0,
+        label1,
+        0
+      )
+      underlying.visitLocalVariable(
+        "clusterPrivilege",
+        "Lorg/elasticsearch/xpack/core/security/authz/privilege/ClusterPrivilege;",
+        null,
+        label0,
+        label1,
+        1
+      )
 
       underlying.visitMaxs(1, 2)
       underlying.visitEnd()
     }
+
   }
 
 }

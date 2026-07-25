@@ -19,14 +19,14 @@ package tech.beshu.ror.integration.suites.fields.engine
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 
-class FieldRuleEsWithLuceneEngineSuite
-  extends FieldRuleEngineSuite
-    with SingletonPluginTestSupport {
+class FieldRuleEsWithLuceneEngineSuite extends FieldRuleEngineSuite with SingletonPluginTestSupport {
 
-  override implicit val rorSettingsFileName: String = "/field_level_security_engine/readonlyrest_fls_engine_es_with_lucene.yml"
+  override implicit val rorSettingsFileName: String =
+    "/field_level_security_engine/readonlyrest_fls_engine_es_with_lucene.yml"
 
   override protected def unmodifiableQueryAssertion(result: SearchManager#SearchResult): Unit = {
     result should have statusCode 200
     result.searchHits.isEmpty shouldBe true
   }
+
 }

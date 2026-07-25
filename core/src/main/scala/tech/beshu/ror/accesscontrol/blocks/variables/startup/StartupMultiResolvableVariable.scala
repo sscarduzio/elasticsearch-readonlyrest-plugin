@@ -29,10 +29,12 @@ import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.ScalaOps.*
 
 sealed trait StartupMultiResolvableVariable extends StartupResolvableVariable[NonEmptyList[String]]
+
 object StartupMultiResolvableVariable {
 
   final class Env(name: EnvVarName, transformation: Option[Function]) extends StartupMultiResolvableVariable {
-    private val csvParser =  new CSVParser(new DefaultCSVFormat {})
+    private val csvParser = new CSVParser(new DefaultCSVFormat {})
+
     override def resolve(provider: EnvVarsProvider): Either[ResolvingError, NonEmptyList[String]] = withTransformation {
       provider.getEnv(name) match {
         case Some(envValue) =>
@@ -41,7 +43,7 @@ object StartupMultiResolvableVariable {
             result <- NonEmptyList.fromList(values)
           } yield result) match {
             case Some(value) => Right(value)
-            case None => Right(NonEmptyList.one(""))
+            case None        => Right(NonEmptyList.one(""))
           }
         case None =>
           Left(ResolvingError(s"Cannot resolve ENV variable '${name.show}'"))
@@ -50,8 +52,9 @@ object StartupMultiResolvableVariable {
 
     private def withTransformation(resolvable: => Either[ResolvingError, NonEmptyList[String]]) = transformation match {
       case Some(function) => resolvable.map(_.map(function.apply))
-      case None => resolvable
+      case None           => resolvable
     }
+
   }
 
   final case class Text(value: String) extends StartupMultiResolvableVariable {
@@ -60,7 +63,9 @@ object StartupMultiResolvableVariable {
       singleText.resolve(provider).map(NonEmptyList.one)
   }
 
-  final case class Composed(vars: NonEmptyList[StartupResolvableVariable[NonEmptyList[String]]]) extends StartupMultiResolvableVariable {
+  final case class Composed(vars: NonEmptyList[StartupResolvableVariable[NonEmptyList[String]]])
+      extends StartupMultiResolvableVariable {
+
     override def resolve(provider: EnvVarsProvider): Either[ResolvingError, NonEmptyList[String]] = {
       vars
         .map(_.resolve(provider))
@@ -68,7 +73,8 @@ object StartupMultiResolvableVariable {
         .map { resolvedVars =>
           resolvedVars.cartesian.map(_.toList.mkString)
         }
-      }
+    }
+
   }
 
   final case class Wrapper(variable: StartupSingleResolvableVariable) extends StartupMultiResolvableVariable {

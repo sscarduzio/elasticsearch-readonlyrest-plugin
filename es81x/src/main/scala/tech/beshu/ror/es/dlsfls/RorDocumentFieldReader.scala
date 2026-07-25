@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.dlsfls
 
 import com.google.common.collect.Iterators
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.apache.lucene.codecs.StoredFieldsReader
 import org.apache.lucene.index.*
 import org.apache.lucene.index.StoredFieldVisitor.Status
@@ -32,6 +31,7 @@ import tech.beshu.ror.constants
 import tech.beshu.ror.es.dlsfls.RorDocumentFieldDirectoryReader.RorDocumentFieldDirectorySubReader
 import tech.beshu.ror.es.utils.XContentBuilderOps.*
 import tech.beshu.ror.fls.{FieldsPolicy, JsonPolicyBasedFilterer}
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.io.ByteArrayOutputStream
 import java.util.Iterator as JavaIterator
@@ -39,9 +39,11 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: FieldsRestrictions)
-  extends SequentialStoredFieldsLeafReader(reader) with RequestIdAwareLogging {
+    extends SequentialStoredFieldsLeafReader(reader)
+    with RequestIdAwareLogging {
 
   private val policy = new FieldsPolicy(fieldsRestrictions)
+
   private val remainingFieldsInfo = {
     val fInfos = in.getFieldInfos
     val newInfos = if (fInfos.asScala.isEmpty) {
@@ -56,6 +58,7 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
     noRequestIdLogger.debug(s"new fields are: ${newInfos.asScala.map(_.name).mkString(",")}")
     newInfos
   }
+
   private val jsonPolicyBasedFilterer = new JsonPolicyBasedFilterer(policy)
 
   override def getFieldInfos: FieldInfos = remainingFieldsInfo
@@ -63,7 +66,8 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
   override def getTermVectors(docID: Int): Fields = {
     val original = in.getTermVectors(docID)
     new Fields {
-      override def iterator(): JavaIterator[String] = Iterators.filter(original.iterator, (s: String) => policy.canKeep(s))
+      override def iterator(): JavaIterator[String] =
+        Iterators.filter(original.iterator, (s: String) => policy.canKeep(s))
       override def terms(field: String): Terms = if (policy.canKeep(field)) original.terms(field) else null
       override def size(): Int = remainingFieldsInfo.size
     }
@@ -112,7 +116,7 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
     new RorStoredFieldsReaderDecorator(reader)
 
   private class RorStoredFieldsReaderDecorator(final val underlying: StoredFieldsReader)
-    extends StoredFieldsReaderForScalaHelper(underlying) {
+      extends StoredFieldsReaderForScalaHelper(underlying) {
 
     override def visitDocument(docID: Int, visitor: StoredFieldVisitor): Unit = {
       underlying.visitDocument(docID, new RorStoredFieldVisitorDecorator(visitor))
@@ -121,10 +125,10 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
     override def clone(): StoredFieldsReader = {
       new RorStoredFieldsReaderDecorator(this.cloneUnderlying())
     }
+
   }
 
-  private class RorStoredFieldVisitorDecorator(underlying: StoredFieldVisitor)
-    extends StoredFieldVisitor {
+  private class RorStoredFieldVisitorDecorator(underlying: StoredFieldVisitor) extends StoredFieldVisitor {
 
     override def needsField(fieldInfo: FieldInfo): StoredFieldVisitor.Status =
       if (policy.canKeep(fieldInfo.name)) underlying.needsField(fieldInfo) else Status.NO
@@ -153,7 +157,8 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
           .builder(
             XContentHelper
               .convertToMap(new BytesArray(value), false, XContentType.JSON)
-              .v1().xContent()
+              .v1()
+              .xContent()
           )
           .json(filteredJson)
 
@@ -162,7 +167,9 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
         underlying.binaryField(fieldInfo, out.toByteArray)
       }
     }
+
   }
+
 }
 
 object RorDocumentFieldReader {
@@ -172,7 +179,7 @@ object RorDocumentFieldReader {
 }
 
 final class RorDocumentFieldDirectoryReader(in: DirectoryReader, fieldsRestrictions: FieldsRestrictions)
-  extends FilterDirectoryReader(in, new RorDocumentFieldDirectorySubReader(fieldsRestrictions)) {
+    extends FilterDirectoryReader(in, new RorDocumentFieldDirectorySubReader(fieldsRestrictions)) {
 
   override protected def doWrapDirectoryReader(in: DirectoryReader) =
     new RorDocumentFieldDirectoryReader(in, fieldsRestrictions)
@@ -182,13 +189,16 @@ final class RorDocumentFieldDirectoryReader(in: DirectoryReader, fieldsRestricti
 }
 
 object RorDocumentFieldDirectoryReader {
+
   private class RorDocumentFieldDirectorySubReader(fieldsRestrictions: FieldsRestrictions)
-    extends FilterDirectoryReader.SubReaderWrapper {
+      extends FilterDirectoryReader.SubReaderWrapper {
 
     override def wrap(reader: LeafReader): LeafReader = {
-      Try(new RorDocumentFieldReader(reader, fieldsRestrictions))
-        .recover { case ex: Exception => throw ExceptionsHelper.convertToElastic(ex) }
-        .get
+      Try(new RorDocumentFieldReader(reader, fieldsRestrictions)).recover { case ex: Exception =>
+        throw ExceptionsHelper.convertToElastic(ex)
+      }.get
     }
+
   }
+
 }

@@ -21,9 +21,15 @@ import cats.implicits.*
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -34,7 +40,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 
 class RepositoriesRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
-  extends RuleBaseDecoderWithoutAssociatedFields[RepositoriesRule] {
+    extends RuleBaseDecoderWithoutAssociatedFields[RepositoriesRule] {
 
   private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
@@ -44,43 +50,58 @@ class RepositoriesRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
       .toSyncDecoder
       .emapE { repositories =>
         if (checkIfAlreadyResolvedRepositoryVariableContains(repositories, RepositoryName.all))
-          Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.Name.show}) that matches all the values is redundant - repository ${RepositoryName.all.show}")))
+          Left(
+            RulesLevelCreationError(
+              Message(
+                s"Setting up a rule (${RepositoriesRule.Name.show}) that matches all the values is redundant - repository ${RepositoryName.all.show}"
+              )
+            )
+          )
         else if (checkIfAlreadyResolvedRepositoryVariableContains(repositories, RepositoryName.wildcard))
-          Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.Name.show}) that matches all the values is redundant - repository ${RepositoryName.wildcard.show}")))
+          Left(
+            RulesLevelCreationError(
+              Message(
+                s"Setting up a rule (${RepositoriesRule.Name.show}) that matches all the values is redundant - repository ${RepositoryName.wildcard.show}"
+              )
+            )
+          )
         else
           Right(repositories)
       }
       .map(repositories => RuleDefinition.create(new RepositoriesRule(RepositoriesRule.Settings(repositories))))
       .decoder
   }
+
 }
 
 private object RepositoriesDecodersHelper {
+
   private implicit val indexNameConvertible: Convertible[RepositoryName] = new Convertible[RepositoryName] {
     override def convert: String => Either[Convertible.ConvertError, RepositoryName] = str =>
       RepositoryName.from(str) match {
         case Some(value) => Right(value)
-        case None => Left(Convertible.ConvertError("Repository name cannot be empty"))
+        case None        => Left(Convertible.ConvertError("Repository name cannot be empty"))
       }
   }
-  implicit def repositoryValueDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
-    DecoderHelpers
-      .decodeStringLikeNonEmpty
-      .toSyncDecoder
-      .emapE { str =>
-        variableCreator
-          .createMultiResolvableVariableFrom[RepositoryName](str)
-          .left.map(error => RulesLevelCreationError(Message(error.show)))
-      }
-      .decoder
 
-  private[rules] def checkIfAlreadyResolvedRepositoryVariableContains(repositoriesVars: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
-                                                                      repository: RepositoryName): Boolean = {
-    repositoriesVars
-      .find {
-        case AlreadyResolved(repositories) => repositories.contains_(repository)
-        case ToBeResolved(_) => false
-      }
-      .isDefined
+  implicit def repositoryValueDecoder(
+      implicit variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
+    DecoderHelpers.decodeStringLikeNonEmpty.toSyncDecoder.emapE { str =>
+      variableCreator
+        .createMultiResolvableVariableFrom[RepositoryName](str)
+        .left
+        .map(error => RulesLevelCreationError(Message(error.show)))
+    }.decoder
+
+  private[rules] def checkIfAlreadyResolvedRepositoryVariableContains(
+      repositoriesVars: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
+      repository: RepositoryName
+  ): Boolean = {
+    repositoriesVars.find {
+      case AlreadyResolved(repositories) => repositories.contains_(repository)
+      case ToBeResolved(_)               => false
+    }.isDefined
   }
+
 }

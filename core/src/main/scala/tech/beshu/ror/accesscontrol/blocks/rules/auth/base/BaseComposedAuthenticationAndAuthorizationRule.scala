@@ -18,18 +18,22 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{
+  AuthenticationImpersonationCustomSupport,
+  AuthorizationImpersonationCustomSupport
+}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 
-private[auth] abstract class BaseComposedAuthenticationAndAuthorizationRule(authenticationRule: AuthenticationRule,
-                                                                            authorizationRule: AuthorizationRule)
-  extends AuthRule
+private[auth] abstract class BaseComposedAuthenticationAndAuthorizationRule(
+    authenticationRule: AuthenticationRule,
+    authorizationRule: AuthorizationRule
+) extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport {
 
-  override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+  override protected def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
     authenticationRule.doAuthenticate(blockContext)
 
-  override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+  override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
     authorizationRule.doAuthorize(blockContext)
 }

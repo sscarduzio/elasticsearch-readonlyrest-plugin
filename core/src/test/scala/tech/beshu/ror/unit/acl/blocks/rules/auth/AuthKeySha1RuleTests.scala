@@ -16,7 +16,10 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.{
+  HashedOnlyPassword,
+  HashedUserAndPassword
+}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeySha1Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
@@ -24,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AuthKeySha1RuleTests
-  extends BasicAuthenticationTestTemplate(supportingImpersonation = false, isUsernameMaskedByRule = true) {
+    extends BasicAuthenticationTestTemplate(supportingImpersonation = false, isUsernameMaskedByRule = true) {
 
   override protected def ruleName: String = classOf[AuthKeySha1Rule].getSimpleName
 
@@ -34,10 +37,11 @@ class AuthKeySha1RuleTests
       CaseSensitivity.Enabled,
       impersonation
     )
+
 }
 
 class AuthKeySha1RuleAltSyntaxTests
-  extends BasicAuthenticationTestTemplate(supportingImpersonation = true, isUsernameMaskedByRule = false) {
+    extends BasicAuthenticationTestTemplate(supportingImpersonation = true, isUsernameMaskedByRule = false) {
 
   override protected def ruleName: String = classOf[AuthKeySha1Rule].getSimpleName
 
@@ -49,4 +53,5 @@ class AuthKeySha1RuleAltSyntaxTests
       CaseSensitivity.Enabled,
       impersonation
     )
+
 }

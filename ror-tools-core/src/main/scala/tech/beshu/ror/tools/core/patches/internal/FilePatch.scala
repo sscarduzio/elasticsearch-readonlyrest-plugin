@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.tools.core.patches.internal
 
-import better.files.File
 import better.files.*
+import better.files.File
 import os.Path
 import tech.beshu.ror.tools.core.patches.internal.FileModifiersBasedPatch.addPatchedByRorVersionPropertyToJarManifest
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
@@ -40,12 +40,14 @@ object FilePatch {
     def forPath(path: Path): FilePatchMetadata =
       FilePatchMetadata(path, FileUtils.calculateFileHash(path.wrapped))
   }
+
 }
 
-private[patches] abstract class FileModifiersBasedPatch(val rorPluginDirectory: RorPluginDirectory,
-                                                        val fileToPatchPath: Path,
-                                                        patchingSteps: Iterable[FileModifier])
-  extends FilePatch {
+private[patches] abstract class FileModifiersBasedPatch(
+    val rorPluginDirectory: RorPluginDirectory,
+    val fileToPatchPath: Path,
+    patchingSteps: Iterable[FileModifier]
+) extends FilePatch {
 
   override def backup(): Unit = {
     rorPluginDirectory.backup(fileToPatchPath)
@@ -62,11 +64,15 @@ private[patches] abstract class FileModifiersBasedPatch(val rorPluginDirectory: 
   override def restore(): Unit = {
     rorPluginDirectory.restore(fileToPatchPath)
   }
+
 }
 
 object FileModifiersBasedPatch {
-  def addPatchedByRorVersionPropertyToJarManifest(rorPluginDirectory: RorPluginDirectory,
-                                                  fileToPatchPath: Path): Unit = {
+
+  def addPatchedByRorVersionPropertyToJarManifest(
+      rorPluginDirectory: RorPluginDirectory,
+      fileToPatchPath: Path
+  ): Unit = {
     if (fileToPatchPath.toString.endsWith(".jar")) {
       JarManifestModifier.addPatchedByRorVersionProperty(
         File(fileToPatchPath.wrapped),
@@ -74,6 +80,7 @@ object FileModifiersBasedPatch {
       )
     }
   }
+
 }
 
 private[patches] class MultiFilePatch(filePatches: FilePatch*) {
@@ -92,11 +99,11 @@ private[patches] class MultiFilePatch(filePatches: FilePatch*) {
 
 }
 
-private [patches] class OptionalFilePatchDecorator[FP <: FilePatch](underlying: FP, fileToPatchPath: Path)
-  extends FilePatch {
+private[patches] class OptionalFilePatchDecorator[FP <: FilePatch](underlying: FP, fileToPatchPath: Path)
+    extends FilePatch {
 
   private val chosenFilePatch = {
-    if(os.exists(fileToPatchPath)) underlying
+    if (os.exists(fileToPatchPath)) underlying
     else NoOpFilePatch
   }
 
@@ -105,7 +112,7 @@ private [patches] class OptionalFilePatchDecorator[FP <: FilePatch](underlying: 
   override def restore(): Unit = chosenFilePatch.restore()
 }
 
-private [patches] object NoOpFilePatch extends FilePatch{
+private[patches] object NoOpFilePatch extends FilePatch {
   override def backup(): Unit = ()
   override def patch(): List[FilePatchMetadata] = List.empty
   override def restore(): Unit = ()

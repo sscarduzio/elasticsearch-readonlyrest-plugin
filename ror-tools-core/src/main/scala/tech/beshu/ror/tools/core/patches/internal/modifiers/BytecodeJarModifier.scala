@@ -27,12 +27,9 @@ import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.Using
 
-private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = false)
-  extends FileModifier with AsmDebug {
+private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = false) extends FileModifier with AsmDebug {
 
-  protected def addNewFileToJar(jar: File,
-                                filePathString: String,
-                                content: Array[Byte]): Unit = {
+  protected def addNewFileToJar(jar: File, filePathString: String, content: Array[Byte]): Unit = {
     val originalPermsAndOwner = jar.getFilePermissionsAndOwner
     if (debugEnabled) debug(content)
     val env = Map("create" -> "true").asJava
@@ -46,9 +43,11 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
     jar.setFilePermissionsAndOwner(originalPermsAndOwner)
   }
 
-  protected def modifyFileInJar(jar: File,
-                                filePathString: String,
-                                processFileContent: InputStream => Array[Byte]): Unit = {
+  protected def modifyFileInJar(
+      jar: File,
+      filePathString: String,
+      processFileContent: InputStream => Array[Byte]
+  ): Unit = {
     val originalFilePermissionsAndOwner = jar.getFilePermissionsAndOwner
     val modifiedFileContent = loadAndProcessFileFromJar(
       jar = jar,
@@ -63,9 +62,11 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
     jar.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
   }
 
-  private def loadAndProcessFileFromJar(jar: File,
-                                        filePathString: String,
-                                        processFileContent: InputStream => Array[Byte]): Array[Byte] = {
+  private def loadAndProcessFileFromJar(
+      jar: File,
+      filePathString: String,
+      processFileContent: InputStream => Array[Byte]
+  ): Array[Byte] = {
     Option(new JarFile(jar.toJava))
       .flatMap { jarFile =>
         try {
@@ -80,14 +81,14 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
       }
   }
 
-  private def updateFileInJar(jar: File,
-                              destinationPathSting: String,
-                              newContent: Array[Byte]): Unit = {
+  private def updateFileInJar(jar: File, destinationPathSting: String, newContent: Array[Byte]): Unit = {
     if (debugEnabled) debug(newContent)
-    Option(FileSystems.newFileSystem(
-      URI.create("jar:" + jar.toJava.toURI),
-      Map("create" -> "true").asJava
-    )) map { zipfs =>
+    Option(
+      FileSystems.newFileSystem(
+        URI.create("jar:" + jar.toJava.toURI),
+        Map("create" -> "true").asJava
+      )
+    ) map { zipfs =>
       try {
         Files.copy(
           new ByteArrayInputStream(newContent),
@@ -102,7 +103,8 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
 
   private def findFileInJar(jarFile: JarFile, filePathString: String) = {
     jarFile
-      .entries().asScala
+      .entries()
+      .asScala
       .find { entry => filePathString == entry.getName }
       .map(jarFile.getInputStream)
   }
@@ -112,4 +114,5 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
     val pathToJar = args(0)
     apply(File(pathToJar))
   }
+
 }

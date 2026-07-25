@@ -23,7 +23,8 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.SecurityPolicyFileMo
 import java.security.Permission
 import java.security.SecurityPermission
 
-private[patches] class AddAdditionalPermissions(permission: NonEmptyList[Permission]) extends SecurityPolicyFileModifier {
+private[patches] class AddAdditionalPermissions(permission: NonEmptyList[Permission])
+    extends SecurityPolicyFileModifier {
 
   override def apply(policyFile: File): Unit = {
     permission.toList.foreach { permission =>
@@ -34,7 +35,9 @@ private[patches] class AddAdditionalPermissions(permission: NonEmptyList[Permiss
   private def addAdditionalPermission(policyFile: File, permission: Permission): Unit = {
     addPermission(policyFile, s"permission ${permission.getClass.getName} \"${permission.getName}\";")
   }
+
 }
+
 private[patches] object AddAdditionalPermissions {
   val createClassLoaderRuntimePermission = new RuntimePermission("createClassLoader")
   val getPropertySecurityPermission = new SecurityPermission("getProperty.*")

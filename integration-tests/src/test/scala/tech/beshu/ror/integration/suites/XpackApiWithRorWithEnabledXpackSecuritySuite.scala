@@ -18,9 +18,9 @@ package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, SecurityType}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.images.domain.Enabled
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, SecurityType}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
@@ -30,22 +30,25 @@ import java.util.Base64
 class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
   override implicit lazy val rorSettingsFileName: String =
-    if(Version.greaterOrEqualThan(esVersionUsed, 7, 14, 0)) "/xpack_api/readonlyrest_without_ror_ssl_es714+.yml"
+    if (Version.greaterOrEqualThan(esVersionUsed, 7, 14, 0)) "/xpack_api/readonlyrest_without_ror_ssl_es714+.yml"
     else "/xpack_api/readonlyrest_without_ror_ssl.yml"
 
   override protected def rorClusterSecurityType: SecurityType =
-    SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-      rorSettingsFileName = rorSettingsFileName,
-      restSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.RestSsl.Xpack),
-      internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
-    ))
+    SecurityType.RorWithXpackSecurity(
+      ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+        rorSettingsFileName = rorSettingsFileName,
+        restSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.RestSsl.Xpack),
+        internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
+      )
+    )
 
   override protected def implementationSpecificInitializer(): ElasticsearchNodeDataInitializer = {
-    (esVersion: String, adminRestClient: RestClient) => {
-      val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager.createDoc(".apm-agent-configuration", 1, ujson.read("""{}""")).force()
-      documentManager.createDoc(".fleet-servers", 1, ujson.read("""{}""")).force()
-    }
+    (esVersion: String, adminRestClient: RestClient) =>
+      {
+        val documentManager = new DocumentManager(adminRestClient, esVersion)
+        documentManager.createDoc(".apm-agent-configuration", 1, ujson.read("""{}""")).force()
+        documentManager.createDoc(".fleet-servers", 1, ujson.read("""{}""")).force()
+      }
   }
 
   "Security API" when {
@@ -73,30 +76,32 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         )
 
         response should have statusCode 200
-        response.responseJson should be(ujson.read(
-          s"""
-             |{
-             |  "username":"_xpack",
-             |  "has_all_requested":true,
-             |  "cluster":{
-             |    "monitor":true
-             |  },
-             |  "index":{
-             |    ".monitoring-*-6-*,.monitoring-*-7-*":{
-             |      "read":true
-             |    }
-             |  },
-             |  "application":{
-             |    "kibana":{
-             |      "space:default":{
-             |        "login:":true,
-             |        "version:$esVersionUsed":true
-             |      }
-             |    }
-             |  }
-             |}
-             |""".stripMargin
-        ))
+        response.responseJson should be(
+          ujson.read(
+            s"""
+               |{
+               |  "username":"_xpack",
+               |  "has_all_requested":true,
+               |  "cluster":{
+               |    "monitor":true
+               |  },
+               |  "index":{
+               |    ".monitoring-*-6-*,.monitoring-*-7-*":{
+               |      "read":true
+               |    }
+               |  },
+               |  "application":{
+               |    "kibana":{
+               |      "space:default":{
+               |        "login:":true,
+               |        "version:$esVersionUsed":true
+               |      }
+               |    }
+               |  }
+               |}
+               |""".stripMargin
+          )
+        )
       }
     }
     "/_security/user/_privileges endpoint is called" should {
@@ -104,56 +109,60 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         val response = adminXpackApiManager.userPrivileges()
         response should have statusCode 200
         if (Version.greaterOrEqualThan(esVersionUsed, 8, 3, 0)) {
-          response.responseJson should be(ujson.read(
-            s"""
-               |{
-               |  "cluster":["all"],
-               |  "global":[],
-               |  "indices":[
-               |    {
-               |      "names":["*"],
-               |      "privileges":["all"],
-               |      "allow_restricted_indices":false
-               |    }
-               |  ],
-               |  "applications":[],
-               |  "run_as":[]
-               |}
-               |""".stripMargin
-          ))
+          response.responseJson should be(
+            ujson.read(
+              s"""
+                 |{
+                 |  "cluster":["all"],
+                 |  "global":[],
+                 |  "indices":[
+                 |    {
+                 |      "names":["*"],
+                 |      "privileges":["all"],
+                 |      "allow_restricted_indices":false
+                 |    }
+                 |  ],
+                 |  "applications":[],
+                 |  "run_as":[]
+                 |}
+                 |""".stripMargin
+            )
+          )
         } else {
-          response.responseJson should be(ujson.read(
-            s"""
-               |{
-               |  "cluster":["all"],
-               |  "global":[],
-               |  "indices":[
-               |    {
-               |      "names":["*"],
-               |      "privileges":["all"],
-               |      "allow_restricted_indices":false
-               |    }
-               |  ],
-               |  "applications":[
-               |    {
-               |      "application":"*",
-               |      "privileges":["*"],
-               |      "resources":["*"]
-               |    }
-               |  ],
-               |  "run_as":[]
-               |}
-               |""".stripMargin
-          ))
+          response.responseJson should be(
+            ujson.read(
+              s"""
+                 |{
+                 |  "cluster":["all"],
+                 |  "global":[],
+                 |  "indices":[
+                 |    {
+                 |      "names":["*"],
+                 |      "privileges":["all"],
+                 |      "allow_restricted_indices":false
+                 |    }
+                 |  ],
+                 |  "applications":[
+                 |    {
+                 |      "application":"*",
+                 |      "privileges":["*"],
+                 |      "resources":["*"]
+                 |    }
+                 |  ],
+                 |  "run_as":[]
+                 |}
+                 |""".stripMargin
+            )
+          )
         }
       }
     }
     "/_security/api_key endpoints are called" should {
-      "allow granting an API key" excludeES(allEs6x, allEs7xBelowEs714x) in {
+      "allow granting an API key" excludeES (allEs6x, allEs7xBelowEs714x) in {
         val response = adminXpackApiManager.grantApiKeyPrivilege("admin", "admin")
         response should have statusCode 200
       }
-      "allow getting an API key by id" excludeES(allEs6x, allEs7xBelowEs714x) in {
+      "allow getting an API key by id" excludeES (allEs6x, allEs7xBelowEs714x) in {
         val createResponse = adminXpackApiManager.createApiKey("test-get-key")
         createResponse should have statusCode 200
         val apiKeyId = createResponse.responseJson("id").str
@@ -164,7 +173,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         getResponse.responseJson("api_keys")(0)("id").str should be(apiKeyId)
         getResponse.responseJson("api_keys")(0)("name").str should be("test-get-key")
       }
-      "allow creating and using an API key" excludeES(allEs6x, allEs7xBelowEs714x) in {
+      "allow creating and using an API key" excludeES (allEs6x, allEs7xBelowEs714x) in {
         val createResponse = adminXpackApiManager.createApiKey("test-agent-key")
         createResponse should have statusCode 200
         createResponse.responseJson("name").str should be("test-agent-key")
@@ -183,7 +192,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         val searchAfterInvalidateResponse = agentSearchManager.search(".apm-agent-configuration")
         searchAfterInvalidateResponse should have statusCode 403
       }
-      "allow updating an API key" excludeES(allEs6x, allEs7x, allEs8xBelowEs84x) in {
+      "allow updating an API key" excludeES (allEs6x, allEs7x, allEs8xBelowEs84x) in {
         val createResponse = adminXpackApiManager.createApiKey("test-update-key")
         createResponse should have statusCode 200
         val apiKeyId = createResponse.responseJson("id").str
@@ -196,7 +205,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         val agentSearchManager = new SearchManager(tokenAuthClient(s"ApiKey $encodedKey"), esVersionUsed)
         agentSearchManager.search(".apm-agent-configuration") should have statusCode 200
       }
-      "allow bulk updating API keys" excludeES(allEs6x, allEs7x, allEs8xBelowEs85x) in {
+      "allow bulk updating API keys" excludeES (allEs6x, allEs7x, allEs8xBelowEs85x) in {
         val createResponse1 = adminXpackApiManager.createApiKey("test-bulk-update-key-1")
         createResponse1 should have statusCode 200
         val createResponse2 = adminXpackApiManager.createApiKey("test-bulk-update-key-2")
@@ -212,7 +221,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         val agentSearchManager = new SearchManager(tokenAuthClient(s"ApiKey $encodedKey1"), esVersionUsed)
         agentSearchManager.search(".apm-agent-configuration") should have statusCode 200
       }
-      "allow querying API keys" excludeES(allEs6x, allEs7xBelowEs715x) in {
+      "allow querying API keys" excludeES (allEs6x, allEs7xBelowEs715x) in {
         val keyName = "test-query-key"
         val createResponse = adminXpackApiManager.createApiKey(keyName)
         createResponse should have statusCode 200
@@ -223,22 +232,22 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
       }
     }
     "/_security/service endpoints are called" should {
-      "return service accounts list" excludeES(allEs6x, allEs7xBelowEs714x) in {
+      "return service accounts list" excludeES (allEs6x, allEs7xBelowEs714x) in {
         val response = adminXpackApiManager.getServiceAccounts()
         response should have statusCode 200
         response.responseJson.obj.keys should contain("elastic/fleet-server")
       }
-      "return the service account" excludeES(allEs6x, allEs7xBelowEs714x) in {
+      "return the service account" excludeES (allEs6x, allEs7xBelowEs714x) in {
         val response = adminXpackApiManager.getServiceAccount("elastic", "fleet-server")
         response should have statusCode 200
         response.responseJson.obj.keys should contain("elastic/fleet-server")
       }
-      "return service account credentials" excludeES(allEs6x, allEs7xBelowEs714x) in {
+      "return service account credentials" excludeES (allEs6x, allEs7xBelowEs714x) in {
         val response = adminXpackApiManager.getServiceAccountCredentials("elastic", "fleet-server")
         response should have statusCode 200
         response.responseJson("service_account").str should be("elastic/fleet-server")
       }
-      "allow creating and deleting a service account token" excludeES(allEs6x, allEs7xBelowEs714x) in {
+      "allow creating and deleting a service account token" excludeES (allEs6x, allEs7xBelowEs714x) in {
         val createResponse = adminXpackApiManager.createServiceAccountToken("elastic", "fleet-server", "test-token")
         createResponse should have statusCode 200
         createResponse.responseJson("created").bool should be(true)
@@ -265,7 +274,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
         val result = adminIndexManager.getIndex("*", "*:*")
         result should have statusCode 200
-        result.indicesAndAliases shouldNot be (Map.empty)
+        result.indicesAndAliases shouldNot be(Map.empty)
       }
     }
     "request with only remote indices pattern is called" should {
@@ -277,4 +286,5 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
       }
     }
   }
+
 }

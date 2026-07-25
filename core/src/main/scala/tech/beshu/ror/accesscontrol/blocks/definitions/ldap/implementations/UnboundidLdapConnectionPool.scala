@@ -18,33 +18,34 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk.*
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Promise
 import scala.jdk.CollectionConverters.*
 
-class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
-                                  bindRequestUser: BindRequestUser)
-  extends RequestIdAwareLogging {
+class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindRequestUser: BindRequestUser)
+    extends RequestIdAwareLogging {
 
   def asyncBind(request: BindRequest): Task[BindResult] = {
     bindRequestUser match {
-      case BindRequestUser.Anonymous => Task(connectionPool.bind(request))
+      case BindRequestUser.Anonymous        => Task(connectionPool.bind(request))
       case BindRequestUser.CustomUser(_, _) => Task(connectionPool.bindAndRevertAuthentication(request))
     }
   }
 
-  def process(requestCreator: AsyncSearchResultListener => LDAPRequest,
-              timeout: PositiveFiniteDuration): Task[Either[SearchResult, List[SearchResultEntry]]] = {
+  def process(
+      requestCreator: AsyncSearchResultListener => LDAPRequest,
+      timeout: PositiveFiniteDuration
+  ): Task[Either[SearchResult, List[SearchResultEntry]]] = {
     val searchResultListener = new UnboundidLdapConnectionPool.UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
       .flatMap { results =>
         results.asScala.toList match {
-          case Nil => throw new IllegalStateException("LDAP - expected at least one result")
+          case Nil            => throw new IllegalStateException("LDAP - expected at least one result")
           case requestId :: _ =>
             if (requestId.isCancelled) Task.now(Left(new SearchResult(requestId.get())))
             else searchResultListener.result

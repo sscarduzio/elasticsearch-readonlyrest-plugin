@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import cats.data.NonEmptyList
 import ujson as originalUjson
+import cats.data.NonEmptyList
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -25,10 +25,12 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import java.time.Instant
 import java.util.UUID
 
-class EnhancedDataStreamManager(dataStreamManager: DataStreamManager,
-                                documentManager: DocumentManager,
-                                indexManager: IndexManager,
-                                indexTemplateManager: IndexTemplateManager) {
+class EnhancedDataStreamManager(
+    dataStreamManager: DataStreamManager,
+    documentManager: DocumentManager,
+    indexManager: IndexManager,
+    indexTemplateManager: IndexTemplateManager
+) {
 
   def createDataStream(name: String): Unit = {
     indexTemplateManager
@@ -62,7 +64,7 @@ class EnhancedDataStreamManager(dataStreamManager: DataStreamManager,
     indexManager
       .updateAliases(
         actions.head,
-        actions.tail *
+        actions.tail*
       )
       .force()
   }
@@ -101,6 +103,7 @@ class EnhancedDataStreamManager(dataStreamManager: DataStreamManager,
 }
 
 object EnhancedDataStreamManager {
+
   def apply(client: RestClient, esVersion: String): EnhancedDataStreamManager = {
     val documentManager = new DocumentManager(client, esVersion)
     val indexManager = new IndexManager(client, esVersion)
@@ -108,4 +111,5 @@ object EnhancedDataStreamManager {
     val templateManager = new IndexTemplateManager(client, esVersion)
     new EnhancedDataStreamManager(dataStreamManager, documentManager, indexManager, templateManager)
   }
+
 }

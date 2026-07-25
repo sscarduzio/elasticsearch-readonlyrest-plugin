@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class ResponseFieldRuleSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -82,9 +82,11 @@ class ResponseFieldRuleSuite
 }
 
 object ResponseFieldRuleSuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager.createDoc("index1", 1, ujson.read("""{"user_id":"ivan"}""")).force()
     documentManager.createDoc("index1", 2, ujson.read("""{"user_id":"alice"}""")).force()
   }
+
 }

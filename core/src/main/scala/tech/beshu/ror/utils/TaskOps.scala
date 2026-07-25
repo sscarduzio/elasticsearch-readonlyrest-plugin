@@ -46,8 +46,9 @@ object TaskOps {
 
   implicit class Measure(val task: Task.type) extends AnyVal {
 
-    def measure[T](task: Task[T], logTimeMeasurement: FiniteDuration => Task[Unit])
-                  (implicit clock: Clock): Task[T] =
+    def measure[T](task: Task[T], logTimeMeasurement: FiniteDuration => Task[Unit])(
+        implicit clock: Clock
+    ): Task[T] =
       Task.defer {
         val startMeasurement = Instant.now(clock)
         val stopMeasurement = Task.suspend {
@@ -60,5 +61,7 @@ object TaskOps {
           result => stopMeasurement.map(_ => result),
         )
       }
+
   }
+
 }

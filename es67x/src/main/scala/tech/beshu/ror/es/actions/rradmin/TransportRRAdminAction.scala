@@ -26,22 +26,31 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRRAdminAction(settings: Settings,
-                             threadPool: ThreadPool,
-                             transportService: TransportService,
-                             actionFilters: ActionFilters,
-                             indexNameExpressionResolver: IndexNameExpressionResolver,
-                             @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
-    settings, RRAdminActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRAdminRequest
-  ) {
+class TransportRRAdminAction(
+    settings: Settings,
+    threadPool: ThreadPool,
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    indexNameExpressionResolver: IndexNameExpressionResolver,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
+      settings,
+      RRAdminActionType.name,
+      threadPool,
+      transportService,
+      actionFilters,
+      indexNameExpressionResolver,
+      () => new RRAdminRequest
+    ) {
 
   @Inject
-  def this(settings: Settings,
-           threadPool: ThreadPool,
-           transportService: TransportService,
-           indexNameExpressionResolver: IndexNameExpressionResolver,
-           actionFilters: ActionFilters) = {
+  def this(
+      settings: Settings,
+      threadPool: ThreadPool,
+      transportService: TransportService,
+      indexNameExpressionResolver: IndexNameExpressionResolver,
+      actionFilters: ActionFilters
+  ) = {
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, ())
   }
 
@@ -50,4 +59,5 @@ class TransportRRAdminAction(settings: Settings,
   override def doExecute(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     handler.handle(request, listener)
   }
+
 }

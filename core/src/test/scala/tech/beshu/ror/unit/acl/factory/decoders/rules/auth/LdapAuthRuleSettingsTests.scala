@@ -23,33 +23,31 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.SingletonLdapContainers
 
-class LdapAuthRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[LdapAuthRule] {
+class LdapAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[LdapAuthRule] {
 
   "An LdapAuthRule" should {
     "be able to be loaded from settings" when {
       "there is LDAP service with given name and groups are defined" in {
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ldap_auth:
-               |      name: "ldap1"
-               |      groups: ["group3"]
-               |
-               |  ldaps:
-               |
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ldap_auth:
+                    |      name: "ldap1"
+                    |      groups: ["group3"]
+                    |
+                    |  ldaps:
+                    |
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                    |    ssl_enabled: false
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                    |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                    |""".stripMargin,
           assertion = rule => {
             assertLdapAuthNServiceLayerTypes(rule.authentication.settings.ldap)
             assertLdapAuthZServiceLayerTypes(rule.authorization.settings.ldap, withServerSideGroupsFiltering = false)
@@ -58,31 +56,34 @@ class LdapAuthRuleSettingsTests
       }
       "auth LDAP rule can have caching declared at rule level" in {
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ldap_auth:
-               |      name: "ldap1"
-               |      groups: ["group3", "group4*"]
-               |      cache_ttl: 10 sec
-               |
-               |  ldaps:
-               |
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |    server_side_groups_filtering: true
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ldap_auth:
+                    |      name: "ldap1"
+                    |      groups: ["group3", "group4*"]
+                    |      cache_ttl: 10 sec
+                    |
+                    |  ldaps:
+                    |
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                    |    ssl_enabled: false
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                    |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                    |    server_side_groups_filtering: true
+                    |""".stripMargin,
           assertion = rule => {
             assertLdapAuthNServiceLayerTypes(rule.authentication.settings.ldap, withRuleLevelCaching = true)
-            assertLdapAuthZServiceLayerTypes(rule.authorization.settings.ldap, withServerSideGroupsFiltering = true, withRuleLevelCaching = true)
+            assertLdapAuthZServiceLayerTypes(
+              rule.authorization.settings.ldap,
+              withServerSideGroupsFiltering = true,
+              withRuleLevelCaching = true
+            )
           }
         )
       }
@@ -90,27 +91,26 @@ class LdapAuthRuleSettingsTests
     "not be able to be loaded from settings" when {
       "no LDAP service with given name is defined" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ldap_auth:
-               |      name: "ldap2"
-               |      groups: ["group3"]
-               |      cache_ttl_in_seconds: 10
-               |
-               |  ldaps:
-               |
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ldap_auth:
+                    |      name: "ldap2"
+                    |      groups: ["group3"]
+                    |      cache_ttl_in_seconds: 10
+                    |
+                    |  ldaps:
+                    |
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                    |    ssl_enabled: false
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                    |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                    |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot find LDAP service with name: ldap2")))
@@ -119,81 +119,86 @@ class LdapAuthRuleSettingsTests
       }
       "groups are not defined" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ldap_auth:
-               |      name: "ldap1"
-               |
-               |  ldaps:
-               |
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ldap_auth:
+                    |      name: "ldap1"
+                    |
+                    |  ldaps:
+                    |
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                    |    ssl_enabled: false
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                    |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                    |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("ldap_auth rule requires to define 'groups_any_of'/'groups_all_of'/'groups_not_any_of'/'groups_not_all_of' arrays")))
+            errors.head should be(
+              RulesLevelCreationError(
+                Message(
+                  "ldap_auth rule requires to define 'groups_any_of'/'groups_all_of'/'groups_not_any_of'/'groups_not_all_of' arrays"
+                )
+              )
+            )
           }
         )
       }
       "groups set is empty" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ldap_auth:
-               |      name: "ldap1"
-               |      groups: []
-               |      cache_ttl_in_seconds: 10
-               |
-               |  ldaps:
-               |
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ldap_auth:
+                    |      name: "ldap1"
+                    |      groups: []
+                    |      cache_ttl_in_seconds: 10
+                    |
+                    |  ldaps:
+                    |
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                    |    ssl_enabled: false
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                    |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                    |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Non empty list of group IDs or/and patterns is required")))
+            errors.head should be(
+              RulesLevelCreationError(Message("Non empty list of group IDs or/and patterns is required"))
+            )
           }
         )
       }
       "LDAP service can only handle authentication, not authorization" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ldap_auth:
-               |      name: "ldap1"
-               |      groups: ["group1"]
-               |
-               |  ldaps:
-               |
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ldap_auth:
+                    |      name: "ldap1"
+                    |      groups: ["group1"]
+                    |
+                    |  ldaps:
+                    |
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                    |    ssl_enabled: false
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                    |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Service: ldap1 cannot be used in 'ldap_auth' rule")))
@@ -202,4 +207,5 @@ class LdapAuthRuleSettingsTests
       }
     }
   }
+
 }

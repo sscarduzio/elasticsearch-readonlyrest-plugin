@@ -32,8 +32,8 @@ class AuthorizationTokenTests extends AnyWordSpec with Inside {
     }
     "be created from a value with a custom prefix" in {
       val token = authorizationTokenFrom("ApiKey abc123")
-      inside(token.prefix) {
-        case AuthorizationTokenPrefix.Exact(value) => value.value should be("ApiKey")
+      inside(token.prefix) { case AuthorizationTokenPrefix.Exact(value) =>
+        value.value should be("ApiKey")
       }
       token.value.value should be("abc123")
     }
@@ -73,10 +73,15 @@ class AuthorizationTokenTests extends AnyWordSpec with Inside {
       AuthorizationTokenPrefix.eq.eqv(bearer, apiKey) should be(false)
     }
     "treat Exact and NoPrefix as not equal" in {
-      AuthorizationTokenPrefix.eq.eqv(AuthorizationTokenPrefix.bearer, AuthorizationTokenPrefix.NoPrefix) should be(false)
+      AuthorizationTokenPrefix.eq.eqv(AuthorizationTokenPrefix.bearer, AuthorizationTokenPrefix.NoPrefix) should be(
+        false
+      )
     }
     "treat NoPrefix as equal to itself" in {
-      AuthorizationTokenPrefix.eq.eqv(AuthorizationTokenPrefix.NoPrefix, AuthorizationTokenPrefix.NoPrefix) should be(true)
+      AuthorizationTokenPrefix.eq.eqv(AuthorizationTokenPrefix.NoPrefix, AuthorizationTokenPrefix.NoPrefix) should be(
+        true
+      )
     }
   }
+
 }

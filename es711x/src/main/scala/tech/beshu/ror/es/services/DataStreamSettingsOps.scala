@@ -23,14 +23,18 @@ import ujson.{Obj, Value}
 private[services] object DataStreamSettingsOps {
 
   extension (mappings: ComponentTemplateMappings) {
+
     def mappingsJson: Value = {
-      ujson.Obj("properties" -> ujson.Obj(
-        mappings.timestampField -> ujson.Obj(
-          "type" -> "date",
-          "format" -> "date_optional_time||epoch_millis"
+      ujson.Obj(
+        "properties" -> ujson.Obj(
+          mappings.timestampField -> ujson.Obj(
+            "type" -> "date",
+            "format" -> "date_optional_time||epoch_millis"
+          )
         )
-      ))
+      )
     }
+
   }
 
   extension (policy: LifecyclePolicy) {
@@ -90,5 +94,7 @@ private[services] object DataStreamSettingsOps {
         "max_num_segments" -> forceMerge.maxNumSegments.value
       )
     }
+
   }
+
 }

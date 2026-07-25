@@ -31,28 +31,31 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 final class RorKbnAuthorizationRule(val settings: Settings)
-  extends AuthorizationRule
+    extends AuthorizationRule
     with AuthorizationImpersonationCustomSupport
     with BaseRorKbnRule {
 
   override val name: Rule.Name = RorKbnAuthorizationRule.Name.name
 
-  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task.delay {
-    if (isCurrentGroupPotentiallyEligible(blockContext)) {
-      processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
-        authorize(blockContext, tokenData.groups)
+  override protected[rules] def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+    Task.delay {
+      if (isCurrentGroupPotentiallyEligible(blockContext)) {
+        processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
+          authorize(blockContext, tokenData.groups)
+        }
+      } else {
+        Decision.Denied(Cause.GroupsAuthorizationFailed("Current group is not allowed"))
       }
-    } else {
-      Decision.Denied(Cause.GroupsAuthorizationFailed("Current group is not allowed"))
     }
-  }
 
   private def isCurrentGroupPotentiallyEligible(blockContext: BlockContext) = {
     blockContext.isCurrentGroupPotentiallyEligible(settings.groupsLogic)
   }
 
-  private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                 groupsTokenSearchResult: ClaimSearchResult[UniqueList[Group]]) = {
+  private def authorize[B <: BlockContext: BlockContextUpdater](
+      blockContext: B,
+      groupsTokenSearchResult: ClaimSearchResult[UniqueList[Group]]
+  ) = {
     for {
       userGroups <- groupsFrom(groupsTokenSearchResult)
       matchedGroups <- settings.groupsLogic
@@ -60,7 +63,8 @@ final class RorKbnAuthorizationRule(val settings: Settings)
         .toRight(GroupsAuthorizationFailed("None of the user's groups match the configured groups"))
       _ <- Either.cond(
         blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups)),
-        (), GroupsAuthorizationFailed("Current group is not allowed")
+        (),
+        GroupsAuthorizationFailed("Current group is not allowed")
       )
     } yield {
       blockContext.withBlockMetadata(_.addAvailableGroups(matchedGroups))
@@ -69,10 +73,15 @@ final class RorKbnAuthorizationRule(val settings: Settings)
 
   private def groupsFrom(groupsFromToken: ClaimSearchResult[UniqueList[Group]]) = {
     for {
-      groups <- groupsFromToken.toEither.left.map { case () => GroupsAuthorizationFailed("Groups claim not found in ROR Kibana token")}
-      nonEmptyGroups <- UniqueNonEmptyList.from(groups).toRight(GroupsAuthorizationFailed("No groups found in ROR Kibana token"))
+      groups <- groupsFromToken.toEither.left.map { case () =>
+        GroupsAuthorizationFailed("Groups claim not found in ROR Kibana token")
+      }
+      nonEmptyGroups <- UniqueNonEmptyList
+        .from(groups)
+        .toRight(GroupsAuthorizationFailed("No groups found in ROR Kibana token"))
     } yield nonEmptyGroups
   }
+
 }
 
 object RorKbnAuthorizationRule {

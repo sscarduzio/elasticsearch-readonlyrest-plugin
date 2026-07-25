@@ -32,28 +32,36 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicRepresentationDecoder.GroupsLogicDecodingResult
 
-class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
-                        globalSettings: GlobalSettings,
-                        implicit val variableCreator: RuntimeResolvableVariableCreator)
-                       (implicit ev: RuleName[BaseGroupsRule[GroupsLogic]])
-  extends RuleBaseDecoderWithoutAssociatedFields[BaseGroupsRule[GroupsLogic]] {
+class GroupsRuleDecoder(
+    usersDefinitions: Definitions[UserDef],
+    globalSettings: GlobalSettings,
+    implicit val variableCreator: RuntimeResolvableVariableCreator
+)(
+    implicit ev: RuleName[BaseGroupsRule[GroupsLogic]]
+) extends RuleBaseDecoderWithoutAssociatedFields[BaseGroupsRule[GroupsLogic]] {
 
   override protected def decodingContext: RuleDecoder.DecodingContext = RuleDecoder.DecodingContext.RuleNameWithValue
 
   override protected def decoder: Decoder[RuleDefinition[BaseGroupsRule[GroupsLogic]]] = {
-    new BaseGroupsRuleDecoder()(ev.name, usersDefinitions, globalSettings.userIdCaseSensitivity, variableCreator)
-      .syncDecoder
-      .emapE {
-        case GroupsLogicDecodingResult.Success(Right(rule)) =>
-          Right(RuleDefinition.create(rule))
-        case GroupsLogicDecodingResult.Success(Left(error)) =>
-          Left(error)
-        case GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(_, _) =>
-          Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ev.name.show}` requires them.")))
-        case GroupsLogicDecodingResult.GroupsLogicNotDefined(_) =>
-          Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ev.name.show}` requires them.")))
-      }
-      .decoder
+    new BaseGroupsRuleDecoder()(
+      ev.name,
+      usersDefinitions,
+      globalSettings.userIdCaseSensitivity,
+      variableCreator
+    ).syncDecoder.emapE {
+      case GroupsLogicDecodingResult.Success(Right(rule)) =>
+        Right(RuleDefinition.create(rule))
+      case GroupsLogicDecodingResult.Success(Left(error)) =>
+        Left(error)
+      case GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(_, _) =>
+        Left(
+          RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ev.name.show}` requires them."))
+        )
+      case GroupsLogicDecodingResult.GroupsLogicNotDefined(_) =>
+        Left(
+          RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ev.name.show}` requires them."))
+        )
+    }.decoder
   }
 
 }

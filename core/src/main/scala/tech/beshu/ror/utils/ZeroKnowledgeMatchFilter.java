@@ -24,7 +24,8 @@ import java.util.Set;
 
 public class ZeroKnowledgeMatchFilter {
 
-  static public Set<String> alterIndicesIfNecessary(Set<String> indices, StringPatternsMatcherJava matcher) {
+  public static Set<String> alterIndicesIfNecessary(
+      Set<String> indices, StringPatternsMatcherJava matcher) {
 
     boolean shouldReplace = false;
 
@@ -41,8 +42,7 @@ public class ZeroKnowledgeMatchFilter {
 
       if (indices.size() == 1) {
         return new HashSet<>(matcher.getPatterns());
-      }
-      else {
+      } else {
         shouldReplace = true;
         indices.remove("*");
         indices.addAll(new HashSet<>(matcher.getPatterns()));
@@ -56,7 +56,8 @@ public class ZeroKnowledgeMatchFilter {
         continue;
       }
 
-      StringPatternsMatcherJava revMatcher = new StringPatternsMatcherJava(Sets.newHashSet(i), matcher.getCaseSensitivity());
+      StringPatternsMatcherJava revMatcher =
+          new StringPatternsMatcherJava(Sets.newHashSet(i), matcher.getCaseSensitivity());
       Set<String> matched = revMatcher.filter(matcher.getPatterns());
 
       if (!matched.isEmpty()) {
@@ -66,11 +67,9 @@ public class ZeroKnowledgeMatchFilter {
     }
     if (shouldReplace || !Sets.symmetricDifference(newIndices, indices).isEmpty()) {
       return newIndices;
-    }
-    else {
+    } else {
       // This means you don't need to replace at all.
       return null;
     }
   }
-
 }

@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.{RuleCheckAssertion, *}
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.misc.JwtUtils.*
 
@@ -43,15 +43,21 @@ import java.security.Key
 import scala.language.postfixOps
 
 class JwtAuthenticationRuleTests
-  extends AnyWordSpec with MockFactory with BlockContextAssertion with WithDummyRequestIdSupport {
+    extends AnyWordSpec
+    with MockFactory
+    with BlockContextAssertion
+    with WithDummyRequestIdSupport {
 
   "A JwtAuthenticationRule" should {
     "match" when {
       "user claim name is defined and userId is passed in JWT token claim" in {
         val key: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(key, claims = List(
-          "userId" := "user1"
-        ))
+        val jwt = Jwt(
+          key,
+          claims = List(
+            "userId" := "user1"
+          )
+        )
         assertMatchRule(
           configuredJwtDef = AuthenticationJwtDef(
             JwtDef.Name("test"),
@@ -60,12 +66,11 @@ class JwtAuthenticationRuleTests
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
           ),
           tokenHeader = bearerHeader(jwt)
-        ) {
-          blockContext =>
-            assertBlockContext(blockContext)(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )
+        ) { blockContext =>
+          assertBlockContext(blockContext)(
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+          )
         }
       }
     }
@@ -88,22 +93,27 @@ class JwtAuthenticationRuleTests
     }
   }
 
-  private def assertMatchRule(configuredJwtDef: AuthenticationJwtDef,
-                              tokenHeader: Header,
-                              preferredGroupId: Option[GroupId] = None)
-                             (blockContextAssertion: BlockContext => Unit): Unit =
+  private def assertMatchRule(
+      configuredJwtDef: AuthenticationJwtDef,
+      tokenHeader: Header,
+      preferredGroupId: Option[GroupId] = None
+  )(blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(configuredJwtDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
-  private def assertNotMatchRule(configuredJwtDef: AuthenticationJwtDef,
-                                 tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId],
-                                 denialCause: Cause): Unit =
+  private def assertNotMatchRule(
+      configuredJwtDef: AuthenticationJwtDef,
+      tokenHeader: Header,
+      preferredGroupId: Option[GroupId],
+      denialCause: Cause
+  ): Unit =
     assertRule(configuredJwtDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
-  private def assertRule(configuredJwtDef: AuthenticationJwtDef,
-                         tokenHeader: Header,
-                         preferredGroup: Option[GroupId],
-                         assertion: RuleCheckAssertion): Unit = {
+  private def assertRule(
+      configuredJwtDef: AuthenticationJwtDef,
+      tokenHeader: Header,
+      preferredGroup: Option[GroupId],
+      assertion: RuleCheckAssertion
+  ): Unit = {
     val rule = new JwtAuthenticationRule(JwtAuthenticationRule.Settings(configuredJwtDef), CaseSensitivity.Enabled)
 
     val requestContext = MockRequestContext.indices.withHeaders(
@@ -121,4 +131,5 @@ class JwtAuthenticationRuleTests
     )
     rule.checkAndAssert(blockContext, assertion)
   }
+
 }

@@ -30,9 +30,11 @@ object QueryType {
 
   object Compound {
 
-    def apply[QUERY <: QueryBuilder](implicit ev: Compound[QUERY]) = ev
+    def apply[QUERY <: QueryBuilder](
+        implicit ev: Compound[QUERY]
+    ) = ev
 
-    implicit class Ops[QUERY <: QueryBuilder : Compound](val query: QUERY) {
+    implicit class Ops[QUERY <: QueryBuilder: Compound](val query: QUERY) {
       def innerQueries = Compound[QUERY].innerQueriesOf(query)
     }
 
@@ -43,6 +45,7 @@ object QueryType {
     def oneInnerQuery[QUERY <: QueryBuilder](f: QUERY => QueryBuilder) = new Compound[QUERY] {
       override def innerQueriesOf(query: QUERY): List[QueryBuilder] = List(f(query))
     }
+
   }
 
   trait Leaf[QUERY <: QueryBuilder] extends QueryType[QUERY]
@@ -59,9 +62,7 @@ object QueryType {
     }
 
     implicit val disMaxQueryType: Compound[DisMaxQueryBuilder] = Compound.withInnerQueries { query =>
-      query.innerQueries()
-        .asScala
-        .toList
+      query.innerQueries().asScala.toList
     }
 
     implicit val constantScoreQueryType: Compound[ConstantScoreQueryBuilder] = Compound.oneInnerQuery(_.innerQuery())
@@ -81,4 +82,5 @@ object QueryType {
     implicit object MatchPhraseQueryType extends Leaf[MatchPhraseQueryBuilder]
     implicit object MatchPhrasePrefixQueryType extends Leaf[MatchPhrasePrefixQueryBuilder]
   }
+
 }

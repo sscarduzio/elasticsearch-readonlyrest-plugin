@@ -16,17 +16,18 @@
  */
 package tech.beshu.ror.es.utils
 
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.repositories.{RepositoriesService, VerifyNodeRepositoryAction}
 import org.elasticsearch.transport.{RemoteClusterService, TransportService}
 import org.joor.Reflect.on
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.function.Supplier
 import scala.util.{Failure, Success, Try}
 
 class RemoteClusterServiceSupplier(repositoriesServiceSupplier: Supplier[RepositoriesService])
-  extends Supplier[Option[RemoteClusterService]] with RequestIdAwareLogging {
+    extends Supplier[Option[RemoteClusterService]]
+    with RequestIdAwareLogging {
 
   override def get(): Option[RemoteClusterService] = {
     for {
@@ -55,4 +56,5 @@ class RemoteClusterServiceSupplier(repositoriesServiceSupplier: Supplier[Reposit
   private def getTransportServiceFrom(action: VerifyNodeRepositoryAction) = Try {
     on(action).get[TransportService]("transportService")
   }
+
 }

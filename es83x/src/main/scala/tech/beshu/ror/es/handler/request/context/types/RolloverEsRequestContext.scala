@@ -27,21 +27,25 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.syntax.*
 
-class RolloverEsRequestContext(actionRequest: RolloverRequest,
-                               esContext: EsContext,
-                               aclContext: AccessControlStaticContext,
-                               override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[RolloverRequest](actionRequest, esContext, aclContext, threadPool) {
+class RolloverEsRequestContext(
+    actionRequest: RolloverRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[RolloverRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: RolloverRequest): Set[RequestedIndex[ClusterIndexName]] = {
     (Option(request.getNewIndexName).toCovariantSet ++ Set(request.getRolloverTarget))
       .flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: RolloverRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: RolloverRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     Modified
   }
+
 }

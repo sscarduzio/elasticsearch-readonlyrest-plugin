@@ -51,14 +51,15 @@ private[patches] object ModifyRBACEngineClass extends BytecodeJarModifier {
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
 
       val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
 
@@ -78,10 +79,11 @@ private[patches] object ModifyRBACEngineClass extends BytecodeJarModifier {
 
       new InjectNullAuthInfoFix(mv, authSlot)
     }
+
   }
 
   private class InjectNullAuthInfoFix(underlying: MethodVisitor, authSlot: Int)
-    extends MethodVisitor(Opcodes.ASM9, underlying) {
+      extends MethodVisitor(Opcodes.ASM9, underlying) {
 
     override def visitCode(): Unit = {
       super.visitCode()
@@ -104,5 +106,7 @@ private[patches] object ModifyRBACEngineClass extends BytecodeJarModifier {
       mv.visitLabel(nonNull)
       // original method body continues unchanged
     }
+
   }
+
 }

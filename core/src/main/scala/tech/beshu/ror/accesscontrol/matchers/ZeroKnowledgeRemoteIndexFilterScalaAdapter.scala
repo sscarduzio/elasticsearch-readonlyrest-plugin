@@ -35,15 +35,18 @@ class ZeroKnowledgeRemoteIndexFilterScalaAdapter {
       new StringPatternsMatcherJava(matcher),
       (t: util.Set[String]) => processedIndices.addAll(t)
     )
-    if(result) CheckResult.Ok(processedIndices.asScala.flatMap(ClusterIndexName.Remote.fromString).toCovariantSet)
+    if (result) CheckResult.Ok(processedIndices.asScala.flatMap(ClusterIndexName.Remote.fromString).toCovariantSet)
     else CheckResult.Failed
   }
+
 }
 
 object ZeroKnowledgeRemoteIndexFilterScalaAdapter {
   sealed trait CheckResult
+
   object CheckResult {
     final case class Ok(processedIndices: Set[ClusterIndexName.Remote]) extends CheckResult
     case object Failed extends CheckResult
   }
+
 }

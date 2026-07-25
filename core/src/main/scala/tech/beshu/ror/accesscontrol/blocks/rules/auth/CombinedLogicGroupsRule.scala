@@ -22,9 +22,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.{Creator, Settings}
 import tech.beshu.ror.accesscontrol.domain.*
 
-class CombinedLogicGroupsRule(override val settings: Settings[GroupsLogic.Combined])
-                             (override implicit val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule[GroupsLogic.Combined](CombinedLogicGroupsRule.Name.name, settings)
+class CombinedLogicGroupsRule(override val settings: Settings[GroupsLogic.Combined])(
+    override implicit val userIdCaseSensitivity: CaseSensitivity
+) extends BaseGroupsRule[GroupsLogic.Combined](CombinedLogicGroupsRule.Name.name, settings)
 
 object CombinedLogicGroupsRule {
 

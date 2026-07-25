@@ -23,7 +23,8 @@ import tech.beshu.ror.api.MainSettingsApi
 import tech.beshu.ror.api.MainSettingsApi.*
 
 class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
-  extends ActionResponse with StatusToXContentObject {
+    extends ActionResponse
+    with StatusToXContentObject {
 
   def this() = {
     this(null)

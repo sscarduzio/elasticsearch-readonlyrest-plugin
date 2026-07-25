@@ -32,22 +32,25 @@ class ZeroKnowledgeRepositoryFilterScalaAdapter(underlying: ZeroKnowledgeIndexFi
       repositories
         .collect {
           case RepositoryName.Pattern(v) => v.value
-          case RepositoryName.Full(v) => v.value
+          case RepositoryName.Full(v)    => v.value
         }
         .asScala
         .asJava,
       new StringPatternsMatcherJava(matcher),
       (t: util.Set[String]) => processedRepositories.addAll(t)
     )
-    if(result) CheckResult.Ok(processedRepositories.asScala.flatMap(RepositoryName.from).toCovariantSet)
+    if (result) CheckResult.Ok(processedRepositories.asScala.flatMap(RepositoryName.from).toCovariantSet)
     else CheckResult.Failed
   }
+
 }
 
 object ZeroKnowledgeRepositoryFilterScalaAdapter {
   sealed trait CheckResult
+
   object CheckResult {
     final case class Ok(processedRepositories: Set[RepositoryName]) extends CheckResult
     case object Failed extends CheckResult
   }
+
 }

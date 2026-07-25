@@ -23,9 +23,9 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.ApiKeysRule
 import tech.beshu.ror.accesscontrol.domain.{ApiKey, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders.*
@@ -61,17 +61,13 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredApiKeys: NonEmptySet[ApiKey],
-                              requestHeaders: Set[Header]) =
+  private def assertMatchRule(configuredApiKeys: NonEmptySet[ApiKey], requestHeaders: Set[Header]) =
     assertRule(configuredApiKeys, requestHeaders, isPermitted = true)
 
-  private def assertNotMatchRule(configuredApiKeys: NonEmptySet[ApiKey],
-                                 requestHeaders: Set[Header]) =
+  private def assertNotMatchRule(configuredApiKeys: NonEmptySet[ApiKey], requestHeaders: Set[Header]) =
     assertRule(configuredApiKeys, requestHeaders, isPermitted = false)
 
-  private def assertRule(configuredApiKeys: NonEmptySet[ApiKey],
-                         requestHeaders: Set[Header],
-                         isPermitted: Boolean) = {
+  private def assertRule(configuredApiKeys: NonEmptySet[ApiKey], requestHeaders: Set[Header], isPermitted: Boolean) = {
     val rule = new ApiKeysRule(ApiKeysRule.Settings(configuredApiKeys))
     val restRequest = mock[RestRequest]
     (() => restRequest.allHeaders).expects().returning(requestHeaders)
@@ -90,4 +86,5 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
       else Denied(NotAuthorized)
     }
   }
+
 }

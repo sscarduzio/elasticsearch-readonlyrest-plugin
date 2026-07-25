@@ -34,4 +34,5 @@ class BuildInfoReaderTest extends AnyWordSpec {
       buildInfo.pluginVersion shouldBe "plugin stub version"
     }
   }
+
 }

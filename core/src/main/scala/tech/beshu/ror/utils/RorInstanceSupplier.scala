@@ -21,7 +21,7 @@ import tech.beshu.ror.boot.RorInstance
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Supplier
 
-object RorInstanceSupplier extends Supplier[Option[RorInstance]]{
+object RorInstanceSupplier extends Supplier[Option[RorInstance]] {
   private val rorInstanceAtomicReference = new AtomicReference(Option.empty[RorInstance])
 
   override def get(): Option[RorInstance] = rorInstanceAtomicReference.get()
@@ -29,4 +29,5 @@ object RorInstanceSupplier extends Supplier[Option[RorInstance]]{
   def update(rorInstance: RorInstance): Unit = {
     rorInstanceAtomicReference.set(Some(rorInstance))
   }
+
 }

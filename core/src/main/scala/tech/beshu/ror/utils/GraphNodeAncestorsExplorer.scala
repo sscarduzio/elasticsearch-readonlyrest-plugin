@@ -22,18 +22,20 @@ import monix.eval.Task
 import monix.execution.atomic.Atomic
 import tech.beshu.ror.accesscontrol.domain.RequestId
 
-class GraphNodeAncestorsExplorer[NODE](kinshipLevel: Int Refined Positive,
-                                       doFetchParentNodesOf: (NODE, RequestId) => Task[Set[NODE]]) {
+class GraphNodeAncestorsExplorer[NODE](
+    kinshipLevel: Int Refined Positive,
+    doFetchParentNodesOf: (NODE, RequestId) => Task[Set[NODE]]
+) {
 
-  def findAllAncestorsOf(nodes: Iterable[NODE])
-                        (implicit requestId: RequestId): Task[Set[NODE]] = {
+  def findAllAncestorsOf(nodes: Iterable[NODE])(
+      implicit requestId: RequestId
+  ): Task[Set[NODE]] = {
     findAllAncestorsOf(nodes, Atomic(Set.empty[NODE]), kinshipLevel = kinshipLevel.value)
   }
 
-  private def findAllAncestorsOf(nodes: Iterable[NODE],
-                                 processedNodes: Atomic[Set[NODE]],
-                                 kinshipLevel: Int)
-                                (implicit requestId: RequestId): Task[Set[NODE]] = {
+  private def findAllAncestorsOf(nodes: Iterable[NODE], processedNodes: Atomic[Set[NODE]], kinshipLevel: Int)(
+      implicit requestId: RequestId
+  ): Task[Set[NODE]] = {
     if (kinshipLevel > 0) {
       Task
         .parSequenceUnordered {
@@ -45,10 +47,9 @@ class GraphNodeAncestorsExplorer[NODE](kinshipLevel: Int Refined Positive,
     }
   }
 
-  private def fetchAncestorsOf(node: NODE,
-                               processedNodes: Atomic[Set[NODE]],
-                               kinshipLevel: Int)
-                              (implicit requestId: RequestId): Task[Set[NODE]] = {
+  private def fetchAncestorsOf(node: NODE, processedNodes: Atomic[Set[NODE]], kinshipLevel: Int)(
+      implicit requestId: RequestId
+  ): Task[Set[NODE]] = {
     import GraphNodeAncestorsExplorer.ProcessingState
     val processingState = processedNodes.transformAndExtract { alreadyProcessedNodes =>
       if (alreadyProcessedNodes.contains(node)) (ProcessingState.AlreadyProcessed, alreadyProcessedNodes)
@@ -65,12 +66,16 @@ class GraphNodeAncestorsExplorer[NODE](kinshipLevel: Int Refined Positive,
           }
     }
   }
+
 }
+
 private object GraphNodeAncestorsExplorer {
 
   sealed trait ProcessingState
+
   object ProcessingState {
     case object AlreadyProcessed extends ProcessingState
     case object ToBeProcessed extends ProcessingState
   }
+
 }

@@ -25,11 +25,11 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
 
-object MozillaJsCompiler
-  extends JsCompiler {
+object MozillaJsCompiler extends JsCompiler {
 
-  override def compile(jsCodeString: String)
-                      (implicit timeout: FiniteDuration = 10 seconds): Try[Unit] = {
+  override def compile(jsCodeString: String)(
+      implicit timeout: FiniteDuration = 10 seconds
+  ): Try[Unit] = {
     createJsContext
       .use { context =>
         Task.delay(runCompilation(context, jsCodeString))
@@ -74,8 +74,7 @@ object MozillaJsCompiler
           context
         }
       )(
-        release = context =>
-          Task.delay(context.close())
+        release = context => Task.delay(context.close())
       )
   }
 
@@ -84,4 +83,5 @@ object MozillaJsCompiler
     jsScript.exec(context, context.initStandardObjects)
     ()
   }
+
 }

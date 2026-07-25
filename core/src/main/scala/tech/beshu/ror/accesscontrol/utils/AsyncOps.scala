@@ -21,9 +21,13 @@ import cats.effect.{Async, ContextShift}
 import scala.concurrent.Future
 
 object AsyncOps {
+
   extension [F[_]](async: Async[F])
-    def deferFuture[T](value: => Future[T])
-                      (using ContextShift[F]): F[T] = {
+
+    def deferFuture[T](value: => Future[T])(
+        using ContextShift[F]
+    ): F[T] = {
       Async.fromFuture(async.delay(value))(async, ContextShift[F])
     }
+
 }

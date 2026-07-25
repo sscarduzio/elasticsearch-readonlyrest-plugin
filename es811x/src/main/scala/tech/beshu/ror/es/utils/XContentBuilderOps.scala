@@ -27,57 +27,55 @@ class XContentBuilderOps(val builder: XContentBuilder) extends AnyVal {
     applyJsonToBuilder(builder, None, json)
   }
 
-  private def applyJsonToBuilder(builder: XContentBuilder,
-                                 fieldName: Option[String],
-                                 json: Value): XContentBuilder = {
+  private def applyJsonToBuilder(builder: XContentBuilder, fieldName: Option[String], json: Value): XContentBuilder = {
     def startObject(currentBuilder: XContentBuilder) = fieldName match {
       case Some(name) => currentBuilder.startObject(name)
-      case None => currentBuilder.startObject()
+      case None       => currentBuilder.startObject()
     }
 
     def startArray(currentBuilder: XContentBuilder) = fieldName match {
       case Some(name) => currentBuilder.startArray(name)
-      case None => currentBuilder.startArray()
+      case None       => currentBuilder.startArray()
     }
 
     json match {
       case Obj(map) =>
         map
-          .foldLeft(startObject(builder)) {
-            case (currentBuilder, (fieldName, fieldValue)) =>
-              applyJsonToBuilder(currentBuilder, Some(fieldName), fieldValue)
+          .foldLeft(startObject(builder)) { case (currentBuilder, (fieldName, fieldValue)) =>
+            applyJsonToBuilder(currentBuilder, Some(fieldName), fieldValue)
           }
           .endObject()
       case Arr(values) =>
         values
-          .foldLeft(startArray(builder)) {
-            case (currentBuilder, arrayObject) =>
-              applyJsonToBuilder(currentBuilder, None, arrayObject)
+          .foldLeft(startArray(builder)) { case (currentBuilder, arrayObject) =>
+            applyJsonToBuilder(currentBuilder, None, arrayObject)
           }
           .endArray()
       case Str(value) =>
         fieldName match {
           case Some(aKey) => builder.field(aKey, value)
-          case None => builder.value(value)
+          case None       => builder.value(value)
         }
       case Num(value) =>
         fieldName match {
           case Some(aKey) => builder.field(aKey, value)
-          case None => builder.value(value)
+          case None       => builder.value(value)
         }
       case Bool(value) =>
         fieldName match {
           case Some(aKey) => builder.field(aKey, value)
-          case None => builder.value(value)
+          case None       => builder.value(value)
         }
       case Null =>
         fieldName match {
           case Some(aKey) => builder.nullField(aKey)
-          case None => builder.nullValue()
+          case None       => builder.nullValue()
         }
     }
   }
+
 }
+
 object XContentBuilderOps {
   implicit def toXContentBuilderOps(builder: XContentBuilder): XContentBuilderOps = new XContentBuilderOps(builder)
 }

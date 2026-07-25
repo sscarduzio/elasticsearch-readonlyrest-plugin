@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait FieldRuleQueryDSLSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike {
   this: EsClusterProvider =>
@@ -264,7 +264,7 @@ trait FieldRuleQueryDSLSuite
 
               assertNoSearchHitsReturnedFor("test-index", query)
             }
-            "is 'match bool prefix' query" excludeES(allEs6x, "^es70x$".r) in {
+            "is 'match bool prefix' query" excludeES (allEs6x, "^es70x$".r) in {
               val query =
                 """
                   |{
@@ -445,6 +445,7 @@ trait FieldRuleQueryDSLSuite
       }
     }
   }
+
 }
 
 object FieldRuleQueryDSLSuite {
@@ -461,4 +462,5 @@ object FieldRuleQueryDSLSuite {
 
     documentManager.createDoc("test-index", 1, ujson.read(document)).force()
   }
+
 }

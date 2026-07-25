@@ -27,13 +27,11 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.Address
 
-class HostsRule(val settings: Settings,
-                resolver: HostnameResolver)
-  extends BaseHostsRule(resolver) {
+class HostsRule(val settings: Settings, resolver: HostnameResolver) extends BaseHostsRule(resolver) {
 
   override val name: Rule.Name = HostsRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     val requestContext = blockContext.requestContext
     requestContext.xForwardedForHeaderValue match {
       case Some(xForwardedHeaderValue) if settings.acceptXForwardedForHeader =>
@@ -64,6 +62,7 @@ class HostsRule(val settings: Settings,
         Task.now(Denied(Cause.NotAuthorized))
     }
   }
+
 }
 
 object HostsRule {
@@ -72,7 +71,9 @@ object HostsRule {
     override val name: Rule.Name = Rule.Name("hosts")
   }
 
-  final case class Settings(allowedHosts: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
-                            acceptXForwardedForHeader: Boolean)
+  final case class Settings(
+      allowedHosts: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
+      acceptXForwardedForHeader: Boolean
+  )
 
 }

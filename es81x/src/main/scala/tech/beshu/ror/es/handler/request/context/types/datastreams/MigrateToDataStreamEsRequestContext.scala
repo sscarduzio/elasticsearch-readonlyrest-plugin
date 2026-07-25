@@ -26,10 +26,11 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
 import tech.beshu.ror.syntax.*
 
-class MigrateToDataStreamEsRequestContext(actionRequest: MigrateToDataStreamAction.Request,
-                                          esContext: EsContext,
-                                          override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+class MigrateToDataStreamEsRequestContext(
+    actionRequest: MigrateToDataStreamAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   private lazy val originIndex: Option[RequestedIndex[ClusterIndexName]] =
     Option(actionRequest.getAliasName).flatMap(RequestedIndex.fromString)

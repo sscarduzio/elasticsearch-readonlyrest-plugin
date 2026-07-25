@@ -30,7 +30,10 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class GroupsAnyOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AnyOf] {
 
-  override def createRule(settings: GroupsRuleSettings[GroupsLogic.AnyOf], caseSensitivity: CaseSensitivity): BaseGroupsRule[GroupsLogic.AnyOf] = {
+  override def createRule(
+      settings: GroupsRuleSettings[GroupsLogic.AnyOf],
+      caseSensitivity: CaseSensitivity
+  ): BaseGroupsRule[GroupsLogic.AnyOf] = {
     BaseGroupsRule.Creator[GroupsLogic.AnyOf].create(settings, caseSensitivity)
   }
 
@@ -40,17 +43,21 @@ class GroupsAnyOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AnyOf
     "match" when {
       "user has not all groups" in {
         val ruleSettings = GroupsRuleSettings(
-          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-            AlreadyResolved(GroupId("g1").nel),
-            AlreadyResolved(GroupId("g2").nel),
-          )),
-          usersDefinitions = NonEmptyList.of(UserDef(
-            usernames = userIdPatterns("user1"),
-            mode = WithoutGroupsMapping(
-              authenticationRule.permitting(User.Id("user1")),
-              groups("g1")
+          permittedGroupsLogic = resolvableGroupsLogic(
+            UniqueNonEmptyList.of(
+              AlreadyResolved(GroupId("g1").nel),
+              AlreadyResolved(GroupId("g2").nel),
             )
-          ))
+          ),
+          usersDefinitions = NonEmptyList.of(
+            UserDef(
+              usernames = userIdPatterns("user1"),
+              mode = WithoutGroupsMapping(
+                authenticationRule.permitting(User.Id("user1")),
+                groups("g1")
+              )
+            )
+          )
         )
         val usr = Some(User.Id("user1"))
         assertMatchRule(
@@ -58,28 +65,34 @@ class GroupsAnyOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AnyOf
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
           preferredGroupId = None
-        )(defaultOutputBlockContextAssertion(
-          user = User.Id("user1"),
-          group = GroupId("g1"),
-          availableGroups = UniqueList.of(group("g1"))
-        ))
+        )(
+          defaultOutputBlockContextAssertion(
+            user = User.Id("user1"),
+            group = GroupId("g1"),
+            availableGroups = UniqueList.of(group("g1"))
+          )
+        )
       }
     }
 
     "match" when {
       "user has all groups" in {
         val ruleSettings = GroupsRuleSettings(
-          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-            AlreadyResolved(GroupId("g1").nel),
-            AlreadyResolved(GroupId("g2").nel),
-          )),
-          usersDefinitions = NonEmptyList.of(UserDef(
-            usernames = userIdPatterns("user1"),
-            mode = WithoutGroupsMapping(
-              authenticationRule.permitting(User.Id("user1")),
-              groups("g1", "g2")
+          permittedGroupsLogic = resolvableGroupsLogic(
+            UniqueNonEmptyList.of(
+              AlreadyResolved(GroupId("g1").nel),
+              AlreadyResolved(GroupId("g2").nel),
             )
-          ))
+          ),
+          usersDefinitions = NonEmptyList.of(
+            UserDef(
+              usernames = userIdPatterns("user1"),
+              mode = WithoutGroupsMapping(
+                authenticationRule.permitting(User.Id("user1")),
+                groups("g1", "g2")
+              )
+            )
+          )
         )
         val usr = Some(User.Id("user1"))
         assertMatchRule(
@@ -97,4 +110,5 @@ class GroupsAnyOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AnyOf
       }
     }
   }
+
 }

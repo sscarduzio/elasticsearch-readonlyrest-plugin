@@ -31,23 +31,21 @@ public class StringPatternsMatcherJava {
   private final PatternsMatcher<String> underlyingMatcher;
 
   public StringPatternsMatcherJava(Iterable<String> patterns, CaseSensitivity caseSensitivity) {
-    this.underlyingMatcher = PatternsMatcher$.MODULE$.create(
-        CollectionConverters.IterableHasAsScala(patterns).asScala(),
-        Matchable$.MODULE$.matchable(s -> s, caseSensitivity)
-    );
+    this.underlyingMatcher =
+        PatternsMatcher$.MODULE$.create(
+            CollectionConverters.IterableHasAsScala(patterns).asScala(),
+            Matchable$.MODULE$.matchable(s -> s, caseSensitivity));
   }
 
   public StringPatternsMatcherJava(PatternsMatcher<?> matcher) {
-    this.underlyingMatcher = PatternsMatcher$.MODULE$.create(
-        matcher.patterns(),
-        Matchable$.MODULE$.matchable(s -> s, matcher.caseSensitivity())
-    );
+    this.underlyingMatcher =
+        PatternsMatcher$.MODULE$.create(
+            matcher.patterns(), Matchable$.MODULE$.matchable(s -> s, matcher.caseSensitivity()));
   }
 
   public Set<String> getPatterns() {
     return Sets.newHashSet(
-        CollectionConverters.IterableHasAsJava(underlyingMatcher.patterns()).asJava()
-    );
+        CollectionConverters.IterableHasAsJava(underlyingMatcher.patterns()).asJava());
   }
 
   public CaseSensitivity getCaseSensitivity() {
@@ -59,18 +57,10 @@ public class StringPatternsMatcherJava {
   }
 
   public Set<String> filter(Set<String> haystack) {
-    return CollectionConverters
-        .SetHasAsJava(
+    return CollectionConverters.SetHasAsJava(
             underlyingMatcher
-                .filter(
-                    CovariantSet.from(
-                        CollectionConverters
-                            .SetHasAsScala(haystack)
-                            .asScala()
-                    )
-                )
-                .<String>toSet()
-        )
+                .filter(CovariantSet.from(CollectionConverters.SetHasAsScala(haystack).asScala()))
+                .<String>toSet())
         .asJava();
   }
 }

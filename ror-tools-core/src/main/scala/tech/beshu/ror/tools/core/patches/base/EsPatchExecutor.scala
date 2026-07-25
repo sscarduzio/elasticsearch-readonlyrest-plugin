@@ -28,9 +28,9 @@ import tech.beshu.ror.tools.core.utils.{EsDirectory, FileUtils, InOut, RorToolsE
 
 import scala.util.{Failure, Success, Try}
 
-final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
-                            esPatch: EsPatch)
-                           (implicit inOut: InOut) {
+final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsPatch)(
+    implicit inOut: InOut
+) {
 
   def patch(): Either[RorToolsError, Unit] = {
     checkWithPatchedByFileAndEsPatch() match {
@@ -134,7 +134,7 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
     val backupFolderExists = rorPluginDirectory.doesBackupFolderExist
     val patchedJarFiles = searchForPatchedJarFiles() match {
       case Left(files) => Some(files)
-      case Right(()) => None
+      case Right(())   => None
     }
     if (backupFolderExists || patchedJarFiles.nonEmpty) {
       PatchProblemDetected(
@@ -143,17 +143,18 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory,
           patchedJarFiles = patchedJarFiles.getOrElse(List.empty)
         )
       )
-    }
-    else NotPatched
+    } else NotPatched
   }
 
   private def validatePatchedFiles(patchedFilesMetadata: List[FilePatchMetadata]): Either[List[os.Path], Unit] = {
-    patchedFilesMetadata.map { filePatchMetadata =>
-      val currentHash = FileUtils.calculateFileHash(filePatchMetadata.path.wrapped)
-      if (filePatchMetadata.hash == currentHash) Right(()) else Left(filePatchMetadata.path)
-    }.partitionMap(identity) match {
+    patchedFilesMetadata
+      .map { filePatchMetadata =>
+        val currentHash = FileUtils.calculateFileHash(filePatchMetadata.path.wrapped)
+        if (filePatchMetadata.hash == currentHash) Right(()) else Left(filePatchMetadata.path)
+      }
+      .partitionMap(identity) match {
       case (paths, _) if paths.nonEmpty => Left(paths)
-      case _ => Right(())
+      case _                            => Right(())
     }
   }
 
@@ -181,16 +182,22 @@ object EsPatchExecutor {
   sealed trait PatchProblem
 
   object PatchProblem {
-    final case class PatchPerformedOnOtherEsVersion(currentEsVersion: String, patchPerformedOnEsVersion: String) extends PatchProblem
+    final case class PatchPerformedOnOtherEsVersion(currentEsVersion: String, patchPerformedOnEsVersion: String)
+        extends PatchProblem
 
-    final case class PatchedWithOtherRorVersion(currentRorVersion: String, patchedByRorVersion: String) extends PatchProblem
+    final case class PatchedWithOtherRorVersion(currentRorVersion: String, patchedByRorVersion: String)
+        extends PatchProblem
 
-    final case class CorruptedPatchWithoutValidMetadata(backupFolderIsPresent: Boolean, patchedJarFiles: List[PatchedJarFile]) extends PatchProblem
+    final case class CorruptedPatchWithoutValidMetadata(
+        backupFolderIsPresent: Boolean,
+        patchedJarFiles: List[PatchedJarFile]
+    ) extends PatchProblem
 
     final case class CorruptedPatchWithIllegalFileModificationsDetected(files: List[os.Path]) extends PatchProblem
   }
 
   implicit class PatchProblemOps(val patchProblem: PatchProblem) extends AnyVal {
+
     def rorToolsError: RorToolsError = patchProblem match {
       case PatchProblem.PatchPerformedOnOtherEsVersion(currentEsVersion, patchPerformedOnEsVersion) =>
         PatchPerformedOnOtherEsVersionError(currentEsVersion, patchPerformedOnEsVersion)
@@ -201,11 +208,14 @@ object EsPatchExecutor {
       case PatchProblem.CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
         CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles)
     }
+
   }
 
-  def create(esDirectory: EsDirectory)
-            (implicit inOut: InOut): EsPatchExecutor = {
+  def create(esDirectory: EsDirectory)(
+      implicit inOut: InOut
+  ): EsPatchExecutor = {
     val esPatch = EsPatch.create(esDirectory)
     new EsPatchExecutor(new RorPluginDirectory(esDirectory), esPatch)
   }
+
 }

@@ -1,0 +1,196 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+// JMH benchmark module for the `core` ACL hot paths.
+//
+// Wiring is done with plain JavaExec/JavaCompile tasks (no third-party Gradle plugin)
+// so that simply having this module on the build can never break configuration of the
+// rest of the project — any problem here only surfaces when the `jmh` task is actually run.
+//
+// Run:   ./gradlew :benchmarks:jmh
+//        ./gradlew :benchmarks:jmh -PjmhArgs="GlobPatternsMatcher -f 2 -wi 5 -i 5 -prof gc"
+
+plugins {
+    id "scala"
+}
+
+repositories {
+    mavenCentral()
+    // The S3 bucket is required because this module depends on `:core`, whose transitive
+    // artifacts (ES libs, shaded deps) are published there and resolved against this module's
+    // repository list. `jitpack.io` and the gradle libs-releases repo are not needed by any
+    // declared or transitive dependency of the benchmark module.
+    maven {
+        url = "s3://" + (System.env.BUCKET ?: "beshu") + "/build"
+        authentication {
+            awsIm(AwsImAuthentication)
+        }
+        metadataSources {
+            artifact()
+        }
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+ext {
+    jmhVersion = '1.37'
+}
+
+dependencies {
+    implementation project(':core')
+    implementation group: 'org.openjdk.jmh',  name: 'jmh-core',                version: jmhVersion
+    implementation group: 'org.openjdk.jmh',  name: 'jmh-generator-bytecode',  version: jmhVersion
+    implementation group: 'org.scala-lang',   name: 'scala3-library_3',        version: '3.3.7'
+}
+
+tasks.withType(ScalaCompile).configureEach {
+    scalaCompileOptions.additionalParameters = [
+            "-feature",
+            "-Xfatal-warnings",
+            "-Wunused:implicits",
+            "-Wunused:imports",
+            "-Wunused:explicits",
+            "-Wunused:strict-no-implicit-warn",
+            "-Wunused:locals",
+            "-Wunused:params",
+            "-Wunused:privates",
+            "-Wunused:nowarn"
+    ]
+}
+
+def benchClasses = layout.buildDirectory.dir("classes/scala/main")
+def jmhGenSrc     = layout.buildDirectory.dir("generated/jmh/sources")
+def jmhGenRes     = layout.buildDirectory.dir("generated/jmh/resources")
+def jmhGenClasses = layout.buildDirectory.dir("generated/jmh/classes")
+
+// 1) Scan compiled @Benchmark classes and generate the JMH infrastructure
+//    (BenchmarkList + *_jmhTest sources). ASM-based, so it works with Scala bytecode.
+tasks.register('jmhGenerate', JavaExec) {
+    group = 'benchmark'
+    dependsOn tasks.named('classes')
+    mainClass = 'org.openjdk.jmh.generators.bytecode.JmhBytecodeGenerator'
+    classpath = sourceSets.main.runtimeClasspath
+    doFirst {
+        jmhGenSrc.get().asFile.mkdirs()
+        jmhGenRes.get().asFile.mkdirs()
+    }
+    args = [
+            benchClasses.get().asFile.absolutePath,
+            jmhGenSrc.get().asFile.absolutePath,
+            jmhGenRes.get().asFile.absolutePath
+    ]
+    outputs.dir(jmhGenSrc)
+    outputs.dir(jmhGenRes)
+}
+
+// 2) Compile the generated JMH Java sources.
+tasks.register('jmhCompileGenerated', JavaCompile) {
+    group = 'benchmark'
+    dependsOn 'jmhGenerate'
+    source = fileTree(jmhGenSrc)
+    classpath = sourceSets.main.runtimeClasspath
+    destinationDirectory = jmhGenClasses
+}
+
+// 3) Run JMH. Pass JMH CLI args via -PjmhArgs="..."; defaults to a quick, fork-isolated run.
+tasks.register('jmh', JavaExec) {
+    group = 'benchmark'
+    description = 'Runs JMH benchmarks (override with -PjmhArgs="<regex> -f 2 -wi 5 -i 5 ...")'
+    dependsOn 'jmhCompileGenerated'
+    mainClass = 'org.openjdk.jmh.Main'
+    classpath = files(jmhGenClasses, jmhGenRes) + sourceSets.main.runtimeClasspath
+    if (project.hasProperty('jmhArgs')) {
+        args = project.property('jmhArgs').toString().trim().split('\\s+').toList()
+    } else {
+        args = ['-f', '2', '-wi', '5', '-i', '5']
+    }
+}
+
+// Drift guard: every benchmark named in kpis.yml must resolve to a real compiled
+// @Benchmark class+method, so a rename can't silently rot the manifest.
+tasks.register('verifyKpis') {
+    group = 'benchmark'
+    description = 'Verifies kpis.yml entries resolve to existing benchmark methods'
+    dependsOn tasks.named('classes'), sourceSets.main.runtimeClasspath
+    doLast {
+        def targets = [] as Set  // list of [fqcn, method, source-file]
+        file('kpis.yml').readLines().each { line ->
+            def m = line =~ /^\s*benchmark:\s*([\w.]+)\.(\w+)/
+            if (m) targets << [m[0][1], m[0][2], 'kpis.yml']
+        }
+        def loader = new URLClassLoader(sourceSets.main.runtimeClasspath.files.collect { it.toURI().toURL() } as URL[], (ClassLoader) null)
+        def missing = targets.findAll { fqcn, method, src ->
+            try {
+                !Class.forName(fqcn, false, loader).declaredMethods.any { it.name == method }
+            } catch (ClassNotFoundException ignored) {
+                true
+            }
+        }
+        loader.close()
+        if (missing) {
+            throw new GradleException("Stale benchmark reference(s):\n" +
+                    missing.collect { fqcn, method, src -> "  $src -> $fqcn.$method" }.join('\n'))
+        }
+        println "verifyKpis: ${targets.size()} manifest entries resolve OK"
+    }
+}
+
+def smokeRaw    = layout.buildDirectory.file("jmh/smoke-raw.json")
+
+// Tier-1 benchmark methods parsed from kpis.yml — the single reviewed manifest; its flat
+// line format needs no YAML library. Deduped: .time/.alloc KPI pairs share one method.
+def tier1BenchmarksFromKpisYml = {
+    def entries = []
+    def current = null
+    file('kpis.yml').readLines().each { line ->
+        def m
+        if ((m = line =~ /^\s*-\s*id:/)) { if (current != null) entries << current; current = [:] }
+        else if (current != null && (m = line =~ /^\s*tier:\s*(\d+)/)) current.tier = m[0][1] as Integer
+        else if (current != null && (m = line =~ /^\s*benchmark:\s*(\S+)/)) current.benchmark = m[0][1]
+    }
+    if (current != null) entries << current
+    entries.findAll { it.tier == 1 && it.benchmark }
+            .collect { it.benchmark.replaceAll(/\{[^}]*\}$/, '') }  // drop the pinned {param=...} suffix
+            .unique()
+}
+
+// 4) PR smoke subset: the kpis.yml tier-1 benchmarks at their canonical @Param sizes, with -prof gc.
+tasks.register('jmhSmoke', JavaExec) {
+    group = 'benchmark'
+    description = 'Runs the tier-1 KPI benchmarks (from kpis.yml) with -prof gc, JSON to build/jmh'
+    dependsOn 'jmhCompileGenerated', 'verifyKpis'
+    mainClass = 'org.openjdk.jmh.Main'
+    classpath = files(jmhGenClasses, jmhGenRes) + sourceSets.main.runtimeClasspath
+    // Parse kpis.yml and assemble args at EXECUTION time (doFirst), not configuration time —
+    // otherwise a missing kpis.yml would fail every ./gradlew in :benchmarks, not just jmhSmoke.
+    doFirst {
+        smokeRaw.get().asFile.parentFile.mkdirs()
+        // Dots escaped so a JMH regex can't accidentally glob across a package separator.
+        def regexes = tier1BenchmarksFromKpisYml().collect { it.replace('.', '\\.') }
+        args = regexes + [
+                '-p', 'blocks=100', '-p', 'patterns=100', '-p', 'requestedIndices=50',
+                '-p', 'configuredGroups=100', '-p', 'userGroups=100',
+                '-f', '1', '-wi', '3', '-i', '3', '-prof', 'gc',
+                '-rf', 'json', '-rff', smokeRaw.get().asFile.absolutePath
+        ]
+    }
+}

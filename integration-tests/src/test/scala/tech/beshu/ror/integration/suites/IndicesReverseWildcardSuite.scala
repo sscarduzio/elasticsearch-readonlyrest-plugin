@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class IndicesReverseWildcardSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -52,14 +52,14 @@ class IndicesReverseWildcardSuite
 
         response should have statusCode 200
         response.searchHits.size should be(2)
-        response.searchHits.map(_("_id").str) should contain allOf("doc-a1", "doc-a2")
+        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
       }
       "reverse wildcard search is used" in {
         val response = dev1SearchManager.search("logstash-*")
 
         response should have statusCode 200
         response.searchHits.size should be(2)
-        response.searchHits.map(_("_id").str) should contain allOf("doc-a1", "doc-a2")
+        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
       }
 
       "reverse total wildcard search is used" in {
@@ -67,7 +67,7 @@ class IndicesReverseWildcardSuite
 
         response should have statusCode 200
         response.searchHits.size should be(2)
-        response.searchHits.map(_("_id").str) should contain allOf("doc-a1", "doc-a2")
+        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
       }
 
       "generic search all is used" in {
@@ -75,13 +75,15 @@ class IndicesReverseWildcardSuite
 
         response should have statusCode 200
         response.searchHits.size should be(2)
-        response.searchHits.map(_("_id").str) should contain allOf("doc-a1", "doc-a2")
+        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
       }
     }
   }
+
 }
 
 object IndicesReverseWildcardSuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager.createDoc("logstash-a1", "doc-a1", ujson.read(s"""{"title": "logstash-a1"}"""))
@@ -89,4 +91,5 @@ object IndicesReverseWildcardSuite {
     documentManager.createDoc("logstash-b1", "doc-b1", ujson.read(s"""{"title": "logstash-b1"}"""))
     documentManager.createDoc("logstash-b2", "doc-b2", ujson.read(s"""{"title": "logstash-b2"}"""))
   }
+
 }

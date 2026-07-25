@@ -28,5 +28,5 @@ object RorWrappedUpgradeActionType {
 
   case object ArtificialUpgradeActionCannotBeTransported extends Exception
 
-  private [_upgrade] def exceptionReader[A]: Writeable.Reader[A] = _ => throw ArtificialUpgradeActionCannotBeTransported
+  private[_upgrade] def exceptionReader[A]: Writeable.Reader[A] = _ => throw ArtificialUpgradeActionCannotBeTransported
 }

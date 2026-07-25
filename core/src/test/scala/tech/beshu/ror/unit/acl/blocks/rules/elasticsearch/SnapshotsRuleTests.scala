@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
@@ -28,9 +29,17 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.SnapshotsRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.domain.{Action, SnapshotName}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
+import tech.beshu.ror.accesscontrol.domain.{Action, LoggedUser, SnapshotName, User}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
@@ -48,8 +57,8 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside with MockFactory {
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.Wildcard.nel)),
           requestAction = Action("cluster:admin/snapshot/get"),
           requestSnapshots = Set(SnapshotName.from("snapshot1").get)
-        ) {
-          blockContext => blockContext.snapshots should be (Set(SnapshotName.from("snapshot1").get))
+        ) { blockContext =>
+          blockContext.snapshots should be(Set(SnapshotName.from("snapshot1").get))
         }
       }
       "allowed snapshots set contains _all" in {
@@ -57,8 +66,8 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside with MockFactory {
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.All.nel)),
           requestAction = Action("cluster:admin/snapshot/get"),
           requestSnapshots = Set(SnapshotName.from("snapshot1").get)
-        ) {
-          blockContext => blockContext.snapshots should be (Set(SnapshotName.from("snapshot1").get))
+        ) { blockContext =>
+          blockContext.snapshots should be(Set(SnapshotName.from("snapshot1").get))
         }
       }
       "readonly request with configured simple snapshot" in {
@@ -66,8 +75,8 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside with MockFactory {
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("public-asd").get.nel)),
           requestAction = Action("cluster:admin/snapshot/get"),
           requestSnapshots = Set(SnapshotName.from("public-asd").get)
-        ) {
-          blockContext => blockContext.snapshots should be (Set(SnapshotName.from("public-asd").get))
+        ) { blockContext =>
+          blockContext.snapshots should be(Set(SnapshotName.from("public-asd").get))
         }
       }
       "readonly request with configured snapshot with wildcard" in {
@@ -75,8 +84,8 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside with MockFactory {
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("public-*").get.nel)),
           requestAction = Action("cluster:admin/snapshot/get"),
           requestSnapshots = Set(SnapshotName.from("public-asd").get)
-        ) {
-          blockContext => blockContext.snapshots should be (Set(SnapshotName.from("public-asd").get))
+        ) { blockContext =>
+          blockContext.snapshots should be(Set(SnapshotName.from("public-asd").get))
         }
       }
       "write request with configured simple snapshot" in {
@@ -84,8 +93,8 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside with MockFactory {
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("public-asd").get.nel)),
           requestAction = Action("cluster:admin/snapshot/create"),
           requestSnapshots = Set(SnapshotName.from("public-asd").get)
-        ) {
-          blockContext => blockContext.snapshots should be (Set(SnapshotName.from("public-asd").get))
+        ) { blockContext =>
+          blockContext.snapshots should be(Set(SnapshotName.from("public-asd").get))
         }
       }
       "write request with configured snapshot with wildcard" in {
@@ -93,8 +102,8 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside with MockFactory {
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("public-*").get.nel)),
           requestAction = Action("cluster:admin/snapshot/create"),
           requestSnapshots = Set(SnapshotName.from("public-asd").get)
-        ) {
-          blockContext => blockContext.snapshots should be (Set(SnapshotName.from("public-asd").get))
+        ) { blockContext =>
+          blockContext.snapshots should be(Set(SnapshotName.from("public-asd").get))
         }
       }
       "readonly request with configured several snapshots and several snapshots in request" in {
@@ -105,8 +114,8 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside with MockFactory {
           ),
           requestAction = Action("cluster:admin/snapshot/get"),
           requestSnapshots = Set(SnapshotName.from("public-asd").get, SnapshotName.from("q").get)
-        ) {
-          blockContext => blockContext.snapshots should be (Set(SnapshotName.from("public-asd").get))
+        ) { blockContext =>
+          blockContext.snapshots should be(Set(SnapshotName.from("public-asd").get))
         }
       }
     }
@@ -150,30 +159,69 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside with MockFactory {
         )
       }
     }
+    "match a runtime variable" when {
+      "it resolves to the requested snapshot" in {
+        assertMatchRule(
+          configuredSnapshots = NonEmptySet.one(snapshotNameVar("@{user}")),
+          requestAction = Action("cluster:admin/snapshot/get"),
+          requestSnapshots = Set(SnapshotName.from("user-snap").get),
+          loggedUser = Some(LoggedUser.DirectlyLoggedUser(User.Id("user-snap")))
+        ) { blockContext =>
+          blockContext.snapshots should be(Set(SnapshotName.from("user-snap").get))
+        }
+      }
+    }
+    "not match a runtime variable" when {
+      "it resolves to a snapshot different from the requested one" in {
+        assertNotMatchRule(
+          configuredSnapshots = NonEmptySet.one(snapshotNameVar("@{user}")),
+          requestAction = Action("cluster:admin/snapshot/create"),
+          requestSnapshots = Set(SnapshotName.from("other-snap").get),
+          loggedUser = Some(LoggedUser.DirectlyLoggedUser(User.Id("user-snap")))
+        )
+      }
+    }
   }
 
-  private def assertMatchRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
-                              requestAction: Action,
-                              requestSnapshots: Set[SnapshotName])
-                             (blockContextAssertion: SnapshotRequestBlockContext => Unit): Unit =
-    assertRule(configuredSnapshots, requestAction, requestSnapshots, Some(blockContextAssertion))
+  private def assertMatchRule(
+      configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
+      requestAction: Action,
+      requestSnapshots: Set[SnapshotName],
+      loggedUser: Option[LoggedUser.DirectlyLoggedUser] = None
+  )(blockContextAssertion: SnapshotRequestBlockContext => Unit): Unit =
+    assertRule(configuredSnapshots, requestAction, requestSnapshots, loggedUser, Some(blockContextAssertion))
 
-  private def assertNotMatchRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
-                                 requestAction: Action,
-                                 requestSnapshots: Set[SnapshotName]): Unit =
-    assertRule(configuredSnapshots, requestAction, requestSnapshots, blockContextAssertion = None)
+  private def assertNotMatchRule(
+      configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
+      requestAction: Action,
+      requestSnapshots: Set[SnapshotName],
+      loggedUser: Option[LoggedUser.DirectlyLoggedUser] = None
+  ): Unit =
+    assertRule(configuredSnapshots, requestAction, requestSnapshots, loggedUser, blockContextAssertion = None)
 
-  private def assertRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
-                         requestAction: Action,
-                         requestSnapshots: Set[SnapshotName],
-                         blockContextAssertion: Option[SnapshotRequestBlockContext => Unit]) = {
+  private def assertRule(
+      configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
+      requestAction: Action,
+      requestSnapshots: Set[SnapshotName],
+      loggedUser: Option[LoggedUser.DirectlyLoggedUser],
+      blockContextAssertion: Option[SnapshotRequestBlockContext => Unit]
+  ) = {
     val rule = new SnapshotsRule(SnapshotsRule.Settings(configuredSnapshots))
     val requestContext = MockRequestContext.snapshots.copy(
       snapshots = requestSnapshots,
       action = requestAction
     )
+    val blockMetadata = loggedUser.foldLeft(BlockMetadata.empty)(_.withLoggedUser(_))
     val blockContext = SnapshotRequestBlockContext(
-      mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, requestSnapshots, Set.empty, Set.empty, Set.empty
+      mock[Block],
+      requestContext,
+      blockMetadata,
+      Set.empty,
+      List.empty,
+      requestSnapshots,
+      Set.empty,
+      Set.empty,
+      Set.empty
     )
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
@@ -185,5 +233,18 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside with MockFactory {
         result should be(Denied(NotAuthorized))
     }
   }
+
+  private def snapshotNameVar(value: String): RuntimeMultiResolvableVariable[SnapshotName] = {
+    implicit val convertible: AlwaysRightConvertible[SnapshotName] =
+      AlwaysRightConvertible.from(str => SnapshotName.from(str.value).getOrElse(SnapshotName.All))
+    variableCreator
+      .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))
+      .getOrElse(throw new IllegalStateException(s"Cannot create SnapshotName variable from $value"))
+  }
+
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty)
+    )
 
 }

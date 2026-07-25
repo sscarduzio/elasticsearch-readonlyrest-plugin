@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseYamlLoadedAccessControlTest
     with BeforeAndAfterAll
     with ForAllTestContainer
@@ -134,10 +134,11 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
         val request = MockRequestContext.indices.withHeaders(basicAuthHeader("unreachableldapperson:somepass"))
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
         history.blocks should have size 3
-        inside(result) { case r@RegularRequestResult.ForbiddenByMismatched(_) =>
+        inside(result) { case r @ RegularRequestResult.ForbiddenByMismatched(_) =>
           r.causes.toSortedSet should contain(ForbiddenCause.OperationNotAllowed)
         }
       }
     }
   }
+
 }

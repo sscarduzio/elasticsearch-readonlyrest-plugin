@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //TODO change test names. Current names are copies from old java integration tests
 class FiltersAndFieldsSecuritySuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -39,7 +39,8 @@ class FiltersAndFieldsSecuritySuite
 
   "testDirectSingleIdxa" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfiltera")
@@ -56,7 +57,8 @@ class FiltersAndFieldsSecuritySuite
 
   "testHeaderReplacement" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "put-the-header", "x-randomheader" -> "value")
     )
     val response = searchManager.search("testfiltera")
@@ -73,7 +75,8 @@ class FiltersAndFieldsSecuritySuite
 
   "testDirectMultipleIdxbandc" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfilterbandc")
@@ -90,7 +93,8 @@ class FiltersAndFieldsSecuritySuite
 
   "testDirectSingleIdxd" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfilterd")
@@ -112,14 +116,16 @@ class FiltersAndFieldsSecuritySuite
 
   "tesANoCache" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "a_nofilter")
     )
     val firstResponse = searchManager.search("testfiltera")
     firstResponse should have statusCode 200
 
     val searchManager2 = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "g")
     )
 
@@ -146,9 +152,11 @@ class FiltersAndFieldsSecuritySuite
 
     response should have statusCode 200
   }
+
 }
 
 object FiltersAndFieldsSecuritySuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     insertTestFilterDoc("a1", "a", "title")
@@ -174,4 +182,5 @@ object FiltersAndFieldsSecuritySuite {
         .force()
     }
   }
+
 }

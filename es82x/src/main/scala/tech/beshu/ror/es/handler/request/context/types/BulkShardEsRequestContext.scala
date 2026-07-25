@@ -35,20 +35,23 @@ import tech.beshu.ror.utils.ScalaOps.*
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
-class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
-                                esContext: EsContext,
-                                aclContext: AccessControlStaticContext,
-                                override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[BulkShardRequest](actionRequest, esContext, aclContext, threadPool) {
+class BulkShardEsRequestContext(
+    actionRequest: BulkShardRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[BulkShardRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: BulkShardRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request.indices().asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: BulkShardRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: BulkShardRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     tryUpdate(request, filteredIndices) match {
       case Success(_) =>
         Modified
@@ -60,12 +63,15 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
 
   private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     if (indices.tail.nonEmpty) {
-      logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
+      logger.warn(
+        s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]"
+      )
     }
     val singleIndex = indices.head
     val uuid = esContext.esServices.clusterService.indexOrAliasUuids(singleIndex.name).toList.head
     ReflectionUtils
-      .getAllFields(request.shardId().getClass, ReflectionUtils.withName("index")).asScala
+      .getAllFields(request.shardId().getClass, ReflectionUtils.withName("index"))
+      .asScala
       .foldLeft(Try(())) {
         case (Success(_), field) =>
           field.setAccessible(true)

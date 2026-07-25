@@ -27,5 +27,5 @@ object RorWrappedCatActionType {
 
   case object ArtificialCatActionCannotBeTransported extends Exception
 
-  private [_cat] def exceptionReader[A]: Writeable.Reader[A] = _ => throw ArtificialCatActionCannotBeTransported
+  private[_cat] def exceptionReader[A]: Writeable.Reader[A] = _ => throw ArtificialCatActionCannotBeTransported
 }

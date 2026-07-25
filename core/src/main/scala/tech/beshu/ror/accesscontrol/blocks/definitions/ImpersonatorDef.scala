@@ -24,22 +24,26 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Ite
 
 import java.util.UUID
 
-final case class ImpersonatorDef private(override val id: ImpersonatorDef#Id,
-                                         impersonatorUsernames: UserIdPatterns,
-                                         authenticationRule: AuthenticationRule,
-                                         impersonatedUsers: ImpersonatedUsers)
-  extends Item {
+final case class ImpersonatorDef private (
+    override val id: ImpersonatorDef#Id,
+    impersonatorUsernames: UserIdPatterns,
+    authenticationRule: AuthenticationRule,
+    impersonatedUsers: ImpersonatedUsers
+) extends Item {
 
   override type Id = UUID // artificial ID (won't be used)
   override val idShow: Show[UUID] = Show.show(_.toString)
 }
+
 object ImpersonatorDef {
 
   final case class ImpersonatedUsers(usernames: UserIdPatterns) extends AnyVal
 
-  def apply(usernames: UserIdPatterns,
-            authenticationRule: AuthenticationRule,
-            users: ImpersonatedUsers): ImpersonatorDef =
+  def apply(
+      usernames: UserIdPatterns,
+      authenticationRule: AuthenticationRule,
+      users: ImpersonatedUsers
+  ): ImpersonatorDef =
     new ImpersonatorDef(UUID.randomUUID(), usernames, authenticationRule, users)
-}
 
+}

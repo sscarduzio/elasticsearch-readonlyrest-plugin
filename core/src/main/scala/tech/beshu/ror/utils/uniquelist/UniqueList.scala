@@ -20,8 +20,8 @@ import cats.implicits.*
 
 import scala.collection.{IterableFactory, IterableFactoryDefaults, SeqOps, mutable}
 
-final case class UniqueList[+T] private [uniquelist] (private val underlying: Vector[T])
-  extends Iterable[T]
+final case class UniqueList[+T] private[uniquelist] (private val underlying: Vector[T])
+    extends Iterable[T]
     with IterableFactoryDefaults[T, UniqueList]
     with SeqOps[T, UniqueList, UniqueList[T]] {
 
@@ -46,4 +46,5 @@ trait UniqueListFactory extends IterableFactory[UniqueList] {
   override def newBuilder[T]: mutable.Builder[T, UniqueList[T]] = Vector.newBuilder.mapResult(from)
   def of[T](t: T*): UniqueList[T] = from(t)
 }
+
 object UniqueListFactory extends UniqueListFactory

@@ -15,6 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.integration.suites
+
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
@@ -22,14 +23,19 @@ import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
 import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, SecurityType}
+import tech.beshu.ror.utils.containers.{
+  ElasticsearchNodeDataInitializer,
+  EsClusterContainer,
+  EsClusterSettings,
+  SecurityType
+}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 
 class ClusterApiSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with PluginTestSupport
     with SingleClientSupport
@@ -49,15 +55,18 @@ class ClusterApiSuite
 
     createLocalClusterContainer(
       esClusterSettingsCreator(
-        RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorSettingsFileName = rorSettingsFileName
-        ))
+        RorWithXpackSecurity(
+          ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+            rorSettingsFileName = rorSettingsFileName
+          )
+        )
       )
     )
   }
 
   private lazy val adminCatManager = new CatManager(basicAuthClient("admin", "container"), esVersion = esVersionUsed)
-  private lazy val adminClusterManager = new ClusterManager(basicAuthClient("admin", "container"), esVersion = esVersionUsed)
+  private lazy val adminClusterManager =
+    new ClusterManager(basicAuthClient("admin", "container"), esVersion = esVersionUsed)
   private lazy val dev1ClusterManager = new ClusterManager(basicAuthClient("dev1", "test"), esVersion = esVersionUsed)
   private lazy val dev2ClusterManager = new ClusterManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
   private lazy val dev3ClusterManager = new ClusterManager(basicAuthClient("dev3", "test"), esVersion = esVersionUsed)
@@ -137,15 +146,14 @@ class ClusterApiSuite
         val otherNode = adminCatManager.nodes().names.find(_ != nodeOfIndex).get
 
         val result = dev1ClusterManager.reroute(
-          ujson.read(
-            s"""{
-               |  "move": {
-               |    "index": "$indexName",
-               |    "shard": $shardOfIndex,
-               |    "from_node": "$nodeOfIndex",
-               |    "to_node": "$otherNode"
-               |  }
-               |}""".stripMargin)
+          ujson.read(s"""{
+                        |  "move": {
+                        |    "index": "$indexName",
+                        |    "shard": $shardOfIndex,
+                        |    "from_node": "$nodeOfIndex",
+                        |    "to_node": "$otherNode"
+                        |  }
+                        |}""".stripMargin)
         )
         result should have statusCode 200
       }
@@ -165,29 +173,27 @@ class ClusterApiSuite
           val otherNode = adminCatManager.nodes().names.find(_ != nodeOfIndex).get
 
           val result = dev1ClusterManager.reroute(
-            ujson.read(
-              s"""{
-                 |  "move": {
-                 |    "index": "$indexName",
-                 |    "shard": $shardOfIndex,
-                 |    "from_node": "$nodeOfIndex",
-                 |    "to_node": "$otherNode"
-                 |  }
-                 |}""".stripMargin)
+            ujson.read(s"""{
+                          |  "move": {
+                          |    "index": "$indexName",
+                          |    "shard": $shardOfIndex,
+                          |    "from_node": "$nodeOfIndex",
+                          |    "to_node": "$otherNode"
+                          |  }
+                          |}""".stripMargin)
           )
           result should have statusCode 403
         }
         "the index doesn't exist" in {
           val result = dev1ClusterManager.reroute(
-            ujson.read(
-              s"""{
-                 |  "move": {
-                 |    "index": "test1_index_nonexistent",
-                 |    "shard": 0,
-                 |    "from_node": "${container.nodes(0).esConfig.nodeName}",
-                 |    "to_node": "${container.nodes(1).esConfig.nodeName}"
-                 |  }
-                 |}""".stripMargin)
+            ujson.read(s"""{
+                          |  "move": {
+                          |    "index": "test1_index_nonexistent",
+                          |    "shard": 0,
+                          |    "from_node": "${container.nodes(0).esConfig.nodeName}",
+                          |    "to_node": "${container.nodes(1).esConfig.nodeName}"
+                          |  }
+                          |}""".stripMargin)
           )
           result should have statusCode 403
         }
@@ -241,9 +247,12 @@ class ClusterApiSuite
 
       val settingsAfterPut = adminClusterManager.getSettings
       settingsAfterPut should not be settingsBeforePut
-      settingsAfterPut.responseJson("persistent")("cluster")("routing")("allocation")("cluster_concurrent_rebalance").str should be("30")
+      settingsAfterPut
+        .responseJson("persistent")("cluster")("routing")("allocation")("cluster_concurrent_rebalance")
+        .str should be("30")
     }
   }
+
 }
 
 object ClusterApiSuite {
@@ -256,4 +265,5 @@ object ClusterApiSuite {
     documentManager.createFirstDoc("test2_index", ujson.read("""{"hello":"world"}"""))
     indexManager.putAllSettings(numberOfReplicas = 0)
   }
+
 }

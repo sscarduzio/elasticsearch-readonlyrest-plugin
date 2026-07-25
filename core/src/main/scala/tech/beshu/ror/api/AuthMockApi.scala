@@ -24,8 +24,15 @@ import io.circe.*
 import io.circe.syntax.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService as AuthenticationService, ExternalGroupsProviderService as AuthorizationService}
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{
+  ExternalAuthenticationService as AuthenticationService,
+  ExternalGroupsProviderService as AuthorizationService
+}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{
+  ExternalAuthenticationServiceMock,
+  ExternalGroupsProviderServiceMock,
+  LdapServiceMock
+}
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RequestId, User}
@@ -44,18 +51,20 @@ class AuthMockApi(rorInstance: RorInstance) {
   import AuthMockApi.Utils.*
   import AuthMockApi.Utils.codecs.*
 
-  def call(request: AuthMockRequest)
-          (implicit requestId: RequestId): Task[AuthMockResponse] = {
+  def call(request: AuthMockRequest)(
+      implicit requestId: RequestId
+  ): Task[AuthMockResponse] = {
     val response = request.aType match {
       case AuthMockRequest.Type.ProvideAuthMock => provideAuthMock()
-      case AuthMockRequest.Type.UpdateAuthMock => updateAuthMock(request.body)
+      case AuthMockRequest.Type.UpdateAuthMock  => updateAuthMock(request.body)
     }
     response
       .executeOn(RorSchedulers.restApiScheduler)
   }
 
-  private def provideAuthMock()
-                             (implicit requestId: RequestId): Task[AuthMockResponse] = {
+  private def provideAuthMock()(
+      implicit requestId: RequestId
+  ): Task[AuthMockResponse] = {
     withRorSettingsAuthServices(
       action = readCurrentAuthMocks,
       onNotSet = AuthMockResponse.ProvideAuthMock.NotConfigured.apply,
@@ -64,8 +73,9 @@ class AuthMockApi(rorInstance: RorInstance) {
       .map(_.merge)
   }
 
-  private def readCurrentAuthMocks(services: RorDependencies.Services)
-                                  (implicit requestId: RequestId): AuthMockResponse.ProvideAuthMock.CurrentAuthMocks = {
+  private def readCurrentAuthMocks(services: RorDependencies.Services)(
+      implicit requestId: RequestId
+  ): AuthMockResponse.ProvideAuthMock.CurrentAuthMocks = {
     val ldaps = services.ldaps.map { serviceId =>
       toAuthMockService(serviceId, rorInstance.mocksProvider.ldapServiceWith(serviceId))
     }
@@ -78,8 +88,9 @@ class AuthMockApi(rorInstance: RorInstance) {
     AuthMockResponse.ProvideAuthMock.CurrentAuthMocks((ldaps ++ extAuthn ++ extAuthz).toList)
   }
 
-  private def updateAuthMock(body: String)
-                            (implicit requestId: RequestId): Task[AuthMockResponse] = {
+  private def updateAuthMock(body: String)(
+      implicit requestId: RequestId
+  ): Task[AuthMockResponse] = {
     val result = for {
       updateRequest <- decodeRequest(body)
       authServices <- readCurrentAuthServices()
@@ -91,41 +102,49 @@ class AuthMockApi(rorInstance: RorInstance) {
   }
 
   private def decodeRequest(body: String): EitherT[Task, AuthMockResponse, UpdateMocksRequest] = {
-    io.circe.parser.decode[UpdateMocksRequest](body)
+    io.circe.parser
+      .decode[UpdateMocksRequest](body)
       .leftMap(error => AuthMockResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage.show}]"))
       .leftWiden[AuthMockResponse]
       .toEitherT[Task]
   }
 
   private def readCurrentAuthServices(): EitherT[Task, AuthMockResponse, RorDependencies.Services] = {
-    EitherT(withRorSettingsAuthServices(
-      action = identity,
-      onNotSet = AuthMockResponse.UpdateAuthMock.NotConfigured.apply,
-      onInvalidated = AuthMockResponse.UpdateAuthMock.Invalidated.apply
-    ))
+    EitherT(
+      withRorSettingsAuthServices(
+        action = identity,
+        onNotSet = AuthMockResponse.UpdateAuthMock.NotConfigured.apply,
+        onInvalidated = AuthMockResponse.UpdateAuthMock.Invalidated.apply
+      )
+    )
   }
 
-  private def withRorSettingsAuthServices[A, B](action: RorDependencies.Services => B,
-                                              onNotSet: String => A,
-                                              onInvalidated: String => A): Task[Either[A, B]] = {
+  private def withRorSettingsAuthServices[A, B](
+      action: RorDependencies.Services => B,
+      onNotSet: String => A,
+      onInvalidated: String => A
+  ): Task[Either[A, B]] = {
     rorInstance.currentTestSettings().map {
       case TestSettings.NotSet =>
         Left(onNotSet(testSettingsNotConfiguredMessage))
       case TestSettings.Present(_, dependencies, _, _) =>
         Right(action(dependencies.services))
-      case _:TestSettings.Invalidated =>
+      case _: TestSettings.Invalidated =>
         Left(onInvalidated(testSettingsInvalidatedMessage))
     }
   }
 
-  private val testSettingsInvalidatedMessage = "ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active."
+  private val testSettingsInvalidatedMessage =
+    "ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active."
 
-  private val testSettingsNotConfiguredMessage = "ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active."
+  private val testSettingsNotConfiguredMessage =
+    "ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active."
 
-  private def validateAuthMocks(updateRequest: UpdateMocksRequest,
-                                services: RorDependencies.Services): EitherT[Task, AuthMockResponse, Unit] = {
-    updateRequest
-      .services
+  private def validateAuthMocks(
+      updateRequest: UpdateMocksRequest,
+      services: RorDependencies.Services
+  ): EitherT[Task, AuthMockResponse, Unit] = {
+    updateRequest.services
       .map {
         case LdapAuthorizationService(name, _) =>
           services.ldaps.find(_.value === name).toValidNel(name)
@@ -147,8 +166,9 @@ class AuthMockApi(rorInstance: RorInstance) {
       .toEitherT[Task]
   }
 
-  private def updateAuthMocks(updateRequest: UpdateMocksRequest)
-                             (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, AuthMockResponse] = EitherT {
+  private def updateAuthMocks(updateRequest: UpdateMocksRequest)(
+      implicit requestId: RequestId
+  ): EitherT[Task, AuthMockResponse, AuthMockResponse] = EitherT {
     rorInstance
       .updateAuthMocks(toDomain(updateRequest.services))
       .map {
@@ -169,19 +189,23 @@ class AuthMockApi(rorInstance: RorInstance) {
 
 object AuthMockApi {
 
-  final case class AuthMockRequest(aType: AuthMockRequest.Type,
-                                   body: String)
+  final case class AuthMockRequest(aType: AuthMockRequest.Type, body: String)
+
   object AuthMockRequest {
     sealed trait Type
+
     object Type {
       case object ProvideAuthMock extends Type
       case object UpdateAuthMock extends Type
     }
+
   }
 
   sealed trait AuthMockResponse
+
   private[AuthMockApi] object AuthMockResponse {
     sealed trait ProvideAuthMock extends AuthMockResponse
+
     object ProvideAuthMock {
       final case class CurrentAuthMocks(services: List[AuthMockService]) extends ProvideAuthMock
       final case class NotConfigured(message: String) extends ProvideAuthMock
@@ -189,6 +213,7 @@ object AuthMockApi {
     }
 
     sealed trait UpdateAuthMock extends AuthMockResponse
+
     object UpdateAuthMock {
       final case class Success(message: String) extends UpdateAuthMock
       final case class NotConfigured(message: String) extends UpdateAuthMock
@@ -198,38 +223,53 @@ object AuthMockApi {
     }
 
     sealed trait Failure extends AuthMockResponse
+
     object Failure {
       final case class BadRequest(message: String) extends Failure
     }
+
   }
 
   private[AuthMockApi] sealed trait AuthMockService
+
   private[AuthMockApi] object AuthMockService {
     final case class MockUser(name: NonEmptyString)
     final case class MockUserWithGroups(name: NonEmptyString, groups: List[MockGroup])
     final case class MockGroup(id: NonEmptyString, name: Option[NonEmptyString])
 
     sealed trait MockMode[+T]
+
     object MockMode {
       case object NotConfigured extends MockMode[Nothing]
       final case class Enabled[T](configuredMock: T) extends MockMode[T]
     }
 
-    final case class LdapAuthorizationService(name: NonEmptyString, mock: MockMode[LdapAuthorizationService.Mock]) extends AuthMockService
+    final case class LdapAuthorizationService(name: NonEmptyString, mock: MockMode[LdapAuthorizationService.Mock])
+        extends AuthMockService
+
     object LdapAuthorizationService {
       final case class Mock(users: List[MockUserWithGroups])
     }
 
-    final case class ExternalAuthenticationService(name: NonEmptyString, mock: MockMode[ExternalAuthenticationService.Mock]) extends AuthMockService
+    final case class ExternalAuthenticationService(
+        name: NonEmptyString,
+        mock: MockMode[ExternalAuthenticationService.Mock]
+    ) extends AuthMockService
+
     object ExternalAuthenticationService {
       final case class Mock(users: List[MockUser])
 
     }
 
-    final case class ExternalGroupsProviderService(name: NonEmptyString, mock: MockMode[ExternalGroupsProviderService.Mock]) extends AuthMockService
+    final case class ExternalGroupsProviderService(
+        name: NonEmptyString,
+        mock: MockMode[ExternalGroupsProviderService.Mock]
+    ) extends AuthMockService
+
     object ExternalGroupsProviderService {
       final case class Mock(users: List[MockUserWithGroups])
     }
+
   }
 
   implicit class AuthMockResponseOps(val authMockResponse: AuthMockResponse) extends AnyVal {
@@ -237,8 +277,8 @@ object AuthMockApi {
     type JSON = ujson.Value
 
     def statusCode: StatusCode = authMockResponse match {
-      case _: AuthMockResponse.ProvideAuthMock => StatusCode.Ok
-      case _: AuthMockResponse.UpdateAuthMock => StatusCode.Ok
+      case _: AuthMockResponse.ProvideAuthMock    => StatusCode.Ok
+      case _: AuthMockResponse.UpdateAuthMock     => StatusCode.Ok
       case _: AuthMockResponse.Failure.BadRequest => StatusCode.BadRequest
     }
 
@@ -246,6 +286,7 @@ object AuthMockApi {
       import Utils.codecs.authMockResponseEncoder
       ujson.read(authMockResponse.asJson.noSpaces)
     }
+
   }
 
   private object Utils {
@@ -262,10 +303,10 @@ object AuthMockApi {
         val id = GroupId(mockGroup.id)
         Group(id, mockGroup.name.map(GroupName.apply).getOrElse(GroupName.from(id)))
       }
+
     }
 
-    def toAuthMockService(serviceId: LdapService#Id,
-                          maybeMock: Option[LdapServiceMock]): AuthMockService = {
+    def toAuthMockService(serviceId: LdapService#Id, maybeMock: Option[LdapServiceMock]): AuthMockService = {
       val mockMode =
         maybeMock
           .map {
@@ -280,8 +321,10 @@ object AuthMockApi {
       AuthMockService.LdapAuthorizationService(name = serviceId.value, mock = mockMode)
     }
 
-    def toAuthMockService(serviceId: AuthorizationService#Id,
-                          maybeMock: Option[ExternalGroupsProviderServiceMock]): AuthMockService = {
+    def toAuthMockService(
+        serviceId: AuthorizationService#Id,
+        maybeMock: Option[ExternalGroupsProviderServiceMock]
+    ): AuthMockService = {
       val mockMode =
         maybeMock
           .map {
@@ -296,8 +339,10 @@ object AuthMockApi {
       ExternalGroupsProviderService(name = serviceId.value, mock = mockMode)
     }
 
-    def toAuthMockService(serviceId: AuthenticationService#Id,
-                          maybeMock: Option[ExternalAuthenticationServiceMock]): AuthMockService = {
+    def toAuthMockService(
+        serviceId: AuthenticationService#Id,
+        maybeMock: Option[ExternalAuthenticationServiceMock]
+    ): AuthMockService = {
       val mockMode =
         maybeMock
           .map {
@@ -325,14 +370,18 @@ object AuthMockApi {
           case ExternalAuthenticationService(name, MockMode.Enabled(mock)) =>
             mocksProvider.copy(
               externalAuthenticationServiceMocks = mocksProvider.externalAuthenticationServiceMocks +
-                (AuthenticationService.Name(name) -> ExternalAuthenticationServiceMock(users = mock.users.map(toAuthenticationMock).toCovariantSet))
+                (AuthenticationService.Name(name) -> ExternalAuthenticationServiceMock(users =
+                  mock.users.map(toAuthenticationMock).toCovariantSet
+                ))
             )
           case ExternalGroupsProviderService(_, MockMode.NotConfigured) =>
             mocksProvider
           case ExternalGroupsProviderService(name, MockMode.Enabled(mock)) =>
             mocksProvider.copy(
               externalGroupsProviderServiceMocks = mocksProvider.externalGroupsProviderServiceMocks +
-                (AuthorizationService.Name(name) -> ExternalGroupsProviderServiceMock(users = mock.users.map(toAuthorizationMock).toCovariantSet))
+                (AuthorizationService.Name(name) -> ExternalGroupsProviderServiceMock(users =
+                  mock.users.map(toAuthorizationMock).toCovariantSet
+                ))
             )
         }
       }
@@ -345,7 +394,10 @@ object AuthMockApi {
     }
 
     private def toAuthorizationMock(user: MockUserWithGroups) = {
-      MocksProvider.ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock(id = user.domainUserId, groups = user.domainGroups)
+      MocksProvider.ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock(
+        id = user.domainUserId,
+        groups = user.domainGroups
+      )
     }
 
     private def toAuthenticationMock(user: MockUser) = {
@@ -360,25 +412,26 @@ object AuthMockApi {
         Decoder.decodeString.emap(NonEmptyString.from),
         Encoder.encodeString.contramap(_.value)
       )
+
       implicit val mockUserCodec: Codec[MockUser] = Codec.forProduct1("name")(MockUser.apply)(_.name)
       implicit val mockGroupCodec: Codec[MockGroup] =
         Codec.forProduct2("id", "name")(MockGroup.apply)(group => (group.id, group.name))
       implicit val mockServiceUserCodec: Codec[MockUserWithGroups] =
         Codec.forProduct2("name", "groups")(MockUserWithGroups.apply)(user => (user.name, user.groups))
 
-      private def mockModeCodecFor[T: Encoder : Decoder]: Codec[MockMode[T]] = {
+      private def mockModeCodecFor[T: Encoder: Decoder]: Codec[MockMode[T]] = {
         val decoder: Decoder[MockMode[T]] = Decoder.instance { c =>
           c
             .as[String]
             .flatMap {
               case "NOT_CONFIGURED" => Right(MockMode.NotConfigured)
-              case "" => Left(DecodingFailure(s"Mock type cannot be empty", ops = c.history))
-              case other => Left(DecodingFailure(s"Unknown type of mock: ${other.show}", ops = c.history))
+              case ""               => Left(DecodingFailure(s"Mock type cannot be empty", ops = c.history))
+              case other            => Left(DecodingFailure(s"Unknown type of mock: ${other.show}", ops = c.history))
             }
             .orElse(Decoder[T].apply(c).map(MockMode.Enabled.apply))
         }
         val encoder: Encoder[MockMode[T]] = Encoder.encodeJson.contramap {
-          case MockMode.NotConfigured => "NOT_CONFIGURED".asJson
+          case MockMode.NotConfigured           => "NOT_CONFIGURED".asJson
           case MockMode.Enabled(configuredMock) => Encoder[T].apply(configuredMock)
         }
         Codec.from(decoder, encoder)
@@ -423,22 +476,25 @@ object AuthMockApi {
           for {
             serviceType <- c.downField("type").as[String]
             service <- serviceType match {
-              case "LDAP" => Decoder[LdapAuthorizationService].apply(c)
+              case "LDAP"      => Decoder[LdapAuthorizationService].apply(c)
               case "EXT_AUTHN" => Decoder[ExternalAuthenticationService].apply(c)
               case "EXT_AUTHZ" => Decoder[ExternalGroupsProviderService].apply(c)
-              case other => Left(DecodingFailure(s"Unknown auth mock service type: ${other.show}", Nil))
+              case other       => Left(DecodingFailure(s"Unknown auth mock service type: ${other.show}", Nil))
             }
           } yield service
         }
         val encoder: Encoder[AuthMockService] = Encoder.instance {
           case service: LdapAuthorizationService =>
-            Json.obj("type" -> Json.fromString("LDAP"))
+            Json
+              .obj("type" -> Json.fromString("LDAP"))
               .deepMerge(Encoder[LdapAuthorizationService].apply(service))
           case service: ExternalAuthenticationService =>
-            Json.obj("type" -> Json.fromString("EXT_AUTHN"))
+            Json
+              .obj("type" -> Json.fromString("EXT_AUTHN"))
               .deepMerge(Encoder[ExternalAuthenticationService].apply(service))
           case service: ExternalGroupsProviderService =>
-            Json.obj("type" -> Json.fromString("EXT_AUTHZ"))
+            Json
+              .obj("type" -> Json.fromString("EXT_AUTHZ"))
               .deepMerge(Encoder[ExternalGroupsProviderService].apply(service))
         }
         Codec.from(decoder, encoder)
@@ -447,9 +503,7 @@ object AuthMockApi {
       implicit val authMockResponseEncoder: Encoder[AuthMockResponse] = {
         implicit val provideAuthMockResponseEncoder: Encoder[ProvideAuthMock] = {
           val currentAuthMocksResponseEncoder: Encoder[AuthMockResponse.ProvideAuthMock.CurrentAuthMocks] =
-            Encoder.forProduct2("status", "services")(response =>
-              ("TEST_SETTINGS_PRESENT", response.services)
-            )
+            Encoder.forProduct2("status", "services")(response => ("TEST_SETTINGS_PRESENT", response.services))
           Encoder.instance {
             case response: ProvideAuthMock.CurrentAuthMocks =>
               currentAuthMocksResponseEncoder.apply(response)
@@ -478,19 +532,21 @@ object AuthMockApi {
           }
         }
 
-        implicit val failureEncoder: Encoder[Failure] = Encoder.instance {
-          case Failure.BadRequest(message) => Map("status" -> "FAILED", "message" -> message).asJson
+        implicit val failureEncoder: Encoder[Failure] = Encoder.instance { case Failure.BadRequest(message) =>
+          Map("status" -> "FAILED", "message" -> message).asJson
         }
 
         Encoder.instance {
           case response: ProvideAuthMock => Encoder[ProvideAuthMock].apply(response)
-          case response: UpdateAuthMock => Encoder[UpdateAuthMock].apply(response)
-          case response: Failure => Encoder[Failure].apply(response)
+          case response: UpdateAuthMock  => Encoder[UpdateAuthMock].apply(response)
+          case response: Failure         => Encoder[Failure].apply(response)
         }
       }
 
-      implicit val updateRequestDecoder: Decoder[UpdateMocksRequest] = Decoder.forProduct1("services")(UpdateMocksRequest.apply)
+      implicit val updateRequestDecoder: Decoder[UpdateMocksRequest] =
+        Decoder.forProduct1("services")(UpdateMocksRequest.apply)
     }
 
   }
+
 }

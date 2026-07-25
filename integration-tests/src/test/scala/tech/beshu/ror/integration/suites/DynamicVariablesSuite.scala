@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class DynamicVariablesSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with PluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -53,9 +53,11 @@ class DynamicVariablesSuite
 
     createLocalClusterContainer(
       esClusterSettingsCreator(
-        SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorSettingsFileName = rorSettingsFileName
-        ))
+        SecurityType.RorWithXpackSecurity(
+          ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+            rorSettingsFileName = rorSettingsFileName
+          )
+        )
       )
     )
   }
@@ -71,13 +73,16 @@ class DynamicVariablesSuite
       response.searchHits.head("_id").str should be("doc-asd")
     }
   }
+
 }
 
 object DynamicVariablesSuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager
       .createDoc(".kibana_simone", "documents", "doc-asd", ujson.read("""{"title": ".kibana_simone"}"""))
       .force()
   }
+
 }

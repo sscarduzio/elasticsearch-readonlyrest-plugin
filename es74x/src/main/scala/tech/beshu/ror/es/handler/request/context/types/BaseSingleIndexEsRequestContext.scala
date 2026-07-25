@@ -27,21 +27,26 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest: R,
-                                                                   esContext: EsContext,
-                                                                   aclContext: AccessControlStaticContext,
-                                                                   override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[R](actionRequest, esContext, aclContext, threadPool) {
+abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](
+    actionRequest: R,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[R](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]] =
     Set(requestedIndexFrom(request))
 
-  override protected def update(request: R,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: R,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
-      logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
+      logger.warn(
+        s"Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]"
+      )
     }
     update(request, filteredIndices.head)
   }

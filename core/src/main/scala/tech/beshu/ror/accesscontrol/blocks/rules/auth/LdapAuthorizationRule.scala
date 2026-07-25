@@ -30,18 +30,19 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class LdapAuthorizationRule(val settings: Settings,
-                            override implicit val userIdCaseSensitivity: CaseSensitivity,
-                            override val impersonation: Impersonation)
-  extends BaseAuthorizationRule {
+class LdapAuthorizationRule(
+    val settings: Settings,
+    override implicit val userIdCaseSensitivity: CaseSensitivity,
+    override val impersonation: Impersonation
+) extends BaseAuthorizationRule {
 
   override val name: Rule.Name = LdapAuthorizationRule.Name.name
 
   override val groupsLogic: GroupsLogic = settings.groupsLogic
 
-  override protected def userGroups[B <: BlockContext](blockContext: B,
-                                                       user: LoggedUser)
-                                                      (implicit requestId: RequestId): Task[UniqueList[Group]] = {
+  override protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser)(
+      implicit requestId: RequestId
+  ): Task[UniqueList[Group]] = {
     settings match {
       case Settings.NegativeGroupsLogicSettings(ldap, _) =>
         ldap.groupsOf(user.id)
@@ -62,14 +63,13 @@ class LdapAuthorizationRule(val settings: Settings,
     }
   }
 
-  override protected def mockedGroupsOf(user: User.Id,
-                                        mocksProvider: MocksProvider)
-                                       (implicit requestId: RequestId): Groups = {
+  override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)(
+      implicit requestId: RequestId
+  ): Groups = {
     mocksProvider
       .ldapServiceWith(settings.ldap.id)
       .map { mock =>
-        mock
-          .users
+        mock.users
           .find(_.id === user)
           .map(m => Groups.Present(UniqueList.of(m.groups.toSeq: _*)))
           .getOrElse(Groups.Present(UniqueList.empty))
@@ -78,6 +78,7 @@ class LdapAuthorizationRule(val settings: Settings,
         Groups.CannotCheck
       }
   }
+
 }
 
 object LdapAuthorizationRule {
@@ -93,13 +94,19 @@ object LdapAuthorizationRule {
   }
 
   object Settings {
-    final case class NegativeGroupsLogicSettings(ldap: LdapAuthorizationService.WithoutGroupsFiltering,
-                                                 groupsLogic: GroupsLogic.NegativeGroupsLogic) extends Settings
 
-    final case class PositiveGroupsLogicSettings(ldap: LdapAuthorizationService,
-                                                 groupsLogic: GroupsLogic.PositiveGroupsLogic) extends Settings
+    final case class NegativeGroupsLogicSettings(
+        ldap: LdapAuthorizationService.WithoutGroupsFiltering,
+        groupsLogic: GroupsLogic.NegativeGroupsLogic
+    ) extends Settings
 
-    final case class CombinedGroupsLogicSettings(ldap: LdapAuthorizationService,
-                                                 groupsLogic: GroupsLogic.Combined) extends Settings
+    final case class PositiveGroupsLogicSettings(
+        ldap: LdapAuthorizationService,
+        groupsLogic: GroupsLogic.PositiveGroupsLogic
+    ) extends Settings
+
+    final case class CombinedGroupsLogicSettings(ldap: LdapAuthorizationService, groupsLogic: GroupsLogic.Combined)
+        extends Settings
   }
+
 }

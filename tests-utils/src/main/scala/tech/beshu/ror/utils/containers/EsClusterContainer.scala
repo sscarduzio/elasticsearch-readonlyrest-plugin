@@ -24,17 +24,22 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
-import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.images.{
+  ReadonlyRestPlugin,
+  ReadonlyRestWithEnabledXpackSecurityPlugin,
+  XpackSecurityPlugin
+}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import scala.compiletime.error
 
-class EsClusterContainer private[containers](val esClusterSettings: EsClusterSettings,
-                                             val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
-                                             dependencies: List[DependencyDef])
-  extends Container {
+class EsClusterContainer private[containers] (
+    val esClusterSettings: EsClusterSettings,
+    val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
+    dependencies: List[DependencyDef]
+) extends Container {
 
   private var clusterNodes = List.empty[EsContainer]
   private var aStartedDependencies = StartedClusterDependencies(Nil)
@@ -53,6 +58,16 @@ class EsClusterContainer private[containers](val esClusterSettings: EsClusterSet
 
   override def stop(): Unit = {
     clusterNodes.foreach(_.stop())
+    // Reclaim each node's image right after the node stops. A leg builds many distinct
+    // ror-it-es:<contenthash> images (one per node config); deleteOnExit only reaps them at JVM exit,
+    // so on a low-disk CI runner they accumulate mid-leg and exhaust disk ("No space left on device" —
+    // the ES 8.x legs). Removing a STOPPED cluster's own images is safe: each image is uniquely tagged
+    // by content (different node.name -> different tag), so this never touches a sibling suite's live
+    // image, and removeImage swallows the "image in use" case for any shared base layers.
+    clusterNodes.foreach { node =>
+      try node.removeImage()
+      catch { case scala.util.control.NonFatal(_) => () } // best-effort; never fail teardown on cleanup
+    }
     aStartedDependencies.values.foreach(_.container.stop())
   }
 
@@ -73,12 +88,14 @@ class EsClusterContainer private[containers](val esClusterSettings: EsClusterSet
   def resolvedRorSettings(config: String): String = {
     RorSettingsAdjuster.adjustUsingDependencies(config, aStartedDependencies)
   }
+
 }
 
-class EsRemoteClustersContainer private[containers](val localCluster: EsClusterContainer,
-                                                    remoteClusters: NonEmptyList[EsClusterContainer],
-                                                    remoteClusterSetup: SetupRemoteCluster)
-  extends Container {
+class EsRemoteClustersContainer private[containers] (
+    val localCluster: EsClusterContainer,
+    remoteClusters: NonEmptyList[EsClusterContainer],
+    remoteClusterSetup: SetupRemoteCluster
+) extends Container {
 
   override def start(): Unit = {
     remoteClusters.toList.foreach(_.start())
@@ -94,59 +111,74 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
     remoteClusters.toList.foreach(_.stop())
   }
 
-  private def remoteClustersInitializer(container: EsClusterContainer,
-                                        remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
-    val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
+  private def remoteClustersInitializer(
+      container: EsClusterContainer,
+      remoteClustersConfig: Map[String, EsClusterContainer]
+  ): Unit = {
+    val clusterManager =
+      new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
-      remoteClustersConfig.view.mapValues(_.nodes.map { c =>
-        OsUtils.currentOs match {
-          case CurrentOs.Windows =>
-            // We only have access to ES port in 92XX range here.
-            // On Windows, the ES transport port is configured to be exactly 100 higher than ES port
-            s"localhost:${c.port + 100}"
-          case CurrentOs.OtherThanWindows =>
-            s"${c.esConfig.nodeName}:9300"
-        }
-      }).toMap
+      remoteClustersConfig.view
+        .mapValues(_.nodes.map { c =>
+          OsUtils.currentOs match {
+            case CurrentOs.Windows =>
+              // We only have access to ES port in 92XX range here.
+              // On Windows, the ES transport port is configured to be exactly 100 higher than ES port
+              s"localhost:${c.port + 100}"
+            case CurrentOs.OtherThanWindows =>
+              s"${c.esConfig.nodeName}:9300"
+          }
+        })
+        .toMap
     )
 
     result.responseCode match {
-      case 200 =>
+      case 200   =>
       case other =>
         throw new IllegalStateException(s"Cannot initialize remote cluster settings - response code: $other")
     }
   }
+
 }
 
-final case class ContainerSpecification(environmentVariables: Map[String, String],
-                                        additionalElasticsearchYamlEntries: Map[String, String])
+final case class ContainerSpecification(
+    environmentVariables: Map[String, String],
+    additionalElasticsearchYamlEntries: Map[String, String]
+)
+
 object ContainerSpecification {
+
   lazy val empty: ContainerSpecification = ContainerSpecification(
     environmentVariables = Map.empty,
     additionalElasticsearchYamlEntries = Map.empty
   )
+
 }
 
 trait SetupRemoteCluster {
   def remoteClustersConfiguration(remoteClusters: NonEmptyList[EsClusterContainer]): Map[String, EsClusterContainer]
 }
 
-final case class EsClusterSettings private(clusterName: String,
-                                           nodeTypes: NonEmptyList[NodeType],
-                                           nodeDataInitializer: ElasticsearchNodeDataInitializer,
-                                           containerSpecification: ContainerSpecification,
-                                           dependentServicesContainers: List[DependencyDef],
-                                           esVersion: EsVersion)
+final case class EsClusterSettings private (
+    clusterName: String,
+    nodeTypes: NonEmptyList[NodeType],
+    nodeDataInitializer: ElasticsearchNodeDataInitializer,
+    containerSpecification: ContainerSpecification,
+    dependentServicesContainers: List[DependencyDef],
+    esVersion: EsVersion
+)
 
 object EsClusterSettings {
 
-  def create(clusterName: String,
-             securityType: SecurityType,
-             numberOfInstances: Int Refined Positive = positiveInt(1),
-             nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-             containerSpecification: ContainerSpecification = ContainerSpecification.empty,
-             dependentServicesContainers: List[DependencyDef] = Nil,
-             esVersion: EsVersion = EsVersion.DeclaredInProject): EsClusterSettings = {
+  def create(
+      clusterName: String,
+      securityType: SecurityType,
+      numberOfInstances: Int Refined Positive = positiveInt(1),
+      nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+      containerSpecification: ContainerSpecification = ContainerSpecification.empty,
+      dependentServicesContainers: List[DependencyDef] = Nil,
+      esVersion: EsVersion = EsVersion.DeclaredInProject
+  ): EsClusterSettings = {
     EsClusterSettings(
       clusterName,
       NonEmptyList.one(NodeType(securityType, numberOfInstances)),
@@ -157,12 +189,14 @@ object EsClusterSettings {
     )
   }
 
-  def createMixedCluster(clusterName: String,
-                         nodeTypes: NonEmptyList[NodeType],
-                         nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                         containerSpecification: ContainerSpecification = ContainerSpecification.empty,
-                         dependentServicesContainers: List[DependencyDef] = Nil,
-                         esVersion: EsVersion = EsVersion.DeclaredInProject): EsClusterSettings = {
+  def createMixedCluster(
+      clusterName: String,
+      nodeTypes: NonEmptyList[NodeType],
+      nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+      containerSpecification: ContainerSpecification = ContainerSpecification.empty,
+      dependentServicesContainers: List[DependencyDef] = Nil,
+      esVersion: EsVersion = EsVersion.DeclaredInProject
+  ): EsClusterSettings = {
     EsClusterSettings(
       clusterName,
       nodeTypes,
@@ -173,8 +207,7 @@ object EsClusterSettings {
     )
   }
 
-  final case class NodeType(securityType: SecurityType,
-                            numberOfInstances: Int Refined Positive = positiveInt(1))
+  final case class NodeType(securityType: SecurityType, numberOfInstances: Int Refined Positive = positiveInt(1))
 
   inline def positiveInt(inline i: Int): Refined[Int, Positive] = {
     inline if (i > 0) Refined.unsafeApply(i) else error(s"$i is not positive")
@@ -183,14 +216,17 @@ object EsClusterSettings {
 }
 
 trait EsVersion
+
 object EsVersion {
   case object DeclaredInProject extends EsVersion
   final case class SpecificVersion(moduleName: String) extends EsVersion
 }
 
 sealed trait SecurityType
+
 object SecurityType {
-  final case class RorWithXpackSecurity(attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes) extends SecurityType
+  final case class RorWithXpackSecurity(attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes)
+      extends SecurityType
   final case class RorSecurity(attributes: ReadonlyRestPlugin.Config.Attributes) extends SecurityType
   final case class XPackSecurity(attributes: XpackSecurityPlugin.Config.Attributes) extends SecurityType
   case object NoSecurityCluster extends SecurityType

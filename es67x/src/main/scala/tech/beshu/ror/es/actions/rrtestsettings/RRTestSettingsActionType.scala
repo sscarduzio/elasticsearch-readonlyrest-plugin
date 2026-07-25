@@ -20,9 +20,10 @@ import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
-class RRTestSettingsActionType extends Action[RRTestSettingsRequest, RRTestSettingsResponse, RRTestSettingsActionType.RequestBuilder](
-  RRTestSettingsActionType.name
-) {
+class RRTestSettingsActionType
+    extends Action[RRTestSettingsRequest, RRTestSettingsResponse, RRTestSettingsActionType.RequestBuilder](
+      RRTestSettingsActionType.name
+    ) {
 
   override def newResponse(): RRTestSettingsResponse = new RRTestSettingsResponse()
 
@@ -31,8 +32,16 @@ class RRTestSettingsActionType extends Action[RRTestSettingsRequest, RRTestSetti
 }
 
 object RRTestSettingsActionType {
-  class RequestBuilder(client: ElasticsearchClient, actionType: RRTestSettingsActionType, request: RRTestSettingsRequest)
-    extends ActionRequestBuilder[RRTestSettingsRequest, RRTestSettingsResponse, RequestBuilder](client, actionType, request)
+
+  class RequestBuilder(
+      client: ElasticsearchClient,
+      actionType: RRTestSettingsActionType,
+      request: RRTestSettingsRequest
+  ) extends ActionRequestBuilder[RRTestSettingsRequest, RRTestSettingsResponse, RequestBuilder](
+        client,
+        actionType,
+        request
+      )
 
   val name: String = RorAction.RorTestSettingsAction.value
   val instance = new RRTestSettingsActionType()

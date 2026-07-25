@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.es.handler
 
-import tech.beshu.ror.settings.es.RorBootSettings
-import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.{ForbiddenResponse, ServiceNotAvailableResponse}
+import tech.beshu.ror.settings.es.RorBootSettings
+import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 
 final class RorNotAvailableRequestHandler(settings: RorBootSettings) {
 
@@ -50,4 +50,5 @@ final class RorNotAvailableRequestHandler(settings: RorBootSettings) {
         ServiceNotAvailableResponse.createRorStartingFailureResponse()
     }
   }
+
 }

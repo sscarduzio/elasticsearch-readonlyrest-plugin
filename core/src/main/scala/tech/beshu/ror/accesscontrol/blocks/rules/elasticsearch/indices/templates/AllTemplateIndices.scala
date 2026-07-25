@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 private[indices] trait AllTemplateIndices
-  extends IndexTemplateIndices
+    extends IndexTemplateIndices
     with ComponentTemplateIndices
     with LegacyTemplatesIndices
     with RequestIdAwareLogging {
@@ -41,7 +41,9 @@ private[indices] trait AllTemplateIndices
 
   protected def identifierGenerator: UniqueIdentifierGenerator
 
-  protected def processTemplateRequest(blockContext: TemplateRequestBlockContext): Task[Decision[TemplateRequestBlockContext]] = Task.now {
+  protected def processTemplateRequest(
+      blockContext: TemplateRequestBlockContext
+  ): Task[Decision[TemplateRequestBlockContext]] = Task.now {
     implicit val allowedIndices: AllowedIndices = new AllowedIndices(settings.allowedIndices, blockContext)
     implicit val _blockContext: TemplateRequestBlockContext = blockContext
     logger.debug(
@@ -51,27 +53,31 @@ private[indices] trait AllTemplateIndices
     val result = blockContext.templateOperation match {
       case GettingLegacyAndIndexTemplates(gettingLegacyTemplates, gettingIndexTemplates) =>
         gettingLegacyAndIndexTemplates(gettingLegacyTemplates, gettingIndexTemplates)
-      case GettingLegacyTemplates(namePatterns) => gettingLegacyTemplates(namePatterns)
+      case GettingLegacyTemplates(namePatterns)          => gettingLegacyTemplates(namePatterns)
       case AddingLegacyTemplate(name, patterns, aliases) => addingLegacyTemplate(name, patterns, aliases)
-      case DeletingLegacyTemplates(namePatterns) => deletingLegacyTemplates(namePatterns)
-      case GettingIndexTemplates(namePatterns) => gettingIndexTemplates(namePatterns)
-      case AddingIndexTemplate(name, patterns, aliases) => addingIndexTemplate(name, patterns, aliases)
+      case DeletingLegacyTemplates(namePatterns)         => deletingLegacyTemplates(namePatterns)
+      case GettingIndexTemplates(namePatterns)           => gettingIndexTemplates(namePatterns)
+      case AddingIndexTemplate(name, patterns, aliases)  => addingIndexTemplate(name, patterns, aliases)
       case AddingIndexTemplateAndGetAllowedOnes(name, patterns, aliases, templateNamePatterns) =>
         addingIndexTemplateAndGetAllowedOnes(name, patterns, aliases, templateNamePatterns)
-      case DeletingIndexTemplates(namePatterns) => deletingIndexTemplates(namePatterns)
-      case GettingComponentTemplates(namePatterns) => gettingComponentTemplates(namePatterns)
-      case AddingComponentTemplate(name, aliases) => addingComponentTemplate(name, aliases)
+      case DeletingIndexTemplates(namePatterns)     => deletingIndexTemplates(namePatterns)
+      case GettingComponentTemplates(namePatterns)  => gettingComponentTemplates(namePatterns)
+      case AddingComponentTemplate(name, aliases)   => addingComponentTemplate(name, aliases)
       case DeletingComponentTemplates(namePatterns) => deletingComponentTemplates(namePatterns)
     }
     result match {
-      case Decision.Permitted(b) => Decision.permit(b.withAllAllowedIndices(allowedIndices.resolved))
-      case rejected@Decision.Denied(_) => rejected
+      case Decision.Permitted(b)         => Decision.permit(b.withAllAllowedIndices(allowedIndices.resolved))
+      case rejected @ Decision.Denied(_) => rejected
     }
   }
 
-  private def gettingLegacyAndIndexTemplates(gettingLegacyTemplates: GettingLegacyTemplates, gettingIndexTemplates: GettingIndexTemplates)
-                                            (implicit blockContext: TemplateRequestBlockContext,
-                                             allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  private def gettingLegacyAndIndexTemplates(
+      gettingLegacyTemplates: GettingLegacyTemplates,
+      gettingIndexTemplates: GettingIndexTemplates
+  )(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     val gettingLegacyTemplatesResult = processGettingLegacyTemplates(gettingLegacyTemplates.namePatterns)
     val gettingIndexTemplatesResult = processGettingIndexTemplates(gettingIndexTemplates.namePatterns)
 
@@ -100,21 +106,28 @@ private[indices] trait AllTemplateIndices
     }
   }
 
-  private[indices] def isAliasAllowed(alias: ClusterIndexName)
-                                     (implicit allowedIndices: AllowedIndices) = {
+  private[indices] def isAliasAllowed(alias: ClusterIndexName)(
+      implicit allowedIndices: AllowedIndices
+  ) = {
     alias.isAllowedBy(allowedIndices.resolved)
   }
 
-  private[indices] def filterTemplates[T <: Template](allowedNamePatterns: Iterable[TemplateNamePattern],
-                                                      requestedTemplates: Iterable[T]): Set[T] = {
+  private[indices] def filterTemplates[T <: Template](
+      allowedNamePatterns: Iterable[TemplateNamePattern],
+      requestedTemplates: Iterable[T]
+  ): Set[T] = {
     val matcher = PatternsMatcher.create(allowedNamePatterns)
-    val templateByName: Map[TemplateNamePattern, Iterable[T]] = requestedTemplates.groupBy(t => TemplateNamePattern(t.name.value))
+    val templateByName: Map[TemplateNamePattern, Iterable[T]] =
+      requestedTemplates.groupBy(t => TemplateNamePattern(t.name.value))
     val filteredTemplateNames = matcher.filter(templateByName.keys)
     templateByName.view.filterKeys(filteredTemplateNames.contains).values.toCovariantSet.flatten
   }
 
-  private[indices] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
-                                        val blockContext: TemplateRequestBlockContext) {
+  private[indices] class AllowedIndices(
+      allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      val blockContext: TemplateRequestBlockContext
+  ) {
     val resolved: Set[ClusterIndexName] = resolveAll(allowedIndices.toNonEmptyList, blockContext).toCovariantSet
   }
+
 }

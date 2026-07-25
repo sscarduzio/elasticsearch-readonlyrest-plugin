@@ -21,6 +21,7 @@ import java.util.regex.PatternSyntaxException
 private[transformation] object Utils {
 
   implicit class PatternSyntaxExceptionOps(val exception: PatternSyntaxException) extends AnyVal {
+
     def getPrettyMessage: String = { // pattern syntax exception message creates multiline string
       val sb = new StringBuilder
       sb.append(exception.getDescription)
@@ -30,6 +31,7 @@ private[transformation] object Utils {
       }
       sb.toString
     }
+
   }
 
 }

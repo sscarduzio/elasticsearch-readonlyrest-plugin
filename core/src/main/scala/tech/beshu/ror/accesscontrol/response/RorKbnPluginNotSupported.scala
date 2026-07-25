@@ -35,10 +35,11 @@ object RorKbnPluginNotSupported {
       forbiddenCauses = NonEmptyList.one(ForbiddenResponseContext.OperationNotAllowed)
     )
 
-  val message = "The ES ROR is configured with 'prompt_for_basic_auth: true' setting. This setting is appropriate only for using Kibana without KBN ROR plugin. See our docs for details https://docs.readonlyrest.com/elasticsearch#prompt_for_basic_auth"
+  val message =
+    "The ES ROR is configured with 'prompt_for_basic_auth: true' setting. This setting is appropriate only for using Kibana without KBN ROR plugin. See our docs for details https://docs.readonlyrest.com/elasticsearch#prompt_for_basic_auth"
 
   private class UserMetadataAccessControlStaticContext(underlying: AccessControlStaticContext)
-    extends AccessControlStaticContext {
+      extends AccessControlStaticContext {
 
     override def usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = underlying.usedFlsEngineInFieldsRule
 

@@ -26,7 +26,8 @@ import tech.beshu.ror.api.TestSettingsApi.TestSettingsResponse.*
 import java.time.ZoneOffset
 
 class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
-  extends ActionResponse with StatusToXContentObject {
+    extends ActionResponse
+    with StatusToXContentObject {
 
   def this() = {
     this(null)
@@ -34,27 +35,34 @@ class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response match {
-      case provideSettingsResponse: ProvideTestSettings => provideSettingsResponse match {
-        case res: ProvideTestSettings.CurrentTestSettings => currentSettingsJson(builder, res)
-        case ProvideTestSettings.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
-        case res: ProvideTestSettings.TestSettingsInvalidated => invalidatedSettingsJson(builder, res)
-      }
-      case updateSettingsResponse: UpdateTestSettings => updateSettingsResponse match {
-        case res: UpdateTestSettings.SuccessResponse => updateSettingsSuccessResponseJson(builder, res)
-        case UpdateTestSettings.FailedResponse(message) => addResponseJson(builder, response.status, message)
-      }
-      case invalidateSettingsResponse: InvalidateTestSettings => invalidateSettingsResponse match {
-        case InvalidateTestSettings.SuccessResponse(message) => addResponseJson(builder, response.status, message)
-        case InvalidateTestSettings.FailedResponse(message) => addResponseJson(builder, response.status, message)
-      }
-      case provideUsersResponse: ProvideLocalUsers => provideUsersResponse match {
-        case res: ProvideLocalUsers.SuccessResponse => provideLocalUsersJson(builder, res)
-        case ProvideLocalUsers.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
-        case ProvideLocalUsers.TestSettingsInvalidated(message) => addResponseJson(builder, response.status, message)
-      }
-      case failure: Failure => failure match {
-        case Failure.BadRequest(message) => addResponseJson(builder, response.status, message)
-      }
+      case provideSettingsResponse: ProvideTestSettings =>
+        provideSettingsResponse match {
+          case res: ProvideTestSettings.CurrentTestSettings           => currentSettingsJson(builder, res)
+          case ProvideTestSettings.TestSettingsNotConfigured(message) =>
+            addResponseJson(builder, response.status, message)
+          case res: ProvideTestSettings.TestSettingsInvalidated => invalidatedSettingsJson(builder, res)
+        }
+      case updateSettingsResponse: UpdateTestSettings =>
+        updateSettingsResponse match {
+          case res: UpdateTestSettings.SuccessResponse    => updateSettingsSuccessResponseJson(builder, res)
+          case UpdateTestSettings.FailedResponse(message) => addResponseJson(builder, response.status, message)
+        }
+      case invalidateSettingsResponse: InvalidateTestSettings =>
+        invalidateSettingsResponse match {
+          case InvalidateTestSettings.SuccessResponse(message) => addResponseJson(builder, response.status, message)
+          case InvalidateTestSettings.FailedResponse(message)  => addResponseJson(builder, response.status, message)
+        }
+      case provideUsersResponse: ProvideLocalUsers =>
+        provideUsersResponse match {
+          case res: ProvideLocalUsers.SuccessResponse               => provideLocalUsersJson(builder, res)
+          case ProvideLocalUsers.TestSettingsNotConfigured(message) =>
+            addResponseJson(builder, response.status, message)
+          case ProvideLocalUsers.TestSettingsInvalidated(message) => addResponseJson(builder, response.status, message)
+        }
+      case failure: Failure =>
+        failure match {
+          case Failure.BadRequest(message) => addResponseJson(builder, response.status, message)
+        }
     }
     builder
   }
@@ -62,13 +70,14 @@ class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
   override def writeTo(out: StreamOutput): Unit = ()
 
   override def status: RestStatus = response match {
-    case _: ProvideTestSettings => RestStatus.OK
-    case _: UpdateTestSettings => RestStatus.OK
+    case _: ProvideTestSettings    => RestStatus.OK
+    case _: UpdateTestSettings     => RestStatus.OK
     case _: InvalidateTestSettings => RestStatus.OK
-    case _: ProvideLocalUsers => RestStatus.OK
-    case failure: Failure => failure match {
-      case Failure.BadRequest(_) => RestStatus.BAD_REQUEST
-    }
+    case _: ProvideLocalUsers      => RestStatus.OK
+    case failure: Failure          =>
+      failure match {
+        case Failure.BadRequest(_) => RestStatus.BAD_REQUEST
+      }
   }
 
   private def addResponseJson(builder: XContentBuilder, status: String, message: String): Unit = {
@@ -88,7 +97,10 @@ class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
     builder.endObject
   }
 
-  private def invalidatedSettingsJson(builder: XContentBuilder, response: ProvideTestSettings.TestSettingsInvalidated): Unit = {
+  private def invalidatedSettingsJson(
+      builder: XContentBuilder,
+      response: ProvideTestSettings.TestSettingsInvalidated
+  ): Unit = {
     builder.startObject
     builder.field("status", response.status)
     builder.field("message", response.message)
@@ -97,7 +109,10 @@ class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
     builder.endObject
   }
 
-  private def updateSettingsSuccessResponseJson(builder: XContentBuilder, response: UpdateTestSettings.SuccessResponse): Unit = {
+  private def updateSettingsSuccessResponseJson(
+      builder: XContentBuilder,
+      response: UpdateTestSettings.SuccessResponse
+  ): Unit = {
     builder.startObject
     builder.field("status", response.status)
     builder.field("message", response.message)
@@ -130,4 +145,5 @@ class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
     }
     builder.endArray()
   }
+
 }

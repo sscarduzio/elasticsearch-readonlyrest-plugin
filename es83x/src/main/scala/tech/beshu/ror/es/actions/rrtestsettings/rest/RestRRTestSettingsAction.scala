@@ -17,19 +17,22 @@
 package tech.beshu.ror.es.actions.rrtestsettings.rest
 
 import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.rest.*
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
-import org.elasticsearch.rest.*
 import tech.beshu.ror.constants
-import tech.beshu.ror.es.actions.rrtestsettings.{RRTestSettingsActionType, RRTestSettingsRequest, RRTestSettingsResponse}
+import tech.beshu.ror.es.actions.rrtestsettings.{
+  RRTestSettingsActionType,
+  RRTestSettingsRequest,
+  RRTestSettingsResponse
+}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
 import java.util
 import scala.jdk.CollectionConverters.*
 
-class RestRRTestSettingsAction
-  extends BaseRestHandler with RestHandler {
+class RestRRTestSettingsAction extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
     new Route(GET, constants.PROVIDE_TEST_SETTINGS_PATH),
@@ -44,7 +47,12 @@ class RestRRTestSettingsAction
     private val rorTestSettingsRequest = RRTestSettingsRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRTestSettingsActionType, rorTestSettingsRequest, new RestToXContentWithStatusListener[RRTestSettingsResponse](channel))
+      client.execute(
+        new RRTestSettingsActionType,
+        rorTestSettingsRequest,
+        new RestToXContentWithStatusListener[RRTestSettingsResponse](channel)
+      )
     }
   }
+
 }

@@ -15,12 +15,13 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.domain.indices
+
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.*
-import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.TestsUtils.*
 
 class IndicesFilteredByTests extends AnyWordSpec {
 
@@ -32,11 +33,11 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("test2"),
           clusterIndexName("other1")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("test1"), excluded = false)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set(
           RequestedIndex(clusterIndexName("test1"), excluded = false)
         )
@@ -46,11 +47,11 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("test1"),
           clusterIndexName("test2")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("nonexistent"), excluded = false)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set.empty
       }
     }
@@ -61,11 +62,11 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("test2"),
           clusterIndexName("other1")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("test*"), excluded = false)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set(
           RequestedIndex(clusterIndexName("test1"), excluded = false),
           RequestedIndex(clusterIndexName("test2"), excluded = false)
@@ -77,11 +78,11 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("test2"),
           clusterIndexName("other1")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("test*"), excluded = true)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set.empty
       }
       "handle multiple inclusion patterns" in {
@@ -92,12 +93,12 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("prod2"),
           clusterIndexName("other1")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("test*"), excluded = false),
           RequestedIndex(clusterIndexName("prod*"), excluded = false)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set(
           RequestedIndex(clusterIndexName("test1"), excluded = false),
           RequestedIndex(clusterIndexName("test2"), excluded = false),
@@ -112,11 +113,11 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("te*"),
           clusterIndexName("other*")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("test1"), excluded = false)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set.empty
       }
     }
@@ -127,11 +128,11 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("prod-*"),
           clusterIndexName("other*")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("test*"), excluded = false)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set(
           RequestedIndex(clusterIndexName("test*"), excluded = false)
         )
@@ -141,11 +142,11 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("te*"),
           clusterIndexName("other*")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("test*"), excluded = false)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set.empty
       }
       "handle broader wildcard pattern in request than in indices" in {
@@ -153,11 +154,11 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("test*"),
           clusterIndexName("other*")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("te*"), excluded = false)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set(
           RequestedIndex(clusterIndexName("test*"), excluded = false)
         )
@@ -168,12 +169,12 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("test*"),
           clusterIndexName("other*")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("*"), excluded = false),
           RequestedIndex(clusterIndexName("test*"), excluded = true)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set(
           RequestedIndex(clusterIndexName("te*"), excluded = false),
           RequestedIndex(clusterIndexName("other*"), excluded = false),
@@ -185,11 +186,11 @@ class IndicesFilteredByTests extends AnyWordSpec {
           clusterIndexName("test-*"),
           clusterIndexName("testing*")
         )
-        
+
         val requestedIndices = List(
           RequestedIndex(clusterIndexName("test*"), excluded = false)
         )
-        
+
         indices.filterBy(requestedIndices) shouldBe Set(
           RequestedIndex(clusterIndexName("test-*"), excluded = false),
           RequestedIndex(clusterIndexName("testing*"), excluded = false)
@@ -197,4 +198,5 @@ class IndicesFilteredByTests extends AnyWordSpec {
       }
     }
   }
-} 
+
+}

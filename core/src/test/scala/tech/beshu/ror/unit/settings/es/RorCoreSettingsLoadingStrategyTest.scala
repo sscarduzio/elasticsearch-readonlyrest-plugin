@@ -28,8 +28,8 @@ import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.*
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSettings.{Disabled, Enabled}
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.*
 import tech.beshu.ror.utils.RefinedUtils.*
-import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.TestsUtils.{nes, unsafeNes, withEsEnv}
+import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -46,10 +46,14 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
             |""".stripMargin
         )
 
-        result should be(Right(LoadFromIndexWithFileFallback(
-          indexLoadingRetrySettings = defaultRetrySettings,
-          coreRefreshSettings = Enabled((5 seconds).toRefinedPositiveUnsafe)
-        )))
+        result should be(
+          Right(
+            LoadFromIndexWithFileFallback(
+              indexLoadingRetrySettings = defaultRetrySettings,
+              coreRefreshSettings = Enabled((5 seconds).toRefinedPositiveUnsafe)
+            )
+          )
+        )
       }
       "force_load_from_file is set to false" in {
         val result = load(
@@ -59,10 +63,14 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
             |""".stripMargin
         )
 
-        result should be(Right(LoadFromIndexWithFileFallback(
-          indexLoadingRetrySettings = defaultRetrySettings,
-          coreRefreshSettings = Enabled((5 seconds).toRefinedPositiveUnsafe)
-        )))
+        result should be(
+          Right(
+            LoadFromIndexWithFileFallback(
+              indexLoadingRetrySettings = defaultRetrySettings,
+              coreRefreshSettings = Enabled((5 seconds).toRefinedPositiveUnsafe)
+            )
+          )
+        )
       }
     }
     "resolve to ForceLoadingFromFileSettings" when {
@@ -105,14 +113,18 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           |""".stripMargin
       )
 
-      result should be(Right(LoadFromIndexWithFileFallback(
-        indexLoadingRetrySettings = LoadingRetryStrategySettings(
-          attemptsInterval = LoadingAttemptsInterval.unsafeFrom(10 seconds),
-          attemptsCount = LoadingAttemptsCount.unsafeFrom(3),
-          delay = LoadingDelay.unsafeFrom(2 seconds)
-        ),
-        coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
-      )))
+      result should be(
+        Right(
+          LoadFromIndexWithFileFallback(
+            indexLoadingRetrySettings = LoadingRetryStrategySettings(
+              attemptsInterval = LoadingAttemptsInterval.unsafeFrom(10 seconds),
+              attemptsCount = LoadingAttemptsCount.unsafeFrom(3),
+              delay = LoadingDelay.unsafeFrom(2 seconds)
+            ),
+            coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
+          )
+        )
+      )
     }
     "load all retry and refresh settings from JVM properties" in {
       val result = load(
@@ -127,14 +139,18 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
         )
       )
 
-      result should be(Right(LoadFromIndexWithFileFallback(
-        indexLoadingRetrySettings = LoadingRetryStrategySettings(
-          attemptsInterval = LoadingAttemptsInterval.unsafeFrom(10 seconds),
-          attemptsCount = LoadingAttemptsCount.unsafeFrom(3),
-          delay = LoadingDelay.unsafeFrom(2 seconds)
-        ),
-        coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
-      )))
+      result should be(
+        Right(
+          LoadFromIndexWithFileFallback(
+            indexLoadingRetrySettings = LoadingRetryStrategySettings(
+              attemptsInterval = LoadingAttemptsInterval.unsafeFrom(10 seconds),
+              attemptsCount = LoadingAttemptsCount.unsafeFrom(3),
+              delay = LoadingDelay.unsafeFrom(2 seconds)
+            ),
+            coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
+          )
+        )
+      )
     }
     "disable core refresh" when {
       "poll_interval is set to 0" in {
@@ -146,10 +162,14 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
             |""".stripMargin
         )
 
-        result should be(Right(LoadFromIndexWithFileFallback(
-          indexLoadingRetrySettings = defaultRetrySettings,
-          coreRefreshSettings = Disabled
-        )))
+        result should be(
+          Right(
+            LoadFromIndexWithFileFallback(
+              indexLoadingRetrySettings = defaultRetrySettings,
+              coreRefreshSettings = Disabled
+            )
+          )
+        )
       }
       "poll_interval is set to 0 via JVM property" in {
         val result = load(
@@ -159,10 +179,14 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           properties = Map(nes("readonlyrest.load_from_index.poll_interval") -> "0s")
         )
 
-        result should be(Right(LoadFromIndexWithFileFallback(
-          indexLoadingRetrySettings = defaultRetrySettings,
-          coreRefreshSettings = Disabled
-        )))
+        result should be(
+          Right(
+            LoadFromIndexWithFileFallback(
+              indexLoadingRetrySettings = defaultRetrySettings,
+              coreRefreshSettings = Disabled
+            )
+          )
+        )
       }
     }
     "be loaded from OS environment variables" when {
@@ -184,10 +208,14 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           envVars = Map(nes("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_POLL__INTERVAL") -> "30s")
         )
 
-        result should be(Right(LoadFromIndexWithFileFallback(
-          indexLoadingRetrySettings = defaultRetrySettings,
-          coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
-        )))
+        result should be(
+          Right(
+            LoadFromIndexWithFileFallback(
+              indexLoadingRetrySettings = defaultRetrySettings,
+              coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
+            )
+          )
+        )
       }
       "all retry and refresh settings are set via env vars" in {
         val result = load(
@@ -195,21 +223,27 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
             |node.name: n1_it
             |""".stripMargin,
           envVars = Map(
-            nes("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_ATTEMPTS__INTERVAL") -> "10s",
+            nes(
+              "ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_ATTEMPTS__INTERVAL"
+            ) -> "10s",
             nes("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_ATTEMPTS__COUNT") -> "3",
             nes("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_INITIAL__DELAY") -> "2s",
             nes("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_POLL__INTERVAL") -> "30s"
           )
         )
 
-        result should be(Right(LoadFromIndexWithFileFallback(
-          indexLoadingRetrySettings = LoadingRetryStrategySettings(
-            attemptsInterval = LoadingAttemptsInterval.unsafeFrom(10 seconds),
-            attemptsCount = LoadingAttemptsCount.unsafeFrom(3),
-            delay = LoadingDelay.unsafeFrom(2 seconds)
-          ),
-          coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
-        )))
+        result should be(
+          Right(
+            LoadFromIndexWithFileFallback(
+              indexLoadingRetrySettings = LoadingRetryStrategySettings(
+                attemptsInterval = LoadingAttemptsInterval.unsafeFrom(10 seconds),
+                attemptsCount = LoadingAttemptsCount.unsafeFrom(3),
+                delay = LoadingDelay.unsafeFrom(2 seconds)
+              ),
+              coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
+            )
+          )
+        )
       }
     }
     "read retry settings from legacy JVM system properties" when {
@@ -228,14 +262,18 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           properties
         )
 
-        result should be(Right(LoadFromIndexWithFileFallback(
-          indexLoadingRetrySettings = LoadingRetryStrategySettings(
-            attemptsInterval = LoadingAttemptsInterval.unsafeFrom(7 seconds),
-            attemptsCount = LoadingAttemptsCount.unsafeFrom(10),
-            delay = LoadingDelay.unsafeFrom(3 seconds)
-          ),
-          coreRefreshSettings = Enabled((20 seconds).toRefinedPositiveUnsafe)
-        )))
+        result should be(
+          Right(
+            LoadFromIndexWithFileFallback(
+              indexLoadingRetrySettings = LoadingRetryStrategySettings(
+                attemptsInterval = LoadingAttemptsInterval.unsafeFrom(7 seconds),
+                attemptsCount = LoadingAttemptsCount.unsafeFrom(10),
+                delay = LoadingDelay.unsafeFrom(3 seconds)
+              ),
+              coreRefreshSettings = Enabled((20 seconds).toRefinedPositiveUnsafe)
+            )
+          )
+        )
       }
       "legacy refresh interval is given as integer seconds" in {
         val properties = Map(nes("com.readonlyrest.settings.refresh.interval") -> "15")
@@ -247,10 +285,14 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           properties
         )
 
-        result should be(Right(LoadFromIndexWithFileFallback(
-          indexLoadingRetrySettings = defaultRetrySettings,
-          coreRefreshSettings = Enabled((15 seconds).toRefinedPositiveUnsafe)
-        )))
+        result should be(
+          Right(
+            LoadFromIndexWithFileFallback(
+              indexLoadingRetrySettings = defaultRetrySettings,
+              coreRefreshSettings = Enabled((15 seconds).toRefinedPositiveUnsafe)
+            )
+          )
+        )
       }
       "legacy refresh interval of 0 disables refresh" in {
         val properties = Map(nes("com.readonlyrest.settings.refresh.interval") -> "0")
@@ -262,58 +304,65 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           properties
         )
 
-        result should be(Right(LoadFromIndexWithFileFallback(
-          indexLoadingRetrySettings = defaultRetrySettings,
-          coreRefreshSettings = Disabled
-        )))
+        result should be(
+          Right(
+            LoadFromIndexWithFileFallback(
+              indexLoadingRetrySettings = defaultRetrySettings,
+              coreRefreshSettings = Disabled
+            )
+          )
+        )
       }
     }
     "fail to load" when {
       "attempts_interval has an invalid value" in {
-        inside(load(
-          """
-            |readonlyrest:
-            |  load_from_index:
-            |    initial_loading_retry_strategy:
-            |      attempts_interval: not-a-duration
-            |""".stripMargin
-        )) {
-          case Left(MalformedSettings(_, message)) =>
-            message should include(
-              "Invalid value at '.readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_interval': " +
-                "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
-            )
+        inside(
+          load(
+            """
+              |readonlyrest:
+              |  load_from_index:
+              |    initial_loading_retry_strategy:
+              |      attempts_interval: not-a-duration
+              |""".stripMargin
+          )
+        ) { case Left(MalformedSettings(_, message)) =>
+          message should include(
+            "Invalid value at '.readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_interval': " +
+              "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
+          )
         }
       }
       "attempts_count has an invalid value" in {
-        inside(load(
-          """
-            |readonlyrest:
-            |  load_from_index:
-            |    initial_loading_retry_strategy:
-            |      attempts_count: not-a-number
-            |""".stripMargin
-        )) {
-          case Left(MalformedSettings(_, message)) =>
-            message should include(
-              "Invalid value at '.readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_count': " +
-                "Cannot convert 'not-a-number' to non-negative integer"
-            )
+        inside(
+          load(
+            """
+              |readonlyrest:
+              |  load_from_index:
+              |    initial_loading_retry_strategy:
+              |      attempts_count: not-a-number
+              |""".stripMargin
+          )
+        ) { case Left(MalformedSettings(_, message)) =>
+          message should include(
+            "Invalid value at '.readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_count': " +
+              "Cannot convert 'not-a-number' to non-negative integer"
+          )
         }
       }
       "poll_interval has an invalid value" in {
-        inside(load(
-          """
-            |readonlyrest:
-            |  load_from_index:
-            |    poll_interval: not-a-duration
-            |""".stripMargin
-        )) {
-          case Left(MalformedSettings(_, message)) =>
-            message should include(
-              "Invalid value at '.readonlyrest.load_from_index.poll_interval': " +
-                "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
-            )
+        inside(
+          load(
+            """
+              |readonlyrest:
+              |  load_from_index:
+              |    poll_interval: not-a-duration
+              |""".stripMargin
+          )
+        ) { case Left(MalformedSettings(_, message)) =>
+          message should include(
+            "Invalid value at '.readonlyrest.load_from_index.poll_interval': " +
+              "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
+          )
         }
       }
     }
@@ -325,9 +374,11 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
     delay = LoadingDelay.unsafeFrom(5 seconds)
   )
 
-  private def load(yaml: String,
-                   properties: Map[NonEmptyString, String] = Map.empty,
-                   envVars: Map[NonEmptyString, String] = Map.empty) = {
+  private def load(
+      yaml: String,
+      properties: Map[NonEmptyString, String] = Map.empty,
+      envVars: Map[NonEmptyString, String] = Map.empty
+  ) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties),
       envVarsProvider = TestsEnvVarsProvider.usingMap(envVars)
@@ -336,4 +387,5 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
       RorCoreSettingsLoadingStrategy.load(esEnv).runSyncUnsafe()
     }
   }
+
 }

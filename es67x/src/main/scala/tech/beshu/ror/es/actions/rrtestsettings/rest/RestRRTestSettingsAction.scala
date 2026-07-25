@@ -19,15 +19,20 @@ package tech.beshu.ror.es.actions.rrtestsettings.rest
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.*
+import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import tech.beshu.ror.constants
-import tech.beshu.ror.es.actions.rrtestsettings.{RRTestSettingsActionType, RRTestSettingsRequest, RRTestSettingsResponse}
+import tech.beshu.ror.es.actions.rrtestsettings.{
+  RRTestSettingsActionType,
+  RRTestSettingsRequest,
+  RRTestSettingsResponse
+}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
 @Inject
 class RestRRTestSettingsAction(settings: Settings, controller: RestController)
-  extends BaseRestHandler(settings) with RestHandler {
+    extends BaseRestHandler(settings)
+    with RestHandler {
 
   register("GET", constants.PROVIDE_TEST_SETTINGS_PATH)
   register("POST", constants.UPDATE_TEST_SETTINGS_PATH)
@@ -40,7 +45,11 @@ class RestRRTestSettingsAction(settings: Settings, controller: RestController)
     private val rorTestSettingsRequest = RRTestSettingsRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRTestSettingsActionType, rorTestSettingsRequest, new RestToXContentWithStatusListener[RRTestSettingsResponse](channel))
+      client.execute(
+        new RRTestSettingsActionType,
+        rorTestSettingsRequest,
+        new RestToXContentWithStatusListener[RRTestSettingsResponse](channel)
+      )
     }
   }
 

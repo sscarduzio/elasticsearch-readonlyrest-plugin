@@ -25,13 +25,13 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Credentials, RequestId}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-private[auth] abstract class BaseBasicAuthAuthenticationRule
-  extends BaseAuthenticationRule {
+private[auth] abstract class BaseBasicAuthAuthenticationRule extends BaseAuthenticationRule {
 
-  protected def authenticateUsing(credentials: Credentials)
-                                 (implicit requestId: RequestId): Task[Either[AuthenticationFailed, DirectlyLoggedUser]]
+  protected def authenticateUsing(credentials: Credentials)(
+      implicit requestId: RequestId
+  ): Task[Either[AuthenticationFailed, DirectlyLoggedUser]]
 
-  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+  override def tryToAuthenticateUser[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val result = for {
       credentials <- basicAuthCredentialsFrom(blockContext.requestContext)
@@ -44,22 +44,27 @@ private[auth] abstract class BaseBasicAuthAuthenticationRule
 
   private def basicAuthCredentialsFrom(requestContext: RequestContext) = {
     EitherT.fromEither[Task] {
-      requestContext
-        .basicAuth.map(_.credentials)
+      requestContext.basicAuth
+        .map(_.credentials)
         .toRight(AuthenticationFailed("No basic auth credentials provided"))
     }
   }
+
 }
 
 abstract class BasicAuthenticationRule[CREDENTIALS](val settings: Settings[CREDENTIALS])
-  extends BaseBasicAuthAuthenticationRule {
+    extends BaseBasicAuthAuthenticationRule {
 
-  override protected def authenticateUsing(credentials: Credentials)
-                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] =
+  override protected def authenticateUsing(credentials: Credentials)(
+      implicit requestId: RequestId
+  ): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] =
     compare(settings.credentials, credentials)
 
-  protected def compare(configuredCredentials: CREDENTIALS,
-                        credentials: Credentials): Task[Either[AuthenticationFailed, DirectlyLoggedUser]]
+  protected def compare(
+      configuredCredentials: CREDENTIALS,
+      credentials: Credentials
+  ): Task[Either[AuthenticationFailed, DirectlyLoggedUser]]
+
 }
 
 object BasicAuthenticationRule {

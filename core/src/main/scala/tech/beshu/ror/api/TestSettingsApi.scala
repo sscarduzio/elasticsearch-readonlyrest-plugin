@@ -39,26 +39,27 @@ import java.time.Instant
 import scala.concurrent.duration.*
 import scala.util.Try
 
-class TestSettingsApi(rorInstance: RorInstance,
-                      settingsYamlParser: RawRorSettingsYamlParser) {
+class TestSettingsApi(rorInstance: RorInstance, settingsYamlParser: RawRorSettingsYamlParser) {
 
   import tech.beshu.ror.api.TestSettingsApi.Utils.*
   import tech.beshu.ror.api.TestSettingsApi.Utils.decoders.*
 
-  def call(request: RorApiRequest[TestSettingsRequest])
-          (implicit requestId: RequestId): Task[TestSettingsResponse] = {
+  def call(request: RorApiRequest[TestSettingsRequest])(
+      implicit requestId: RequestId
+  ): Task[TestSettingsResponse] = {
     val testSettingsResponse = request.request.aType match {
-      case Type.ProvideTestSettings => loadCurrentTestSettings()
-      case Type.UpdateTestSettings => updateTestSettings(request.request.body)
+      case Type.ProvideTestSettings    => loadCurrentTestSettings()
+      case Type.UpdateTestSettings     => updateTestSettings(request.request.body)
       case Type.InvalidateTestSettings => invalidateTestSettings()
-      case Type.ProvideLocalUsers => provideLocalUsers(request.loggedUser)
+      case Type.ProvideLocalUsers      => provideLocalUsers(request.loggedUser)
     }
     testSettingsResponse
       .executeOn(RorSchedulers.restApiScheduler)
   }
 
-  private def updateTestSettings(body: String)
-                                (implicit requestId: RequestId): Task[TestSettingsResponse] = {
+  private def updateTestSettings(body: String)(
+      implicit requestId: RequestId
+  ): Task[TestSettingsResponse] = {
     val result = for {
       updateRequest <- EitherT.fromEither[Task](decodeUpdateSettingsRequest(body))
       rorSettings <- rorTestSettingsFrom(updateRequest.settingsString)
@@ -69,19 +70,23 @@ class TestSettingsApi(rorInstance: RorInstance,
   }
 
   private def decodeUpdateSettingsRequest(payload: String): Either[Failure, UpdateTestSettingsRequest] = {
-    io.circe.parser.decode[UpdateTestSettingsRequest](payload)
-      .left.map(error => TestSettingsResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage}]"))
+    io.circe.parser
+      .decode[UpdateTestSettingsRequest](payload)
+      .left
+      .map(error => TestSettingsResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage}]"))
   }
 
   private def rorTestSettingsFrom(settingsString: String): EitherT[Task, TestSettingsResponse, RawRorSettings] = {
     settingsYamlParser
       .fromString(settingsString)
-      .left.map(error => TestSettingsResponse.UpdateTestSettings.FailedResponse(error.show): TestSettingsResponse)
+      .left
+      .map(error => TestSettingsResponse.UpdateTestSettings.FailedResponse(error.show): TestSettingsResponse)
       .toEitherT[Task]
   }
 
-  private def invalidateTestSettings()
-                                    (implicit requestId: RequestId): Task[TestSettingsResponse] = {
+  private def invalidateTestSettings()(
+      implicit requestId: RequestId
+  ): Task[TestSettingsResponse] = {
     rorInstance
       .invalidateTestSettingsEngine()
       .map {
@@ -92,8 +97,9 @@ class TestSettingsApi(rorInstance: RorInstance,
       }
   }
 
-  private def loadCurrentTestSettings()
-                                     (implicit requestId: RequestId): Task[TestSettingsResponse] = {
+  private def loadCurrentTestSettings()(
+      implicit requestId: RequestId
+  ): Task[TestSettingsResponse] = {
     rorInstance
       .currentTestSettings()
       .map {
@@ -107,7 +113,11 @@ class TestSettingsApi(rorInstance: RorInstance,
             warnings = dependencies.impersonationWarningsReader.read().map(toWarningDto)
           )
         case TestSettings.Invalidated(recentConfig, ttl) =>
-          TestSettingsResponse.ProvideTestSettings.TestSettingsInvalidated("ROR Test settings are invalidated", recentConfig, apiFormat(ttl))
+          TestSettingsResponse.ProvideTestSettings.TestSettingsInvalidated(
+            "ROR Test settings are invalidated",
+            recentConfig,
+            apiFormat(ttl)
+          )
       }
   }
 
@@ -128,21 +138,20 @@ class TestSettingsApi(rorInstance: RorInstance,
       }
   }
 
-  private def forceReloadTestSettings(settings: RawRorSettings,
-                                      ttl: PositiveFiniteDuration)
-                                     (implicit requestId: RequestId): EitherT[Task, TestSettingsResponse, TestSettingsResponse] = {
+  private def forceReloadTestSettings(settings: RawRorSettings, ttl: PositiveFiniteDuration)(
+      implicit requestId: RequestId
+  ): EitherT[Task, TestSettingsResponse, TestSettingsResponse] = {
     EitherT(
       rorInstance
         .forceReloadTestSettingsEngine(settings, ttl)
         .map {
-          _
-            .map { newTestSettings =>
-              TestSettingsResponse.UpdateTestSettings.SuccessResponse(
-                message = "updated settings",
-                validTo = newTestSettings.validTo,
-                warnings = newTestSettings.dependencies.impersonationWarningsReader.read().map(toWarningDto)
-              )
-            }
+          _.map { newTestSettings =>
+            TestSettingsResponse.UpdateTestSettings.SuccessResponse(
+              message = "updated settings",
+              validTo = newTestSettings.validTo,
+              warnings = newTestSettings.dependencies.impersonationWarningsReader.read().map(toWarningDto)
+            )
+          }
             .leftMap {
               case IndexSettingsSavingError(error) =>
                 TestSettingsResponse.UpdateTestSettings.FailedResponse(s"Cannot reload new settings: ${error.show}")
@@ -151,7 +160,8 @@ class TestSettingsApi(rorInstance: RorInstance,
               case ReloadError(RawSettingsReloadError.RorInstanceStopped) =>
                 TestSettingsResponse.UpdateTestSettings.FailedResponse(s"ROR instance is being stopped")
               case ReloadError(RawSettingsReloadError.ReloadingFailed(failure)) =>
-                TestSettingsResponse.UpdateTestSettings.FailedResponse(s"Cannot reload new settings: ${failure.message}")
+                TestSettingsResponse.UpdateTestSettings
+                  .FailedResponse(s"Cannot reload new settings: ${failure.message}")
             }
         }
     )
@@ -165,6 +175,7 @@ class TestSettingsApi(rorInstance: RorInstance,
       hint = warning.hint
     )
   }
+
 }
 
 object TestSettingsApi {
@@ -174,55 +185,62 @@ object TestSettingsApi {
     def create(rorInstance: RorInstance): TestSettingsApi = {
       new TestSettingsApi(rorInstance, settingsYamlParser)
     }
+
   }
 
-  final case class TestSettingsRequest(aType: TestSettingsRequest.Type,
-                                       body: String)
+  final case class TestSettingsRequest(aType: TestSettingsRequest.Type, body: String)
 
   object TestSettingsRequest {
     sealed trait Type
+
     object Type {
       case object ProvideTestSettings extends Type
       case object UpdateTestSettings extends Type
       case object InvalidateTestSettings extends Type
       case object ProvideLocalUsers extends Type
     }
+
   }
 
   sealed trait TestSettingsResponse
+
   object TestSettingsResponse {
 
-    final case class Warning(blockName: String,
-                             ruleName: String,
-                             message: String,
-                             hint: String)
+    final case class Warning(blockName: String, ruleName: String, message: String, hint: String)
 
     sealed trait ProvideTestSettings extends TestSettingsResponse
+
     object ProvideTestSettings {
-      final case class CurrentTestSettings(ttl: FiniteDuration,
-                                           validTo: Instant,
-                                           settings: RawRorSettings,
-                                           warnings: List[Warning]) extends ProvideTestSettings
+
+      final case class CurrentTestSettings(
+          ttl: FiniteDuration,
+          validTo: Instant,
+          settings: RawRorSettings,
+          warnings: List[Warning]
+      ) extends ProvideTestSettings
 
       final case class TestSettingsNotConfigured(message: String) extends ProvideTestSettings
-      final case class TestSettingsInvalidated(message: String,
-                                               settings: RawRorSettings,
-                                               ttl: FiniteDuration) extends ProvideTestSettings
+      final case class TestSettingsInvalidated(message: String, settings: RawRorSettings, ttl: FiniteDuration)
+          extends ProvideTestSettings
     }
 
     sealed trait UpdateTestSettings extends TestSettingsResponse
+
     object UpdateTestSettings {
-      final case class SuccessResponse(message: String, validTo: Instant, warnings: List[Warning]) extends UpdateTestSettings
+      final case class SuccessResponse(message: String, validTo: Instant, warnings: List[Warning])
+          extends UpdateTestSettings
       final case class FailedResponse(message: String) extends UpdateTestSettings
     }
 
     sealed trait InvalidateTestSettings extends TestSettingsResponse
+
     object InvalidateTestSettings {
       final case class SuccessResponse(message: String) extends InvalidateTestSettings
       final case class FailedResponse(message: String) extends InvalidateTestSettings
     }
 
     sealed trait ProvideLocalUsers extends TestSettingsResponse
+
     object ProvideLocalUsers {
       final case class SuccessResponse(users: List[String], unknownUsers: Boolean) extends ProvideLocalUsers
       final case class TestSettingsNotConfigured(message: String) extends ProvideLocalUsers
@@ -230,34 +248,36 @@ object TestSettingsApi {
     }
 
     sealed trait Failure extends TestSettingsResponse
+
     object Failure {
       final case class BadRequest(message: String) extends Failure
     }
+
   }
 
   implicit class StatusFromTestSettingsResponse(val response: TestSettingsResponse) extends AnyVal {
+
     def status: String = response match {
-      case _: ProvideTestSettings.CurrentTestSettings => "TEST_SETTINGS_PRESENT"
+      case _: ProvideTestSettings.CurrentTestSettings       => "TEST_SETTINGS_PRESENT"
       case _: ProvideTestSettings.TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
-      case _: ProvideTestSettings.TestSettingsInvalidated => "TEST_SETTINGS_INVALIDATED"
-      case _: UpdateTestSettings.SuccessResponse => "OK"
-      case _: UpdateTestSettings.FailedResponse => "FAILED"
-      case _: InvalidateTestSettings.SuccessResponse => "OK"
-      case _: InvalidateTestSettings.FailedResponse => "FAILED"
-      case _: ProvideLocalUsers.SuccessResponse => "OK"
-      case _: ProvideLocalUsers.TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
-      case _: ProvideLocalUsers.TestSettingsInvalidated => "TEST_SETTINGS_INVALIDATED"
-      case _: Failure.BadRequest => "FAILED"
+      case _: ProvideTestSettings.TestSettingsInvalidated   => "TEST_SETTINGS_INVALIDATED"
+      case _: UpdateTestSettings.SuccessResponse            => "OK"
+      case _: UpdateTestSettings.FailedResponse             => "FAILED"
+      case _: InvalidateTestSettings.SuccessResponse        => "OK"
+      case _: InvalidateTestSettings.FailedResponse         => "FAILED"
+      case _: ProvideLocalUsers.SuccessResponse             => "OK"
+      case _: ProvideLocalUsers.TestSettingsNotConfigured   => "TEST_SETTINGS_NOT_CONFIGURED"
+      case _: ProvideLocalUsers.TestSettingsInvalidated     => "TEST_SETTINGS_INVALIDATED"
+      case _: Failure.BadRequest                            => "FAILED"
     }
+
   }
 
   private object Utils {
-    final case class UpdateTestSettingsRequest(settingsString: String,
-                                               ttl: PositiveFiniteDuration)
+    final case class UpdateTestSettingsRequest(settingsString: String, ttl: PositiveFiniteDuration)
 
     private def parseDuration(value: String): Either[String, PositiveFiniteDuration] = {
-      Try(Duration(value))
-        .toEither
+      Try(Duration(value)).toEither
         .leftMap(_ => s"Cannot parse '${value.show}' as duration.")
         .flatMap(_.toRefinedPositive)
     }
@@ -272,5 +292,7 @@ object TestSettingsApi {
     def apiFormat(duration: PositiveFiniteDuration): FiniteDuration = {
       duration.value.toCoarsest
     }
+
   }
+
 }

@@ -21,8 +21,10 @@ import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
 
 object NotAvailableServiceAccountTokenService extends ServiceAccountTokenService {
 
-  override def validateToken(token: AuthorizationToken)
-                            (implicit requestId: RequestId): Task[Boolean] = Task.raiseError {
+  override def validateToken(token: AuthorizationToken)(
+      implicit requestId: RequestId
+  ): Task[Boolean] = Task.raiseError {
     new Exception("ServiceAccount Service is not available in ROR version for your Elasticsearch version")
   }
+
 }

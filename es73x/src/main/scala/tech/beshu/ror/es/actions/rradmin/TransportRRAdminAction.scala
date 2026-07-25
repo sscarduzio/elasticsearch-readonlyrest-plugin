@@ -24,16 +24,19 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRRAdminAction(transportService: TransportService,
-                             actionFilters: ActionFilters,
-                             @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
-    RRAdminActionType.name, transportService, actionFilters, () => new RRAdminRequest
-  ) {
+class TransportRRAdminAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
+      RRAdminActionType.name,
+      transportService,
+      actionFilters,
+      () => new RRAdminRequest
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters) = {
+  def this(transportService: TransportService, actionFilters: ActionFilters) = {
     this(transportService, actionFilters, ())
   }
 
@@ -42,4 +45,5 @@ class TransportRRAdminAction(transportService: TransportService,
   override def doExecute(task: Task, request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     handler.handle(request, listener)
   }
+
 }

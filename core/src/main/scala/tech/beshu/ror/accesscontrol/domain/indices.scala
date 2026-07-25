@@ -34,21 +34,20 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
+import java.util.regex.Pattern
 import scala.concurrent.ExecutionContext.global
 import scala.language.postfixOps
-import scala.util.matching.Regex
 import scala.util.Random
-
-private trait EagerHashCode { this: Product =>
-  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
-}
+import scala.util.matching.Regex
 
 sealed trait IndexName
+
 object IndexName {
 
   val wildcard: IndexName.Pattern = IndexName.Pattern.unsafeFromNes(nes("*"))
 
   final case class Full(name: NonEmptyString) extends IndexName with EagerHashCode
+
   object Full {
     def fromString(value: String): Option[Full] =
       NonEmptyString.unapply(value).map(Full.apply)
@@ -57,7 +56,8 @@ object IndexName {
       Full(value)
   }
 
-  final case class Pattern private(name: NonEmptyString) extends IndexName with EagerHashCode
+  final case class Pattern private (name: NonEmptyString) extends IndexName with EagerHashCode
+
   object Pattern {
     def fromString(value: String): Option[Pattern] =
       NonEmptyString.unapply(value).flatMap(fromNes)
@@ -65,8 +65,8 @@ object IndexName {
     def fromNes(value: NonEmptyString): Option[Pattern] =
       value match {
         case str if str.value == "_all" => Some(IndexName.wildcard)
-        case str if str.contains("*") => Some(IndexName.Pattern(value))
-        case _ => None
+        case str if str.contains("*")   => Some(IndexName.Pattern(value))
+        case _                          => None
       }
 
     def unsafeFromNes(value: NonEmptyString): Pattern = Pattern(value)
@@ -79,12 +79,14 @@ object IndexName {
     IndexName.Pattern.fromString(value).getOrElse(IndexName.Full.fromNes(value))
 
   implicit val matchableIndexName: Matchable[IndexName] = Matchable.matchable {
-    case IndexName.Full(name) => name
+    case IndexName.Full(name)           => name
     case IndexName.Pattern(namePattern) => namePattern
   }
+
 }
 
-final case class KibanaIndexName(underlying: ClusterIndexName.Local)
+final case class KibanaIndexName(underlying: ClusterIndexName.Local) extends EagerHashCode
+
 object KibanaIndexName {
 
   val devNullKibana: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana-devnull"))))
@@ -92,45 +94,50 @@ object KibanaIndexName {
 
   private val kibanaIndicesRegexesCache: Cache[KibanaIndexName, Vector[Regex]] =
     doPrivileged {
-      Caffeine.newBuilder()
+      Caffeine
+        .newBuilder()
         .executor(global)
         .maximumSize(1000)
         .build[KibanaIndexName, Vector[Regex]]()
     }
 
-  private def createKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = Vector(
-    s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_8.0.0
-    s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_8.0.0_001
-    s"""^\\.kibana-reporting-${kibanaIndex.stringify}$$""".r, // eg. .kibana_reporting-.kibana
-    s"""^\\.ds-\\.kibana-reporting-${kibanaIndex.stringify}-\\d{4}\\.\\d{2}\\.\\d{2}-\\d+$$""".r, // eg. .ds-.kibana_reporting-.kibana-2025.01.01-000001
-    s"""^${kibanaIndex.stringify}_alerting_cases$$""".r, // eg. .kibana_alerting_cases
-    s"""^${kibanaIndex.stringify}_alerting_cases_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_alerting_cases_8.8.0
-    s"""^${kibanaIndex.stringify}_alerting_cases_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_alerting_cases_8.11.3_001
-    s"""^${kibanaIndex.stringify}_analytics$$""".r, // eg. .kibana_analytics
-    s"""^${kibanaIndex.stringify}_analytics_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_analytics_8.0.0
-    s"""^${kibanaIndex.stringify}_ingest$$""".r, // eg. .kibana_ingest
-    s"""^${kibanaIndex.stringify}_ingest_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_ingest_8.0.0
-    s"""^${kibanaIndex.stringify}-event-log-\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana-event-log-8.8.0
-    s"""^${kibanaIndex.stringify}_security_solution$$""".r, // eg. .kibana_security_solution
-    s"""^${kibanaIndex.stringify}_security_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_security_solution_8.8.0
-    s"""^${kibanaIndex.stringify}_search_solution$$""".r, // eg. .kibana_search_solution
-    s"""^${kibanaIndex.stringify}_search_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana__search_solution_9.1.0
-    s"""^${kibanaIndex.stringify}_task_manager$$""".r, // eg. .kibana_task_manager
-    s"""^${kibanaIndex.stringify}_task_manager_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_task_manager_8.8.0,
-    s"""^${kibanaIndex.stringify}_usage_counters$$""".r, // eg. .kibana_usage_counters
-    s"""^${kibanaIndex.stringify}_usage_counters_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_usage_counters_8.16.0
-  )
-
-  private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
-    Option(kibanaIndicesRegexesCache.getIfPresent(kibanaIndex))
-      .getOrElse {
-        val kibanaIndicesRegexes = createKibanaRelatedIndicesRegexes(kibanaIndex)
-        kibanaIndicesRegexesCache.put(kibanaIndex, kibanaIndicesRegexes)
-        kibanaIndicesRegexes
-      }
+  private def createKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
+    // The index name is admin-configured and may contain regex metacharacters (the default `.kibana`
+    // already has a `.`). Quote it so it matches literally — same fix as `nonStrictAllowedPathsPatternFor`
+    // in `BaseKibanaRule`. The `\d+\.\d+` version suffixes stay real regex.
+    val idx = Pattern.quote(kibanaIndex.stringify)
+    Vector(
+      s"""^${idx}_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_8.0.0
+      s"""^${idx}_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_8.0.0_001
+      s"""^\\.kibana-reporting-${idx}$$""".r, // eg. .kibana_reporting-.kibana
+      s"""^\\.ds-\\.kibana-reporting-${idx}-\\d{4}\\.\\d{2}\\.\\d{2}-\\d+$$""".r, // eg. .ds-.kibana_reporting-.kibana-2025.01.01-000001
+      s"""^${idx}_alerting_cases$$""".r, // eg. .kibana_alerting_cases
+      s"""^${idx}_alerting_cases_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_alerting_cases_8.8.0
+      s"""^${idx}_alerting_cases_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_alerting_cases_8.11.3_001
+      s"""^${idx}_analytics$$""".r, // eg. .kibana_analytics
+      s"""^${idx}_analytics_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_analytics_8.0.0
+      s"""^${idx}_ingest$$""".r, // eg. .kibana_ingest
+      s"""^${idx}_ingest_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_ingest_8.0.0
+      s"""^${idx}-event-log-\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana-event-log-8.8.0
+      s"""^${idx}_security_solution$$""".r, // eg. .kibana_security_solution
+      s"""^${idx}_security_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_security_solution_8.8.0
+      s"""^${idx}_search_solution$$""".r, // eg. .kibana_search_solution
+      s"""^${idx}_search_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana__search_solution_9.1.0
+      s"""^${idx}_task_manager$$""".r, // eg. .kibana_task_manager
+      s"""^${idx}_task_manager_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_task_manager_8.8.0,
+      s"""^${idx}_usage_counters$$""".r, // eg. .kibana_usage_counters
+      s"""^${idx}_usage_counters_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_usage_counters_8.16.0
+    )
   }
 
+  private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) =
+    // Caffeine's atomic loader compiles the regex vector at most once per Kibana index even under
+    // concurrent first access, instead of the racy `getIfPresent`/`put` (both threads miss, both
+    // compile). Matches the pattern used by `nonStrictAllowedPathsPatternCache` in `BaseKibanaRule`.
+    kibanaIndicesRegexesCache.get(kibanaIndex, createKibanaRelatedIndicesRegexes)
+
   extension (indexName: ClusterIndexName)
+
     def isRelatedToKibanaIndex(kibanaIndex: KibanaIndexName): Boolean = {
       if (indexName == kibanaIndex.underlying) {
         true
@@ -140,11 +147,11 @@ object KibanaIndexName {
       }
     }
 
-  extension (kibanaIndexName: KibanaIndexName)
-    def stringify: String = kibanaIndexName.underlying.stringify
+  extension (kibanaIndexName: KibanaIndexName) def stringify: String = kibanaIndexName.underlying.stringify
 }
 
-final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean)
+final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean) extends EagerHashCode
+
 object RequestedIndex {
 
   implicit val eq: Eq[RequestedIndex[ClusterIndexName]] = Eq.by(r => (r.name, r.excluded))
@@ -163,6 +170,7 @@ object RequestedIndex {
     def stringify: String = s"${if (requestedIndex.excluded) "-" else ""}${requestedIndex.name.stringify}"
 
   extension [T <: ClusterIndexName](requestedIndices: Iterable[RequestedIndex[T]])
+
     def stringify: List[String] = {
       implicit val ordering: Ordering[RequestedIndex[ClusterIndexName]] = requestedIndexOrder.toOrdering
       requestedIndices.toList.sorted.map(_.stringify)
@@ -178,6 +186,7 @@ object RequestedIndex {
     def includedOnly: Set[T] = requestedIndices.toList.includedOnly
 
   extension (requestedIndex: RequestedIndex[ClusterIndexName]) {
+
     def randomNonexistentLocalIndex(): RequestedIndex[ClusterIndexName.Local] = {
       RequestedIndex(requestedIndex.name.randomNonexistentLocalIndex(), excluded = false)
     }
@@ -185,15 +194,19 @@ object RequestedIndex {
     def randomNonexistentIndex(): RequestedIndex[ClusterIndexName] = {
       RequestedIndex(requestedIndex.name.randomNonexistentIndex(), excluded = false)
     }
+
   }
+
 }
 
 sealed trait ClusterIndexName {
   private[domain] lazy val matcher = PatternsMatcher.create(this :: Nil)
 }
+
 object ClusterIndexName {
 
   final case class Local(value: IndexName) extends ClusterIndexName with EagerHashCode
+
   object Local {
 
     val wildcard: ClusterIndexName.Local = Local(IndexName.wildcard)
@@ -211,7 +224,8 @@ object ClusterIndexName {
     }
 
     def randomNonexistentIndex(prefix: String = ""): ClusterIndexName.Local = fromString {
-      val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i.value}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
+      val nonexistentIndex =
+        s"${NonEmptyString.unapply(prefix).map(i => s"${i.value}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
       if (prefix.contains("*")) s"$nonexistentIndex*"
       else nonexistentIndex
     } get
@@ -220,10 +234,13 @@ object ClusterIndexName {
   }
 
   final case class Remote(value: IndexName, cluster: ClusterName) extends ClusterIndexName with EagerHashCode
+
   object Remote {
     sealed trait ClusterName
+
     object ClusterName {
-      final case class Full private(value: NonEmptyString) extends ClusterName with EagerHashCode
+      final case class Full private (value: NonEmptyString) extends ClusterName with EagerHashCode
+
       object Full {
         def fromString(value: String): Option[Full] =
           NonEmptyString.unapply(value).map(Full.apply)
@@ -234,20 +251,23 @@ object ClusterIndexName {
         val local: Full = Full(NonEmptyString.unsafeFrom("(local)"))
       }
 
-      final case class Pattern private(value: NonEmptyString) extends ClusterName with EagerHashCode
+      final case class Pattern private (value: NonEmptyString) extends ClusterName with EagerHashCode
+
       object Pattern {
+
         def fromString(value: String): Option[Pattern] = {
           NonEmptyString.unapply(value).flatMap(fromNes)
         }
 
         def fromNes(value: NonEmptyString): Option[Pattern] = value match {
           case str if str.contains("*") => Some(ClusterName.Pattern(str))
-          case _ => None
+          case _                        => None
         }
 
         def unsafeFromNes(value: NonEmptyString): Pattern = {
           Pattern(value)
         }
+
       }
 
       def fromString(value: String): Option[ClusterName] = {
@@ -263,10 +283,12 @@ object ClusterIndexName {
       implicit val matchableClusterName: Matchable[ClusterName] = Matchable.matchable(_.stringify)
 
       extension (clusterName: ClusterName)
+
         def stringify: String = clusterName match {
-          case Full(name) => name
+          case Full(name)           => name
           case Pattern(namePattern) => namePattern
         }
+
     }
 
     def fromString(value: String): Option[ClusterIndexName.Remote] = {
@@ -282,7 +304,8 @@ object ClusterIndexName {
     }
 
     def randomNonexistentIndex(clusterName: ClusterName, prefix: String = ""): ClusterIndexName.Remote = fromString {
-      val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i.value}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
+      val nonexistentIndex =
+        s"${NonEmptyString.unapply(prefix).map(i => s"${i.value}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
       if (prefix.contains("*")) s"${clusterName.stringify}:$nonexistentIndex*"
       else s"${clusterName.stringify}:$nonexistentIndex"
     } get
@@ -306,14 +329,16 @@ object ClusterIndexName {
   implicit val eqIndexName: Eq[ClusterIndexName] = Eq.fromUniversalEquals
 
   extension (indexName: ClusterIndexName)
+
     def matches(otherIndexName: ClusterIndexName): Boolean = indexName match {
-      case Local(IndexName.Full(_)) => indexName == otherIndexName
-      case Remote(IndexName.Full(_), _) => indexName == otherIndexName
-      case Local(IndexName.Pattern(_)) => indexName.matcher.`match`(otherIndexName)
+      case Local(IndexName.Full(_))        => indexName == otherIndexName
+      case Remote(IndexName.Full(_), _)    => indexName == otherIndexName
+      case Local(IndexName.Pattern(_))     => indexName.matcher.`match`(otherIndexName)
       case Remote(IndexName.Pattern(_), _) => indexName.matcher.`match`(otherIndexName)
     }
 
   extension (base: ClusterIndexName)
+
     def randomNonexistentLocalIndex(): ClusterIndexName.Local = base match {
       case Local(IndexName.Full(name)) =>
         Local.randomNonexistentIndex(name)
@@ -326,6 +351,7 @@ object ClusterIndexName {
     }
 
   extension (base: ClusterIndexName)
+
     def randomNonexistentIndex(): ClusterIndexName = base match {
       case Local(IndexName.Full(name)) =>
         Local.randomNonexistentIndex(name)
@@ -338,19 +364,22 @@ object ClusterIndexName {
     }
 
   extension (indexName: ClusterIndexName) {
+
     def stringify: String = indexName match {
-      case Local(IndexName.Full(name)) => name
-      case Local(IndexName.Pattern(namePattern)) => namePattern
-      case Remote(IndexName.Full(name), cluster) => s"${cluster.stringify}:$name"
+      case Local(IndexName.Full(name))                     => name
+      case Local(IndexName.Pattern(namePattern))           => namePattern
+      case Remote(IndexName.Full(name), cluster)           => s"${cluster.stringify}:$name"
       case Remote(IndexName.Pattern(namePattern), cluster) => s"${cluster.stringify}:$namePattern"
     }
 
     def nonEmptyStringify: NonEmptyString = indexName match {
-      case Local(IndexName.Full(name)) => name
-      case Local(IndexName.Pattern(namePattern)) => namePattern
-      case Remote(IndexName.Full(name), cluster) => NonEmptyString.unsafeFrom(s"${cluster.stringify}:$name")
-      case Remote(IndexName.Pattern(namePattern), cluster) => NonEmptyString.unsafeFrom(s"${cluster.stringify}:$namePattern")
+      case Local(IndexName.Full(name))                     => name
+      case Local(IndexName.Pattern(namePattern))           => namePattern
+      case Remote(IndexName.Full(name), cluster)           => NonEmptyString.unsafeFrom(s"${cluster.stringify}:$name")
+      case Remote(IndexName.Pattern(namePattern), cluster) =>
+        NonEmptyString.unsafeFrom(s"${cluster.stringify}:$namePattern")
     }
+
   }
 
   extension [T <: ClusterIndexName](iterable: Iterable[T])
@@ -360,18 +389,21 @@ object ClusterIndexName {
     def stringify: List[String] = nonEmptyList.toIterable.stringify
 
   extension (remoteIndexName: ClusterIndexName.Remote)
+
     def onlyIndexName: NonEmptyString = remoteIndexName match {
-      case Remote(IndexName.Full(name), _) => name
+      case Remote(IndexName.Full(name), _)           => name
       case Remote(IndexName.Pattern(namePattern), _) => namePattern
     }
 
   extension [T <: ClusterIndexName](indices: Set[RequestedIndex[T]]) {
+
     def orWildcardWhenEmpty: Set[RequestedIndex[ClusterIndexName]] =
       if (indices.nonEmpty) indices
       else Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
-    def skipRemoteIndicesIfNeeded(esContext: BaseEsContext)
-                                 (implicit id: RequestId): Set[RequestedIndex[ClusterIndexName]] = {
+    def skipRemoteIndicesIfNeeded(esContext: BaseEsContext)(
+        implicit id: RequestId
+    ): Set[RequestedIndex[ClusterIndexName]] = {
       val filtered = indices.filterNot(shouldSkipIndex(_, esContext))
       if (indices.nonEmpty && filtered.isEmpty) {
         val nonExistentRemoteIndex: ClusterIndexName = ClusterIndexName.Local.randomNonexistentIndex("remote*")
@@ -381,11 +413,11 @@ object ClusterIndexName {
       }
     }
 
-    private def shouldSkipIndex(requestedIndex: RequestedIndex[T],
-                                esContext: BaseEsContext)
-                               (implicit id: RequestId): Boolean = {
+    private def shouldSkipIndex(requestedIndex: RequestedIndex[T], esContext: BaseEsContext)(
+        implicit id: RequestId
+    ): Boolean = {
       def isRemoteIndex = requestedIndex.name match {
-        case Local(_) => false
+        case Local(_)                      => false
         case ClusterIndexName.Remote(_, _) => true
       }
 
@@ -397,17 +429,20 @@ object ClusterIndexName {
 
       isRemoteIndex && isInaccessibleWhenXpackIsEnabled
     }
+
   }
 
   extension (indexName: ClusterIndexName)
+
     def hasPrefix(prefix: String): Boolean = {
       indexName match {
-        case local: Local => local.stringify.startsWith(prefix)
+        case local: Local   => local.stringify.startsWith(prefix)
         case remote: Remote => remote.onlyIndexName.startsWith(prefix)
       }
     }
 
   extension (indexName: ClusterIndexName)
+
     def isAllowedBy(allowedIndices: Iterable[ClusterIndexName]): Boolean = {
       indexName match {
         case Placeholder(placeholder) =>
@@ -419,22 +454,25 @@ object ClusterIndexName {
     }
 
   extension (indexName: ClusterIndexName)
+
     def hasWildcard: Boolean = indexName match {
-      case Local(IndexName.Full(_)) => false
-      case Local(IndexName.Pattern(_)) => true
-      case Remote(IndexName.Full(_), _) => false
+      case Local(IndexName.Full(_))        => false
+      case Local(IndexName.Pattern(_))     => true
+      case Remote(IndexName.Full(_), _)    => false
       case Remote(IndexName.Pattern(_), _) => true
     }
 
   extension (indexName: ClusterIndexName)
+
     def allIndicesRequested: Boolean = indexName match {
-      case Local(IndexName.wildcard) => true
-      case Local(IndexName.Full(_) | IndexName.Pattern(_)) => false
-      case Remote(IndexName.wildcard, ClusterName.wildcard) => true
+      case Local(IndexName.wildcard)                           => true
+      case Local(IndexName.Full(_) | IndexName.Pattern(_))     => false
+      case Remote(IndexName.wildcard, ClusterName.wildcard)    => true
       case Remote(IndexName.Full(_) | IndexName.Pattern(_), _) => false
     }
 
   extension (index: ClusterIndexName) {
+
     def formatAsDataStreamBackingIndexName: ClusterIndexName = {
       format(backingIndexWildcardNameFrom)
     }
@@ -451,7 +489,8 @@ object ClusterIndexName {
           ClusterIndexName.Local(backingIndexWildcardFromString(namePattern))
         case ClusterIndexName.Remote(IndexName.Full(name), cluster) if !doesItLookLikeABackingIndex(name) =>
           ClusterIndexName.Remote(backingIndexWildcardFromString(name), cluster)
-        case ClusterIndexName.Remote(IndexName.Pattern(namePattern), cluster) if !doesItLookLikeABackingIndex(namePattern) =>
+        case ClusterIndexName.Remote(IndexName.Pattern(namePattern), cluster)
+            if !doesItLookLikeABackingIndex(namePattern) =>
           ClusterIndexName.Remote(backingIndexWildcardFromString(namePattern), cluster)
         case index =>
           index
@@ -469,9 +508,11 @@ object ClusterIndexName {
     private def legacyBackingIndexWildcardNameFrom(nameStr: NonEmptyString) = {
       IndexName.Pattern.unsafeFromNes(NonEmptyString.unsafeFrom(s".ds-$nameStr-*"))
     }
+
   }
 
-  extension [T <: ClusterIndexName : PatternsMatcher.Matchable](indices: Iterable[T])
+  extension [T <: ClusterIndexName: PatternsMatcher.Matchable](indices: Iterable[T])
+
     def filterBy(requestedIndices: Iterable[RequestedIndex[T]]): Set[RequestedIndex[T]] = {
       val (excl, incl) = requestedIndices.toList.partition(_.excluded)
       indices.filterBy(
@@ -481,11 +522,12 @@ object ClusterIndexName {
     }
 
   extension [T <: ClusterIndexName](indices: Iterable[T])
-    def filterBy(excluded: Option[PatternsMatcher[T]],
-                 included: Option[PatternsMatcher[T]]): Set[RequestedIndex[T]] = {
+
+    def filterBy(excluded: Option[PatternsMatcher[T]], included: Option[PatternsMatcher[T]]): Set[RequestedIndex[T]] = {
       lazy val excludedNames = excluded.fold(Set.empty[T])(_.filter(indices))
       val includedItems = included.fold(Set.empty[RequestedIndex[T]]) { m =>
-        implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
+        implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] =
+          PatternsMatcher.Conversion.from(_.name)
         m.filter(
           indices.iterator
             .filterNot(excludedNames.contains)
@@ -497,6 +539,7 @@ object ClusterIndexName {
       else
         includedItems
     }
+
 }
 
 final case class IndexPattern(value: ClusterIndexName) {
@@ -513,7 +556,9 @@ final case class IndexPattern(value: ClusterIndexName) {
   def isSubsetOf(index: ClusterIndexName): Boolean = {
     index.matches(value)
   }
+
 }
+
 object IndexPattern {
 
   def fromString(value: String): Option[IndexPattern] =
@@ -524,7 +569,8 @@ object IndexPattern {
 
 }
 
-final case class AliasPlaceholder private(alias: ClusterIndexName) extends AnyVal {
+final case class AliasPlaceholder private (alias: ClusterIndexName) extends AnyVal {
+
   def index(value: NonEmptyString): ClusterIndexName = alias match {
     case ClusterIndexName.Local(IndexName.Full(_)) =>
       val replaced = alias.stringify.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
@@ -532,14 +578,16 @@ final case class AliasPlaceholder private(alias: ClusterIndexName) extends AnyVa
     case ClusterIndexName.Local(IndexName.Pattern(_)) =>
       val replaced = alias.stringify.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
       ClusterIndexName.Local(IndexName.Pattern.unsafeFromNes(NonEmptyString.unsafeFrom(replaced)))
-    case i@ClusterIndexName.Remote(IndexName.Full(_), clusterName) =>
+    case i @ ClusterIndexName.Remote(IndexName.Full(_), clusterName) =>
       val replaced = i.onlyIndexName.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
       ClusterIndexName.Remote(IndexName.Full(NonEmptyString.unsafeFrom(replaced)), clusterName)
-    case i@ClusterIndexName.Remote(IndexName.Pattern(_), clusterName) =>
+    case i @ ClusterIndexName.Remote(IndexName.Pattern(_), clusterName) =>
       val replaced = i.onlyIndexName.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
       ClusterIndexName.Remote(IndexName.Pattern.unsafeFromNes(NonEmptyString.unsafeFrom(replaced)), clusterName)
   }
+
 }
+
 object AliasPlaceholder {
   private val placeholder = "{index}"
   private val escapedPlaceholder = placeholder.replace("{", "\\{").replace("}", "\\}")
@@ -562,36 +610,46 @@ object AliasPlaceholder {
     case ClusterIndexName.Remote(IndexName.Pattern(_), _) =>
       None
   }
+
 }
 
 object Placeholder {
   def unapply(alias: ClusterIndexName): Option[AliasPlaceholder] = AliasPlaceholder.from(alias)
 }
 
-final class FullLocalIndexWithAliases(val indexName: IndexName.Full,
-                                      val attribute: IndexAttribute,
-                                      val aliasesNames: Set[IndexName.Full]) {
+final class FullLocalIndexWithAliases(
+    val indexName: IndexName.Full,
+    val attribute: IndexAttribute,
+    val aliasesNames: Set[IndexName.Full]
+) {
   val index: ClusterIndexName.Local = ClusterIndexName.Local(indexName)
   val aliases: Set[ClusterIndexName.Local] = Set.mapFrom(aliasesNames)(ClusterIndexName.Local.apply)
+
   val all: Set[ClusterIndexName.Local] = Set.sized[ClusterIndexName.Local](aliases.size + 1) { b =>
     b += index
     aliases.foreach(b += _)
   }
+
 }
 
-final class FullRemoteIndexWithAliases(val clusterName: ClusterName.Full,
-                                       val indexName: IndexName.Full,
-                                       val attribute: IndexAttribute,
-                                       val aliasesNames: Set[IndexName.Full]) {
+final class FullRemoteIndexWithAliases(
+    val clusterName: ClusterName.Full,
+    val indexName: IndexName.Full,
+    val attribute: IndexAttribute,
+    val aliasesNames: Set[IndexName.Full]
+) {
   val index: ClusterIndexName.Remote = ClusterIndexName.Remote(indexName, clusterName)
   val aliases: Set[ClusterIndexName.Remote] = Set.mapFrom(aliasesNames)(ClusterIndexName.Remote(_, clusterName))
+
   val all: Set[ClusterIndexName.Remote] = Set.sized[ClusterIndexName.Remote](aliases.size + 1) { b =>
     b += index
     aliases.foreach(b += _)
   }
+
 }
 
 sealed trait IndexAttribute extends EnumEntry
+
 object IndexAttribute extends Enum[IndexAttribute] {
   case object Opened extends IndexAttribute
   case object Closed extends IndexAttribute
@@ -600,6 +658,7 @@ object IndexAttribute extends Enum[IndexAttribute] {
 }
 
 sealed trait IndexAttributeFilter
+
 object IndexAttributeFilter {
   case object Opened extends IndexAttributeFilter
   case object Closed extends IndexAttributeFilter
@@ -610,8 +669,8 @@ object IndexAttributeFilter {
       case (true, true) => IndexAttributeFilter.All
       // expand_wildcards=none: ROR must still resolve concrete names against all indices (open+closed) for ACL evaluation
       case (false, false) => IndexAttributeFilter.All
-      case (true, false) => IndexAttributeFilter.Opened
-      case (false, true) => IndexAttributeFilter.Closed
+      case (true, false)  => IndexAttributeFilter.Opened
+      case (false, true)  => IndexAttributeFilter.Closed
     }
   }
 
@@ -619,7 +678,8 @@ object IndexAttributeFilter {
     filters.iterator
       .reduceOption {
         case (x, y) if x == y => x
-        case _ => All
+        case _                => All
       }
       .getOrElse(All)
+
 }

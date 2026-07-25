@@ -28,22 +28,19 @@ object RorSettingsAdjuster {
 
   final case class Replacement(host: String, port: Int)
 
-  def adjustUsingDependencies(settings: String,
-                              startedDependencies: StartedClusterDependencies): String = {
+  def adjustUsingDependencies(settings: String, startedDependencies: StartedClusterDependencies): String = {
     startedDependencies.values
       .foldLeft(settings)(replacePlaceholder)
   }
 
-  def adjustUsingDependencies(source: File,
-                              startedDependencies: StartedClusterDependencies): File = {
+  def adjustUsingDependencies(source: File, startedDependencies: StartedClusterDependencies): File = {
     val settingsWithResolvedDependencies = startedDependencies.values
       .foldLeft(source.contentAsString)(replacePlaceholder)
 
     createTempFile.overwrite(settingsWithResolvedDependencies)
   }
 
-  private def replacePlaceholder(fileContent: String,
-                                 dependency: StartedDependency): String = {
+  private def replacePlaceholder(fileContent: String, dependency: StartedDependency): String = {
     val replacement = resolveReplacementForGivenMode(dependency)
     fileContent
       .replaceAll(s"\\{${dependency.name}_$hostPlaceholder\\}", replacement.host)
@@ -56,7 +53,8 @@ object RorSettingsAdjuster {
         case CurrentOs.Windows =>
           "localhost"
         case CurrentOs.OtherThanWindows =>
-          dependency.container.ipAddressFromFirstNetwork.getOrElse(throw new IllegalStateException("Could not extract ip address inside docker network"))
+          dependency.container.ipAddressFromFirstNetwork
+            .getOrElse(throw new IllegalStateException("Could not extract ip address inside docker network"))
       },
       port = dependency.originalPort
     )

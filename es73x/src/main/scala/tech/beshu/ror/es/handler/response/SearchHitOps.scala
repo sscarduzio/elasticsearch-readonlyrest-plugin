@@ -49,11 +49,12 @@ object SearchHitOps {
         }
       searchHit
     }
+
   }
 
   private def splitMetadataAndNotMetadataFields(searchHit: SearchHit) = {
-    searchHit
-      .getFields.asScala
+    searchHit.getFields.asScala
       .partition { case (_, value) => value.isMetadataField }
   }
+
 }

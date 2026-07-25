@@ -19,7 +19,11 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalGroupsProviderServiceDecorator, ExternalGroupsProviderService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{
+  CacheableExternalGroupsProviderServiceDecorator,
+  ExternalGroupsProviderService,
+  ImpersonatorDef
+}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, User}
@@ -38,21 +42,24 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ExternalAuthorizationRuleDecoder(rxternalGroupsProviderServiceDef: Definitions[ExternalGroupsProviderService],
-                                       impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                                       mocksProvider: MocksProvider,
-                                       globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthorizationRule] {
+class ExternalAuthorizationRuleDecoder(
+    rxternalGroupsProviderServiceDef: Definitions[ExternalGroupsProviderService],
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthorizationRule] {
 
   override protected def decoder: Decoder[RuleDefinition[ExternalAuthorizationRule]] = {
     settingsDecoder
-      .map(settings => RuleDefinition.create(
-        new ExternalAuthorizationRule(
-          settings,
-          globalSettings.userIdCaseSensitivity,
-          impersonatorsDef.toImpersonation(mocksProvider)
+      .map(settings =>
+        RuleDefinition.create(
+          new ExternalAuthorizationRule(
+            settings,
+            globalSettings.userIdCaseSensitivity,
+            impersonatorsDef.toImpersonation(mocksProvider)
+          )
         )
-      ))
+      )
   }
 
   private def settingsDecoder: Decoder[ExternalAuthorizationRule.Settings] = {
@@ -67,33 +74,44 @@ class ExternalAuthorizationRuleDecoder(rxternalGroupsProviderServiceDef: Definit
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
-      .emapE { case (name, ttl, users, groupsLogic) => createExternalAuthorizationRuleSettings(name, ttl, groupsLogic, users) }
+      .emapE { case (name, ttl, users, groupsLogic) =>
+        createExternalAuthorizationRuleSettings(name, ttl, groupsLogic, users)
+      }
       .decoder
   }
 
-  private def createExternalAuthorizationRuleSettings(name: ExternalGroupsProviderService.Name,
-                                                      ttl: Option[PositiveFiniteDuration],
-                                                      groupsLogic: GroupsLogic,
-                                                      users: Option[UniqueNonEmptyList[User.Id]]) = {
+  private def createExternalAuthorizationRuleSettings(
+      name: ExternalGroupsProviderService.Name,
+      ttl: Option[PositiveFiniteDuration],
+      groupsLogic: GroupsLogic,
+      users: Option[UniqueNonEmptyList[User.Id]]
+  ) = {
     findExternalGroupsProviderService(rxternalGroupsProviderServiceDef.items, name)
       .map { service =>
         ttl match {
           case Some(ttlValue) => new CacheableExternalGroupsProviderServiceDecorator(service, ttlValue)
-          case None => service
+          case None           => service
         }
       }
-      .map(ExternalAuthorizationRule.Settings(
-        _,
-        groupsLogic,
-        users.getOrElse(UniqueNonEmptyList.of(User.Id(NonEmptyString.unsafeFrom("*"))))
-      ))
+      .map(
+        ExternalAuthorizationRule.Settings(
+          _,
+          groupsLogic,
+          users.getOrElse(UniqueNonEmptyList.of(User.Id(NonEmptyString.unsafeFrom("*"))))
+        )
+      )
   }
 
-  private def findExternalGroupsProviderService(services: List[ExternalGroupsProviderService],
-                                                searchedServiceName: ExternalGroupsProviderService.Name): Either[CoreCreationError, ExternalGroupsProviderService] = {
+  private def findExternalGroupsProviderService(
+      services: List[ExternalGroupsProviderService],
+      searchedServiceName: ExternalGroupsProviderService.Name
+  ): Either[CoreCreationError, ExternalGroupsProviderService] = {
     services.find(_.id === searchedServiceName) match {
       case Some(service) => Right(service)
-      case None => Left(RulesLevelCreationError(Message(s"Cannot find user groups provider with name: ${searchedServiceName.show}")))
+      case None          =>
+        Left(
+          RulesLevelCreationError(Message(s"Cannot find user groups provider with name: ${searchedServiceName.show}"))
+        )
     }
   }
 

@@ -35,15 +35,17 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomScalaTestMat
   override def withFixture(test: NoArgTest): Outcome = {
     super.withFixture(test) match {
       case exceptional: Exceptional => exceptional
-      case Succeeded =>
+      case Succeeded                =>
         val tasks = adminCatManager.tasks().results
         Try {
-          tasks.map(_("action").str).toSet should notContainElementsFrom(Set(
-            """^cluster:ror/.*$""".r
-          ))
+          tasks.map(_("action").str).toSet should notContainElementsFrom(
+            Set(
+              """^cluster:ror/.*$""".r
+            )
+          )
         } match {
           case Failure(exception) => Failed(exception)
-          case Success(_) => Succeeded
+          case Success(_)         => Succeeded
         }
       case Pending => Pending
     }

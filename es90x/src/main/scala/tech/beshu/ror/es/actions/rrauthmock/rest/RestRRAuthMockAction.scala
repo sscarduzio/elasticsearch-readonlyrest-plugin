@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.actions.rrauthmock.rest
 
-import java.util
-
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
@@ -27,10 +25,10 @@ import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, RRAuthMockRequest, RRAuthMockResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
+import java.util
 import scala.jdk.CollectionConverters.*
 
-class RestRRAuthMockAction
-  extends BaseRestHandler with RestHandler {
+class RestRRAuthMockAction extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
     new Route(GET, constants.PROVIDE_AUTH_MOCK_PATH),
@@ -43,7 +41,12 @@ class RestRRAuthMockAction
     private val rorAuthMockRequest = RRAuthMockRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRAuthMockActionType, rorAuthMockRequest, new RestToXContentWithStatusListener[RRAuthMockResponse](channel))
+      client.execute(
+        new RRAuthMockActionType,
+        rorAuthMockRequest,
+        new RestToXContentWithStatusListener[RRAuthMockResponse](channel)
+      )
     }
   }
+
 }

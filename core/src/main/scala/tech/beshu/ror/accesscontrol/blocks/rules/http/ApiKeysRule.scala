@@ -26,21 +26,18 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, D
 import tech.beshu.ror.accesscontrol.domain.ApiKey
 import tech.beshu.ror.accesscontrol.domain.Header.Name.*
 
-class ApiKeysRule(val settings: Settings)
-  extends RegularRule {
+class ApiKeysRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = ApiKeysRule.Name.name
 
-  def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     Decision.permit(`with` = blockContext)(
-      when = blockContext
-        .requestContext
-        .restRequest
-        .allHeaders
+      when = blockContext.requestContext.restRequest.allHeaders
         .find(_.name === xApiKeyHeaderName)
         .exists { header => settings.apiKeys.contains(ApiKey(header.value)) }
     )
   }
+
 }
 
 object ApiKeysRule {

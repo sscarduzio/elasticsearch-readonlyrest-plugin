@@ -57,7 +57,9 @@ dependencies {
 
 tasks.register('buildRor', GradleBuild) {
     startParameter.projectProperties = ['esVersion': esVersion]
-    tasks = [':' + esModule + ':packageRorPlugin']
+    // buildRorPluginZip (not packageRorPlugin): packageRorPlugin only builds the module base, whereas the zip
+    // copied below is named for esVersion -- buildRorPluginZip derives that exact version from the base.
+    tasks = [':' + esModule + ':buildRorPluginZip']
 }
 
 tasks.register('downloadEsBinaries', GradleBuild) {

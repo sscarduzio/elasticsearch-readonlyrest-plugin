@@ -22,6 +22,7 @@ import tech.beshu.ror.utils.RefinedUtils.*
 final case class SupportedVariablesFunctions(functions: Seq[FunctionDefinition])
 
 object SupportedVariablesFunctions {
+
   val default: SupportedVariablesFunctions = SupportedVariablesFunctions(
     Seq(
       FunctionDefinition[Function.ReplaceAll](nes("replace_all")),
@@ -30,4 +31,5 @@ object SupportedVariablesFunctions {
       FunctionDefinition[Function.ToUpperCase](nes("to_uppercase")),
     )
   )
+
 }

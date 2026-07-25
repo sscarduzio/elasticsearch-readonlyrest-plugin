@@ -26,15 +26,24 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 import java.util.function.Consumer
 
-class EsContainerWithRorAndXpackSecurity private(esConfig: Elasticsearch.Config,
-                                                 esVersion: String,
-                                                 startedClusterDependencies: StartedClusterDependencies,
-                                                 elasticsearch: Elasticsearch,
-                                                 override val sslEnabled: Boolean,
-                                                 initializer: ElasticsearchNodeDataInitializer,
-                                                 additionalLogConsumer: Option[Consumer[OutputFrame]],
-                                                 awaitingReadyStrategy: AwaitingReadyStrategy)
-  extends EsContainer(esVersion, esConfig, startedClusterDependencies, elasticsearch, initializer, additionalLogConsumer, awaitingReadyStrategy) {
+class EsContainerWithRorAndXpackSecurity private (
+    esConfig: Elasticsearch.Config,
+    esVersion: String,
+    startedClusterDependencies: StartedClusterDependencies,
+    elasticsearch: Elasticsearch,
+    override val sslEnabled: Boolean,
+    initializer: ElasticsearchNodeDataInitializer,
+    additionalLogConsumer: Option[Consumer[OutputFrame]],
+    awaitingReadyStrategy: AwaitingReadyStrategy
+) extends EsContainer(
+      esVersion,
+      esConfig,
+      startedClusterDependencies,
+      elasticsearch,
+      initializer,
+      additionalLogConsumer,
+      awaitingReadyStrategy
+    ) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with ROR and X-Pack plugin installed container ...")
 
@@ -42,17 +51,20 @@ class EsContainerWithRorAndXpackSecurity private(esConfig: Elasticsearch.Config,
     import EsContainerWithRorSecurity.rorAdminCredentials
     basicAuthClient(rorAdminCredentials._1, rorAdminCredentials._2)
   }
+
 }
 
 object EsContainerWithRorAndXpackSecurity extends StrictLogging {
 
-  def create(esVersion: String,
-             esConfig: Elasticsearch.Config,
-             securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
-             initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies,
-             additionalLogConsumer: Option[Consumer[OutputFrame]],
-             awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
+  def create(
+      esVersion: String,
+      esConfig: Elasticsearch.Config,
+      securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
+      initializer: ElasticsearchNodeDataInitializer,
+      startedClusterDependencies: StartedClusterDependencies,
+      additionalLogConsumer: Option[Consumer[OutputFrame]],
+      awaitingReadyStrategy: AwaitingReadyStrategy
+  ): EsContainer = {
     create(
       esVersion = esVersion,
       esConfig = esConfig,
@@ -66,14 +78,16 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
     )
   }
 
-  def createWithPatchingDisabled(esVersion: String,
-                                 esConfig: Elasticsearch.Config,
-                                 securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
-                                 initializer: ElasticsearchNodeDataInitializer,
-                                 startedClusterDependencies: StartedClusterDependencies,
-                                 customEntrypoint: Option[Path],
-                                 additionalLogConsumer: Option[Consumer[OutputFrame]],
-                                 awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
+  def createWithPatchingDisabled(
+      esVersion: String,
+      esConfig: Elasticsearch.Config,
+      securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
+      initializer: ElasticsearchNodeDataInitializer,
+      startedClusterDependencies: StartedClusterDependencies,
+      customEntrypoint: Option[Path],
+      additionalLogConsumer: Option[Consumer[OutputFrame]],
+      awaitingReadyStrategy: AwaitingReadyStrategy
+  ): EsContainer = {
     create(
       esVersion = esVersion,
       esConfig = esConfig,
@@ -87,15 +101,17 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
     )
   }
 
-  private def create(esVersion: String,
-                     esConfig: Elasticsearch.Config,
-                     securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
-                     initializer: ElasticsearchNodeDataInitializer,
-                     startedClusterDependencies: StartedClusterDependencies,
-                     customEntrypoint: Option[Path],
-                     performPatching: Boolean,
-                     additionalLogConsumer: Option[Consumer[OutputFrame]],
-                     awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
+  private def create(
+      esVersion: String,
+      esConfig: Elasticsearch.Config,
+      securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
+      initializer: ElasticsearchNodeDataInitializer,
+      startedClusterDependencies: StartedClusterDependencies,
+      customEntrypoint: Option[Path],
+      performPatching: Boolean,
+      additionalLogConsumer: Option[Consumer[OutputFrame]],
+      awaitingReadyStrategy: AwaitingReadyStrategy
+  ): EsContainer = {
     new EsContainerWithRorAndXpackSecurity(
       esConfig,
       esVersion,
@@ -103,7 +119,7 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
       esImageWithRorAndXpackFromDockerfile(esVersion, esConfig, securityConfig, customEntrypoint, performPatching),
       securityConfig.attributes.restSsl match {
         case Enabled.Yes(_) => true
-        case Enabled.No => false
+        case Enabled.No     => false
       },
       initializer,
       additionalLogConsumer,
@@ -111,13 +127,17 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
     )
   }
 
-  private def esImageWithRorAndXpackFromDockerfile(esVersion: String,
-                                                   esConfig: Elasticsearch.Config,
-                                                   securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
-                                                   customEntrypoint: Option[Path],
-                                                   performPatching: Boolean) = {
-    Elasticsearch.create(esVersion, esConfig)
+  private def esImageWithRorAndXpackFromDockerfile(
+      esVersion: String,
+      esConfig: Elasticsearch.Config,
+      securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
+      customEntrypoint: Option[Path],
+      performPatching: Boolean
+  ) = {
+    Elasticsearch
+      .create(esVersion, esConfig)
       .install(new ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion, securityConfig, performPatching))
       .when(customEntrypoint, _.setEntrypoint(_))
   }
+
 }

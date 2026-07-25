@@ -28,14 +28,14 @@ import scala.annotation.tailrec
 sealed trait Decision[CONTEXT]
 
 object Decision {
-  final case class Permitted[CONTEXT](context: CONTEXT)
-    extends Decision[CONTEXT]
+  final case class Permitted[CONTEXT](context: CONTEXT) extends Decision[CONTEXT]
 
-  final case class Denied[CONTEXT](cause: Cause)
-    extends Decision[CONTEXT]
+  final case class Denied[CONTEXT](cause: Cause) extends Decision[CONTEXT]
+
   object Denied {
 
     sealed trait Cause
+
     object Cause {
       sealed trait AuthenticationFailure extends Cause
       final case class AuthenticationFailed(details: String) extends AuthenticationFailure
@@ -51,6 +51,7 @@ object Decision {
       case object AliasNotFound extends OtherFailure
       case object TemplateNotFound extends OtherFailure
     }
+
   }
 
   def permit[CONTEXT](`with`: CONTEXT)(when: => Boolean): Decision[CONTEXT] = {
@@ -65,33 +66,37 @@ object Decision {
   def fromOption[CONTEXT](opt: Option[CONTEXT], ifEmptyCause: => Cause): Decision[CONTEXT] =
     opt match {
       case Some(value) => Permitted(value)
-      case None => Denied(ifEmptyCause)
+      case None        => Denied(ifEmptyCause)
     }
 
   extension [A](result: Decision[A]) {
+
     def map[B](f: A => B): Decision[B] = {
       result match {
-        case Decision.Permitted(a) => Permitted(f(a))
+        case Decision.Permitted(a)  => Permitted(f(a))
         case Decision.Denied(cause) => Decision.Denied(cause)
       }
     }
 
     def toEither: Either[Denied[A], Permitted[A]] = result match {
-      case fulfilled: Permitted[A] => Right(fulfilled)
+      case fulfilled: Permitted[A]      => Right(fulfilled)
       case rejected: Decision.Denied[A] => Left(Denied(rejected.cause))
     }
+
   }
 
   extension [C <: Cause, R](result: Either[C, R]) {
+
     def toDecision: Decision[R] = {
       result match {
-        case Right(r) => Decision.permit[R](r)
+        case Right(r)    => Decision.permit[R](r)
         case Left(cause) => Decision.deny[R](cause)
       }
     }
+
   }
 
-  extension[C <: Cause, R] (result: EitherT[Task, C, R]) {
+  extension [C <: Cause, R](result: EitherT[Task, C, R]) {
     def toDecision: Task[Decision[R]] =
       result.value.map(_.toDecision)
   }
@@ -103,15 +108,16 @@ object Decision {
     override def flatMap[A, B](fa: Decision[A])(f: A => Decision[B]): Decision[B] =
       fa match {
         case Decision.Permitted(value) => f(value)
-        case Decision.Denied(cause) => Decision.Denied(cause)
+        case Decision.Denied(cause)    => Decision.Denied(cause)
       }
 
     @tailrec
     override def tailRecM[A, B](a: A)(f: A => Decision[Either[A, B]]): Decision[B] =
       f(a) match {
         case Decision.Permitted(Left(next)) => tailRecM(next)(f)
-        case Decision.Permitted(Right(b)) => Decision.Permitted(b)
-        case Decision.Denied(cause) => Decision.Denied(cause)
+        case Decision.Permitted(Right(b))   => Decision.Permitted(b)
+        case Decision.Denied(cause)         => Decision.Denied(cause)
       }
   }
+
 }

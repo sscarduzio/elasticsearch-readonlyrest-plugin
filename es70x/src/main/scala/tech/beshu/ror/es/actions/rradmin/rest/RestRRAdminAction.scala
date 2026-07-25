@@ -27,7 +27,8 @@ import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
 @Inject
 class RestRRAdminAction(settings: Settings, controller: RestController)
-  extends BaseRestHandler(settings) with RestHandler {
+    extends BaseRestHandler(settings)
+    with RestHandler {
 
   register("POST", constants.FORCE_RELOAD_SETTINGS_PATH)
   register("GET", constants.PROVIDE_INDEX_SETTINGS_PATH)
@@ -41,11 +42,16 @@ class RestRRAdminAction(settings: Settings, controller: RestController)
     private val rorAdminRequest = RRAdminRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRAdminActionType, rorAdminRequest, new RestToXContentWithStatusListener[RRAdminResponse](channel))
+      client.execute(
+        new RRAdminActionType,
+        rorAdminRequest,
+        new RestToXContentWithStatusListener[RRAdminResponse](channel)
+      )
     }
   }
 
   private def register(method: String, path: String): Unit = {
     controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
   }
+
 }

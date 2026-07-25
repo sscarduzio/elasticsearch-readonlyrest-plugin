@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class ReindexSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -70,14 +70,16 @@ class ReindexSuite
       }
     }
   }
+
 }
 
 object ReindexSuite {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
-  }
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer =
+    (esVersion: String, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    }
 
 }

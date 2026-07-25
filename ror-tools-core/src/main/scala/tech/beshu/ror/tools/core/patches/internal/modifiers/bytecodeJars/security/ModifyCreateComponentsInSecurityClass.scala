@@ -36,9 +36,8 @@ import java.io.InputStream
   regardless of whether the ES version uses the old multi-parameter signature
   (ES 8.x: Client, ClusterService, ThreadPool, ...) or the new PluginServices
   signature (ES 9.x+).
-*/
-private[patches] object ModifyCreateComponentsInSecurityClass
-  extends BytecodeJarModifier {
+ */
+private[patches] object ModifyCreateComponentsInSecurityClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -55,18 +54,19 @@ private[patches] object ModifyCreateComponentsInSecurityClass
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
     private var capturedDescriptor: String = _
     private var capturedSignature: String = _
     private var capturedExceptions: Array[String] = _
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "createComponents" if (access & Opcodes.ACC_PUBLIC) != 0 =>
           capturedDescriptor = descriptor
@@ -84,12 +84,15 @@ private[patches] object ModifyCreateComponentsInSecurityClass
       }
       super.visitEnd()
     }
+
   }
 
-  private def generateCreateComponentsWrapper(cv: ClassVisitor,
-                                              descriptor: String,
-                                              signature: String,
-                                              exceptions: Array[String]): Unit = {
+  private def generateCreateComponentsWrapper(
+      cv: ClassVisitor,
+      descriptor: String,
+      signature: String,
+      exceptions: Array[String]
+  ): Unit = {
     val argTypes = Type.getArgumentTypes(descriptor)
     // slot 0 = this, then one slot per argument (all are object references)
     val paramSlots = argTypes.length
@@ -153,7 +156,13 @@ private[patches] object ModifyCreateComponentsInSecurityClass
     mv.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/service/ServiceAccountService")
     mv.visitJumpInsn(Opcodes.IFEQ, afterServiceAccountCheck)
     mv.visitVarInsn(Opcodes.ALOAD, elementSlot)
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "org/elasticsearch/plugins/ServiceAccountServiceBridge",
+      "publish",
+      "(Ljava/lang/Object;)V",
+      false
+    )
 
     // if (c instanceof ApiKeyService) { ApiKeyServiceBridge.publish(c); }
     mv.visitLabel(afterServiceAccountCheck)
@@ -162,7 +171,13 @@ private[patches] object ModifyCreateComponentsInSecurityClass
     mv.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/ApiKeyService")
     mv.visitJumpInsn(Opcodes.IFEQ, afterApiKeyCheck)
     mv.visitVarInsn(Opcodes.ALOAD, elementSlot)
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ApiKeyServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "org/elasticsearch/plugins/ApiKeyServiceBridge",
+      "publish",
+      "(Ljava/lang/Object;)V",
+      false
+    )
 
     mv.visitLabel(afterApiKeyCheck)
     mv.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
@@ -192,10 +207,17 @@ private[patches] object ModifyCreateComponentsInSecurityClass
     mv.visitInsn(Opcodes.DUP)
     mv.visitLdcInsn("security initialization failed")
     mv.visitVarInsn(Opcodes.ALOAD, componentsSlot)
-    mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/IllegalStateException", "<init>", "(Ljava/lang/String;Ljava/lang/Throwable;)V", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESPECIAL,
+      "java/lang/IllegalStateException",
+      "<init>",
+      "(Ljava/lang/String;Ljava/lang/Throwable;)V",
+      false
+    )
     mv.visitInsn(Opcodes.ATHROW)
 
     mv.visitMaxs(Math.max(4, paramSlots + 2), maxLocals)
     mv.visitEnd()
   }
+
 }

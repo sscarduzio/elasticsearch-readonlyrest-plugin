@@ -35,8 +35,7 @@ import java.io.InputStream
  * directly (a static method), NOT SecurityContext.getAuthentication(). The static getAuthentication
  * only reads the transient, while readFromContext checks both transient and header.
  */
-private[patches] object ModifySecurityContextGetAuthenticationClass
-  extends BytecodeJarModifier {
+private[patches] object ModifySecurityContextGetAuthenticationClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -53,21 +52,24 @@ private[patches] object ModifySecurityContextGetAuthenticationClass
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
-        case "getAuthentication" if descriptor == "(Lorg/elasticsearch/common/util/concurrent/ThreadContext;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;" =>
+        case "getAuthentication"
+            if descriptor == "(Lorg/elasticsearch/common/util/concurrent/ThreadContext;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;" =>
           new GetAuthenticationWithHeaderFallback(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
   /*
@@ -82,9 +84,8 @@ private[patches] object ModifySecurityContextGetAuthenticationClass
     readFromContext already checks the transient first, then falls back to deserializing
     the header. This is strictly more capable than the original getAuthentication which
     only reads the transient.
-  */
-  private class GetAuthenticationWithHeaderFallback(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+   */
+  private class GetAuthenticationWithHeaderFallback(underlying: MethodVisitor) extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -116,5 +117,7 @@ private[patches] object ModifySecurityContextGetAuthenticationClass
       underlying.visitMaxs(2, 2)
       underlying.visitEnd()
     }
+
   }
+
 }

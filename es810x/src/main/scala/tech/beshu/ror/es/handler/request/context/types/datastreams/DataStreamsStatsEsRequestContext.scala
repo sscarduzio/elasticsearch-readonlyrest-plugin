@@ -27,10 +27,11 @@ import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestC
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class DataStreamsStatsEsRequestContext(actionRequest: DataStreamsStatsAction.Request,
-                                       esContext: EsContext,
-                                       override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+class DataStreamsStatsEsRequestContext(
+    actionRequest: DataStreamsStatsAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override def backingIndicesFrom(request: DataStreamsStatsAction.Request): BackingIndices =
     BackingIndices.IndicesNotInvolved
@@ -42,4 +43,5 @@ class DataStreamsStatsEsRequestContext(actionRequest: DataStreamsStatsAction.Req
     actionRequest.indices(blockContext.dataStreams.map(_.stringify).toList: _*)
     ModificationResult.Modified
   }
+
 }

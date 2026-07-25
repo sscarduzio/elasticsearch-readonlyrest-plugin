@@ -30,7 +30,7 @@ public class HttpResponseHelper {
 
   public static Map<String, Object> deserializeJsonBody(String response) {
     Gson gson = new Gson();
-    Type mapType = new TypeToken<HashMap<String, Object>>(){}.getType();
+    Type mapType = new TypeToken<HashMap<String, Object>>() {}.getType();
     return gson.fromJson(response, mapType);
   }
 

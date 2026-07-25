@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.syntax.*
 
 class ResponseFieldsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
-  extends RuleBaseDecoderWithoutAssociatedFields[ResponseFieldsRule]
+    extends RuleBaseDecoderWithoutAssociatedFields[ResponseFieldsRule]
     with FieldsRuleLikeDecoderHelperBase {
 
   private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
@@ -44,4 +44,5 @@ class ResponseFieldsRuleDecoder(variableCreator: RuntimeResolvableVariableCreato
     } yield RuleDefinition.create(new ResponseFieldsRule(ResponseFieldsRule.Settings(documentFields, accessMode)))
 
   }
+
 }

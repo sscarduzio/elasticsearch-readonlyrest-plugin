@@ -23,7 +23,7 @@ import tech.beshu.ror.tools.core.utils.RorToolsException.EsPathException
 
 import scala.util.{Failure, Success, Try}
 
-sealed case class EsDirectory private(path: os.Path) {
+sealed case class EsDirectory private (path: os.Path) {
 
   private val elasticsearchJar = """^elasticsearch-(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)\.jar$""".r
 
@@ -41,7 +41,7 @@ sealed case class EsDirectory private(path: os.Path) {
       .flatMap { file =>
         file.last match {
           case elasticsearchJar(version, _) => SemVer.parse(version).toOption
-          case _ => None
+          case _                            => None
         }
       }
       .headOption
@@ -51,6 +51,7 @@ sealed case class EsDirectory private(path: os.Path) {
   }
 
 }
+
 object EsDirectory {
 
   def defaultPath: Path = os.root / "usr" / "share" / "elasticsearch"
@@ -80,8 +81,8 @@ object EsDirectory {
   private def doesItLookLikeEsDirectory(esPath: os.Path) = {
     val contentOfEsDirectory = esPath.toIO.listFiles().toList
     contentOfEsDirectory.exists(_.getName == "modules") &&
-      contentOfEsDirectory.exists(_.getName == "plugins") &&
-      contentOfEsDirectory.exists(_.getName == "bin")
+    contentOfEsDirectory.exists(_.getName == "plugins") &&
+    contentOfEsDirectory.exists(_.getName == "bin")
   }
-}
 
+}

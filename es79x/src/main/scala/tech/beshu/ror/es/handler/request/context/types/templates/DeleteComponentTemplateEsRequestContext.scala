@@ -18,7 +18,10 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import org.elasticsearch.action.admin.indices.template.delete.{DeleteComponentTemplateAction, DeleteIndexTemplateRequest}
+import org.elasticsearch.action.admin.indices.template.delete.{
+  DeleteComponentTemplateAction,
+  DeleteIndexTemplateRequest
+}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
@@ -30,17 +33,22 @@ import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestCon
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class DeleteComponentTemplateEsRequestContext(actionRequest: DeleteComponentTemplateAction.Request,
-                                              esContext: EsContext,
-                                              override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[DeleteComponentTemplateAction.Request, DeletingComponentTemplates](
-    actionRequest, esContext, threadPool
-  ) {
+class DeleteComponentTemplateEsRequestContext(
+    actionRequest: DeleteComponentTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseTemplatesEsRequestContext[DeleteComponentTemplateAction.Request, DeletingComponentTemplates](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
-  override protected def templateOperationFrom(request: DeleteComponentTemplateAction.Request): DeletingComponentTemplates = {
+  override protected def templateOperationFrom(
+      request: DeleteComponentTemplateAction.Request
+  ): DeletingComponentTemplates = {
     TemplateNamePattern.fromString(request.name()) match {
       case Some(pattern) => DeletingComponentTemplates(NonEmptyList.one(pattern))
-      case None => throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("No template name patterns found")
+      case None          => throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("No template name patterns found")
     }
   }
 
@@ -49,9 +57,8 @@ class DeleteComponentTemplateEsRequestContext(actionRequest: DeleteComponentTemp
       case DeletingComponentTemplates(namePatterns) =>
         namePatterns.tail match {
           case Nil =>
-          case _ =>
-            logger.warn(
-              s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
+          case _   =>
+            logger.warn(s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
                  | The whole set of patterns [${namePatterns.show}]""".oneLiner)
         }
         actionRequest.name(namePatterns.head.value.value)
@@ -59,8 +66,10 @@ class DeleteComponentTemplateEsRequestContext(actionRequest: DeleteComponentTemp
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
+
 }

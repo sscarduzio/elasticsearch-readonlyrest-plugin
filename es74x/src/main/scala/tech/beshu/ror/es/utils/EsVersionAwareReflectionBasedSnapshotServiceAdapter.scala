@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 class EsVersionAwareReflectionBasedSnapshotServiceAdapter(snapshotsService: SnapshotsService) {
 
   def getRepositoryData(repository: RepositoryName): Task[RepositoryData] = {
-    if(Version.CURRENT.before(Version.fromString("7.6.0")))
+    if (Version.CURRENT.before(Version.fromString("7.6.0")))
       getRepositoriesDataForEsPre76x(repository)
     else
       getRepositoriesDataForPostEs76x(repository)
@@ -49,4 +49,5 @@ class EsVersionAwareReflectionBasedSnapshotServiceAdapter(snapshotsService: Snap
           .get[RepositoryData]
       }
     }
+
 }

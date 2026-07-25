@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.elasticsearch.{DocumentManager, ElasticsearchTweetsI
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class DeleteByQuerySuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -53,4 +53,5 @@ class DeleteByQuerySuite
       }
     }
   }
+
 }

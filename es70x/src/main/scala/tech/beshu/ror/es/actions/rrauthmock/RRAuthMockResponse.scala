@@ -23,9 +23,7 @@ import org.elasticsearch.rest.RestStatus
 import tech.beshu.ror.api.AuthMockApi
 import tech.beshu.ror.es.utils.XContentBuilderOps.*
 
-
-class RRAuthMockResponse(response: AuthMockApi.AuthMockResponse)
-  extends ActionResponse with StatusToXContentObject {
+class RRAuthMockResponse(response: AuthMockApi.AuthMockResponse) extends ActionResponse with StatusToXContentObject {
 
   def this() = {
     this(null)

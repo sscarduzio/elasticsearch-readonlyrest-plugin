@@ -22,10 +22,10 @@ import org.elasticsearch.rest.{RestChannel, RestStatus}
 import org.elasticsearch.xcontent.ToXContentObject
 
 class RestToXContentWithStatusListener[RESPONSE <: ActionResponse with StatusToXContentObject](channel: RestChannel)
-  extends RestToXContentListener[RESPONSE](
-    channel,
-    (response: RESPONSE) => response.status
-  )
+    extends RestToXContentListener[RESPONSE](
+      channel,
+      (response: RESPONSE) => response.status
+    )
 
 trait StatusToXContentObject extends ToXContentObject {
 

@@ -35,8 +35,7 @@ import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
 
 import java.util.Base64
 
-class RegularRequestAccessControlTests
-  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+class RegularRequestAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
   protected def settingsYaml: String =
     """
@@ -99,8 +98,8 @@ class RegularRequestAccessControlTests
         val request = MockRequestContext.indices.withHeaders(basicAuthHeader("unknown:unknown"))
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
         history.blocks should have size 3
-        inside(result) { case r@ForbiddenByMismatched(_) =>
-          r.causes should be (NonEmptyList.one[ForbiddenCause](OperationNotAllowed).toNes)
+        inside(result) { case r @ ForbiddenByMismatched(_) =>
+          r.causes should be(NonEmptyList.one[ForbiddenCause](OperationNotAllowed).toNes)
         }
       }
       "the forbid block was matched" in {
@@ -117,4 +116,5 @@ class RegularRequestAccessControlTests
       }
     }
   }
+
 }

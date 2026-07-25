@@ -33,14 +33,16 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
-import java.io.{File, Console as _}
+import java.io.{Console as _, File}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 // This class encapsulates and manages custom ES container needed by :
 // - with installed ROR plugin, but without patching ES
 // - without starting ES (by using custom entrypoint) - it would not start without applying patches first
-class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContainerCreator {
+class ExampleEsWithRorContainer(
+    implicit scheduler: Scheduler
+) extends EsContainerCreator {
 
   private val uniqueClusterId: AtomicInt = AtomicInt(1)
 
@@ -48,7 +50,8 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
 
   def withTestEsContainer(withStartedEs: EsContainer => Unit): Unit = {
     try {
-      Task.delay(esContainer.start())
+      Task
+        .delay(esContainer.start())
         .map(_ => withStartedEs(esContainer))
         .runSyncUnsafe(5 minutes)
     } finally {
@@ -83,13 +86,17 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
     )
   }
 
-  private def createCustomES(nodeSettings: EsNodeSettings,
-                             allNodeNames: NonEmptyList[String],
-                             nodeDataInitializer: ElasticsearchNodeDataInitializer,
-                             attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
-                             startedClusterDependencies: StartedClusterDependencies) = {
+  private def createCustomES(
+      nodeSettings: EsNodeSettings,
+      allNodeNames: NonEmptyList[String],
+      nodeDataInitializer: ElasticsearchNodeDataInitializer,
+      attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
+      startedClusterDependencies: StartedClusterDependencies
+  ) = {
     val project = RorPluginGradleProject.fromSystemProperty
-    val pluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle"))
+    val pluginFile: File = project.assemble.getOrElse(
+      throw new ContainerCreationException("Plugin not assembled, build the plugin or run the test from Gradle")
+    )
     val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorSettingsFileName)
 
     val adjustedRorConfig = RorSettingsAdjuster.adjustUsingDependencies(
@@ -118,10 +125,13 @@ class ExampleEsWithRorContainer(implicit scheduler: Scheduler) extends EsContain
         case CurrentOs.Windows =>
           None // On Windows we prepare and configure ES, but we do not start it
         case CurrentOs.OtherThanWindows =>
-          Some(Path("""/bin/sh -c "while true; do sleep 30; done"""")) // On Linux we need to start the container, but not ES
+          Some(
+            Path("""/bin/sh -c "while true; do sleep 30; done"""")
+          ) // On Linux we need to start the container, but not ES
       },
       awaitingReadyStrategy = AwaitingReadyStrategy.ImmediatelyTreatAsReady,
       additionalLogConsumer = None,
     )
   }
+
 }

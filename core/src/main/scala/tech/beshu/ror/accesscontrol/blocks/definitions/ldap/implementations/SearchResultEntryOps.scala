@@ -20,16 +20,20 @@ import cats.implicits.*
 import com.unboundid.ldap.sdk.{DN, SearchResultEntry}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupAttribute, GroupsFromUserEntry}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{
+  GroupAttribute,
+  GroupsFromUserEntry
+}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName}
 
 import scala.util.Try
 
-private [implementations] object SearchResultEntryOps {
+private[implementations] object SearchResultEntryOps {
 
   implicit class ToLdapGroup(val entry: SearchResultEntry) extends AnyVal {
+
     def toLdapGroup(groupAttribute: GroupAttribute): Option[LdapGroup] = {
       for {
         groupId <- Option(entry.getAttributeValue(groupAttribute.id.value.value))
@@ -43,8 +47,8 @@ private [implementations] object SearchResultEntryOps {
     }
 
     def toLdapGroups(mode: GroupsFromUserEntry): List[LdapGroup] = {
-      Option(entry.getAttributeValues(mode.groupsFromUserAttribute.value.value))
-        .toList.flatMap(_.toList)
+      Option(entry.getAttributeValues(mode.groupsFromUserAttribute.value.value)).toList
+        .flatMap(_.toList)
         .flatMap(NonEmptyString.unapply)
         .flatMap(ldapGroupFromDn(_, mode))
     }
@@ -53,16 +57,18 @@ private [implementations] object SearchResultEntryOps {
       val dn = new DN(dnString.value)
       if (dn.isDescendantOf(mode.searchGroupBaseDN.value.value, false)) {
         Try {
-          dn.getRDN
-            .getAttributes.toList
+          dn.getRDN.getAttributes.toList
             .filter(_.getBaseName === mode.groupIdAttribute.value.value)
             .map(_.getValue)
             .headOption
-        }.toOption.flatten.flatMap(NonEmptyString.unapply)
+        }.toOption.flatten
+          .flatMap(NonEmptyString.unapply)
           .map { groupId => LdapGroup(Group.from(GroupId(groupId)), Dn(dnString)) }
       } else {
         None
       }
     }
+
   }
+
 }

@@ -33,11 +33,12 @@ import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsReques
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest: R,
-                                                                  esContext: EsContext,
-                                                                  aclContext: AccessControlStaticContext,
-                                                                  override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[FilterableRequestBlockContext](esContext)
+abstract class BaseFilterableEsRequestContext[R <: ActionRequest](
+    actionRequest: R,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[FilterableRequestBlockContext](esContext)
     with EsRequest[FilterableRequestBlockContext] {
 
   override def initialBlockContext(block: Block): FilterableRequestBlockContext = FilterableRequestBlockContext(
@@ -95,18 +96,20 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
 
   protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]]
 
-  protected def update(request: R,
-                       filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                       filter: Option[Filter],
-                       fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult
+  protected def update(
+      request: R,
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult
 
   protected def requestFieldsUsage: RequestFieldsUsage
 
   private lazy val discoveredIndices: Set[RequestedIndex[ClusterIndexName]] = {
-    val indices = requestedIndicesFrom(actionRequest)
-      .orWildcardWhenEmpty
+    val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
       .skipRemoteIndicesIfNeeded(esContext)
     logger.debug(s"Discovered indices: ${indices.show}")
     indices
   }
+
 }

@@ -31,9 +31,8 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.Found
 
-final class RorKbnAuthenticationRule(val settings: Settings,
-                                     override val userIdCaseSensitivity: CaseSensitivity)
-  extends AuthenticationRule
+final class RorKbnAuthenticationRule(val settings: Settings, override val userIdCaseSensitivity: CaseSensitivity)
+    extends AuthenticationRule
     with AuthenticationImpersonationCustomSupport
     with BaseRorKbnRule {
 
@@ -41,30 +40,34 @@ final class RorKbnAuthenticationRule(val settings: Settings,
 
   override val localUsers: LocalUsers = LocalUsers.NotAvailable
 
-  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task.delay {
+  override protected[rules] def authenticate[B <: BlockContext: BlockContextUpdater](
+      blockContext: B
+  ): Task[Decision[B]] = Task.delay {
     processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
       authenticate(blockContext, tokenData.userId, tokenData.userOrigin, tokenData.payload)
     }
   }
 
-  private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                    userIdFromToken: ClaimSearchResult[User.Id],
-                                                                    userOriginFromToken: ClaimSearchResult[Header],
-                                                                    tokenPayload: Jwt.Payload): Either[Cause, B] = {
+  private def authenticate[B <: BlockContext: BlockContextUpdater](
+      blockContext: B,
+      userIdFromToken: ClaimSearchResult[User.Id],
+      userOriginFromToken: ClaimSearchResult[Header],
+      tokenPayload: Jwt.Payload
+  ): Either[Cause, B] = {
     for {
-      userId <- userIdFromToken.toEither.left.map { case () => AuthenticationFailed("User claim not found in ROR Kibana token") }
+      userId <- userIdFromToken.toEither.left.map { case () =>
+        AuthenticationFailed("User claim not found in ROR Kibana token")
+      }
       updatedBlockContext = userOriginFromToken match {
         case Found(header) =>
           blockContext.withBlockMetadata(
-            _
-              .withLoggedUser(DirectlyLoggedUser(userId))
+            _.withLoggedUser(DirectlyLoggedUser(userId))
               .withUserOrigin(UserOrigin(header.value))
               .withJwtToken(tokenPayload)
           )
         case ClaimSearchResult.NotFound =>
           blockContext.withBlockMetadata(
-            _
-              .withLoggedUser(DirectlyLoggedUser(userId))
+            _.withLoggedUser(DirectlyLoggedUser(userId))
               .withJwtToken(tokenPayload)
           )
       }

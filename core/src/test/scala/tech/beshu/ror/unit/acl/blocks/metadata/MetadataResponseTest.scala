@@ -41,17 +41,16 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
           correlationId = CorrelationId(nes("test-id"))
         )
 
-        result shouldBe circeJsonFrom(
-          """{
-            |  "type": "USER_WITHOUT_GROUPS",
-            |  "correlation_id": "test-id",
-            |  "username": "admin",
-            |  "ror_origin": "jwt-issuer",
-            |  "kibana": {
-            |    "access": "admin",
-            |    "index": ".kibana"
-            |  }
-            |}""".stripMargin)
+        result shouldBe circeJsonFrom("""{
+                                        |  "type": "USER_WITHOUT_GROUPS",
+                                        |  "correlation_id": "test-id",
+                                        |  "username": "admin",
+                                        |  "ror_origin": "jwt-issuer",
+                                        |  "kibana": {
+                                        |    "access": "admin",
+                                        |    "index": ".kibana"
+                                        |  }
+                                        |}""".stripMargin)
       }
       "Pro license includes hidden_apps but not enterprise-only fields" in {
         val metadata = createUserMetadataWithAllFields()
@@ -61,18 +60,17 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
           correlationId = CorrelationId(nes("test-id"))
         )
 
-        result shouldBe circeJsonFrom(
-          """{
-            |  "type": "USER_WITHOUT_GROUPS",
-            |  "correlation_id": "test-id",
-            |  "username": "admin",
-            |  "ror_origin": "jwt-issuer",
-            |  "kibana": {
-            |    "access": "admin",
-            |    "index": ".kibana",
-            |    "hidden_apps": ["Enterprise Search"]
-            |  }
-            |}""".stripMargin)
+        result shouldBe circeJsonFrom("""{
+                                        |  "type": "USER_WITHOUT_GROUPS",
+                                        |  "correlation_id": "test-id",
+                                        |  "username": "admin",
+                                        |  "ror_origin": "jwt-issuer",
+                                        |  "kibana": {
+                                        |    "access": "admin",
+                                        |    "index": ".kibana",
+                                        |    "hidden_apps": ["Enterprise Search"]
+                                        |  }
+                                        |}""".stripMargin)
       }
       "Enterprise license with multitenancy disabled includes all fields" in {
         val metadata = createUserMetadataWithAllFields()
@@ -82,22 +80,21 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
           correlationId = CorrelationId(nes("test-id"))
         )
 
-        result shouldBe circeJsonFrom(
-          """{
-            |  "type": "USER_WITHOUT_GROUPS",
-            |  "correlation_id": "test-id",
-            |  "username": "admin",
-            |  "ror_origin": "jwt-issuer",
-            |  "kibana": {
-            |    "access": "admin",
-            |    "index": ".kibana",
-            |    "template_index": ".kibana_template",
-            |    "hidden_apps": ["Enterprise Search"],
-            |    "metadata": {
-            |      "role": "admin"
-            |    }
-            |  }
-            |}""".stripMargin)
+        result shouldBe circeJsonFrom("""{
+                                        |  "type": "USER_WITHOUT_GROUPS",
+                                        |  "correlation_id": "test-id",
+                                        |  "username": "admin",
+                                        |  "ror_origin": "jwt-issuer",
+                                        |  "kibana": {
+                                        |    "access": "admin",
+                                        |    "index": ".kibana",
+                                        |    "template_index": ".kibana_template",
+                                        |    "hidden_apps": ["Enterprise Search"],
+                                        |    "metadata": {
+                                        |      "role": "admin"
+                                        |    }
+                                        |  }
+                                        |}""".stripMargin)
       }
       "Enterprise license with multitenancy enabled returns USER_WITH_GROUPS" in {
         val metadata = createUserMetadataWithGroups()
@@ -107,42 +104,41 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
           correlationId = CorrelationId(nes("test-id"))
         )
 
-        result shouldBe circeJsonFrom(
-          """{
-            |  "type": "USER_WITH_GROUPS",
-            |  "correlation_id": "test-id",
-            |  "groups": [
-            |    {
-            |      "group": {
-            |        "id": "admins",
-            |        "name": "Administrators"
-            |      },
-            |      "username": "admin",
-            |      "ror_origin": "jwt-issuer",
-            |      "kibana": {
-            |        "access": "admin",
-            |        "index": ".kibana",
-            |        "template_index": ".kibana_template",
-            |        "hidden_apps": ["Enterprise Search"],
-            |        "metadata": {
-            |          "role": "admin"
-            |        }
-            |      }
-            |    },
-            |    {
-            |      "group": {
-            |        "id": "users",
-            |        "name": "Users"
-            |      },
-            |      "username": "admin",
-            |      "kibana": {
-            |        "access": "admin",
-            |        "index": ".kibana_users",
-            |        "template_index": ".kibana_users_template"
-            |      }
-            |    }
-            |  ]
-            |}""".stripMargin)
+        result shouldBe circeJsonFrom("""{
+                                        |  "type": "USER_WITH_GROUPS",
+                                        |  "correlation_id": "test-id",
+                                        |  "groups": [
+                                        |    {
+                                        |      "group": {
+                                        |        "id": "admins",
+                                        |        "name": "Administrators"
+                                        |      },
+                                        |      "username": "admin",
+                                        |      "ror_origin": "jwt-issuer",
+                                        |      "kibana": {
+                                        |        "access": "admin",
+                                        |        "index": ".kibana",
+                                        |        "template_index": ".kibana_template",
+                                        |        "hidden_apps": ["Enterprise Search"],
+                                        |        "metadata": {
+                                        |          "role": "admin"
+                                        |        }
+                                        |      }
+                                        |    },
+                                        |    {
+                                        |      "group": {
+                                        |        "id": "users",
+                                        |        "name": "Users"
+                                        |      },
+                                        |      "username": "admin",
+                                        |      "kibana": {
+                                        |        "access": "admin",
+                                        |        "index": ".kibana_users",
+                                        |        "template_index": ".kibana_users_template"
+                                        |      }
+                                        |    }
+                                        |  ]
+                                        |}""".stripMargin)
       }
     }
     "return default kibana policy when no kibana policy is defined" when {
@@ -154,15 +150,15 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
           correlationId = CorrelationId(nes("test-id"))
         )
 
-        result shouldBe circeJsonFrom(
-          """{
-            |  "type": "USER_WITHOUT_GROUPS",
-            |  "correlation_id": "test-id",
-            |  "username": "admin",
-            |  "kibana": {
-            |    "access": "unrestricted"
-            |  }
-            |}""".stripMargin)
+        result shouldBe circeJsonFrom("""{
+                                        |  "type": "USER_WITHOUT_GROUPS",
+                                        |  "correlation_id": "test-id",
+                                        |  "username": "admin",
+                                        |  "kibana": {
+                                        |    "access": "unrestricted",
+                                        |    "index": ".kibana"
+                                        |  }
+                                        |}""".stripMargin)
       }
       "USER_WITH_GROUPS" in {
         val metadata = createUserMetadataWithGroupsAndNoKibanaPolicy()
@@ -172,23 +168,22 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
           correlationId = CorrelationId(nes("test-id"))
         )
 
-        result shouldBe circeJsonFrom(
-          """{
-            |  "type": "USER_WITH_GROUPS",
-            |  "correlation_id": "test-id",
-            |  "groups": [
-            |    {
-            |      "group": { "id": "admins", "name": "Administrators" },
-            |      "username": "admin",
-            |      "kibana": { "access": "unrestricted" }
-            |    },
-            |    {
-            |      "group": { "id": "users", "name": "Users" },
-            |      "username": "admin",
-            |      "kibana": { "access": "unrestricted" }
-            |    }
-            |  ]
-            |}""".stripMargin)
+        result shouldBe circeJsonFrom("""{
+                                        |  "type": "USER_WITH_GROUPS",
+                                        |  "correlation_id": "test-id",
+                                        |  "groups": [
+                                        |    {
+                                        |      "group": { "id": "admins", "name": "Administrators" },
+                                        |      "username": "admin",
+                                        |      "kibana": { "access": "unrestricted", "index": ".kibana" }
+                                        |    },
+                                        |    {
+                                        |      "group": { "id": "users", "name": "Users" },
+                                        |      "username": "admin",
+                                        |      "kibana": { "access": "unrestricted", "index": ".kibana" }
+                                        |    }
+                                        |  ]
+                                        |}""".stripMargin)
       }
     }
   }
@@ -197,14 +192,20 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
     UserMetadata.WithoutGroups(
       loggedUser = LoggedUser.DirectlyLoggedUser(User.Id(nes("admin"))),
       userOrigin = Some(UserOrigin(nes("jwt-issuer"))),
-      kibanaPolicy = Some(KibanaPolicy(
-        access = KibanaAccess.Admin,
-        index = Some(kibanaIndexName(nes(".kibana"))),
-        templateIndex = Some(kibanaIndexName(nes(".kibana_template"))),
-        hiddenApps = Set(KibanaApp.FullNameKibanaApp(nes("Enterprise Search"))),
-        allowedApiPaths = Set.empty,
-        genericMetadata = Some(DomainJson.JsonTree.Object(Map("role" -> DomainJson.JsonTree.Value(DomainJson.JsonValue.StringValue("admin")))))
-      )),
+      kibanaPolicy = Some(
+        KibanaPolicy(
+          access = KibanaAccess.Admin,
+          index = kibanaIndexName(nes(".kibana")),
+          templateIndex = Some(kibanaIndexName(nes(".kibana_template"))),
+          hiddenApps = Set(KibanaApp.FullNameKibanaApp(nes("Enterprise Search"))),
+          allowedApiPaths = Set.empty,
+          genericMetadata = Some(
+            DomainJson.JsonTree.Object(
+              Map("role" -> DomainJson.JsonTree.Value(DomainJson.JsonValue.StringValue("admin")))
+            )
+          )
+        )
+      ),
       metadataOrigin = MetadataOrigin(
         blockContext = dummyCtx
       )
@@ -216,14 +217,20 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       group = group("admins", "Administrators"),
       loggedUser = LoggedUser.DirectlyLoggedUser(User.Id(nes("admin"))),
       userOrigin = Some(UserOrigin(nes("jwt-issuer"))),
-      kibanaPolicy = Some(KibanaPolicy(
-        access = KibanaAccess.Admin,
-        index = Some(kibanaIndexName(nes(".kibana"))),
-        templateIndex = Some(kibanaIndexName(nes(".kibana_template"))),
-        hiddenApps = Set(KibanaApp.FullNameKibanaApp(nes("Enterprise Search"))),
-        allowedApiPaths = Set.empty,
-        genericMetadata = Some(DomainJson.JsonTree.Object(Map("role" -> DomainJson.JsonTree.Value(DomainJson.JsonValue.StringValue("admin")))))
-      )),
+      kibanaPolicy = Some(
+        KibanaPolicy(
+          access = KibanaAccess.Admin,
+          index = kibanaIndexName(nes(".kibana")),
+          templateIndex = Some(kibanaIndexName(nes(".kibana_template"))),
+          hiddenApps = Set(KibanaApp.FullNameKibanaApp(nes("Enterprise Search"))),
+          allowedApiPaths = Set.empty,
+          genericMetadata = Some(
+            DomainJson.JsonTree.Object(
+              Map("role" -> DomainJson.JsonTree.Value(DomainJson.JsonValue.StringValue("admin")))
+            )
+          )
+        )
+      ),
       metadataOrigin = MetadataOrigin(
         blockContext = dummyCtx
       )
@@ -233,14 +240,16 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       group = group("users", "Users"),
       loggedUser = LoggedUser.DirectlyLoggedUser(User.Id(nes("admin"))),
       userOrigin = None,
-      kibanaPolicy = Some(KibanaPolicy(
-        access = KibanaAccess.Admin,
-        index = Some(kibanaIndexName(nes(".kibana_users"))),
-        templateIndex = Some(kibanaIndexName(nes(".kibana_users_template"))),
-        hiddenApps = Set.empty,
-        allowedApiPaths = Set.empty,
-        genericMetadata = None
-      )),
+      kibanaPolicy = Some(
+        KibanaPolicy(
+          access = KibanaAccess.Admin,
+          index = kibanaIndexName(nes(".kibana_users")),
+          templateIndex = Some(kibanaIndexName(nes(".kibana_users_template"))),
+          hiddenApps = Set.empty,
+          allowedApiPaths = Set.empty,
+          genericMetadata = None
+        )
+      ),
       metadataOrigin = MetadataOrigin(
         blockContext = dummyCtx
       )

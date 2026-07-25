@@ -27,14 +27,14 @@ import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestC
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class GetDataStreamLifecycleEsRequestContext(actionRequest: GetDataStreamLifecycleAction.Request,
-                                             esContext: EsContext,
-                                             override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+class GetDataStreamLifecycleEsRequestContext(
+    actionRequest: GetDataStreamLifecycleAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   private lazy val originDataStreams =
-    actionRequest
-      .getNames.asSafeSet
+    actionRequest.getNames.asSafeSet
       .flatMap(DataStreamName.fromString)
 
   override protected def dataStreamsFrom(request: GetDataStreamLifecycleAction.Request): Set[DataStreamName] =
@@ -47,7 +47,10 @@ class GetDataStreamLifecycleEsRequestContext(actionRequest: GetDataStreamLifecyc
     )
 
   override protected def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
-    actionRequest.indices(blockContext.dataStreams.map(_.stringify).toList: _*) // method is named indices but it sets data streams
+    actionRequest.indices(
+      blockContext.dataStreams.map(_.stringify).toList: _*
+    ) // method is named indices but it sets data streams
     ModificationResult.Modified
   }
+
 }

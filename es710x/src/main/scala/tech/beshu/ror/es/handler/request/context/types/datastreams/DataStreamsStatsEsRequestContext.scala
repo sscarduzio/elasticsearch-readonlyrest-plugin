@@ -28,11 +28,12 @@ import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequest
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-private[datastreams] class DataStreamsStatsEsRequestContext private(actionRequest: ActionRequest,
-                                                                    dataStreams: Set[DataStreamName],
-                                                                    esContext: EsContext,
-                                                                    override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+private[datastreams] class DataStreamsStatsEsRequestContext private (
+    actionRequest: ActionRequest,
+    dataStreams: Set[DataStreamName],
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
@@ -42,7 +43,9 @@ private[datastreams] class DataStreamsStatsEsRequestContext private(actionReques
     if (modifyActionRequest(blockContext)) {
       ModificationResult.Modified
     } else {
-      logger.error(s"Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
+      logger.error(
+        s"Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue."
+      )
       ModificationResult.ShouldBeInterrupted
     }
   }
@@ -68,9 +71,12 @@ object DataStreamsStatsEsRequestContext extends ReflectionBasedDataStreamsEsCont
       getDataStreamsMethodName = "indices"
     ) match {
       case MatchResult.Matched(dataStreams) =>
-        Some(new DataStreamsStatsEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool))
+        Some(
+          new DataStreamsStatsEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool)
+        )
       case MatchResult.NotMatched() =>
         None
     }
   }
+
 }

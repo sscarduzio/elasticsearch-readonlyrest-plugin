@@ -28,9 +28,10 @@ object SecurityProviderConfiguratorForFips {
 
   def configureIfRequired(ssl: RorSslSettings): Unit = {
     val fipsModes = ssl match {
-      case RorSslSettings.OnlyExternalSslSettings(ssl) => ssl.fipsMode :: Nil
-      case RorSslSettings.OnlyInternodeSslSettings(ssl) => ssl.fipsMode :: Nil
-      case RorSslSettings.ExternalAndInternodeSslSettings(external, internode) => external.fipsMode :: internode.fipsMode :: Nil
+      case RorSslSettings.OnlyExternalSslSettings(ssl)                         => ssl.fipsMode :: Nil
+      case RorSslSettings.OnlyInternodeSslSettings(ssl)                        => ssl.fipsMode :: Nil
+      case RorSslSettings.ExternalAndInternodeSslSettings(external, internode) =>
+        external.fipsMode :: internode.fipsMode :: Nil
     }
     fipsModes
       .find {
@@ -44,4 +45,5 @@ object SecurityProviderConfiguratorForFips {
         }
       }
   }
+
 }

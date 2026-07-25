@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexMan
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class IndexAliasesManagementSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with BeforeAndAfterEach

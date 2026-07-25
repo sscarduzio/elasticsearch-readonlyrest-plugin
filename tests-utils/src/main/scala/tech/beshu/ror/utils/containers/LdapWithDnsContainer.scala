@@ -19,15 +19,14 @@ package tech.beshu.ror.utils.containers
 import com.dimafeng.testcontainers.Container
 import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
 
-class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource)
-  extends Container {
+class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource) extends Container {
 
   private val ldapContainer = OpenLdapContainer.create(name, ldapInitScript)
 
   private var dnsContainer: Option[DnsServerContainer] = None
 
   def dnsHost: String = dnsContainer.getOrElse(throw new Exception("DNS container hasn't been started yet")).dnsHost
-  
+
   def dnsPort: Int = dnsContainer.getOrElse(throw new Exception("DNS container hasn't been started yet")).dnsPort
 
   override def start(): Unit = {
@@ -40,4 +39,5 @@ class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource)
     ldapContainer.stop()
     dnsContainer.foreach(_.stop())
   }
+
 }

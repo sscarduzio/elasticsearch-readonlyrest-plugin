@@ -19,14 +19,14 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class ShrinkIndexApiSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -48,7 +48,11 @@ class ShrinkIndexApiSuite
           result should have statusCode 200
         }
         "alias is used" in {
-          val result = user1IndexManager.shrink(sourceIndex = "test1_index", targetIndex = "test1_index_resized", aliases = "test1_index_allowed_alias" :: Nil)
+          val result = user1IndexManager.shrink(
+            sourceIndex = "test1_index",
+            targetIndex = "test1_index_resized",
+            aliases = "test1_index_allowed_alias" :: Nil
+          )
 
           result should have statusCode 200
         }
@@ -56,12 +60,20 @@ class ShrinkIndexApiSuite
     }
     "not be able to proceed" when {
       "user has permission to source index and dest index but no permission to alias" in {
-        val result = user1IndexManager.shrink(sourceIndex = "test1_index", targetIndex = "test1_index_resized", aliases = "test1_index_not_allowed_alias" :: Nil)
+        val result = user1IndexManager.shrink(
+          sourceIndex = "test1_index",
+          targetIndex = "test1_index_resized",
+          aliases = "test1_index_not_allowed_alias" :: Nil
+        )
 
         result should have statusCode 403
       }
       "user has permission to source index and dest index but no permission to one alias" in {
-        val result = user1IndexManager.shrink(sourceIndex = "test1_index", targetIndex = "test1_index_resized", aliases = "test1_index_not_allowed_alias" :: "test1_index_allowed_alias" :: Nil)
+        val result = user1IndexManager.shrink(
+          sourceIndex = "test1_index",
+          targetIndex = "test1_index_resized",
+          aliases = "test1_index_not_allowed_alias" :: "test1_index_allowed_alias" :: Nil
+        )
 
         result should have statusCode 403
       }
@@ -71,7 +83,8 @@ class ShrinkIndexApiSuite
         result should have statusCode 403
       }
       "user has no permission to source index and dest index which are absent on ES" in {
-        val result = user1IndexManager.shrink(sourceIndex = "not_allowed_index", targetIndex = "not_allowed_index_resized")
+        val result =
+          user1IndexManager.shrink(sourceIndex = "not_allowed_index", targetIndex = "not_allowed_index_resized")
 
         result should have statusCode 403
       }
@@ -87,32 +100,35 @@ class ShrinkIndexApiSuite
       }
     }
   }
+
 }
 
 object ShrinkIndexApiSuite {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient, esVersion)
-    val indexManager = new IndexManager(adminRestClient, esVersion)
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer =
+    (esVersion: String, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      val indexManager = new IndexManager(adminRestClient, esVersion)
 
-    val shardSettings =
-      ujson.read {
-        s"""
-           |{
-           |  "settings": {
-           |    "index": {
-           |      "number_of_shards": 3
-           |    }
-           |  }
-           |}
+      val shardSettings =
+        ujson.read {
+          s"""
+             |{
+             |  "settings": {
+             |    "index": {
+             |      "number_of_shards": 3
+             |    }
+             |  }
+             |}
           """.stripMargin
-      }
+        }
 
-    indexManager.createIndex("test1_index", settings = Some(shardSettings)).force()
-    indexManager.createIndex("test2_index", settings = Some(shardSettings)).force()
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    indexManager.putSettingsIndexBlocksWrite("test1_index", indexBlockWrite = true).force()
-    indexManager.putSettingsIndexBlocksWrite("test2_index", indexBlockWrite = true).force()
-  }
+      indexManager.createIndex("test1_index", settings = Some(shardSettings)).force()
+      indexManager.createIndex("test2_index", settings = Some(shardSettings)).force()
+      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
+      indexManager.putSettingsIndexBlocksWrite("test1_index", indexBlockWrite = true).force()
+      indexManager.putSettingsIndexBlocksWrite("test2_index", indexBlockWrite = true).force()
+    }
+
 }

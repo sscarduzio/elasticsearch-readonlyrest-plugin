@@ -32,20 +32,24 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.ZoneOffset
 import java.util.regex.Pattern
-import java.util.{Locale, List as JList}
+import java.util.{List as JList, Locale}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
 class EsqlRequestHelper(esVersion: EsVersion) {
 
-  def modifyIndicesOf(request: CompositeIndicesRequest,
-                      requestTables: NonEmptyList[IndexTable],
-                      finalIndices: Set[String]): CompositeIndicesRequest = {
+  def modifyIndicesOf(
+      request: CompositeIndicesRequest,
+      requestTables: NonEmptyList[IndexTable],
+      finalIndices: Set[String]
+  ): CompositeIndicesRequest = {
     setQuery(request, newQueryFrom(getQuery(request), requestTables, finalIndices))
   }
 
-  def modifyResponseAccordingToFieldLevelSecurity(response: ActionResponse,
-                                                  fieldLevelSecurity: FieldLevelSecurity): ActionResponse = {
+  def modifyResponseAccordingToFieldLevelSecurity(
+      response: ActionResponse,
+      fieldLevelSecurity: FieldLevelSecurity
+  ): ActionResponse = {
     new EsqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions).underlyingObject
   }
 
@@ -54,8 +58,8 @@ class EsqlRequestHelper(esVersion: EsVersion) {
   def classifyEsqlRequest(request: CompositeIndicesRequest): Either[ClassificationError, EsqlRequestClassification] = {
     createStatement(request) match {
       case Right(statement: IndicesRelatedStatement) => Right(IndicesRelated(statement.indices))
-      case Right(command: OtherCommand) => Right(NonIndicesRelated)
-      case Left(error) => Left(error)
+      case Right(command: OtherCommand)              => Right(NonIndicesRelated)
+      case Left(error)                               => Left(error)
     }
   }
 
@@ -98,15 +102,14 @@ class EsqlRequestHelper(esVersion: EsVersion) {
   }
 
   private def newQueryFrom(oldQuery: String, requestTables: NonEmptyList[IndexTable], finalIndices: Set[String]) = {
-    requestTables.toList.foldLeft(oldQuery) {
-      case (currentQuery, table) =>
-        val (beforeFrom, afterFrom) = currentQuery.splitBy("FROM")
-        afterFrom match {
-          case None =>
-            replaceTableNameInQueryPart(currentQuery, table.tableStringInQuery, finalIndices)
-          case Some(tablesPart) =>
-            s"${beforeFrom}FROM ${replaceTableNameInQueryPart(tablesPart, table.tableStringInQuery, finalIndices)}"
-        }
+    requestTables.toList.foldLeft(oldQuery) { case (currentQuery, table) =>
+      val (beforeFrom, afterFrom) = currentQuery.splitBy("FROM")
+      afterFrom match {
+        case None =>
+          replaceTableNameInQueryPart(currentQuery, table.tableStringInQuery, finalIndices)
+        case Some(tablesPart) =>
+          s"${beforeFrom}FROM ${replaceTableNameInQueryPart(tablesPart, table.tableStringInQuery, finalIndices)}"
+      }
     }
   }
 
@@ -114,21 +117,24 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     currentQuery.replaceAll(Pattern.quote(originTable), finalIndices.mkString(","))
   }
 
-  private final class EsqlParser(implicit classLoader: ClassLoader) {
+  private final class EsqlParser(
+      implicit classLoader: ClassLoader
+  ) {
 
     private val underlyingObject =
       onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser"))
-        .create().get[Any]()
+        .create()
+        .get[Any]()
 
     def createStatementBasedOn(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
       val statement = esVersion match {
         case v if v >= EsVersion(8, 19, 0) => createStatementForEsEqualOrAbove8190(request)
-        case v => createStatementForEsBelow8190(request)
+        case v                             => createStatementForEsBelow8190(request)
       }
       statement.map { s =>
         NonEmptyList.fromList(indicesFrom(s)) match {
           case Some(indices) => new IndicesRelatedStatement(statement, indices)
-          case None => OtherCommand(statement)
+          case None          => OtherCommand(statement)
         }
       }
     }
@@ -137,7 +143,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       val query = getQuery(request)
       val params = getParams(request)
       Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
-        case Success(s) => Right(s)
+        case Success(s)                                                                       => Right(s)
         case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
         case Failure(ex) => Left(ClassificationError.ParsingException(ex))
       }
@@ -148,7 +154,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       val params = getParams(request)
       val configuration = createConfiguration(request)
       Try(on(underlyingObject).call("createStatement", query, params, configuration).get[AnyRef]) match {
-        case Success(s) => Right(s)
+        case Success(s)                                                                       => Right(s)
         case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
         case Failure(ex) => Left(ClassificationError.ParsingException(ex))
       }
@@ -171,7 +177,9 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       tableString.split(',').asSafeList.filter(_.nonEmpty)
     }
 
-    private def newPreAnalyzer(implicit classLoader: ClassLoader) = {
+    private def newPreAnalyzer(
+        implicit classLoader: ClassLoader
+    ) = {
       onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.analysis.PreAnalyzer")).create().get[Any]()
     }
 
@@ -194,12 +202,10 @@ class EsqlRequestHelper(esVersion: EsVersion) {
   }
 
   private sealed trait Statement
-  private final class IndicesRelatedStatement(val underlyingObject: Any,
-                                              val indices: NonEmptyList[IndexTable])
-    extends Statement
+  private final class IndicesRelatedStatement(val underlyingObject: Any, val indices: NonEmptyList[IndexTable])
+      extends Statement
 
-  private final class OtherCommand(val underlyingObject: Any)
-    extends Statement
+  private final class OtherCommand(val underlyingObject: Any) extends Statement
 
   private final class EsqlQueryResponse(val underlyingObject: ActionResponse) {
 
@@ -208,7 +214,8 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
       val filteredColumns = FieldsFiltering
         .filterNonMetadataDocumentFields(NonMetadataDocumentFields(columnsMap), restrictions)
-        .value.values
+        .value
+        .values
 
       modifyColumns(filteredColumns)
       modifyPages(filteredColumns)
@@ -218,13 +225,15 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
     private lazy val originColumns = {
       on(underlyingObject)
-        .get[JList[Any]]("columns").asSafeList
+        .get[JList[Any]]("columns")
+        .asSafeList
         .map(new ColumnInfo(_))
     }
 
     private lazy val originPages: List[Page] = {
       on(underlyingObject)
-        .get[JList[Any]]("pages").asSafeList
+        .get[JList[Any]]("pages")
+        .asSafeList
         .map(new Page(_))
     }
 
@@ -241,7 +250,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     private def getAllowedColumnsIds(allowedColumns: Set[ColumnInfo]) = {
       originColumns.zipWithIndex.foldLeft(Set.empty[Int]) {
         case (acc, (column, idx)) if allowedColumns.contains(column) => acc + idx
-        case (acc, _) => acc
+        case (acc, _)                                                => acc
       }
     }
 
@@ -264,8 +273,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       }
 
       private def onlyAllowedBlocks(allowedColumnsIdxs: Set[Int]) = {
-        originBlocks
-          .view.zipWithIndex
+        originBlocks.view.zipWithIndex
           .filter { case (_, idx) => allowedColumnsIdxs.contains(idx) }
           .map(_._1)
           .toArray
@@ -286,8 +294,11 @@ class EsqlRequestHelper(esVersion: EsVersion) {
         }
         array
       }
+
     }
+
   }
+
 }
 
 object EsqlRequestHelper {
@@ -295,15 +306,20 @@ object EsqlRequestHelper {
   final case class IndexTable(tableStringInQuery: String, indices: NonEmptyList[String])
 
   sealed trait EsqlRequestClassification
+
   object EsqlRequestClassification {
+
     final case class IndicesRelated(tables: NonEmptyList[IndexTable]) extends EsqlRequestClassification {
       lazy val indices: Set[String] = tables.toCovariantSet.flatMap(_.indices.toIterable)
     }
+
     case object NonIndicesRelated extends EsqlRequestClassification
   }
 
   sealed trait ClassificationError
+
   object ClassificationError {
     final case class ParsingException(cause: Throwable) extends ClassificationError
   }
+
 }

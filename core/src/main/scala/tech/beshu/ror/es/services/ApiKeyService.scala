@@ -22,18 +22,21 @@ import tech.beshu.ror.accesscontrol.utils.AsyncCacheableAction
 
 trait ApiKeyService {
 
-  def validateToken(token: AuthorizationToken)
-                   (implicit requestId: RequestId): Task[Boolean]
+  def validateToken(token: AuthorizationToken)(
+      implicit requestId: RequestId
+  ): Task[Boolean]
+
 }
 
-class CacheableApiKeyServiceDecorator(underlying: ApiKeyService)
-  extends ApiKeyService {
+class CacheableApiKeyServiceDecorator(underlying: ApiKeyService) extends ApiKeyService {
 
   private lazy val cacheableValidateToken = new AsyncCacheableAction[AuthorizationToken, Boolean](
     action = (token, requestId) => underlying.validateToken(token)(requestId)
   )
 
-  override def validateToken(token: AuthorizationToken)
-                            (implicit requestId: RequestId): Task[Boolean] =
+  override def validateToken(token: AuthorizationToken)(
+      implicit requestId: RequestId
+  ): Task[Boolean] =
     cacheableValidateToken.call(token)
+
 }
