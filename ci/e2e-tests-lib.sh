@@ -111,13 +111,23 @@ run_e2e_against_dev_images() {
     echo ">>> Cloned e2e tests repo (branch: $TARGET_BRANCH) into $E2E_DIR"
   fi
 
-  echo ">>> Running e2e tests: ELK $ELK_VERSION, image tag: $RUN_TAG"
+  # The *.limits.docker-compose.yml overlays cap each Kibana replica at mem_limit=1g with NO container
+  # swap, while Kibana runs with --max-old-space-size=768. Under the heavier feature specs (Reporting,
+  # Settings, Spaces, Tenancy, Saved-objects, …) a replica's RSS crosses 1g, the cgroup OOM-kills it,
+  # and `restart: always` sends it into a cold-boot crash-loop it never recovers from mid-run — so
+  # every spec after the first heavy one fails. Those limits exist only for the small ~7.9 GB Azure
+  # host; apply them ONLY on memory-constrained hosts and let the pinned heaps govern everywhere else
+  # (the 16 GB Ubicloud CI runner has ample headroom for the ~5 GB the unconstrained stack uses).
+  local apply_limits=false
+  local mem_kb
+  mem_kb=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)
+  if [ "${mem_kb:-0}" -gt 0 ] && [ "$mem_kb" -lt 12000000 ]; then
+    apply_limits=true
+  fi
+  echo ">>> Running e2e tests: ELK $ELK_VERSION, image tag: $RUN_TAG (MemTotal=${mem_kb}kB, APPLY_RESOURCE_LIMITS=$apply_limits)"
   (
     cd "$E2E_DIR"
-    # APPLY_RESOURCE_LIMITS=true: this runs on the small Azure agent (~7.9 GB) with docker on the host,
-    # so the compose stack needs the *.limits.docker-compose.yml overlays to avoid OOM. start.sh leaves
-    # them off by default (safe for the KBN repo's Docker-in-Docker flow); we opt in explicitly here.
-    APPLY_RESOURCE_LIMITS=true ./runner.sh \
+    APPLY_RESOURCE_LIMITS="$apply_limits" ./runner.sh \
       --run e2e \
       --env docker \
       --elk "$ELK_VERSION" \
