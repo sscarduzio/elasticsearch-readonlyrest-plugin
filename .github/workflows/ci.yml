@@ -550,11 +550,13 @@ jobs:
     timeout-minutes: 120
     # No container: the e2e runner drives docker compose on the host and needs Node + a JDK provided
     # on the runner directly (Azure used JavaToolInstaller@0 17 + NodeTool 24.11.0), not the baked
-    # toolchains image. Clear the image-oriented Gradle settings at JOB scope (like the Windows legs):
-    # /opt/gradle-home doesn't exist off-container, and the baked installations.paths must be blanked
-    # so Gradle auto-provisions the JDKs the plugin build needs.
+    # toolchains image. Override the image-oriented Gradle settings at JOB scope: the workflow-level
+    # GRADLE_USER_HOME=/opt/gradle-home doesn't exist off-container, so point it at a writable
+    # workspace path (an EMPTY value can't unset it — the Linux wrapper would resolve empty to the
+    # filesystem root and fail creating /wrapper/dists). Blank the baked installations.paths and let
+    # Gradle auto-provision the JDKs the plugin build needs.
     env:
-      GRADLE_USER_HOME: ''
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
     # "e2e_es94x", not the truncated "e2e_tests (es94x)" composite, in the graph view.
     name: e2e_${{ matrix.E2E_ES_MODULE }}
