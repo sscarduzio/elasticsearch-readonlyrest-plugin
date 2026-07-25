@@ -363,6 +363,6 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
 fi
 
 if [[ $ROR_TASK == "run_e2e_tests" ]]; then
-  E2E_ELK_VERSION="9.4.4" # TODO: which versions we should use
+  E2E_ELK_VERSION=$(./gradlew --no-daemon --quiet ":${E2E_ES_MODULE:?E2E_ES_MODULE is not set}:printNewestEsVersionForModule")
   run_e2e_tests "$E2E_ELK_VERSION" "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" "$E2E_BUILD_ID"
 fi
