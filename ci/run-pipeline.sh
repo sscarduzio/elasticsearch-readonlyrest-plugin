@@ -21,7 +21,7 @@ terminate() {
 }
 trap terminate SIGTERM SIGINT
 
-echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task? $ROR_TASK"
+echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task: $ROR_TASK"
 
 # Log file friendly Gradle output
 export TERM=dumb
