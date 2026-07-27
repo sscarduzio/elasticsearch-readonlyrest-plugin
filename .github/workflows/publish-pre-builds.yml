@@ -1,19 +1,12 @@
 name: ROR ES Publish Pre-Builds
 
 # Manual-only: no push/pull_request triggers (Azure's `trigger: none` / `pr: none`).
-#
-# Input names deliberately mirror the KBN repo's publish-pre-builds.yml (kbn_versions/target_branch/
-# tag/force_rebuild) so both sides of the pre-build pair share one dispatch contract — the shape
-# ci/e2e-tests-lib.sh's dispatch_kbn_prebuild_image already speaks (`gh workflow run
-# publish-pre-builds.yml -f <x>_versions=… -f target_branch=… -f tag=…`).
 on:
   workflow_dispatch:
     inputs:
       es_versions:
         description: 'Space or comma-separated list of ES versions (e.g., "9.4.2" or "9.4.2 8.19.16")'
         type: string
-        # required: true is UI-enforced only and can be bypassed via the API.
-        # Empty-value protection is handled by ci/run-pipeline.sh (publish_pre_builds_docker_images).
         required: true
       target_branch:
         description: 'Branch to build from (falls back to develop if not found, builds from current branch if empty)'
@@ -43,26 +36,17 @@ jobs:
     name: Publishing
     runs-on: ubicloud-standard-4
     timeout-minutes: 600
-    # No container: the build drives the host Docker daemon (docker build/push, buildx imagetools,
-    # `docker system prune` between versions), so it needs a JDK on the runner (Azure used
-    # JavaToolInstaller@0 17) rather than the baked toolchains image. Point GRADLE_USER_HOME at a
-    # writable workspace path and let Gradle auto-provision the other JDKs the plugin build needs.
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
-      # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
       AGENT_ISSELFHOSTED: '1'
     steps:
-      # fetch-depth: 0 so the target_branch checkout below can resolve any origin/* ref, and so
-      # `git rev-parse --short HEAD` (the source-identity image tag) sees real history.
-      # persist-credentials mirrors Azure's persistCredentials.
       - uses: actions/checkout@v4
         with: { fetch-depth: 0, persist-credentials: true }
 
-      # GitHub's dispatch UI already picks the ref the workflow runs from, but that ref must contain
-      # this file. target_branch keeps Azure's escape hatch: dispatch from develop, build any branch —
-      # and it is what a caller like dispatch_kbn_prebuild_image passes for the sibling KBN workflow,
-      # including feature branches that may not exist here (hence the develop fallback).
+      # Pick the branch to build from: empty target_branch keeps the ref the workflow was dispatched
+      # on, a known branch is checked out, an unknown one falls back to develop. The fallback lets a
+      # caller pass its own branch name verbatim without first checking that it exists here.
       - name: Checkout target branch
         env:
           TARGET_BRANCH: ${{ inputs.target_branch }}
@@ -94,10 +78,6 @@ jobs:
       - name: publish_pre_builds_docker_images
         env:
           ROR_TASK: publish_pre_builds_docker_images
-          # run-pipeline.sh reads the version list from BUILD_ROR_ES_VERSIONS, loops it through
-          # publish_ror_prebuild_plugin (ci/ci-lib.sh) and validates emptiness itself — no need to
-          # re-implement either here. FORCE_REBUILD/IMAGE_TAG are normalized there too (case and
-          # whitespace), so GitHub's 'true'/'false' booleans pass through unchanged.
           BUILD_ROR_ES_VERSIONS: ${{ inputs.es_versions }}
           IMAGE_TAG: ${{ inputs.tag }}
           FORCE_REBUILD: ${{ inputs.force_rebuild }}
