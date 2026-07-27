@@ -1,0 +1,95 @@
+name: ROR ES Publish Pre-Builds
+
+# Manual-only: no push/pull_request triggers (Azure's `trigger: none` / `pr: none`).
+on:
+  workflow_dispatch:
+    inputs:
+      es_versions:
+        description: 'Space or comma-separated list of ES versions (e.g., "9.4.2" or "9.4.2 8.19.16")'
+        type: string
+        required: true
+      target_branch:
+        description: 'Branch to build from (falls back to develop if not found, builds from current branch if empty)'
+        type: string
+        required: false
+        default: ''
+      tag:
+        description: 'Optional image tag. When set, each image is also published as <esVersion>-ror-<tag> pointing at the current commit''s image.'
+        type: string
+        required: false
+        default: ''
+      force_rebuild:
+        description: 'Rebuild even if an image for the current commit already exists (skips the unchanged-sources optimization).'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish:
+    name: Publishing
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 600
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
+      GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
+      AGENT_ISSELFHOSTED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0, persist-credentials: true }
+
+      # Pick the branch to build from: empty target_branch keeps the ref the workflow was dispatched
+      # on, a known branch is checked out, an unknown one falls back to develop. The fallback lets a
+      # caller pass its own branch name verbatim without first checking that it exists here.
+      - name: Checkout target branch
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: |
+          if [ -n "$(echo "$TARGET_BRANCH" | tr -d '[:space:]')" ]; then
+            if git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
+              echo "Branch '$TARGET_BRANCH' found, checking out"
+              git checkout "$TARGET_BRANCH"
+            else
+              echo "Branch '$TARGET_BRANCH' not found, falling back to develop"
+              git checkout develop
+            fi
+          fi
+
+      - name: Free host disk (no-op on self-hosted)
+        run: ci/free-host-disk.sh
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - name: Restore Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.gradle-home
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties', '**/settings.gradle*', '**/build.gradle*', '**/gradle.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: publish_pre_builds_docker_images
+        env:
+          ROR_TASK: publish_pre_builds_docker_images
+          BUILD_ROR_ES_VERSIONS: ${{ inputs.es_versions }}
+          IMAGE_TAG: ${{ inputs.tag }}
+          FORCE_REBUILD: ${{ inputs.force_rebuild }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+        run: |
+          set -e
+
+          if ! echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin; then
+            echo "::error::Failed to login to Docker registry"
+            exit 1
+          fi
+
+          echo ">>> Publishing pre-build docker images for: $BUILD_ROR_ES_VERSIONS"
+          ci/run-pipeline.sh
