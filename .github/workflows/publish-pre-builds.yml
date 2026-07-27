@@ -1,25 +1,32 @@
-name: Publish pre-builds
+name: ROR ES Publish Pre-Builds
 
 # Manual-only: no push/pull_request triggers (Azure's `trigger: none` / `pr: none`).
+#
+# Input names deliberately mirror the KBN repo's publish-pre-builds.yml (kbn_versions/target_branch/
+# tag/force_rebuild) so both sides of the pre-build pair share one dispatch contract — the shape
+# ci/e2e-tests-lib.sh's dispatch_kbn_prebuild_image already speaks (`gh workflow run
+# publish-pre-builds.yml -f <x>_versions=… -f target_branch=… -f tag=…`).
 on:
   workflow_dispatch:
     inputs:
-      esVersions:
+      es_versions:
         description: 'Space or comma-separated list of ES versions (e.g., "9.4.2" or "9.4.2 8.19.16")'
         type: string
+        # required: true is UI-enforced only and can be bypassed via the API.
+        # Empty-value protection is handled by ci/run-pipeline.sh (publish_pre_builds_docker_images).
         required: true
-      targetBranch:
-        description: 'Branch to build from (falls back to develop if not found, builds from the selected branch if empty)'
+      target_branch:
+        description: 'Branch to build from (falls back to develop if not found, builds from current branch if empty)'
         type: string
         required: false
         default: ''
       tag:
-        description: 'Optional image tag. When set, each image is also published as <esVersion>-ror-<tag> (on top of the canonical <esVersion>-ror-<pluginVersion>)'
+        description: 'Optional image tag. When set, each image is also published as <esVersion>-ror-<tag> pointing at the current commit''s image.'
         type: string
         required: false
         default: ''
-      forceRebuild:
-        description: 'Rebuild even if an image for the current commit already exists (skips the unchanged-sources optimization)'
+      force_rebuild:
+        description: 'Rebuild even if an image for the current commit already exists (skips the unchanged-sources optimization).'
         type: boolean
         required: false
         default: false
@@ -46,17 +53,19 @@ jobs:
       # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
       AGENT_ISSELFHOSTED: '1'
     steps:
-      # fetch-depth: 0 so the targetBranch checkout below can resolve any origin/* ref, and so
+      # fetch-depth: 0 so the target_branch checkout below can resolve any origin/* ref, and so
       # `git rev-parse --short HEAD` (the source-identity image tag) sees real history.
       # persist-credentials mirrors Azure's persistCredentials.
       - uses: actions/checkout@v4
         with: { fetch-depth: 0, persist-credentials: true }
 
       # GitHub's dispatch UI already picks the ref the workflow runs from, but that ref must contain
-      # this file. targetBranch keeps Azure's escape hatch: dispatch from develop, build any branch.
+      # this file. target_branch keeps Azure's escape hatch: dispatch from develop, build any branch —
+      # and it is what a caller like dispatch_kbn_prebuild_image passes for the sibling KBN workflow,
+      # including feature branches that may not exist here (hence the develop fallback).
       - name: Checkout target branch
         env:
-          TARGET_BRANCH: ${{ inputs.targetBranch }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
         run: |
           if [ -n "$(echo "$TARGET_BRANCH" | tr -d '[:space:]')" ]; then
             if git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
@@ -85,19 +94,17 @@ jobs:
       - name: publish_pre_builds_docker_images
         env:
           ROR_TASK: publish_pre_builds_docker_images
-          # run-pipeline.sh reads the version list from BUILD_ROR_ES_VERSIONS.
-          BUILD_ROR_ES_VERSIONS: ${{ inputs.esVersions }}
+          # run-pipeline.sh reads the version list from BUILD_ROR_ES_VERSIONS, loops it through
+          # publish_ror_prebuild_plugin (ci/ci-lib.sh) and validates emptiness itself — no need to
+          # re-implement either here. FORCE_REBUILD/IMAGE_TAG are normalized there too (case and
+          # whitespace), so GitHub's 'true'/'false' booleans pass through unchanged.
+          BUILD_ROR_ES_VERSIONS: ${{ inputs.es_versions }}
           IMAGE_TAG: ${{ inputs.tag }}
-          FORCE_REBUILD: ${{ inputs.forceRebuild }}
+          FORCE_REBUILD: ${{ inputs.force_rebuild }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
         run: |
           set -e
-
-          if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
-            echo "::error::esVersions input is required"
-            exit 1
-          fi
 
           if ! echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin; then
             echo "::error::Failed to login to Docker registry"

@@ -4,6 +4,9 @@
 #
 # The flow runs the Cypress e2e suite (docker env only) for a given ES version against per-run dev
 # Docker images of both ROR plugins (ES + KBN):
+#   0) Clone the e2e tests repo and source its ci/prebuild-images-lib.sh — the single, cross-repo
+#      home of the pre-build dispatch/poll contract (see below). The suite in step 4 runs from this
+#      same clone, so the clone is hoisted here rather than done at the end.
 #   1) Dispatch the ROR KBN dev image build in the KBN repo (non-blocking). The build is skip-optimized:
 #      if sources are unchanged it only applies a cheap registry-side alias tag, so the wait is short.
 #   2) Build & publish the ROR ES dev image from this repo (runs in parallel with step 1).
@@ -11,104 +14,82 @@
 #
 # Both images are tagged with a per-run tag (run-<BUILD_BUILDID>) so each pipeline run gets its own
 # immutable refs. This prevents false hits from a previous run's image and makes concurrent runs safe.
+#
+# dispatch_kbn_prebuild_image / wait_for_kbn_prebuild_image are NOT defined here: the same pair is
+# needed by the ROR KBN repo (mirrored) and by the e2e repo (both plugins), so they live once in
+# readonlyrest-e2e-tests' ci/prebuild-images-lib.sh and are sourced from the clone. What stays
+# repo-specific — and therefore stays here — is building OUR plugin image, cloning the e2e repo and
+# invoking its runner.
+#
+# Note: the shared lib also defines docker_image_exists, identically to ci-lib.sh's. Sourcing it
+# redefines ci-lib.sh's copy for the rest of the process; the bodies match, so this is a no-op.
 
-E2E_KBN_REPO="sscarduzio/readonlyrest_kbn"
-E2E_KBN_PUBLISH_WORKFLOW="publish-pre-builds.yml"
 E2E_TESTS_REPO="https://github.com/beshu-tech/readonlyrest-e2e-tests.git"
-E2E_KBN_DEV_IMAGE_REPO="beshultd/kibana-readonlyrest-dev"
+# Path of the shared pre-build contract WITHIN the e2e tests clone.
+E2E_PREBUILD_IMAGES_LIB="ci/prebuild-images-lib.sh"
 
-# Dispatch the ROR KBN pre-build workflow for the given version and run tag. Does not wait for it.
-# We always dispatch — even when the canonical image exists — so the per-run alias tag is guaranteed
-# to exist by the time the poll in wait_for_kbn_prebuild_image succeeds. The workflow's skip
-# optimization means a "no KBN changes" dispatch only does a cheap registry-side retag.
-# target_branch may be a feature branch that doesn't exist in the KBN repo (e.g. on ES-only PRs);
-# the KBN publish-pre-builds workflow falls back to develop for unknown branches.
-dispatch_kbn_prebuild_image() {
-  if [ "$#" -ne 3 ]; then
-    echo "Usage: dispatch_kbn_prebuild_image <kbn version> <target branch> <run tag>"
+# Clone the e2e tests repo into a fresh temp dir and echo the path (all logging goes to stderr so
+# the caller can capture the path from stdout).
+# target_branch may be a feature branch that doesn't exist in the e2e repo (e.g. on ES-only PRs);
+# fall back to master in that case.
+clone_e2e_tests_repo() {
+  if [ "$#" -ne 1 ]; then
+    echo "Usage: clone_e2e_tests_repo <target branch>" >&2
     return 1
   fi
 
-  local KBN_VERSION=$1
-  local TARGET_BRANCH=$2
-  local RUN_TAG=$3
+  local TARGET_BRANCH=$1
+  local E2E_DIR
+  E2E_DIR=$(mktemp -d) || return 2
 
-  if [ -z "${KBN_REPO_GH_TOKEN:-}" ] || [[ "${KBN_REPO_GH_TOKEN}" == '$('* ]]; then
-    echo "ERROR: KBN_REPO_GH_TOKEN is not set or was not resolved by the pipeline (required to dispatch the ROR KBN pre-build workflow)"
-    echo "       Make sure KBN_REPO_GH_TOKEN is defined as a secret variable in pipeline variables."
+  echo "" >&2
+  if ! git clone --depth 1 --branch "$TARGET_BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" >/dev/null 2>&1; then
+    echo ">>> Branch '$TARGET_BRANCH' not found in e2e repo, falling back to master" >&2
+    git clone --depth 1 --branch master "$E2E_TESTS_REPO" "$E2E_DIR" >&2 || return 3
+  else
+    echo ">>> Cloned e2e tests repo (branch: $TARGET_BRANCH) into $E2E_DIR" >&2
+  fi
+
+  echo "$E2E_DIR"
+}
+
+# Source the shared pre-build dispatch/poll helpers out of the e2e tests clone. After this returns,
+# dispatch_kbn_prebuild_image and wait_for_kbn_prebuild_image are available with the signatures this
+# file used to define locally.
+source_prebuild_images_lib() {
+  if [ "$#" -ne 1 ]; then
+    echo "Usage: source_prebuild_images_lib <e2e tests dir>"
+    return 1
+  fi
+
+  local LIB="$1/$E2E_PREBUILD_IMAGES_LIB"
+  if [ ! -f "$LIB" ]; then
+    echo "ERROR: $E2E_PREBUILD_IMAGES_LIB not found in the e2e tests clone ($1)"
+    echo "       The pre-build dispatch/poll helpers are owned by $E2E_TESTS_REPO."
+    echo "       The checked-out e2e branch predates them — merge/rebase it so the file is present."
     return 2
   fi
 
-  echo ""
-  echo ">>> Dispatching ROR KBN pre-build: version=$KBN_VERSION tag=$RUN_TAG branch=$TARGET_BRANCH"
-  if ! GH_TOKEN="$KBN_REPO_GH_TOKEN" gh workflow run "$E2E_KBN_PUBLISH_WORKFLOW" \
-        -R "$E2E_KBN_REPO" \
-        -f "kbn_versions=$KBN_VERSION" \
-        -f "target_branch=$TARGET_BRANCH" \
-        -f "tag=$RUN_TAG"; then
-    echo "ERROR: Failed to dispatch the ROR KBN pre-build workflow"
-    return 3
-  fi
-  echo ">>> Dispatch sent"
+  # shellcheck source=/dev/null
+  . "$LIB" || return 3
 }
 
-# Poll Docker Hub until the per-run KBN image tag appears. Returns quickly when sources are
-# unchanged (the workflow's skip path only does a cheap retag, typically a few minutes).
-wait_for_kbn_prebuild_image() {
-  if [ "$#" -ne 2 ]; then
-    echo "Usage: wait_for_kbn_prebuild_image <kbn version> <run tag>"
-    return 1
-  fi
-
-  local KBN_VERSION=$1
-  local RUN_TAG=$2
-  local KBN_IMAGE="${E2E_KBN_DEV_IMAGE_REPO}:${KBN_VERSION}-ror-${RUN_TAG}"
-  local WAIT_TIMEOUT_SECONDS=$((30 * 60))
-  local POLL_INTERVAL_SECONDS=30
-  local WAITED=0
-
-  echo ""
-  echo ">>> Polling for $KBN_IMAGE (timeout: $((WAIT_TIMEOUT_SECONDS / 60)) min)"
-  while ! docker_image_exists "$KBN_IMAGE"; do
-    if [ "$WAITED" -ge "$WAIT_TIMEOUT_SECONDS" ]; then
-      echo "ERROR: Timed out after $((WAITED / 60)) min waiting for $KBN_IMAGE"
-      echo "       Check the '$E2E_KBN_PUBLISH_WORKFLOW' run in $E2E_KBN_REPO."
-      return 4
-    fi
-    sleep "$POLL_INTERVAL_SECONDS"
-    WAITED=$((WAITED + POLL_INTERVAL_SECONDS))
-  done
-
-  echo ">>> ROR KBN dev image is now available: $KBN_IMAGE"
-}
-
-# Clone the e2e tests repo and run the Cypress suite against dev images of both plugins.
+# Run the Cypress suite from an already-cloned e2e tests repo, against dev images of both plugins.
 # Both images are identified by the same run tag so the same per-run alias is passed to both sides.
 run_e2e_against_dev_images() {
   if [ "$#" -ne 3 ]; then
-    echo "Usage: run_e2e_against_dev_images <elk version> <run tag> <target branch>"
+    echo "Usage: run_e2e_against_dev_images <e2e tests dir> <elk version> <run tag>"
     return 1
   fi
 
-  local ELK_VERSION=$1
-  local RUN_TAG=$2
-  local TARGET_BRANCH=$3
+  local E2E_DIR=$1
+  local ELK_VERSION=$2
+  local RUN_TAG=$3
 
   if [ -z "${ROR_ACTIVATION_KEY:-}" ] || [[ "${ROR_ACTIVATION_KEY}" == '$('* ]]; then
     echo "ERROR: ROR_ACTIVATION_KEY is not set or was not resolved by the pipeline (required to run the e2e Cypress tests)"
-    echo "       Make sure ROR_ACTIVATION_KEY is defined as a secret variable in Azure DevOps."
+    echo "       Make sure ROR_ACTIVATION_KEY is defined as a secret variable in the CI."
     return 2
-  fi
-
-  local E2E_DIR
-  E2E_DIR=$(mktemp -d)
-
-  echo ""
-  if ! git clone --depth 1 --branch "$TARGET_BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" 2>/dev/null; then
-    echo ">>> Branch '$TARGET_BRANCH' not found in e2e repo, falling back to master"
-    git clone --depth 1 --branch master "$E2E_TESTS_REPO" "$E2E_DIR"
-  else
-    echo ">>> Cloned e2e tests repo (branch: $TARGET_BRANCH) into $E2E_DIR"
   fi
 
   # The *.limits.docker-compose.yml overlays cap each Kibana replica at mem_limit=1g with NO container
@@ -124,9 +105,10 @@ run_e2e_against_dev_images() {
   if [ "${mem_kb:-0}" -gt 0 ] && [ "$mem_kb" -lt 12000000 ]; then
     apply_limits=true
   fi
+  echo ""
   echo ">>> Running e2e tests: ELK $ELK_VERSION, image tag: $RUN_TAG (MemTotal=${mem_kb}kB, APPLY_RESOURCE_LIMITS=$apply_limits)"
   (
-    cd "$E2E_DIR"
+    cd "$E2E_DIR" || exit 1
     APPLY_RESOURCE_LIMITS="$apply_limits" ./runner.sh \
       --run e2e \
       --env docker \
@@ -140,8 +122,8 @@ run_e2e_against_dev_images() {
 # Entry point for the `run_e2e_tests` task in run-pipeline.sh.
 # Args: <elk version> <target branch> <build id>
 #   elk version   — ELK version to test (X.Y.Z)
-#   target branch — KBN branch to build from
-#   build id      — E2E_BUILD_ID (Build.BuildId-System.JobAttempt); unique per attempt (run-<id>)
+#   target branch — branch to build the KBN plugin from / to take the e2e suite from
+#   build id      — E2E_BUILD_ID (<run id>-<attempt>); unique per attempt (run-<id>)
 run_e2e_tests() {
   if [ "$#" -ne 3 ]; then
     echo "Usage: run_e2e_tests <elk version> <target branch> <build id>"
@@ -152,6 +134,8 @@ run_e2e_tests() {
   local TARGET_BRANCH=$2
   local RUN_TAG="run-$3"
 
+  # Validate before the clone so a typo fails in seconds rather than after a network round trip
+  # (the shared lib re-validates the version it is handed).
   if ! [[ $ELK_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
     echo "Invalid ELK version format. Expected format: X.Y.Z"
     return 2
@@ -159,17 +143,25 @@ run_e2e_tests() {
 
   echo ">>> Running e2e tests: ELK $ELK_VERSION, run tag: $RUN_TAG"
 
+  # Step 0: get the e2e repo first — it owns both the pre-build contract used by steps 1/3 and the
+  # runner used by step 4.
+  local E2E_DIR
+  E2E_DIR=$(clone_e2e_tests_repo "$TARGET_BRANCH") || return $?
+  source_prebuild_images_lib "$E2E_DIR" || return $?
+
   # Step 1: fire off the KBN build without blocking. Runs remotely while we build the ES image.
-  dispatch_kbn_prebuild_image "$ELK_VERSION" "$TARGET_BRANCH" "$RUN_TAG"
+  # We always dispatch — even when the canonical image exists — so the per-run alias tag is
+  # guaranteed to exist by the time the step 3 poll succeeds.
+  dispatch_kbn_prebuild_image "$ELK_VERSION" "$TARGET_BRANCH" "$RUN_TAG" || return $?
 
   # Step 2: build & publish the ROR ES dev image (publish_ror_prebuild_plugin is defined in ci-lib.sh).
   # The skip optimization applies: if the sha-frozen image already exists, Gradle is not re-run.
   # The run tag is applied as an alias so the e2e runner can reference it.
-  publish_ror_prebuild_plugin "$ELK_VERSION" "$RUN_TAG"
+  publish_ror_prebuild_plugin "$ELK_VERSION" "$RUN_TAG" || return $?
 
   # Step 3: block until the KBN image dispatched in step 1 appears (fast on the skip path).
-  wait_for_kbn_prebuild_image "$ELK_VERSION" "$RUN_TAG"
+  wait_for_kbn_prebuild_image "$ELK_VERSION" "$RUN_TAG" || return $?
 
   # Step 4: run the e2e suite against both dev images (now both available as <version>-ror-<RUN_TAG>).
-  run_e2e_against_dev_images "$ELK_VERSION" "$RUN_TAG" "$TARGET_BRANCH"
+  run_e2e_against_dev_images "$E2E_DIR" "$ELK_VERSION" "$RUN_TAG"
 }
