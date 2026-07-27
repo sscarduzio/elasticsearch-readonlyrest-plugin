@@ -444,7 +444,8 @@ object AuditingTool extends RequestIdAwareLogging {
 
         (NonEmptyList.fromList(exceptions), NonEmptyList.fromList(creationErrors)) match {
           case (Some(exs), _) =>
-            sinks.parTraverse(_.close().handleError(logSinkCloseError)) >> Task.raiseError(exs.head)
+            Task.delay(exs.tail.foreach(logDiscardedSinkCreationError)) >>
+              sinks.parTraverse(_.close().handleError(logSinkCloseError)) >> Task.raiseError(exs.head)
           case (None, Some(errors)) =>
             sinks.parTraverse(_.close().handleError(logSinkCloseError)).as(Left(errors))
           case (None, None) =>
@@ -466,6 +467,9 @@ object AuditingTool extends RequestIdAwareLogging {
 
   private val logSinkCloseError: Throwable => Unit =
     ex => noRequestIdLogger.warn(s"Failed to close audit sink during error recovery: ${ex.getMessage}")
+
+  private val logDiscardedSinkCreationError: Throwable => Unit =
+    ex => noRequestIdLogger.warn(s"Another audit sink also failed to be created: ${ex.getMessage}", ex)
 
   private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink |
     RollingFileBasedAuditSink

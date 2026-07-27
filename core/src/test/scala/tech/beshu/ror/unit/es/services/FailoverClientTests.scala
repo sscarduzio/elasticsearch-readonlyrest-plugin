@@ -88,13 +88,15 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
         case 1 => Left(new IllegalStateException("bad request"))
         case _ => Right("node1-response")
       })
-      val client = failoverClient(new TestClock, node1)
+      val node2 = new RecordingExecutor(_ => Right("node2-response"))
+      val client = failoverClient(new TestClock, node1, node2)
 
       performRequest(client)
       val handler = performRequest(client)
 
-      // circuit stays closed - the node is tried again immediately
+      // circuit stays closed - node1 is preferred again on the next request instead of being skipped in favour of node2
       node1.receivedRequests should have size 2
+      node2.receivedRequests should have size 0
       handler.successes.toList should be(List("node1-response"))
     }
 
