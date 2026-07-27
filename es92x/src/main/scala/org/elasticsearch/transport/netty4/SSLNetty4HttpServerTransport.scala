@@ -16,8 +16,8 @@
  */
 package org.elasticsearch.transport.netty4
 
-import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInboundHandlerAdapter}
-import io.netty.handler.ssl.{NotSslRecordException, SslHandshakeCompletionEvent}
+import io.netty.channel.Channel
+import io.netty.handler.ssl.NotSslRecordException
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.{ClusterSettings, Settings}
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport
@@ -29,6 +29,7 @@ import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.SslHandshakeReadTrigger
 
 class SSLNetty4HttpServerTransport(
     settings: Settings,
@@ -85,27 +86,6 @@ class SSLNetty4HttpServerTransport(
       // use channel().read() (not ctx.read()) so the read reaches it from the tail.
       // Workaround tied to netty#15053 behavior — recheck (and possibly drop) on the next netty bump.
       ch.pipeline().addAfter("ssl_netty4_handler", "ssl_flow_control_read_trigger", new SslHandshakeReadTrigger())
-    }
-
-  }
-
-  private final class SslHandshakeReadTrigger extends ChannelInboundHandlerAdapter {
-    private var waitForReadComplete = false
-
-    override def userEventTriggered(ctx: ChannelHandlerContext, evt: AnyRef): Unit = {
-      evt match {
-        case e: SslHandshakeCompletionEvent if e.isSuccess => waitForReadComplete = true
-        case _                                             =>
-      }
-      ctx.fireUserEventTriggered(evt)
-    }
-
-    override def channelReadComplete(ctx: ChannelHandlerContext): Unit = {
-      ctx.fireChannelReadComplete()
-      if (waitForReadComplete) {
-        waitForReadComplete = false
-        ctx.channel().read()
-      }
     }
 
   }
