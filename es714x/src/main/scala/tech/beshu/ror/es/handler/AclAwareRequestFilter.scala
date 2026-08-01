@@ -228,6 +228,8 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
         regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ResolveIndexAction.Request =>
         regularRequestHandler.handle(new ResolveIndexEsRequestContext(request, esContext, aclContext, threadPool))
+      case request: IndicesRequest.Replaceable if esContext.action == Action.EsAction.termsEnumAction =>
+        regularRequestHandler.handle(new TermsEnumEsRequestContext(request, esContext, aclContext, threadPool))
       case request: IndicesRequest.Replaceable if request.notDataStreamRelated =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ReindexRequest =>

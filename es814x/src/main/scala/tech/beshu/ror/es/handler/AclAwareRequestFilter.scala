@@ -245,6 +245,8 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
         regularRequestHandler.handle(new ResolveIndexEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ResolveClusterActionRequest =>
         regularRequestHandler.handle(new ResolveClusterEsRequestContext(request, esContext, aclContext, threadPool))
+      case request: IndicesRequest.Replaceable if esContext.action == Action.EsAction.termsEnumAction =>
+        regularRequestHandler.handle(new TermsEnumEsRequestContext(request, esContext, aclContext, threadPool))
       case request: IndicesRequest.Replaceable =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ReindexRequest =>
