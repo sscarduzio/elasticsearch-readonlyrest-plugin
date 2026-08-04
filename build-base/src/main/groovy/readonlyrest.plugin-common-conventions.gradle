@@ -32,10 +32,15 @@ project.ext {
 group = 'org.elasticsearch.plugin'
 version = "${pluginVersion}_es${project.ext.esVersion}"
 
+// Fallback for ES versions Elastic has released but not yet published to Maven Central (declared after
+// mavenCentral(), so Central keeps answering for everything it has). mavenPom() lets the store serve the
+// dependency metadata we generate for those versions in ror-tools; artifact() has to stay as the fallback,
+// because the jars uploaded there before we started generating POMs have none.
 repositories {
     maven {
         url = uri("${project.ext.s3StoreAddress.replaceAll('/+$', '')}/${project.ext.s3BucketName}/${project.ext.s3LibsPathPrefix}")
         metadataSources {
+            mavenPom()
             artifact()
         }
     }
