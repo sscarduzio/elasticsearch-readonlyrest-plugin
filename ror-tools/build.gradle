@@ -45,7 +45,7 @@ sourceSets {
 test {
     // Run tests with Java 21 (required by Gradle Tooling API used in tests, matches CI environment)
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
-    
+
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')
     if (enabled) {
@@ -150,8 +150,8 @@ def registerLibsStoreUpload = { String taskName, String artifactName, String des
         environment 'ROR_LIBS_STORE_REGION',            System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1'
         environment 'ROR_LIBS_STORE_PATH_PREFIX',       System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs'
         commandLine '../ci/upload-files-to-s3.sh',
-            "${layout.buildDirectory.get().asFile.path}/${artifactName}",
-            destinationPath
+                "${layout.buildDirectory.get().asFile.path}/${artifactName}",
+                destinationPath
     }
 }
 
