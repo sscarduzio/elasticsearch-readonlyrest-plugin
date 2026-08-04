@@ -100,10 +100,10 @@ configurations {
     distJars {
         extendsFrom runtimeClasspath
         exclude group: 'org.elasticsearch'
-        exclude module: 'lucene-core'
+        exclude group: 'lucene-core'
         exclude module: 'log4j-api'
         exclude module: 'log4j-core'
-        exclude module: 'lucene-analyzers-common'
+        exclude group: 'lucene-analyzers-common'
         exclude group: 'org.apache.commons'
         exclude group: 'org.yaml'
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
