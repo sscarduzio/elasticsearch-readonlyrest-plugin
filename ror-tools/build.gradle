@@ -45,7 +45,7 @@ sourceSets {
 test {
     // Run tests with Java 21 (required by Gradle Tooling API used in tests, matches CI environment)
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
-
+    
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')
     if (enabled) {
@@ -124,227 +124,53 @@ tasks.withType(AbstractArchiveTask).configureEach {
     reproducibleFileOrder = true
 }
 
-import javax.inject.Inject
-import org.gradle.process.ExecOperations
-import groovy.xml.XmlSlurper
+def netty4TransportArtifactName = "transport-netty4-${esVersion}.jar"
+def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/${esVersion}/"
 
-// ES jars reach Maven Central some time after a release, but ROR ships support for a new ES version on day
-// one. Until Central catches up, the es*x modules resolve them from our libs store, which is declared as a
-// fallback repository in readonlyrest.plugin-common-conventions. That store serves plain files, so a jar
-// uploaded on its own carries no dependency information at all - which is why we generate and upload the
-// POMs Central would have served too. This keeps version-specific dependency declarations out of the es*x
-// build scripts, and the generated POMs stop being used the moment Elastic publishes the version to Central,
-// because Central is declared first and therefore answers first.
-//
-// Nothing about the ES dependency graph is spelled out here: the POMs are shaped after the ones Elastic has
-// already published for the closest earlier version, with every version swapped for the one this
-// distribution actually bundles. The jars to mirror then follow from those dependencies.
+def elasticsearchArtifactName = "elasticsearch-${esVersion}.jar"
+def elasticsearchArtifactDestinationPath = "org/elasticsearch/elasticsearch/${esVersion}/"
 
-def mavenCentralUrl = 'https://repo1.maven.org/maven2'
-
-// The only fixed part: the coordinates the es*x modules declare, which are therefore the ones that need
-// metadata in the store to resolve the way they do when Central serves them.
-def esCoordinatesToMirror = [
-        [groupId: 'org.elasticsearch', artifactId: 'elasticsearch'],
-        [groupId: 'org.elasticsearch.plugin', artifactId: 'transport-netty4'],
-        [groupId: 'org.elasticsearch.client', artifactId: 'elasticsearch-rest-client'],
-]
-
-def esExtractedDir = {
-    new File(layout.buildDirectory.asFile.get(), "es-${esVersion}/elasticsearch-${esVersion}")
-}
-
-def groupPathOf = { String groupId -> groupId.replace('.', '/') }
-def destinationPathOf = { Map coordinate -> "${groupPathOf(coordinate.groupId)}/${coordinate.artifactId}/${esVersion}/" }
-def versionOrderKey = { String version -> ((version =~ /\d+/).collect { it.toInteger() } + [0, 0, 0]).take(3) }
-def compareVersions = { String left, String right ->
-    def leftKey = versionOrderKey(left)
-    def rightKey = versionOrderKey(right)
-    (0..2).findResult { position -> (leftKey[position] <=> rightKey[position]) ?: null } ?: 0
-}
-
-// Everything the distribution bundles, by artifact id: 'lib' plus every 'modules/*' directory. The same
-// library can be shipped by several modules at different versions - commons-codec is 1.15 next to the rest
-// client and 1.19.0 under ingest-attachment - so entries keep the directory they came from.
-def bundledJarsByArtifactId = {
-    def jarNamePattern = ~/^(.+)-(\d[^\/]*)\.jar$/
-    def moduleDirs = (new File(esExtractedDir(), 'modules').listFiles() ?: new File[0]).findAll { it.directory }
-    ([new File(esExtractedDir(), 'lib')] + moduleDirs)
-            .collectMany { dir -> (dir.listFiles() ?: new File[0]).findAll { it.name.endsWith('.jar') } }
-            .collect { jar -> [jar: jar, matcher: jarNamePattern.matcher(jar.name)] }
-            .findAll { it.matcher.matches() }
-            .collect { [artifactId: it.matcher.group(1), version: it.matcher.group(2), file: it.jar] }
-            .groupBy { it.artifactId }
-}
-
-// Ties are broken on the file path so that a distribution always yields the same POMs.
-def newestJarOf = { List candidates ->
-    candidates.sort(false) { left, right -> compareVersions(left.version, right.version) ?: (left.file.path <=> right.file.path) }.last()
-}
-
-// Which copy of a bundled library to believe: one shipped alongside the artifact whose POM is being
-// generated (that artifact may itself be shipped by several modules), then the one in 'lib', and only then
-// the newest one found anywhere.
-def bundledJarOf = { Map bundledJars, String artifactId, List preferredDirs ->
-    def candidates = bundledJars[artifactId]
-    if (!candidates) {
-        return null
-    }
-    def alongsideTheArtifact = candidates.findAll { preferredDirs && it.file.parentFile in preferredDirs }
-    def inLibDir = candidates.findAll { it.file.parentFile.name == 'lib' }
-    newestJarOf(alongsideTheArtifact ?: (inLibDir ?: candidates))
-}
-
-// The newest version Elastic has actually published, preferring the closest one below the version being
-// mirrored so the reference stays inside the same release line.
-def referenceEsVersion = {
-    def metadataUrl = "${mavenCentralUrl}/org/elasticsearch/elasticsearch/maven-metadata.xml"
-    def published = new XmlSlurper(false, false).parse(metadataUrl).versioning.versions.version.collect { it.text() }
-    if (published.contains(esVersion.toString())) {
-        return esVersion.toString()
-    }
-    def earlier = published.findAll { compareVersions(it, esVersion.toString()) < 0 }
-    if (earlier.isEmpty()) {
-        throw new GradleException("Cannot generate POMs for ES ${esVersion}: Maven Central has no earlier version to take the dependencies from")
-    }
-    def sameMajor = earlier.findAll { versionOrderKey(it)[0] == versionOrderKey(esVersion.toString())[0] }
-    (sameMajor ?: earlier).max { left, right -> compareVersions(left, right) }
-}
-
-def referenceDependenciesOf = { Map coordinate, String referenceVersion ->
-    def pomUrl = "${mavenCentralUrl}/${groupPathOf(coordinate.groupId)}/${coordinate.artifactId}/${referenceVersion}/${coordinate.artifactId}-${referenceVersion}.pom"
-    project.logger.info("Reading dependencies of ${coordinate.artifactId} from ${pomUrl} ...")
-    new XmlSlurper(false, false).parse(pomUrl).dependencies.dependency.collect {
-        [groupId: it.groupId.text(), artifactId: it.artifactId.text(), version: it.version.text(), scope: it.scope.text() ?: 'compile']
+def registerLibsStoreUpload = { String taskName, String artifactName, String destinationPath ->
+    tasks.register(taskName, Exec) {
+        dependsOn getArtifactsFromEsBinaries
+        environment 'ROR_S3_TARGET_STORE',              'LIBS'
+        environment 'ROR_LIBS_STORE_ENDPOINT_URL',      System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
+        environment 'ROR_LIBS_STORE_ACCESS_KEY_ID',     System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: ''
+        environment 'ROR_LIBS_STORE_ACCESS_KEY_SECRET', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: ''
+        environment 'ROR_LIBS_STORE_BUCKET',            System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
+        environment 'ROR_LIBS_STORE_REGION',            System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1'
+        environment 'ROR_LIBS_STORE_PATH_PREFIX',       System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs'
+        commandLine '../ci/upload-files-to-s3.sh',
+            "${layout.buildDirectory.get().asFile.path}/${artifactName}",
+            destinationPath
     }
 }
 
-def mirrorPlanCache = [:]
+registerLibsStoreUpload('uploadNetty4TransportFromEsBinaries', netty4TransportArtifactName, netty4TransportArtifactDestinationPath)
+registerLibsStoreUpload('uploadElasticsearchFromEsBinaries', elasticsearchArtifactName, elasticsearchArtifactDestinationPath)
 
-// What to upload: the three coordinates above, each with the dependencies its POM should declare, plus every
-// ES jar those dependencies point at.
-def mirrorPlan = {
-    mirrorPlanCache.computeIfAbsent('plan') {
-        def bundledJars = bundledJarsByArtifactId()
-        def referenceVersion = referenceEsVersion()
-        project.logger.lifecycle("Shaping the ES ${esVersion} POMs after the ones published for ${referenceVersion}")
-
-        def poms = esCoordinatesToMirror.collect { coordinate ->
-            def ownJars = bundledJars[coordinate.artifactId]
-            if (!ownJars) {
-                throw new GradleException("${coordinate.artifactId}-${esVersion}.jar is not bundled in the ES ${esVersion} distribution")
-            }
-            def dirsShippingTheArtifact = ownJars.collect { it.file.parentFile }
-            def dependencies = referenceDependenciesOf(coordinate, referenceVersion).collect { dependency ->
-                def bundled = bundledJarOf(bundledJars, dependency.artifactId, dirsShippingTheArtifact)
-                if (bundled != null) {
-                    return dependency + [version: bundled.version]
-                }
-                if (dependency.version == referenceVersion) {
-                    throw new GradleException("ES ${esVersion} does not bundle '${dependency.artifactId}', which ${coordinate.artifactId} ${referenceVersion} depends on")
-                }
-                // Not bundled and not versioned with ES (log4j-core, for one): Elastic's own version stands.
-                dependency
-            }
-            coordinate + [dependencies: dependencies]
-        }
-
-        def jarCoordinates = (esCoordinatesToMirror + poms.collectMany { it.dependencies }.findAll { it.groupId.startsWith('org.elasticsearch') })
-                .collect { [groupId: it.groupId, artifactId: it.artifactId] }
-                .unique()
-        def jars = jarCoordinates.collect { coordinate ->
-            def bundled = bundledJarOf(bundledJars, coordinate.artifactId, [])
-            if (bundled == null) {
-                throw new GradleException("${coordinate.artifactId}-${esVersion}.jar is not bundled in the ES ${esVersion} distribution")
-            }
-            coordinate + [file: bundled.file]
-        }
-        [poms: poms, jars: jars]
-    }
-}
-
-def pomFileOf = { Map coordinate -> new File(layout.buildDirectory.get().asFile, "${coordinate.artifactId}-${esVersion}.pom") }
-
-def writePom = { Map pom ->
-    def dependenciesXml = pom.dependencies.collect { dependency ->
-        """        <dependency>
-            <groupId>${dependency.groupId}</groupId>
-            <artifactId>${dependency.artifactId}</artifactId>
-            <version>${dependency.version}</version>
-            <scope>${dependency.scope}</scope>
-        </dependency>"""
-    }.join('\n')
-    pomFileOf(pom).text = """<?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated by the ROR build from the ES ${esVersion} distribution; see ror-tools/build.gradle. -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>${pom.groupId}</groupId>
-    <artifactId>${pom.artifactId}</artifactId>
-    <version>${esVersion}</version>
-    <packaging>jar</packaging>
-    <dependencies>
-${dependenciesXml}
-    </dependencies>
-</project>
-"""
-    project.logger.info("Generated ${pomFileOf(pom).path}")
+tasks.register('uploadArtifactsFromEsBinaries') {
+    dependsOn 'uploadNetty4TransportFromEsBinaries', 'uploadElasticsearchFromEsBinaries'
 }
 
 tasks.register('getArtifactsFromEsBinaries') {
     dependsOn downloadEsBinaries
     doLast {
+        def esExtractedDir = new File(layout.buildDirectory.asFile.get(), "es-${esVersion}").path + "/elasticsearch-${esVersion}"
         def destPath = layout.buildDirectory
-        mirrorPlan().jars.each { jar ->
-            project.logger.info("Copying ${jar.file.path} to ${destPath.get().asFile.path} ...")
-            copy {
-                from jar.file
-                into destPath
-            }
+
+        def netty4TransportArtifactPath = "${esExtractedDir}/modules/transport-netty4/${netty4TransportArtifactName}"
+        project.logger.info("Copying ${netty4TransportArtifactPath} to ${destPath.get().asFile.path} ...")
+        copy {
+            from netty4TransportArtifactPath
+            into destPath
         }
-    }
-}
 
-tasks.register('generatePomsFromEsBinaries') {
-    dependsOn getArtifactsFromEsBinaries
-    doLast {
-        mirrorPlan().poms.each { writePom(it) }
-    }
-}
-
-interface InjectedExecOps {
-    @Inject ExecOperations getExecOperations()
-}
-
-def libsStoreEnvironment = [
-        'ROR_S3_TARGET_STORE'             : 'LIBS',
-        'ROR_LIBS_STORE_ENDPOINT_URL'     : System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech',
-        'ROR_LIBS_STORE_ACCESS_KEY_ID'    : System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: '',
-        'ROR_LIBS_STORE_ACCESS_KEY_SECRET': System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: '',
-        'ROR_LIBS_STORE_BUCKET'           : System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu',
-        'ROR_LIBS_STORE_REGION'           : System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1',
-        'ROR_LIBS_STORE_PATH_PREFIX'      : System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs',
-]
-
-tasks.register('uploadArtifactsFromEsBinaries') {
-    dependsOn generatePomsFromEsBinaries
-    def execOperations = project.objects.newInstance(InjectedExecOps).execOperations
-    doLast {
-        def plan = mirrorPlan()
-        def buildDirPath = layout.buildDirectory.get().asFile.path
-        // upload-files-to-s3.sh takes all files going to one destination, so a coordinate's jar and POM
-        // (which share a directory in the repository layout) go up in a single call.
-        plan.jars.each { jar ->
-            def pom = plan.poms.find { it.artifactId == jar.artifactId && it.groupId == jar.groupId }
-            def filesToUpload = ["${buildDirPath}/${jar.artifactId}-${esVersion}.jar"]
-            if (pom != null) {
-                filesToUpload += pomFileOf(pom).path
-            }
-            execOperations.exec {
-                environment libsStoreEnvironment
-                commandLine(["${rootDir}/ci/upload-files-to-s3.sh".toString()] + filesToUpload + [destinationPathOf(jar).toString()])
-            }
+        def esArtifactPath = "${esExtractedDir}/lib/${elasticsearchArtifactName}"
+        project.logger.info("Copying ${esArtifactPath} to ${destPath.get().asFile.path} ...")
+        copy {
+            from esArtifactPath
+            into destPath
         }
     }
 }
