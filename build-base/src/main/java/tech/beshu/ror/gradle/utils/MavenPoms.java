@@ -17,29 +17,28 @@
 
 package tech.beshu.ror.gradle.utils;
 
-import org.gradle.api.GradleException;
-import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
 
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 
-/** Reads the dependencies of a published POM and renders the POMs we publish to the libs store. */
+/** Reads dependencies out of a published POM, and renders the POMs published to the libs store. */
 public final class MavenPoms {
 
-  /** A {@code groupId:artifactId} pair; the version is always the ES version being mirrored. */
   public record Coordinate(String groupId, String artifactId) {
 
-    /** The artifact's directory in a maven repository layout, without the version. */
+    /** The artifact's directory in a Maven repository layout, without the version. */
     public String repositoryPath() {
       return groupId.replace('.', '/') + "/" + artifactId;
+    }
+
+    /** The directory one version of the artifact lives in, in a Maven repository layout. */
+    public String repositoryPath(String version) {
+      return repositoryPath() + "/" + version;
+    }
+
+    public String pomFileName(String version) {
+      return artifactId + "-" + version + ".pom";
     }
   }
 
@@ -55,26 +54,25 @@ public final class MavenPoms {
   private MavenPoms() {}
 
   /**
-   * The direct dependencies a POM declares. Only the project's own {@code <dependencies>} is read, so a
-   * {@code <dependencyManagement>} section (which declares versions rather than dependencies) is ignored.
+   * The dependencies a POM declares, in declaration order. Only the project's own {@code <dependencies>} is
+   * read; {@code <dependencyManagement>} declares versions rather than dependencies and is ignored.
    */
   public static List<Dependency> parseDependencies(String pomXml) {
-    Element project = parse(pomXml).getDocumentElement();
+    Element project = Xml.rootOf(pomXml, "POM");
     List<Dependency> dependencies = new ArrayList<>();
-    for (Element dependenciesElement : childElementsNamed(project, "dependencies")) {
-      for (Element dependency : childElementsNamed(dependenciesElement, "dependency")) {
+    for (Element dependenciesElement : Xml.childrenNamed(project, "dependencies")) {
+      for (Element dependency : Xml.childrenNamed(dependenciesElement, "dependency")) {
         dependencies.add(
             new Dependency(
-                requiredChildText(dependency, "groupId"),
-                requiredChildText(dependency, "artifactId"),
-                requiredChildText(dependency, "version"),
-                childText(dependency, "scope").orElse(DEFAULT_SCOPE)));
+                Xml.requiredChildText(dependency, "groupId"),
+                Xml.requiredChildText(dependency, "artifactId"),
+                Xml.requiredChildText(dependency, "version"),
+                Xml.childText(dependency, "scope").orElse(DEFAULT_SCOPE)));
       }
     }
     return List.copyOf(dependencies);
   }
 
-  /** Renders a POM declaring {@code dependencies} for {@code coordinate} at {@code version}. */
   public static String render(
       Coordinate coordinate, String version, List<Dependency> dependencies) {
     StringBuilder pom = new StringBuilder();
@@ -115,41 +113,5 @@ public final class MavenPoms {
           .append("        </dependency>\n");
     }
     return pom.append("    </dependencies>\n").append("</project>\n").toString();
-  }
-
-  private static Document parse(String xml) {
-    try {
-      DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-      // These POMs come off the network, so keep the parser from resolving anything they reference.
-      factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-      factory.setNamespaceAware(false);
-      DocumentBuilder builder = factory.newDocumentBuilder();
-      return builder.parse(new InputSource(new StringReader(xml)));
-    } catch (ParserConfigurationException | org.xml.sax.SAXException | java.io.IOException e) {
-      throw new GradleException("Cannot parse POM: " + e.getMessage(), e);
-    }
-  }
-
-  private static List<Element> childElementsNamed(Element parent, String name) {
-    List<Element> elements = new ArrayList<>();
-    NodeList children = parent.getChildNodes();
-    for (int i = 0; i < children.getLength(); i++) {
-      Node child = children.item(i);
-      if (child.getNodeType() == Node.ELEMENT_NODE && name.equals(child.getNodeName())) {
-        elements.add((Element) child);
-      }
-    }
-    return elements;
-  }
-
-  private static java.util.Optional<String> childText(Element parent, String name) {
-    return childElementsNamed(parent, name).stream()
-        .findFirst()
-        .map(e -> e.getTextContent().trim());
-  }
-
-  private static String requiredChildText(Element parent, String name) {
-    return childText(parent, name)
-        .orElseThrow(() -> new GradleException("POM dependency without <" + name + ">"));
   }
 }

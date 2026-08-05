@@ -28,8 +28,8 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,17 +37,17 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Indexes the jars an extracted ES distribution ships -- {@code lib} plus every {@code modules/*} directory --
- * so the artifacts we mirror to the libs store, and the versions the generated POMs declare, come from what
- * Elastic actually ships instead of from a hand-maintained list.
+ * The ES distribution the build works with: where Elastic publishes it, where the build unpacks it, and -- once
+ * scanned -- an index of the jars it ships, taken from {@code lib} and every {@code modules/*} directory and
+ * keyed by artifact id.
  *
- * <p>The same library can be shipped by several modules at different versions: ES 9.5.0 carries commons-codec
- * 1.15 next to the rest client in {@code modules/reindex} and 1.19.0 under {@code modules/ingest-attachment}.
- * Every copy is therefore kept, and {@link #preferredJarOf} decides which one a given artifact is paired with.
+ * <p>A library can be shipped by several modules at different versions: ES 9.5.0 ships commons-codec 1.15 in
+ * {@code modules/reindex} and 1.19.0 in {@code modules/ingest-attachment}. All copies are kept, and
+ * {@link #preferredJarOf} picks between them.
  */
 public final class EsDistribution {
 
-  /** A jar shipped by the distribution, with the version parsed out of its file name. */
+  /** A jar the distribution ships. The version is parsed out of the file name. */
   public record BundledJar(String artifactId, String version, Path file) {
 
     public Path directory() {
@@ -58,11 +58,33 @@ public final class EsDistribution {
   private static final Pattern JAR_NAME_PATTERN = Pattern.compile("^(.+)-(\\d[^/]*)\\.jar$");
   private static final String LIB_DIR = "lib";
   private static final String MODULES_DIR = "modules";
+  private static final String DOWNLOADS_URL =
+      "https://artifacts.elastic.co/downloads/elasticsearch";
 
   private final Map<String, List<BundledJar>> jarsByArtifactId;
 
   private EsDistribution(Map<String, List<BundledJar>> jarsByArtifactId) {
     this.jarsByArtifactId = jarsByArtifactId;
+  }
+
+  /** The Linux archive Elastic publishes for an ES version. */
+  public static String downloadUrl(String esVersion) {
+    return DOWNLOADS_URL + "/elasticsearch-" + esVersion + "-linux-x86_64.tar.gz";
+  }
+
+  /** Where the build keeps the downloaded archive. */
+  public static Path archiveIn(Path buildDir, String esVersion) {
+    return buildDir.resolve("es-" + esVersion + ".tar.gz");
+  }
+
+  /** Where the archive is unpacked. */
+  public static Path unpackDirIn(Path buildDir, String esVersion) {
+    return buildDir.resolve("es-" + esVersion);
+  }
+
+  /** The distribution itself: the single directory the archive holds, and what {@link #scan} takes. */
+  public static Path distributionDirIn(Path buildDir, String esVersion) {
+    return unpackDirIn(buildDir, esVersion).resolve("elasticsearch-" + esVersion);
   }
 
   /** Scans {@code lib} and every {@code modules/*} directory of an extracted distribution. */
@@ -90,15 +112,15 @@ public final class EsDistribution {
     return jarsByArtifactId.getOrDefault(artifactId, List.of());
   }
 
-  /** The directories shipping {@code artifactId}; an artifact may be bundled by several modules. */
+  /** Every directory shipping {@code artifactId}, which several modules may do. */
   public Set<Path> directoriesShipping(String artifactId) {
     return jarsOf(artifactId).stream().map(BundledJar::directory).collect(Collectors.toSet());
   }
 
   /**
-   * Which copy of a bundled library to believe: one shipped alongside the artifact whose POM is being
-   * generated, then the one in {@code lib}, and only then the newest one found anywhere. Ties are broken on
-   * the file path so that a given distribution always yields the same answer.
+   * Picks one copy of {@code artifactId}: from {@code preferredDirs} if it is shipped there, otherwise from
+   * {@code lib}, otherwise the newest copy anywhere. Equal versions are ordered by file path, so repeated
+   * scans of the same distribution return the same jar.
    */
   public Optional<BundledJar> preferredJarOf(String artifactId, Collection<Path> preferredDirs) {
     List<BundledJar> candidates = jarsOf(artifactId);
@@ -120,7 +142,7 @@ public final class EsDistribution {
   private static BundledJar newestOf(List<BundledJar> candidates) {
     return candidates.stream()
         .max(
-            Comparator.comparing(BundledJar::version, BUNDLED_VERSION_COMPARATOR)
+            Comparator.comparing(BundledJar::version, EsVersions.VERSION_COMPARATOR)
                 .thenComparing(jar -> jar.file().toString()))
         .orElseThrow();
   }
@@ -150,41 +172,6 @@ public final class EsDistribution {
                   ? new BundledJar(matcher.group(1), matcher.group(2), file.toPath())
                   : null;
             })
-        .filter(jar -> jar != null);
-  }
-
-  /**
-   * Orders the versions of BUNDLED libraries, which are not all ES versions and so cannot go through
-   * {@link EsVersions#VERSION_COMPARATOR} (netty's {@code 4.1.135.Final} has a non-numeric segment that one
-   * rejects). Numeric segments compare numerically, anything else lexicographically.
-   */
-  public static final Comparator<String> BUNDLED_VERSION_COMPARATOR =
-      EsDistribution::compareBundledVersions;
-
-  private static int compareBundledVersions(String left, String right) {
-    String[] leftParts = left.split("\\.");
-    String[] rightParts = right.split("\\.");
-    for (int i = 0; i < Math.max(leftParts.length, rightParts.length); i++) {
-      String leftPart = i < leftParts.length ? leftParts[i] : "";
-      String rightPart = i < rightParts.length ? rightParts[i] : "";
-      OptionalInt leftNumber = asNumber(leftPart);
-      OptionalInt rightNumber = asNumber(rightPart);
-      int comparison =
-          leftNumber.isPresent() && rightNumber.isPresent()
-              ? Integer.compare(leftNumber.getAsInt(), rightNumber.getAsInt())
-              : leftPart.compareTo(rightPart);
-      if (comparison != 0) {
-        return comparison;
-      }
-    }
-    return 0;
-  }
-
-  private static OptionalInt asNumber(String part) {
-    try {
-      return OptionalInt.of(Integer.parseInt(part));
-    } catch (NumberFormatException e) {
-      return OptionalInt.empty();
-    }
+        .filter(Objects::nonNull);
   }
 }

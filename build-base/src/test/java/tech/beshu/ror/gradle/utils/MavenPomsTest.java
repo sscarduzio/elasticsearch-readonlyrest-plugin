@@ -30,7 +30,7 @@ import java.util.List;
 
 class MavenPomsTest {
 
-  // --- parsing ---
+  // --- parseDependencies() ---
 
   @Test
   void readsDependenciesInDeclarationOrder() {
@@ -100,7 +100,7 @@ class MavenPomsTest {
     assertThrows(GradleException.class, () -> MavenPoms.parseDependencies("<project>"));
   }
 
-  // --- rendering ---
+  // --- render() ---
 
   @Test
   void rendersAPomThatCanBeReadBack() {
@@ -128,11 +128,24 @@ class MavenPomsTest {
     assertTrue(rendered.contains("<packaging>jar</packaging>"));
   }
 
+  // --- Coordinate ---
+
   @Test
   void repositoryPathFollowsMavenLayout() {
+    Coordinate restClient = new Coordinate("org.elasticsearch.client", "elasticsearch-rest-client");
+
+    assertEquals("org/elasticsearch/client/elasticsearch-rest-client", restClient.repositoryPath());
     assertEquals(
-        "org/elasticsearch/client/elasticsearch-rest-client",
-        new Coordinate("org.elasticsearch.client", "elasticsearch-rest-client").repositoryPath());
+        "org/elasticsearch/client/elasticsearch-rest-client/9.5.0",
+        restClient.repositoryPath("9.5.0"));
+  }
+
+  @Test
+  void pomIsNamedForTheArtifactAndVersion() {
+    assertEquals(
+        "elasticsearch-rest-client-9.5.0.pom",
+        new Coordinate("org.elasticsearch.client", "elasticsearch-rest-client")
+            .pomFileName("9.5.0"));
   }
 
   private static String publishedPom() {

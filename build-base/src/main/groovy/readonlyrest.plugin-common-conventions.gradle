@@ -68,10 +68,9 @@ ext.assemblePluginZip = { File contentsDir, esVer, File outputDir = distribution
     return zip
 }
 
-// Fallback for ES versions Elastic has released but not yet published to Maven Central (declared after
-// mavenCentral(), so Central keeps answering for everything it has). mavenPom() lets the store serve the
-// dependency metadata we generate for those versions in ror-tools; artifact() has to stay as the fallback,
-// because the jars uploaded there before we started generating POMs have none.
+// The libs store: ES versions Elastic has released but not yet published to Maven Central resolve from here.
+// It is declared after mavenCentral(), so Central still answers for every version it has. mavenPom() reads
+// the POMs ror-tools publishes next to the jars; artifact() covers the jars stored without one.
 repositories {
     maven {
         url = uri("${project.ext.s3StoreAddress.replaceAll('/+$', '')}/${project.ext.s3BucketName}/${project.ext.s3LibsPathPrefix}")

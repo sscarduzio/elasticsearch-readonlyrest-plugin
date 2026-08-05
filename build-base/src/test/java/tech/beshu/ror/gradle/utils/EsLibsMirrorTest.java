@@ -45,7 +45,7 @@ class EsLibsMirrorTest {
 
   @TempDir Path tempDir;
 
-  // --- which published version the POMs are shaped after ---
+  // --- referenceVersion() ---
 
   @Test
   void takesTheNewestPublishedVersionBelowTheTarget() {
@@ -77,7 +77,7 @@ class EsLibsMirrorTest {
         GradleException.class, () -> EsLibsMirror.referenceVersion(List.of("9.6.0"), "9.5.0"));
   }
 
-  // --- rewriting the reference dependencies for the target ---
+  // --- dependency versions in the generated POMs ---
 
   @Test
   void esVersionedDependenciesMoveToTheTargetVersion() {
@@ -109,7 +109,7 @@ class EsLibsMirrorTest {
 
   @Test
   void dependenciesTheDistributionDoesNotBundleKeepElasticsVersion() {
-    // ES ships log4j-api but not log4j-core, so Elastic's own version is all we have to go on.
+    // ES ships log4j-api but not log4j-core.
     EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
     Map<Coordinate, List<Dependency>> reference =
         Map.of(
@@ -176,7 +176,7 @@ class EsLibsMirrorTest {
     assertEquals("1.15", onlyPom(plan).dependencies().get(0).version());
   }
 
-  // --- which jars follow from the POMs ---
+  // --- jars to publish ---
 
   @Test
   void mirrorsTheCoordinateItselfAndItsEsDependenciesOnly() {
@@ -241,6 +241,72 @@ class EsLibsMirrorTest {
         plan.jars().stream()
             .filter(jar -> jar.coordinate().artifactId().equals("elasticsearch-core"))
             .count());
+  }
+
+  @Test
+  void mirroredFilesAreNamedAsMavenExpects() {
+    EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
+
+    MirrorPlan plan =
+        EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", Map.of(ELASTICSEARCH, List.of()));
+
+    assertEquals("elasticsearch-9.5.0.jar", plan.jars().get(0).fileName());
+    assertEquals("elasticsearch-9.5.0.pom", onlyPom(plan).fileName());
+  }
+
+  // --- planFor() ---
+
+  @Test
+  void takesTheDependenciesFromThePomOfTheReferenceVersion() throws IOException {
+    EsDistribution distribution =
+        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-core-9.5.0.jar");
+    MavenRepository central =
+        repositoryPublishing(
+            List.of("9.3.8", "9.4.4"),
+            "9.4.4",
+            List.of(dependency("org.elasticsearch", "elasticsearch-core", "9.4.4", "compile")));
+
+    MirrorPlan plan = EsLibsMirror.planFor(distribution, "9.5.0", List.of(ELASTICSEARCH), central);
+
+    assertEquals("9.4.4", plan.referenceVersion());
+    assertEquals("9.5.0", onlyPom(plan).dependencies().get(0).version());
+    assertEquals(
+        List.of("elasticsearch", "elasticsearch-core"),
+        plan.jars().stream().map(jar -> jar.coordinate().artifactId()).sorted().toList());
+  }
+
+  @Test
+  void referencePomTheRepositoryDoesNotServeThrows() throws IOException {
+    EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
+    MavenRepository central = repositoryPublishing(List.of("9.4.4"), "9.3.8", List.of());
+
+    assertThrows(
+        GradleException.class,
+        () -> EsLibsMirror.planFor(distribution, "9.5.0", List.of(ELASTICSEARCH), central));
+  }
+
+  private MavenRepository repositoryPublishing(
+      List<String> publishedVersions, String pomVersion, List<Dependency> dependencies)
+      throws IOException {
+    Path repository = tempDir.resolve("central");
+    StringBuilder metadata = new StringBuilder("<metadata><versioning><versions>");
+    publishedVersions.forEach(
+        version -> metadata.append("<version>").append(version).append("</version>"));
+    metadata.append("</versions></versioning></metadata>");
+
+    write(
+        repository.resolve(ELASTICSEARCH.repositoryPath() + "/maven-metadata.xml"),
+        metadata.toString());
+    write(
+        repository.resolve(
+            ELASTICSEARCH.repositoryPath(pomVersion) + "/" + ELASTICSEARCH.pomFileName(pomVersion)),
+        MavenPoms.render(ELASTICSEARCH, pomVersion, dependencies));
+    return MavenRepository.at(repository.toUri().toString());
+  }
+
+  private static void write(Path file, String content) throws IOException {
+    Files.createDirectories(file.getParent());
+    Files.writeString(file, content);
   }
 
   private static MirroredPom onlyPom(MirrorPlan plan) {

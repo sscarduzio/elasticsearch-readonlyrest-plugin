@@ -36,7 +36,7 @@ class EsDistributionTest {
 
   @TempDir Path tempDir;
 
-  // --- scanning ---
+  // --- scan() ---
 
   @Test
   void indexesJarsFromLibAndEveryModuleDirectory() throws IOException {
@@ -89,12 +89,12 @@ class EsDistributionTest {
     assertThrows(GradleException.class, () -> EsDistribution.scan(tempDir.resolve("missing")));
   }
 
-  // --- which copy wins ---
+  // --- preferredJarOf() ---
 
   @Test
   void copyShippedAlongsideTheArtifactWinsOverANewerOneElsewhere() throws IOException {
-    // ES 9.5.0 really does ship these two: the rest client's own module pins 1.15,
-    // ingest-attachment 1.19.0.
+    // The versions ES 9.5.0 ships: commons-codec 1.15 in modules/reindex, 1.19.0 in
+    // ingest-attachment.
     Path distribution =
         distributionWith(
             "modules/reindex/elasticsearch-rest-client-9.5.0.jar",
@@ -155,20 +155,36 @@ class EsDistributionTest {
     assertEquals(first, second);
   }
 
-  // --- bundled version ordering ---
+  @Test
+  void newestCopyIsChosenByVersionOrderNotFileName() throws IOException {
+    Path distribution =
+        distributionWith(
+            "modules/a/netty-buffer-4.1.9.Final.jar", "modules/b/netty-buffer-4.1.10.Final.jar");
+
+    assertEquals(
+        "4.1.10.Final",
+        EsDistribution.scan(distribution)
+            .preferredJarOf("netty-buffer", Set.of())
+            .orElseThrow()
+            .version());
+  }
+
+  // --- download and unpack layout ---
 
   @Test
-  void ordersNumericSegmentsNumericallyNotLexicographically() {
-    assertTrue(EsDistribution.BUNDLED_VERSION_COMPARATOR.compare("1.15", "1.19.0") < 0);
-    assertTrue(EsDistribution.BUNDLED_VERSION_COMPARATOR.compare("1.9", "1.10") < 0);
-    assertEquals(0, EsDistribution.BUNDLED_VERSION_COMPARATOR.compare("2.26.1", "2.26.1"));
+  void downloadUrlNamesTheLinuxArchiveOfTheVersion() {
+    assertEquals(
+        "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-9.5.0-linux-x86_64.tar.gz",
+        EsDistribution.downloadUrl("9.5.0"));
   }
 
   @Test
-  void ordersVersionsWithQualifierSegments() {
-    assertTrue(
-        EsDistribution.BUNDLED_VERSION_COMPARATOR.compare("4.1.134.Final", "4.1.135.Final") < 0);
-    assertTrue(EsDistribution.BUNDLED_VERSION_COMPARATOR.compare("1.7.0", "1.7.0.1") < 0);
+  void theArchiveIsUnpackedIntoADirectoryNamedForTheVersion() {
+    assertEquals(tempDir.resolve("es-9.5.0.tar.gz"), EsDistribution.archiveIn(tempDir, "9.5.0"));
+    assertEquals(tempDir.resolve("es-9.5.0"), EsDistribution.unpackDirIn(tempDir, "9.5.0"));
+    assertEquals(
+        tempDir.resolve("es-9.5.0/elasticsearch-9.5.0"),
+        EsDistribution.distributionDirIn(tempDir, "9.5.0"));
   }
 
   private Path distributionWith(String... relativeJarPaths) throws IOException {

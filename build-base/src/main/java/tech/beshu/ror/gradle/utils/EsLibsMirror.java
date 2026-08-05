@@ -24,42 +24,84 @@ import tech.beshu.ror.gradle.utils.MavenPoms.Dependency;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Works out what to mirror to the ROR libs store for an ES version Elastic has released but not yet published
- * to Maven Central.
+ * Plans the jars and POMs to publish to the ROR libs store for an ES version Elastic has released but not yet
+ * published to Maven Central.
  *
- * <p>The store serves plain files, so a jar uploaded on its own carries no dependency information; the es*x
- * modules would resolve it as a leaf and lose the whole ES graph. We therefore also publish POMs for the
- * coordinates those modules declare. Rather than describing that graph by hand, the POMs are shaped after the
- * ones Elastic HAS published for the closest earlier version, with every version swapped for the one the
- * distribution being mirrored actually bundles -- so a new ES release picks up Elastic's own dependency
- * changes, and the jars to mirror simply follow from the resulting dependencies.
+ * <p>The store serves plain files, so a jar published on its own resolves as a leaf and brings none of the ES
+ * dependency graph with it. POMs are published alongside the jars to supply that graph. Each POM is derived
+ * from the one Elastic published for the closest ES version at or below the one being published, with every
+ * dependency version replaced by the version that distribution bundles; the jars to publish are then the ES
+ * artifacts those dependencies name.
  */
 public final class EsLibsMirror {
 
-  /** A POM to generate: the coordinate, and the dependencies it should declare. */
-  public record MirroredPom(Coordinate coordinate, String version, List<Dependency> dependencies) {}
+  public record MirroredPom(Coordinate coordinate, String version, List<Dependency> dependencies) {
 
-  /** A jar to copy out of the distribution and upload. */
-  public record MirroredJar(Coordinate coordinate, String version, Path file) {}
+    public String fileName() {
+      return coordinate.pomFileName(version);
+    }
+  }
 
-  public record MirrorPlan(List<MirroredPom> poms, List<MirroredJar> jars) {}
+  public record MirroredJar(Coordinate coordinate, String version, Path file) {
+
+    /** The name the distribution gives the jar, which is the {@code artifactId-version.jar} Maven expects. */
+    public String fileName() {
+      return file.getFileName().toString();
+    }
+  }
+
+  /** @param referenceVersion the published ES version the POMs are shaped after */
+  public record MirrorPlan(
+      String referenceVersion, List<MirroredPom> poms, List<MirroredJar> jars) {}
 
   private static final String ES_GROUP_PREFIX = "org.elasticsearch";
 
+  /** The artifact whose published versions tell whether Central has an ES release yet. */
+  private static final Coordinate ELASTICSEARCH =
+      new Coordinate("org.elasticsearch", "elasticsearch");
+
+  /** The ES artifacts the es*x modules depend on, and so the ones the store has to serve POMs for. */
+  public static final List<Coordinate> MIRRORED_COORDINATES =
+      List.of(
+          ELASTICSEARCH,
+          new Coordinate("org.elasticsearch.plugin", "transport-netty4"),
+          new Coordinate("org.elasticsearch.client", "elasticsearch-rest-client"));
+
   private EsLibsMirror() {}
 
+  /** Plans what to publish for {@code targetVersion}, taking the reference POMs from {@code reference}. */
+  public static MirrorPlan planFor(
+      EsDistribution distribution, String targetVersion, MavenRepository reference) {
+    return planFor(distribution, targetVersion, MIRRORED_COORDINATES, reference);
+  }
+
+  static MirrorPlan planFor(
+      EsDistribution distribution,
+      String targetVersion,
+      List<Coordinate> coordinates,
+      MavenRepository reference) {
+    String referenceVersion =
+        referenceVersion(reference.publishedVersions(ELASTICSEARCH), targetVersion);
+    Map<Coordinate, List<Dependency>> referenceDependencies = new LinkedHashMap<>();
+    for (Coordinate coordinate : coordinates) {
+      referenceDependencies.put(
+          coordinate, MavenPoms.parseDependencies(reference.pomOf(coordinate, referenceVersion)));
+    }
+    return plan(distribution, targetVersion, referenceVersion, referenceDependencies);
+  }
+
   /**
-   * The published version whose POMs to copy the shape from: {@code targetVersion} itself when Elastic has
-   * already published it, otherwise the newest published version below it, preferring the same major so the
-   * reference stays inside the same release line.
+   * The published version whose POMs the generated ones are derived from: {@code targetVersion} itself when
+   * Elastic has published it, otherwise the newest published version below it, preferring the same major.
    */
-  public static String referenceVersion(List<String> publishedVersions, String targetVersion) {
+  static String referenceVersion(List<String> publishedVersions, String targetVersion) {
     if (publishedVersions.contains(targetVersion)) {
       return targetVersion;
     }
@@ -81,11 +123,10 @@ public final class EsLibsMirror {
   }
 
   /**
-   * @param distribution the extracted distribution of {@code targetVersion}
-   * @param referenceDependencies the dependencies each mirrored coordinate declares in {@code
-   *     referenceVersion}'s published POM, in the order the POM declares them
+   * @param referenceDependencies the dependencies each coordinate declares in its {@code referenceVersion}
+   *     POM, in declaration order, which the generated POMs keep
    */
-  public static MirrorPlan plan(
+  static MirrorPlan plan(
       EsDistribution distribution,
       String targetVersion,
       String referenceVersion,
@@ -117,14 +158,15 @@ public final class EsLibsMirror {
               .toList();
       poms.add(new MirroredPom(coordinate, targetVersion, dependencies));
     }
-    return new MirrorPlan(List.copyOf(poms), jarsFor(poms, distribution, targetVersion));
+    return new MirrorPlan(
+        referenceVersion, List.copyOf(poms), jarsFor(poms, distribution, targetVersion));
   }
 
   /**
-   * A dependency as the target version declares it: the version the distribution bundles when it ships the
-   * artifact at all. Anything versioned with ES that the distribution does NOT ship means the reference POM no
-   * longer describes this release, which has to fail rather than produce a POM pointing at a missing jar.
-   * Anything else (log4j-core, which ES does not bundle) keeps the version Elastic itself declared.
+   * Retargets one dependency at {@code targetVersion}: it takes the version the distribution bundles, or keeps
+   * the reference POM's version when the distribution does not ship the artifact at all (log4j-core, for one).
+   * A dependency versioned with ES that the distribution does not ship means the reference POM no longer
+   * describes this release, and fails rather than naming a jar that cannot be published.
    */
   private static Dependency versionedForTarget(
       Dependency dependency,
@@ -154,7 +196,7 @@ public final class EsLibsMirror {
             });
   }
 
-  /** The mirrored coordinates plus every ES artifact their POMs point at; anything else comes from Central. */
+  /** The planned coordinates plus every ES artifact their POMs name; the rest resolve from Central. */
   private static List<MirroredJar> jarsFor(
       List<MirroredPom> poms, EsDistribution distribution, String targetVersion) {
     Set<Coordinate> coordinates = new LinkedHashSet<>();
