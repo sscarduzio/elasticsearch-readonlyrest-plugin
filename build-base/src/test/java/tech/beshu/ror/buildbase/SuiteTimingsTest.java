@@ -20,12 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import tech.beshu.ror.buildbase.SuiteTimings.SuiteRun;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-
-import tech.beshu.ror.buildbase.SuiteTimings.SuiteRun;
 
 class SuiteTimingsTest {
 
@@ -68,8 +67,7 @@ class SuiteTimingsTest {
   @Test
   void suiteSeenInSeveralShardsKeepsTheLargestEstimate() {
     Map<String, Long> times =
-        SuiteTimings.wallTimes(
-            List.of(List.of(run("A", 0, 5.0)), List.of(run("A", 0, 50.0))));
+        SuiteTimings.wallTimes(List.of(List.of(run("A", 0, 5.0)), List.of(run("A", 0, 50.0))));
     assertEquals(Map.of("A", 80L), times);
   }
 
