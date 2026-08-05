@@ -18,12 +18,13 @@ package tech.beshu.ror.buildbase;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
+import java.util.stream.IntStream;
 
 /**
  * Wall-time measurement and drift detection for suite timings
@@ -61,23 +62,31 @@ public final class SuiteTimings {
    */
   public static Map<String, Long> wallTimes(Collection<List<SuiteRun>> shards) {
     Map<String, Long> times = new TreeMap<>();
-    for (List<SuiteRun> shard : shards) {
-      List<SuiteRun> suites = new ArrayList<>(shard);
-      suites.sort(Comparator.comparing(SuiteRun::start));
-      List<Double> boots = new ArrayList<>();
-      for (int i = 1; i < suites.size(); i++) {
-        double gap =
-            Duration.between(suites.get(i - 1).start(), suites.get(i).start()).toMillis() / 1000.0;
-        boots.add(Math.max(0.0, gap - suites.get(i - 1).execSeconds()));
-      }
-      double medianBoot = boots.isEmpty() ? DEFAULT_BOOT_SECONDS : median(boots);
-      for (int i = 0; i < suites.size(); i++) {
-        SuiteRun s = suites.get(i);
-        double boot = i > 0 ? boots.get(i - 1) : medianBoot;
-        long wall = Math.max(1L, Math.round(boot + s.execSeconds()));
-        times.merge(s.name(), wall, Math::max);
-      }
-    }
+    shards.forEach(
+        shard -> {
+          List<SuiteRun> suites =
+              shard.stream().sorted(Comparator.comparing(SuiteRun::start)).toList();
+          List<Double> boots =
+              IntStream.range(1, suites.size())
+                  .mapToObj(
+                      i -> {
+                        double gap =
+                            Duration.between(suites.get(i - 1).start(), suites.get(i).start())
+                                    .toMillis()
+                                / 1000.0;
+                        return Math.max(0.0, gap - suites.get(i - 1).execSeconds());
+                      })
+                  .toList();
+          double medianBoot = boots.isEmpty() ? DEFAULT_BOOT_SECONDS : median(boots);
+          IntStream.range(0, suites.size())
+              .forEach(
+                  i -> {
+                    SuiteRun s = suites.get(i);
+                    double boot = i > 0 ? boots.get(i - 1) : medianBoot;
+                    long wall = Math.max(1L, Math.round(boot + s.execSeconds()));
+                    times.merge(s.name(), wall, Math::max);
+                  });
+        });
     return times;
   }
 
@@ -94,18 +103,19 @@ public final class SuiteTimings {
    * entries are harmless to the sharder and get dropped on the next re-baseline.
    */
   public static List<String> driftReport(Map<String, Long> committed, Map<String, Long> measured) {
-    List<String> drifts = new ArrayList<>();
-    new TreeMap<>(measured)
-        .forEach(
-            (suite, seconds) -> {
-              Long old = committed.get(suite);
-              if (old == null) {
-                drifts.add("NEW " + suite + ": " + seconds + "s (missing from suite-timings.json)");
-              } else if (Math.abs(seconds - old) > DRIFT_ABS_SECONDS
-                  && Math.abs(seconds - old) > DRIFT_REL * old) {
-                drifts.add("DRIFT " + suite + ": " + old + "s -> " + seconds + "s");
-              }
-            });
-    return drifts;
+    return measured.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .flatMap(e -> driftLine(committed.get(e.getKey()), e.getKey(), e.getValue()).stream())
+        .toList();
+  }
+
+  private static Optional<String> driftLine(Long old, String suite, long seconds) {
+    if (old == null) {
+      return Optional.of("NEW " + suite + ": " + seconds + "s (missing from suite-timings.json)");
+    }
+    if (Math.abs(seconds - old) > DRIFT_ABS_SECONDS && Math.abs(seconds - old) > DRIFT_REL * old) {
+      return Optional.of("DRIFT " + suite + ": " + old + "s -> " + seconds + "s");
+    }
+    return Optional.empty();
   }
 }
