@@ -19,13 +19,22 @@ package tech.beshu.ror.gradle.utils;
 
 import org.gradle.api.GradleException;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,10 +65,13 @@ public final class EsDistribution {
   }
 
   private static final Pattern JAR_NAME_PATTERN = Pattern.compile("^(.+)-(\\d[^/]*)\\.jar$");
+  private static final Pattern SHA512_PATTERN = Pattern.compile("[0-9a-fA-F]{128}");
   private static final String LIB_DIR = "lib";
   private static final String MODULES_DIR = "modules";
   private static final String DOWNLOADS_URL =
       "https://artifacts.elastic.co/downloads/elasticsearch";
+  private static final String CHECKSUM_SUFFIX = ".sha512";
+  private static final int TIMEOUT_MS = 30_000;
 
   private final Map<String, List<BundledJar>> jarsByArtifactId;
 
@@ -69,7 +81,114 @@ public final class EsDistribution {
 
   /** The Linux archive Elastic publishes for an ES version. */
   public static String downloadUrl(String esVersion) {
-    return DOWNLOADS_URL + "/elasticsearch-" + esVersion + "-linux-x86_64.tar.gz";
+    return downloadUrl(esVersion, DOWNLOADS_URL);
+  }
+
+  static String downloadUrl(String esVersion, String downloadsUrl) {
+    return downloadsUrl.replaceAll("/+$", "")
+        + "/elasticsearch-"
+        + esVersion
+        + "-linux-x86_64.tar.gz";
+  }
+
+  /**
+   * Downloads the archive Elastic publishes for {@code esVersion} into {@code buildDir} and returns it,
+   * keeping a copy already there.
+   *
+   * <p>The bytes land in a temporary file and are moved into place only once their SHA-512 matches the
+   * checksum Elastic publishes beside the archive. An interrupted or corrupted download therefore leaves
+   * nothing a later build could mistake for a complete distribution -- which matters here, because the jars
+   * the build mirrors to the libs store are read straight out of what this unpacks.
+   */
+  public static Path downloadArchiveTo(Path buildDir, String esVersion) {
+    return downloadArchiveTo(buildDir, esVersion, DOWNLOADS_URL);
+  }
+
+  static Path downloadArchiveTo(Path buildDir, String esVersion, String downloadsUrl) {
+    Path archive = archiveIn(buildDir, esVersion);
+    if (Files.exists(archive)) {
+      return archive;
+    }
+    String url = downloadUrl(esVersion, downloadsUrl);
+    Path partial = null;
+    try {
+      Files.createDirectories(buildDir);
+      partial = Files.createTempFile(buildDir, archive.getFileName().toString(), ".part");
+      downloadTo(url, partial);
+      verifyChecksum(partial, publishedChecksum(url + CHECKSUM_SUFFIX), url);
+      Files.move(partial, archive, StandardCopyOption.ATOMIC_MOVE);
+      return archive;
+    } catch (IOException e) {
+      throw new GradleException("Cannot download " + url + ": " + e, e);
+    } finally {
+      discard(partial);
+    }
+  }
+
+  private static void downloadTo(String url, Path target) throws IOException {
+    try (InputStream content = open(url)) {
+      Files.copy(content, target, StandardCopyOption.REPLACE_EXISTING);
+    }
+  }
+
+  /** The checksum file holds the hash and the file name it belongs to, separated by whitespace. */
+  private static String publishedChecksum(String url) throws IOException {
+    String published;
+    try (InputStream content = open(url)) {
+      published = new String(content.readAllBytes(), StandardCharsets.UTF_8).trim();
+    }
+    String checksum = published.split("\\s+", 2)[0];
+    if (!SHA512_PATTERN.matcher(checksum).matches()) {
+      throw new GradleException("Not a SHA-512 checksum at " + url + ": '" + published + "'");
+    }
+    return checksum;
+  }
+
+  private static void verifyChecksum(Path file, String expected, String url) throws IOException {
+    String actual = sha512Of(file);
+    if (!expected.equalsIgnoreCase(actual)) {
+      throw new GradleException(
+          "Checksum mismatch for "
+              + url
+              + ": expected SHA-512 "
+              + expected
+              + ", downloaded "
+              + actual);
+    }
+  }
+
+  private static String sha512Of(Path file) throws IOException {
+    MessageDigest digest;
+    try {
+      digest = MessageDigest.getInstance("SHA-512");
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("Every JVM ships SHA-512", e);
+    }
+    byte[] buffer = new byte[64 * 1024];
+    try (InputStream content = new BufferedInputStream(Files.newInputStream(file))) {
+      for (int read = content.read(buffer); read != -1; read = content.read(buffer)) {
+        digest.update(buffer, 0, read);
+      }
+    }
+    return HexFormat.of().formatHex(digest.digest());
+  }
+
+  private static InputStream open(String url) throws IOException {
+    URLConnection connection = URI.create(url).toURL().openConnection();
+    connection.setConnectTimeout(TIMEOUT_MS);
+    connection.setReadTimeout(TIMEOUT_MS);
+    return connection.getInputStream();
+  }
+
+  /** Drops the temporary file, which a successful download has already moved away. */
+  private static void discard(Path partial) {
+    if (partial != null) {
+      try {
+        Files.deleteIfExists(partial);
+      } catch (IOException e) {
+        throw new GradleException("Cannot delete " + partial + ": " + e, e);
+      }
+    }
   }
 
   /** Where the build keeps the downloaded archive. */

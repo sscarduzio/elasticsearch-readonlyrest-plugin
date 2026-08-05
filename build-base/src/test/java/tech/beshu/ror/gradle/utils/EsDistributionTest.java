@@ -27,10 +27,15 @@ import org.junit.jupiter.api.io.TempDir;
 import tech.beshu.ror.gradle.utils.EsDistribution.BundledJar;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 class EsDistributionTest {
 
@@ -185,6 +190,107 @@ class EsDistributionTest {
     assertEquals(
         tempDir.resolve("es-9.5.0/elasticsearch-9.5.0"),
         EsDistribution.distributionDirIn(tempDir, "9.5.0"));
+  }
+
+  // --- downloadArchiveTo() ---
+
+  @Test
+  void theArchiveIsKeptOnceItsChecksumMatches() throws IOException {
+    publishArchive("an ES tarball");
+
+    Path archive = EsDistribution.downloadArchiveTo(buildDir(), "9.5.0", downloadsUrl());
+
+    assertEquals(EsDistribution.archiveIn(buildDir(), "9.5.0"), archive);
+    assertEquals("an ES tarball", Files.readString(archive));
+  }
+
+  @Test
+  void aChecksumThatDoesNotMatchLeavesNoArchiveBehind() throws IOException {
+    publishArchive("an ES tarball", sha512Of("something else entirely"));
+
+    GradleException failure =
+        assertThrows(
+            GradleException.class,
+            () -> EsDistribution.downloadArchiveTo(buildDir(), "9.5.0", downloadsUrl()));
+
+    assertTrue(failure.getMessage().contains("Checksum mismatch"));
+    assertTrue(Files.notExists(EsDistribution.archiveIn(buildDir(), "9.5.0")));
+    assertTrue(nothingLeftInBuildDir());
+  }
+
+  @Test
+  void anInterruptedDownloadLeavesNoArchiveBehind() throws IOException {
+    // Nothing published: the download fails before there is anything to checksum.
+    GradleException failure =
+        assertThrows(
+            GradleException.class,
+            () -> EsDistribution.downloadArchiveTo(buildDir(), "9.5.0", downloadsUrl()));
+
+    assertTrue(failure.getMessage().contains("elasticsearch-9.5.0-linux-x86_64.tar.gz"));
+    assertTrue(Files.notExists(EsDistribution.archiveIn(buildDir(), "9.5.0")));
+    assertTrue(nothingLeftInBuildDir());
+  }
+
+  @Test
+  void anArchiveAlreadyInTheBuildDirIsNotDownloadedAgain() throws IOException {
+    // Nothing is published, so a second download would fail.
+    Path archive = EsDistribution.archiveIn(buildDir(), "9.5.0");
+    Files.createDirectories(buildDir());
+    Files.writeString(archive, "downloaded earlier");
+
+    assertEquals(
+        "downloaded earlier",
+        Files.readString(EsDistribution.downloadArchiveTo(buildDir(), "9.5.0", downloadsUrl())));
+  }
+
+  @Test
+  void aChecksumFileThatNamesNoHashThrows() throws IOException {
+    publishArchive("an ES tarball", "<html>404</html>");
+
+    GradleException failure =
+        assertThrows(
+            GradleException.class,
+            () -> EsDistribution.downloadArchiveTo(buildDir(), "9.5.0", downloadsUrl()));
+
+    assertTrue(failure.getMessage().contains("Not a SHA-512 checksum"));
+  }
+
+  private Path buildDir() {
+    return tempDir.resolve("build");
+  }
+
+  private String downloadsUrl() {
+    return tempDir.resolve("downloads").toUri().toString();
+  }
+
+  /** Elastic publishes the archive and, beside it, a {@code .sha512} naming the hash and the file. */
+  private void publishArchive(String content) throws IOException {
+    publishArchive(content, sha512Of(content));
+  }
+
+  private void publishArchive(String content, String checksum) throws IOException {
+    String archiveName = "elasticsearch-9.5.0-linux-x86_64.tar.gz";
+    Path published = tempDir.resolve("downloads").resolve(archiveName);
+    Files.createDirectories(published.getParent());
+    Files.writeString(published, content);
+    Files.writeString(
+        published.resolveSibling(archiveName + ".sha512"), checksum + "  " + archiveName);
+  }
+
+  private static String sha512Of(String content) {
+    try {
+      byte[] hash =
+          MessageDigest.getInstance("SHA-512").digest(content.getBytes(StandardCharsets.UTF_8));
+      return HexFormat.of().formatHex(hash);
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private boolean nothingLeftInBuildDir() throws IOException {
+    try (Stream<Path> entries = Files.list(buildDir())) {
+      return entries.findAny().isEmpty();
+    }
   }
 
   private Path distributionWith(String... relativeJarPaths) throws IOException {

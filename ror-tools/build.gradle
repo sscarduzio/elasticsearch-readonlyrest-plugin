@@ -211,13 +211,7 @@ tasks.register('getArtifactsFromEsBinaries') {
 
 tasks.register('downloadEsBinaries') {
     doLast {
-        def esTar = EsDistribution.archiveIn(buildDirPath(), targetEsVersion).toFile()
-        if (!esTar.exists()) {
-            def downloadUrl = EsDistribution.downloadUrl(targetEsVersion)
-            project.logger.info("Downloading ${downloadUrl} ...")
-            project.mkdir(esTar.parentFile)
-            new URL(downloadUrl).withInputStream { i -> esTar.withOutputStream { it << i } }
-        }
+        def esTar = EsDistribution.downloadArchiveTo(buildDirPath(), targetEsVersion).toFile()
         def esDir = EsDistribution.unpackDirIn(buildDirPath(), targetEsVersion).toFile()
         project.logger.info("Extracting ${esTar.path} to ${esDir.path} ...")
         copy {
