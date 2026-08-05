@@ -137,6 +137,16 @@ import tech.beshu.ror.gradle.utils.MavenRepository
 // EsLibsMirror decides what to publish and what the POMs declare; the tasks below do the I/O around it: copying
 // jars out of the unpacked distribution, writing the generated POMs and uploading both.
 
+def libsStoreEnvironment = [
+        'ROR_S3_TARGET_STORE'             : 'LIBS',
+        'ROR_LIBS_STORE_ENDPOINT_URL'     : System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech',
+        'ROR_LIBS_STORE_ACCESS_KEY_ID'    : System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: '',
+        'ROR_LIBS_STORE_ACCESS_KEY_SECRET': System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: '',
+        'ROR_LIBS_STORE_BUCKET'           : System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu',
+        'ROR_LIBS_STORE_REGION'           : System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1',
+        'ROR_LIBS_STORE_PATH_PREFIX'      : System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs',
+]
+
 def targetEsVersion = esVersion.toString()
 def buildDirPath = { layout.buildDirectory.get().asFile.toPath() }
 def fileInBuildDir = { String name -> buildDirPath().resolve(name).toFile() }
@@ -151,45 +161,6 @@ def mirrorPlan = {
         plan
     }
 }
-
-tasks.register('getArtifactsFromEsBinaries') {
-    dependsOn downloadEsBinaries
-    doLast {
-        def destPath = layout.buildDirectory
-        mirrorPlan().jars().each { jar ->
-            project.logger.info("Copying ${jar.file()} to ${destPath.get().asFile.path} ...")
-            copy {
-                from jar.file().toFile()
-                into destPath
-            }
-        }
-    }
-}
-
-tasks.register('generatePomsFromEsBinaries') {
-    dependsOn getArtifactsFromEsBinaries
-    doLast {
-        mirrorPlan().poms().each { pom ->
-            def pomFile = fileInBuildDir(pom.fileName())
-            pomFile.text = MavenPoms.render(pom.coordinate(), pom.version(), pom.dependencies())
-            project.logger.info("Generated ${pomFile.path}")
-        }
-    }
-}
-
-interface InjectedExecOps {
-    @Inject ExecOperations getExecOperations()
-}
-
-def libsStoreEnvironment = [
-        'ROR_S3_TARGET_STORE'             : 'LIBS',
-        'ROR_LIBS_STORE_ENDPOINT_URL'     : System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech',
-        'ROR_LIBS_STORE_ACCESS_KEY_ID'    : System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: '',
-        'ROR_LIBS_STORE_ACCESS_KEY_SECRET': System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: '',
-        'ROR_LIBS_STORE_BUCKET'           : System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu',
-        'ROR_LIBS_STORE_REGION'           : System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1',
-        'ROR_LIBS_STORE_PATH_PREFIX'      : System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs',
-]
 
 tasks.register('uploadArtifactsFromEsBinaries') {
     dependsOn generatePomsFromEsBinaries
@@ -213,6 +184,31 @@ tasks.register('uploadArtifactsFromEsBinaries') {
     }
 }
 
+tasks.register('generatePomsFromEsBinaries') {
+    dependsOn getArtifactsFromEsBinaries
+    doLast {
+        mirrorPlan().poms().each { pom ->
+            def pomFile = fileInBuildDir(pom.fileName())
+            pomFile.text = MavenPoms.render(pom.coordinate(), pom.version(), pom.dependencies())
+            project.logger.info("Generated ${pomFile.path}")
+        }
+    }
+}
+
+tasks.register('getArtifactsFromEsBinaries') {
+    dependsOn downloadEsBinaries
+    doLast {
+        def destPath = layout.buildDirectory
+        mirrorPlan().jars().each { jar ->
+            project.logger.info("Copying ${jar.file()} to ${destPath.get().asFile.path} ...")
+            copy {
+                from jar.file().toFile()
+                into destPath
+            }
+        }
+    }
+}
+
 tasks.register('downloadEsBinaries') {
     doLast {
         def esTar = EsDistribution.archiveIn(buildDirPath(), targetEsVersion).toFile()
@@ -229,4 +225,10 @@ tasks.register('downloadEsBinaries') {
             into esDir
         }
     }
+}
+
+// ExecOperations is injected into constructors, and a task declared in a script has none of ours. This
+// interface carries the injection, so the upload runs exec() without reaching for Project at execution time.
+interface InjectedExecOps {
+    @Inject ExecOperations getExecOperations()
 }
