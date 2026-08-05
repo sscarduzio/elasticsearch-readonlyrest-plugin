@@ -16,16 +16,20 @@
  */
 package tech.beshu.ror.buildbase;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Drift detection between committed suite timings (integration-tests/suite-timings.json) and
- * freshly measured ones. Pure function of its inputs — the Gradle `regenerateSuiteTimings` task
- * does the XML/JSON I/O and hands the maps here — so the warning thresholds are unit-tested
- * (same split as {@link SuiteSharder}).
+ * Wall-time measurement and drift detection for suite timings
+ * (integration-tests/suite-timings.json). Pure functions of their inputs — the Gradle
+ * `regenerateSuiteTimings` task does the XML/JSON I/O and hands the parsed runs/maps here — so
+ * the estimation logic and warning thresholds are unit-tested (same split as {@link SuiteSharder}).
  */
 public final class SuiteTimings {
 
@@ -38,7 +42,47 @@ public final class SuiteTimings {
 
   static final double DRIFT_REL = 0.5;
 
+  /** Boot estimate for a shard with a single suite, where no start-to-start gap is observable. */
+  static final double DEFAULT_BOOT_SECONDS = 30.0;
+
   private SuiteTimings() {}
+
+  /** One suite execution parsed from a junit XML: fully-qualified name, start, and exec time. */
+  public record SuiteRun(String name, Instant start, double execSeconds) {}
+
+  /**
+   * Estimates WALL seconds per suite (container boot + test execution), not just the junit
+   * `time` attribute: `time` is execution only, while shard-packing weights must include
+   * container boots (often the dominant part). Suites run serially within a shard, so
+   * start(i+1) - start(i) = exec(i) + boot(i+1), hence wall(i) = boot(i) + exec(i). The first
+   * suite's boot is unobservable — the shard's median boot stands in. A suite seen in several
+   * shards (or reruns) keeps its largest estimate; every value is clamped to at least 1s so no
+   * suite packs with zero weight.
+   */
+  public static Map<String, Long> wallTimes(Collection<List<SuiteRun>> shards) {
+    Map<String, Long> times = new TreeMap<>();
+    for (List<SuiteRun> shard : shards) {
+      List<SuiteRun> suites = new ArrayList<>(shard);
+      suites.sort(Comparator.comparing(SuiteRun::start));
+      List<Double> boots = new ArrayList<>();
+      for (int i = 1; i < suites.size(); i++) {
+        double gap =
+            Duration.between(suites.get(i - 1).start(), suites.get(i).start()).toMillis() / 1000.0;
+        boots.add(Math.max(0.0, gap - suites.get(i - 1).execSeconds()));
+      }
+      double medianBoot =
+          boots.isEmpty()
+              ? DEFAULT_BOOT_SECONDS
+              : boots.stream().sorted().toList().get(boots.size() / 2);
+      for (int i = 0; i < suites.size(); i++) {
+        SuiteRun s = suites.get(i);
+        double boot = i > 0 ? boots.get(i - 1) : medianBoot;
+        long wall = Math.max(1L, Math.round(boot + s.execSeconds()));
+        times.merge(s.name(), wall, Math::max);
+      }
+    }
+    return times;
+  }
 
   /**
    * Returns one human-readable line per drifted or new suite, sorted by suite name.
