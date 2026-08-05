@@ -24,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.gradle.api.GradleException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import tech.beshu.ror.gradle.utils.MavenPoms.Coordinate;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,8 +32,8 @@ import java.util.List;
 
 class MavenRepositoryTest {
 
-  private static final Coordinate ELASTICSEARCH =
-      new Coordinate("org.elasticsearch", "elasticsearch");
+  private static final MavenCoordinate ELASTICSEARCH =
+      new MavenCoordinate("org.elasticsearch", "elasticsearch");
 
   @TempDir Path tempDir;
 

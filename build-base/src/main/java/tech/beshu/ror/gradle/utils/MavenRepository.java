@@ -19,7 +19,6 @@ package tech.beshu.ror.gradle.utils;
 
 import org.gradle.api.GradleException;
 import org.w3c.dom.Element;
-import tech.beshu.ror.gradle.utils.MavenPoms.Coordinate;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,17 +49,21 @@ public final class MavenRepository {
   }
 
   /** The versions of {@code coordinate} the repository publishes, in the order its metadata lists them. */
-  public List<String> publishedVersions(Coordinate coordinate) {
+  public List<String> publishedVersions(MavenCoordinate coordinate) {
     String url = baseUrl + "/" + coordinate.repositoryPath() + "/maven-metadata.xml";
-    Element metadata = Xml.rootOf(read(url), url);
-    return Xml.childNamed(metadata, "versioning")
-        .flatMap(versioning -> Xml.childNamed(versioning, "versions"))
-        .map(versions -> Xml.childrenNamed(versions, "version").stream().map(Xml::textOf).toList())
+    Element metadata = XmlDocuments.rootOf(read(url), url);
+    return XmlDocuments.childNamed(metadata, "versioning")
+        .flatMap(versioning -> XmlDocuments.childNamed(versioning, "versions"))
+        .map(
+            versions ->
+                XmlDocuments.childrenNamed(versions, "version").stream()
+                    .map(XmlDocuments::textOf)
+                    .toList())
         .orElseThrow(() -> new GradleException("No <versioning><versions> in " + url));
   }
 
   /** The POM the repository publishes for one version of {@code coordinate}. */
-  public String pomOf(Coordinate coordinate, String version) {
+  public String pomOf(MavenCoordinate coordinate, String version) {
     return read(
         baseUrl + "/" + coordinate.repositoryPath(version) + "/" + coordinate.pomFileName(version));
   }

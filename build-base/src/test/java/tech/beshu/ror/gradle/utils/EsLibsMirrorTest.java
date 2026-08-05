@@ -27,7 +27,6 @@ import org.junit.jupiter.api.io.TempDir;
 import tech.beshu.ror.gradle.utils.EsLibsMirror.MirrorPlan;
 import tech.beshu.ror.gradle.utils.EsLibsMirror.MirroredJar;
 import tech.beshu.ror.gradle.utils.EsLibsMirror.MirroredPom;
-import tech.beshu.ror.gradle.utils.MavenPoms.Coordinate;
 import tech.beshu.ror.gradle.utils.MavenPoms.Dependency;
 
 import java.io.IOException;
@@ -38,10 +37,10 @@ import java.util.Map;
 
 class EsLibsMirrorTest {
 
-  private static final Coordinate ELASTICSEARCH =
-      new Coordinate("org.elasticsearch", "elasticsearch");
-  private static final Coordinate REST_CLIENT =
-      new Coordinate("org.elasticsearch.client", "elasticsearch-rest-client");
+  private static final MavenCoordinate ELASTICSEARCH =
+      new MavenCoordinate("org.elasticsearch", "elasticsearch");
+  private static final MavenCoordinate REST_CLIENT =
+      new MavenCoordinate("org.elasticsearch.client", "elasticsearch-rest-client");
 
   @TempDir Path tempDir;
 
@@ -83,7 +82,7 @@ class EsLibsMirrorTest {
   void esVersionedDependenciesMoveToTheTargetVersion() {
     EsDistribution distribution =
         distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-core-9.5.0.jar");
-    Map<Coordinate, List<Dependency>> reference =
+    Map<MavenCoordinate, List<Dependency>> reference =
         Map.of(
             ELASTICSEARCH,
             List.of(dependency("org.elasticsearch", "elasticsearch-core", "9.4.4", "compile")));
@@ -97,7 +96,7 @@ class EsLibsMirrorTest {
   void thirdPartyDependenciesTakeTheBundledVersion() {
     EsDistribution distribution =
         distributionWith("lib/elasticsearch-9.5.0.jar", "lib/lucene-core-10.5.0.jar");
-    Map<Coordinate, List<Dependency>> reference =
+    Map<MavenCoordinate, List<Dependency>> reference =
         Map.of(
             ELASTICSEARCH,
             List.of(dependency("org.apache.lucene", "lucene-core", "10.4.0", "compile")));
@@ -111,7 +110,7 @@ class EsLibsMirrorTest {
   void dependenciesTheDistributionDoesNotBundleKeepElasticsVersion() {
     // ES ships log4j-api but not log4j-core.
     EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
-    Map<Coordinate, List<Dependency>> reference =
+    Map<MavenCoordinate, List<Dependency>> reference =
         Map.of(
             ELASTICSEARCH,
             List.of(dependency("org.apache.logging.log4j", "log4j-core", "2.26.0", "compile")));
@@ -124,7 +123,7 @@ class EsLibsMirrorTest {
   @Test
   void esVersionedDependencyMissingFromTheDistributionThrows() {
     EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
-    Map<Coordinate, List<Dependency>> reference =
+    Map<MavenCoordinate, List<Dependency>> reference =
         Map.of(
             ELASTICSEARCH,
             List.of(dependency("org.elasticsearch", "elasticsearch-dropped", "9.4.4", "compile")));
@@ -150,7 +149,7 @@ class EsLibsMirrorTest {
   void scopesSurviveTheRewrite() {
     EsDistribution distribution =
         distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-native-9.5.0.jar");
-    Map<Coordinate, List<Dependency>> reference =
+    Map<MavenCoordinate, List<Dependency>> reference =
         Map.of(
             ELASTICSEARCH,
             List.of(dependency("org.elasticsearch", "elasticsearch-native", "9.4.4", "runtime")));
@@ -167,7 +166,7 @@ class EsLibsMirrorTest {
             "modules/reindex/elasticsearch-rest-client-9.5.0.jar",
             "modules/reindex/commons-codec-1.15.jar",
             "modules/ingest-attachment/commons-codec-1.19.0.jar");
-    Map<Coordinate, List<Dependency>> reference =
+    Map<MavenCoordinate, List<Dependency>> reference =
         Map.of(
             REST_CLIENT, List.of(dependency("commons-codec", "commons-codec", "1.15", "compile")));
 
@@ -186,7 +185,7 @@ class EsLibsMirrorTest {
             "lib/elasticsearch-core-9.5.0.jar",
             "lib/elasticsearch-plugin-api-9.5.0.jar",
             "lib/lucene-core-10.5.0.jar");
-    Map<Coordinate, List<Dependency>> reference =
+    Map<MavenCoordinate, List<Dependency>> reference =
         Map.of(
             ELASTICSEARCH,
             List.of(
@@ -206,7 +205,7 @@ class EsLibsMirrorTest {
   void mirroredJarKeepsTheGroupElasticDeclared() {
     EsDistribution distribution =
         distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-plugin-api-9.5.0.jar");
-    Map<Coordinate, List<Dependency>> reference =
+    Map<MavenCoordinate, List<Dependency>> reference =
         Map.of(
             ELASTICSEARCH,
             List.of(
@@ -231,7 +230,7 @@ class EsLibsMirrorTest {
             "lib/elasticsearch-core-9.5.0.jar",
             "modules/reindex/elasticsearch-rest-client-9.5.0.jar");
     Dependency core = dependency("org.elasticsearch", "elasticsearch-core", "9.4.4", "compile");
-    Map<Coordinate, List<Dependency>> reference =
+    Map<MavenCoordinate, List<Dependency>> reference =
         Map.of(ELASTICSEARCH, List.of(core), REST_CLIENT, List.of(core));
 
     MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);

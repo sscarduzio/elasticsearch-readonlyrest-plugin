@@ -33,9 +33,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 /** Reads the small XML documents a Maven repository serves: POMs and artifact metadata. */
-final class Xml {
+final class XmlDocuments {
 
-  private Xml() {}
+  private XmlDocuments() {}
 
   /**
    * The root element of {@code xml}. {@code source} names what was parsed in the failure message. Parsing is
@@ -73,7 +73,7 @@ final class Xml {
   }
 
   static Optional<String> childText(Element parent, String name) {
-    return childNamed(parent, name).map(Xml::textOf);
+    return childNamed(parent, name).map(XmlDocuments::textOf);
   }
 
   static String requiredChildText(Element parent, String name) {

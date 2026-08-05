@@ -19,7 +19,6 @@ package tech.beshu.ror.gradle.utils;
 
 import org.gradle.api.GradleException;
 import tech.beshu.ror.gradle.utils.EsDistribution.BundledJar;
-import tech.beshu.ror.gradle.utils.MavenPoms.Coordinate;
 import tech.beshu.ror.gradle.utils.MavenPoms.Dependency;
 
 import java.nio.file.Path;
@@ -42,14 +41,15 @@ import java.util.Set;
  */
 public final class EsLibsMirror {
 
-  public record MirroredPom(Coordinate coordinate, String version, List<Dependency> dependencies) {
+  public record MirroredPom(
+      MavenCoordinate coordinate, String version, List<Dependency> dependencies) {
 
     public String fileName() {
       return coordinate.pomFileName(version);
     }
   }
 
-  public record MirroredJar(Coordinate coordinate, String version, Path file) {
+  public record MirroredJar(MavenCoordinate coordinate, String version, Path file) {
 
     /** The name the distribution gives the jar, which is the {@code artifactId-version.jar} Maven expects. */
     public String fileName() {
@@ -64,15 +64,15 @@ public final class EsLibsMirror {
   private static final String ES_GROUP_PREFIX = "org.elasticsearch";
 
   /** The artifact whose published versions tell whether Central has an ES release yet. */
-  private static final Coordinate ELASTICSEARCH =
-      new Coordinate("org.elasticsearch", "elasticsearch");
+  private static final MavenCoordinate ELASTICSEARCH =
+      new MavenCoordinate("org.elasticsearch", "elasticsearch");
 
   /** The ES artifacts the es*x modules depend on, and so the ones the store has to serve POMs for. */
-  public static final List<Coordinate> MIRRORED_COORDINATES =
+  public static final List<MavenCoordinate> MIRRORED_COORDINATES =
       List.of(
           ELASTICSEARCH,
-          new Coordinate("org.elasticsearch.plugin", "transport-netty4"),
-          new Coordinate("org.elasticsearch.client", "elasticsearch-rest-client"));
+          new MavenCoordinate("org.elasticsearch.plugin", "transport-netty4"),
+          new MavenCoordinate("org.elasticsearch.client", "elasticsearch-rest-client"));
 
   private EsLibsMirror() {}
 
@@ -85,12 +85,12 @@ public final class EsLibsMirror {
   static MirrorPlan planFor(
       EsDistribution distribution,
       String targetVersion,
-      List<Coordinate> coordinates,
+      List<MavenCoordinate> coordinates,
       MavenRepository reference) {
     String referenceVersion =
         referenceVersion(reference.publishedVersions(ELASTICSEARCH), targetVersion);
-    Map<Coordinate, List<Dependency>> referenceDependencies = new LinkedHashMap<>();
-    for (Coordinate coordinate : coordinates) {
+    Map<MavenCoordinate, List<Dependency>> referenceDependencies = new LinkedHashMap<>();
+    for (MavenCoordinate coordinate : coordinates) {
       referenceDependencies.put(
           coordinate, MavenPoms.parseDependencies(reference.pomOf(coordinate, referenceVersion)));
     }
@@ -130,10 +130,10 @@ public final class EsLibsMirror {
       EsDistribution distribution,
       String targetVersion,
       String referenceVersion,
-      Map<Coordinate, List<Dependency>> referenceDependencies) {
+      Map<MavenCoordinate, List<Dependency>> referenceDependencies) {
     List<MirroredPom> poms = new ArrayList<>();
-    for (Map.Entry<Coordinate, List<Dependency>> entry : referenceDependencies.entrySet()) {
-      Coordinate coordinate = entry.getKey();
+    for (Map.Entry<MavenCoordinate, List<Dependency>> entry : referenceDependencies.entrySet()) {
+      MavenCoordinate coordinate = entry.getKey();
       Set<Path> dirsShippingTheArtifact = distribution.directoriesShipping(coordinate.artifactId());
       if (dirsShippingTheArtifact.isEmpty()) {
         throw new GradleException(
@@ -172,7 +172,7 @@ public final class EsLibsMirror {
       Dependency dependency,
       EsDistribution distribution,
       Set<Path> dirsShippingTheArtifact,
-      Coordinate coordinate,
+      MavenCoordinate coordinate,
       String targetVersion,
       String referenceVersion) {
     return distribution
@@ -199,17 +199,18 @@ public final class EsLibsMirror {
   /** The planned coordinates plus every ES artifact their POMs name; the rest resolve from Central. */
   private static List<MirroredJar> jarsFor(
       List<MirroredPom> poms, EsDistribution distribution, String targetVersion) {
-    Set<Coordinate> coordinates = new LinkedHashSet<>();
+    Set<MavenCoordinate> coordinates = new LinkedHashSet<>();
     poms.forEach(pom -> coordinates.add(pom.coordinate()));
     poms.stream()
         .flatMap(pom -> pom.dependencies().stream())
         .filter(dependency -> dependency.groupId().startsWith(ES_GROUP_PREFIX))
         .forEach(
             dependency ->
-                coordinates.add(new Coordinate(dependency.groupId(), dependency.artifactId())));
+                coordinates.add(
+                    new MavenCoordinate(dependency.groupId(), dependency.artifactId())));
 
     List<MirroredJar> jars = new ArrayList<>();
-    for (Coordinate coordinate : coordinates) {
+    for (MavenCoordinate coordinate : coordinates) {
       BundledJar bundled =
           distribution
               .preferredJarOf(coordinate.artifactId(), Set.of())

@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.gradle.api.GradleException;
 import org.junit.jupiter.api.Test;
-import tech.beshu.ror.gradle.utils.MavenPoms.Coordinate;
 import tech.beshu.ror.gradle.utils.MavenPoms.Dependency;
 
 import java.util.List;
@@ -111,7 +110,7 @@ class MavenPomsTest {
 
     String rendered =
         MavenPoms.render(
-            new Coordinate("org.elasticsearch", "elasticsearch"), "9.5.0", dependencies);
+            new MavenCoordinate("org.elasticsearch", "elasticsearch"), "9.5.0", dependencies);
 
     assertEquals(dependencies, MavenPoms.parseDependencies(rendered));
   }
@@ -120,7 +119,9 @@ class MavenPomsTest {
   void rendersOwnCoordinateAndVersion() {
     String rendered =
         MavenPoms.render(
-            new Coordinate("org.elasticsearch.plugin", "transport-netty4"), "9.5.0", List.of());
+            new MavenCoordinate("org.elasticsearch.plugin", "transport-netty4"),
+            "9.5.0",
+            List.of());
 
     assertTrue(rendered.contains("<groupId>org.elasticsearch.plugin</groupId>"));
     assertTrue(rendered.contains("<artifactId>transport-netty4</artifactId>"));
@@ -128,11 +129,12 @@ class MavenPomsTest {
     assertTrue(rendered.contains("<packaging>jar</packaging>"));
   }
 
-  // --- Coordinate ---
+  // --- MavenCoordinate ---
 
   @Test
   void repositoryPathFollowsMavenLayout() {
-    Coordinate restClient = new Coordinate("org.elasticsearch.client", "elasticsearch-rest-client");
+    MavenCoordinate restClient =
+        new MavenCoordinate("org.elasticsearch.client", "elasticsearch-rest-client");
 
     assertEquals("org/elasticsearch/client/elasticsearch-rest-client", restClient.repositoryPath());
     assertEquals(
@@ -144,7 +146,7 @@ class MavenPomsTest {
   void pomIsNamedForTheArtifactAndVersion() {
     assertEquals(
         "elasticsearch-rest-client-9.5.0.pom",
-        new Coordinate("org.elasticsearch.client", "elasticsearch-rest-client")
+        new MavenCoordinate("org.elasticsearch.client", "elasticsearch-rest-client")
             .pomFileName("9.5.0"));
   }
 
