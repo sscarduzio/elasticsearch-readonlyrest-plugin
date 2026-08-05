@@ -10,4 +10,5 @@ grant {
   permission java.security.SecurityPermission "insertProvider";
   permission java.security.SecurityPermission "putProviderProperty.BCFIPS";
   permission java.security.SecurityPermission "putProviderProperty.BCJSSE";
+  permission org.elasticsearch.secure_sm.ThreadPermission "modifyArbitraryThread";
 };
