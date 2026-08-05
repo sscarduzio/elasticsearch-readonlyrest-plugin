@@ -39,6 +39,8 @@ import java.util.stream.Stream;
 
 class EsDistributionTest {
 
+  private static final String ARCHIVE_NAME = "elasticsearch-9.5.0-linux-x86_64.tar.gz";
+
   @TempDir Path tempDir;
 
   // --- scan() ---
@@ -220,7 +222,9 @@ class EsDistributionTest {
 
   @Test
   void anInterruptedDownloadLeavesNoArchiveBehind() throws IOException {
-    // Nothing published: the download fails before there is anything to checksum.
+    // The checksum is published but the archive is not, so the download fails part way through.
+    publishChecksum(sha512Of("an ES tarball"));
+
     GradleException failure =
         assertThrows(
             GradleException.class,
@@ -233,14 +237,31 @@ class EsDistributionTest {
 
   @Test
   void anArchiveAlreadyInTheBuildDirIsNotDownloadedAgain() throws IOException {
-    // Nothing is published, so a second download would fail.
-    Path archive = EsDistribution.archiveIn(buildDir(), "9.5.0");
+    // Only the checksum is published, so downloading the archive again would fail.
+    publishChecksum(sha512Of("downloaded earlier"));
     Files.createDirectories(buildDir());
-    Files.writeString(archive, "downloaded earlier");
+    Files.writeString(EsDistribution.archiveIn(buildDir(), "9.5.0"), "downloaded earlier");
 
     assertEquals(
         "downloaded earlier",
         Files.readString(EsDistribution.downloadArchiveTo(buildDir(), "9.5.0", downloadsUrl())));
+  }
+
+  @Test
+  void anArchiveAlreadyInTheBuildDirIsCheckedBeforeItIsReused() throws IOException {
+    // What an older build that did not verify its downloads could have left behind.
+    publishArchive("an ES tarball");
+    Path archive = EsDistribution.archiveIn(buildDir(), "9.5.0");
+    Files.createDirectories(buildDir());
+    Files.writeString(archive, "half an ES tarball");
+
+    GradleException failure =
+        assertThrows(
+            GradleException.class,
+            () -> EsDistribution.downloadArchiveTo(buildDir(), "9.5.0", downloadsUrl()));
+
+    assertTrue(failure.getMessage().contains("Checksum mismatch"));
+    assertTrue(failure.getMessage().contains(archive.toString()));
   }
 
   @Test
@@ -260,7 +281,7 @@ class EsDistributionTest {
   }
 
   private String downloadsUrl() {
-    return tempDir.resolve("downloads").toUri().toString();
+    return publishedDir().toUri().toString();
   }
 
   /** Elastic publishes the archive and, beside it, a {@code .sha512} naming the hash and the file. */
@@ -269,12 +290,20 @@ class EsDistributionTest {
   }
 
   private void publishArchive(String content, String checksum) throws IOException {
-    String archiveName = "elasticsearch-9.5.0-linux-x86_64.tar.gz";
-    Path published = tempDir.resolve("downloads").resolve(archiveName);
+    Path published = publishedDir().resolve(ARCHIVE_NAME);
     Files.createDirectories(published.getParent());
     Files.writeString(published, content);
-    Files.writeString(
-        published.resolveSibling(archiveName + ".sha512"), checksum + "  " + archiveName);
+    publishChecksum(checksum);
+  }
+
+  private void publishChecksum(String checksum) throws IOException {
+    Path published = publishedDir().resolve(ARCHIVE_NAME + ".sha512");
+    Files.createDirectories(published.getParent());
+    Files.writeString(published, checksum + "  " + ARCHIVE_NAME);
+  }
+
+  private Path publishedDir() {
+    return tempDir.resolve("downloads");
   }
 
   private static String sha512Of(String content) {

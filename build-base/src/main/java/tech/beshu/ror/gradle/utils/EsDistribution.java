@@ -93,12 +93,14 @@ public final class EsDistribution {
 
   /**
    * Downloads the archive Elastic publishes for {@code esVersion} into {@code buildDir} and returns it,
-   * keeping a copy already there.
+   * reusing a copy already there.
    *
-   * <p>The bytes land in a temporary file and are moved into place only once their SHA-512 matches the
-   * checksum Elastic publishes beside the archive. An interrupted or corrupted download therefore leaves
-   * nothing a later build could mistake for a complete distribution -- which matters here, because the jars
-   * the build mirrors to the libs store are read straight out of what this unpacks.
+   * <p>Whichever of the two it returns has been checked against the SHA-512 Elastic publishes beside the
+   * archive: a download goes to a temporary file and is moved into place only once it matches, and a copy
+   * already in {@code buildDir} is hashed before being reused, since the build dir is a plain directory and
+   * an earlier build -- or anything else -- may have left something else there. That the archive is what
+   * Elastic shipped matters here, because the jars mirrored to the libs store are read out of what it unpacks
+   * into.
    */
   public static Path downloadArchiveTo(Path buildDir, String esVersion) {
     return downloadArchiveTo(buildDir, esVersion, DOWNLOADS_URL);
@@ -106,16 +108,18 @@ public final class EsDistribution {
 
   static Path downloadArchiveTo(Path buildDir, String esVersion, String downloadsUrl) {
     Path archive = archiveIn(buildDir, esVersion);
-    if (Files.exists(archive)) {
-      return archive;
-    }
     String url = downloadUrl(esVersion, downloadsUrl);
     Path partial = null;
     try {
+      String checksum = publishedChecksum(url + CHECKSUM_SUFFIX);
+      if (Files.exists(archive)) {
+        verifyChecksum(archive, checksum, url);
+        return archive;
+      }
       Files.createDirectories(buildDir);
       partial = Files.createTempFile(buildDir, archive.getFileName().toString(), ".part");
       downloadTo(url, partial);
-      verifyChecksum(partial, publishedChecksum(url + CHECKSUM_SUFFIX), url);
+      verifyChecksum(partial, checksum, url);
       Files.move(partial, archive, StandardCopyOption.ATOMIC_MOVE);
       return archive;
     } catch (IOException e) {
@@ -148,12 +152,15 @@ public final class EsDistribution {
     String actual = sha512Of(file);
     if (!expected.equalsIgnoreCase(actual)) {
       throw new GradleException(
-          "Checksum mismatch for "
+          "Checksum mismatch: "
+              + file
+              + " is not what "
               + url
-              + ": expected SHA-512 "
+              + " publishes (expected SHA-512 "
               + expected
-              + ", downloaded "
-              + actual);
+              + ", got "
+              + actual
+              + "). Delete it to download the archive again.");
     }
   }
 
