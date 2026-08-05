@@ -170,7 +170,7 @@ tasks.register('uploadArtifactsFromEsBinaries') {
         // A coordinate's jar and POM share a directory, and upload-files-to-s3.sh takes several files for one
         // destination, so they go up in a single call.
         plan.jars().each { jar ->
-            def pom = plan.poms().find { it.coordinate() == jar.coordinate() }
+            def pom = plan.pomFor(jar).orElse(null)
             def filesToUpload = [fileInBuildDir(jar.fileName()).path]
             if (pom != null) {
                 filesToUpload += fileInBuildDir(pom.fileName()).path

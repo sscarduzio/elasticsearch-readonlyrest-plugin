@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -59,7 +60,34 @@ public final class EsLibsMirror {
 
   /** @param referenceVersion the published ES version the POMs are shaped after */
   public record MirrorPlan(
-      String referenceVersion, List<MirroredPom> poms, List<MirroredJar> jars) {}
+      String referenceVersion, List<MirroredPom> poms, List<MirroredJar> jars) {
+
+    /**
+     * The POM to publish alongside {@code jar}, when the plan has one -- jars mirrored only because a POM names
+     * them as a dependency have none.
+     *
+     * <p>A jar and its POM share a repository directory named for the jar's version, so a POM naming a
+     * different version would be published under a name Maven never asks for there, and the version it does
+     * name would be left with no POM at all. Fails rather than uploading that.
+     */
+    public Optional<MirroredPom> pomFor(MirroredJar jar) {
+      Optional<MirroredPom> pom =
+          poms.stream()
+              .filter(candidate -> candidate.coordinate().equals(jar.coordinate()))
+              .findFirst();
+      pom.filter(found -> !found.version().equals(jar.version()))
+          .ifPresent(
+              found -> {
+                throw new GradleException(
+                    "Cannot publish "
+                        + found.fileName()
+                        + " alongside "
+                        + jar.fileName()
+                        + ": the POM and the bundled jar name different versions");
+              });
+      return pom;
+    }
+  }
 
   private static final String ES_GROUP_PREFIX = "org.elasticsearch";
 

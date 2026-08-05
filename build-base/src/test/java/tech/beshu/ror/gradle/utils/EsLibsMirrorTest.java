@@ -253,6 +253,53 @@ class EsLibsMirrorTest {
     assertEquals("elasticsearch-9.5.0.pom", onlyPom(plan).fileName());
   }
 
+  // --- pomFor() ---
+
+  @Test
+  void aMirroredCoordinateUploadsItsPomAlongsideItsJar() {
+    EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
+
+    MirrorPlan plan =
+        EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", Map.of(ELASTICSEARCH, List.of()));
+
+    assertEquals(
+        "elasticsearch-9.5.0.pom", plan.pomFor(plan.jars().get(0)).orElseThrow().fileName());
+  }
+
+  @Test
+  void aJarMirroredOnlyAsADependencyHasNoPom() {
+    EsDistribution distribution =
+        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-core-9.5.0.jar");
+    Map<MavenCoordinate, List<Dependency>> reference =
+        Map.of(
+            ELASTICSEARCH,
+            List.of(dependency("org.elasticsearch", "elasticsearch-core", "9.4.4", "compile")));
+
+    MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);
+
+    MirroredJar core =
+        plan.jars().stream()
+            .filter(jar -> jar.coordinate().artifactId().equals("elasticsearch-core"))
+            .findFirst()
+            .orElseThrow();
+    assertTrue(plan.pomFor(core).isEmpty());
+  }
+
+  @Test
+  void aPomNamingAnotherVersionThanTheBundledJarThrows() {
+    // The upload names the repository directory after the jar, so the POM would land where Maven
+    // never looks.
+    MirroredJar jar =
+        new MirroredJar(REST_CLIENT, "9.5.0", Path.of("elasticsearch-rest-client-9.5.0.jar"));
+    MirrorPlan plan =
+        new MirrorPlan(
+            "9.4.4", List.of(new MirroredPom(REST_CLIENT, "9.6.0", List.of())), List.of(jar));
+
+    GradleException failure = assertThrows(GradleException.class, () -> plan.pomFor(jar));
+
+    assertTrue(failure.getMessage().contains("elasticsearch-rest-client-9.6.0.pom"));
+  }
+
   // --- planFor() ---
 
   @Test
