@@ -70,10 +70,7 @@ public final class SuiteTimings {
             Duration.between(suites.get(i - 1).start(), suites.get(i).start()).toMillis() / 1000.0;
         boots.add(Math.max(0.0, gap - suites.get(i - 1).execSeconds()));
       }
-      double medianBoot =
-          boots.isEmpty()
-              ? DEFAULT_BOOT_SECONDS
-              : boots.stream().sorted().toList().get(boots.size() / 2);
+      double medianBoot = boots.isEmpty() ? DEFAULT_BOOT_SECONDS : median(boots);
       for (int i = 0; i < suites.size(); i++) {
         SuiteRun s = suites.get(i);
         double boot = i > 0 ? boots.get(i - 1) : medianBoot;
@@ -82,6 +79,13 @@ public final class SuiteTimings {
       }
     }
     return times;
+  }
+
+  /** True median: the middle value, or the mean of the two middle values for even-sized input. */
+  private static double median(List<Double> values) {
+    List<Double> sorted = values.stream().sorted().toList();
+    int n = sorted.size();
+    return n % 2 == 1 ? sorted.get(n / 2) : (sorted.get(n / 2 - 1) + sorted.get(n / 2)) / 2.0;
   }
 
   /**

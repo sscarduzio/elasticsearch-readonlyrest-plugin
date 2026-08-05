@@ -56,6 +56,16 @@ class SuiteTimingsTest {
   }
 
   @Test
+  void evenNumberOfBootGapsUsesTrueMedian() {
+    // Gaps: boot(B) = 15-0-5 = 10, boot(C) = 40-15-5 = 20 => median = (10+20)/2 = 15,
+    // so the first suite gets wall(A) = round(15 + 5) = 20 (not upper-middle 20+5).
+    Map<String, Long> times =
+        SuiteTimings.wallTimes(
+            List.of(List.of(run("A", 0, 5.0), run("B", 15, 5.0), run("C", 40, 5.0))));
+    assertEquals(20L, times.get("A"));
+  }
+
+  @Test
   void suiteSeenInSeveralShardsKeepsTheLargestEstimate() {
     Map<String, Long> times =
         SuiteTimings.wallTimes(
