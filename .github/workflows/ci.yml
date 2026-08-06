@@ -8,6 +8,9 @@ on:
       - '.claude/**'
       - '**/*.md'
   pull_request:
+    # ready_for_review is NOT a default type: without it, flipping a draft to "ready" would not
+    # start the full run — and with no required checks, a PR could merge on draft-level checks only.
+    types: [ opened, synchronize, reopened, ready_for_review ]
     branches: [ master, develop, 'epic/**', '**/epic/**' ]
     paths-ignore:
       - 'docs/**'
@@ -87,6 +90,7 @@ jobs:
         env:
           IS_FULL: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
           IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          IS_DRAFT: ${{ github.event.pull_request.draft == true }}
           ACTION: ${{ github.event.inputs.actionToPerform || '' }}
         run: |
           # ES-version sets — keep in sync with azure-pipelines.yml until Azure is deleted.
@@ -95,9 +99,14 @@ jobs:
           WIN_FULL='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
           WIN_BRANCH='["es94x","es92x","es90x","es818x","es80x","es717x","es70x"]'
           WIN_PR='["es94x","es818x","es717x"]'
+          # Draft PRs: iteration feedback only — newest module per major on Linux, no Windows.
+          # The full PR set runs when the draft is marked ready (ready_for_review trigger above).
+          LINUX_DRAFT='["integration_es94x","integration_es818x","integration_es717x","integration_es67x"]'
 
           if [ "$IS_DISPATCH" = "true" ] || [ "$IS_FULL" = "true" ]; then
             echo "linux=$LINUX_FULL" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_DRAFT" = "true" ]; then
+            echo "linux=$LINUX_DRAFT" >> "$GITHUB_OUTPUT"
           else
             echo "linux=$LINUX_PR" >> "$GITHUB_OUTPUT"
           fi
@@ -106,6 +115,8 @@ jobs:
             echo "windows=$WIN_FULL" >> "$GITHUB_OUTPUT"
           elif [ "$IS_FULL" = "true" ]; then
             echo "windows=$WIN_BRANCH" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_DRAFT" = "true" ]; then
+            echo "windows=[]" >> "$GITHUB_OUTPUT"
           else
             echo "windows=$WIN_PR" >> "$GITHUB_OUTPUT"
           fi
@@ -414,6 +425,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
+      needs.setup.outputs.it_windows_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')
     runs-on: windows-2025
     timeout-minutes: 150
@@ -545,7 +557,7 @@ jobs:
       needs.required_checks.result == 'success' &&
       needs.unit_tests_linux.result == 'success' &&
       needs.it_linux.result == 'success' &&
-      needs.it_windows.result == 'success'
+      (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped')
     runs-on: ubicloud-standard-4
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 180
