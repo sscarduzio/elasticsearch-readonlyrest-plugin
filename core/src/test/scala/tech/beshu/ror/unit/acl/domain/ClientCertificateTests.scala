@@ -23,7 +23,7 @@ import org.bouncycastle.cert.jcajce.{JcaX509CertificateConverter, JcaX509v3Certi
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.{ClientCertificate, Dn, Rdn, SubjectAlternativeName}
+import tech.beshu.ror.accesscontrol.domain.{ClientCertificate, DistinguishedName, Rdn, SubjectAlternativeName}
 
 import java.math.BigInteger
 import java.security.KeyPairGenerator
@@ -78,7 +78,7 @@ class ClientCertificateTests extends AnyWordSpec {
       dnFrom(value).value should be(value)
     }
     "not be parsable when malformed" in {
-      Dn.from("not a distinguished name") should be(
+      DistinguishedName.from("not a distinguished name") should be(
         Left("Cannot parse 'not a distinguished name' as a distinguished name")
       )
     }
@@ -163,7 +163,9 @@ class ClientCertificateTests extends AnyWordSpec {
   }
 
   private def dnFrom(value: String) =
-    Dn.from(value).getOrElse(throw new IllegalArgumentException(s"Cannot parse '$value' as a distinguished name"))
+    DistinguishedName
+      .from(value)
+      .getOrElse(throw new IllegalArgumentException(s"Cannot parse '$value' as a distinguished name"))
 
   private def clientCertificateFrom(certificate: X509Certificate) =
     ClientCertificate.from(certificate).getOrElse(throw new IllegalStateException("Cannot read the certificate"))

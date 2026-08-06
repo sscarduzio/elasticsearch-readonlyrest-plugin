@@ -39,8 +39,8 @@ import scala.util.Try
   * are the TLS layer's business and have been settled by the time an instance of this class exists.
   */
 final case class ClientCertificate(
-    subjectDn: Dn,
-    issuerDn: Dn,
+    subjectDn: DistinguishedName,
+    issuerDn: DistinguishedName,
     subjectAlternativeNames: List[SubjectAlternativeName]
 )
 
@@ -48,8 +48,8 @@ object ClientCertificate {
 
   def from(certificate: X509Certificate): Either[String, ClientCertificate] = {
     for {
-      subjectDn <- Dn.from(certificate.getSubjectX500Principal)
-      issuerDn <- Dn.from(certificate.getIssuerX500Principal)
+      subjectDn <- DistinguishedName.from(certificate.getSubjectX500Principal)
+      issuerDn <- DistinguishedName.from(certificate.getIssuerX500Principal)
     } yield ClientCertificate(
       subjectDn = subjectDn,
       issuerDn = issuerDn,
@@ -112,30 +112,30 @@ object ClientCertificate {
 /** A distinguished name, kept both as its RFC 2253 rendering and as parsed RDNs.
   *
   * `value` exists for pattern-based extraction; every structural comparison has to go through
-  * [[Dn.endsWith]] or [[Dn.hasTheSameRdnsAs]], never through `==`, which would also compare the rendering.
+  * [[DistinguishedName.endsWith]] or [[DistinguishedName.hasTheSameRdnsAs]], never through `==`, which would also compare the rendering.
   */
-final case class Dn(value: String, rdns: List[Rdn]) {
+final case class DistinguishedName(value: String, rdns: List[Rdn]) {
 
   def valuesOf(attributeName: String): List[String] = {
     val normalisedName = attributeName.toLowerCase
     rdns.flatMap(_.attributes.filter(_.name == normalisedName).map(_.value))
   }
 
-  def hasTheSameRdnsAs(other: Dn): Boolean = rdns == other.rdns
+  def hasTheSameRdnsAs(other: DistinguishedName): Boolean = rdns == other.rdns
 
-  def endsWith(base: Dn): Boolean = rdns.endsWith(base.rdns)
+  def endsWith(base: DistinguishedName): Boolean = rdns.endsWith(base.rdns)
 }
 
-object Dn {
+object DistinguishedName {
 
-  def from(principal: X500Principal): Either[String, Dn] = from(principal.getName(X500Principal.RFC2253))
+  def from(principal: X500Principal): Either[String, DistinguishedName] = from(principal.getName(X500Principal.RFC2253))
 
-  def from(value: String): Either[String, Dn] = {
+  def from(value: String): Either[String, DistinguishedName] = {
     Try(new LdapName(value)).toEither.left
       .map(_ => s"Cannot parse '${value.show}' as a distinguished name")
       .map { ldapName =>
         // LdapName keeps RDNs least-significant-last; reversing puts them in the order they are written
-        Dn(value, ldapName.getRdns.asScala.toList.reverse.map(rdnFrom))
+        DistinguishedName(value, ldapName.getRdns.asScala.toList.reverse.map(rdnFrom))
       }
   }
 
