@@ -444,7 +444,13 @@ jobs:
         with: { distribution: temurin, java-version: '21' }
       # Windows has no baked toolchains image: without this every leg cold-downloads the wrapper,
       # deps + JDKs and cold-compiles Scala (~9 min). Develop runs write the cache; PRs read it.
+      # jdks: not in the action's default include set, but auto-download=true provisions there.
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            jdks
       - name: ${{ matrix.ES_MODULE }}
         shell: pwsh
         env:
