@@ -41,6 +41,7 @@ eshome/**/plugins/*/*.jar
 eshome/*.log
 eshome/**/config/elasticsearch.keystore
 target/
+.ror-nested-gradle.lock
 
 // Crypto
 *.pem
