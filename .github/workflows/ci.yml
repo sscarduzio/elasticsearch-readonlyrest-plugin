@@ -103,20 +103,23 @@ jobs:
           # The full PR set runs when the draft is marked ready (ready_for_review trigger above).
           LINUX_DRAFT='["integration_es94x","integration_es818x","integration_es717x","integration_es67x"]'
 
-          if [ "$IS_DISPATCH" = "true" ] || [ "$IS_FULL" = "true" ]; then
-            echo "linux=$LINUX_FULL" >> "$GITHUB_OUTPUT"
-          elif [ "$IS_DRAFT" = "true" ]; then
+          # IS_DRAFT is checked FIRST: an epic-branch PR sets IS_FULL too, and a draft epic PR
+          # should iterate light like any draft — the full set returns on ready_for_review.
+          # (push/dispatch events have no PR context, so IS_DRAFT is always false there.)
+          if [ "$IS_DRAFT" = "true" ]; then
             echo "linux=$LINUX_DRAFT" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_DISPATCH" = "true" ] || [ "$IS_FULL" = "true" ]; then
+            echo "linux=$LINUX_FULL" >> "$GITHUB_OUTPUT"
           else
             echo "linux=$LINUX_PR" >> "$GITHUB_OUTPUT"
           fi
 
-          if [ "$IS_DISPATCH" = "true" ] && [ "$ACTION" = "run_all_tests_on_windows" ]; then
+          if [ "$IS_DRAFT" = "true" ]; then
+            echo "windows=[]" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_DISPATCH" = "true" ] && [ "$ACTION" = "run_all_tests_on_windows" ]; then
             echo "windows=$WIN_FULL" >> "$GITHUB_OUTPUT"
           elif [ "$IS_FULL" = "true" ]; then
             echo "windows=$WIN_BRANCH" >> "$GITHUB_OUTPUT"
-          elif [ "$IS_DRAFT" = "true" ]; then
-            echo "windows=[]" >> "$GITHUB_OUTPUT"
           else
             echo "windows=$WIN_PR" >> "$GITHUB_OUTPUT"
           fi
