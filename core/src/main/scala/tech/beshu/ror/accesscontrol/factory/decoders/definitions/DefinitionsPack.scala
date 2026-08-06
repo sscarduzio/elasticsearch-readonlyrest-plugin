@@ -28,6 +28,7 @@ final case class DefinitionsPack(
     jwts: Definitions[JwtDef],
     rorKbns: Definitions[RorKbnDef],
     ldaps: Definitions[LdapService],
+    pkis: Definitions[PkiDef],
     impersonators: Definitions[ImpersonatorDef],
     variableTransformationAliases: Definitions[VariableTransformationAliasDef]
 )

@@ -51,6 +51,22 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
         impersonationWarningsReader(settings).read() should be(noWarnings)
       }
+      "pki authentication rule with an accepted users list, which the impersonated user can be checked against" in {
+        val settings =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    pki_authentication:
+             |      name: "corporate_pki"
+             |      users: ["svc-*"]
+             |
+             |  pkis:
+             |  - name: corporate_pki
+             |""".stripMargin
+
+        impersonationWarningsReader(settings).read() should be(noWarnings)
+      }
       "rules with hashed only password" in {
         val settings =
           s"""
@@ -309,6 +325,59 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
           impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(
             List(
               impersonationNotSupportedWarning("test_block1", "jwt_auth")
+            )
+          )
+        }
+        "pki auth rule" in {
+          val settings =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    pki_auth:
+              |      name: "corporate_pki"
+              |      groups: ["ingest"]
+              |
+              |  - name: test_block2
+              |    auth_key: "user:pass"
+              |    pki_authorization:
+              |      name: "corporate_pki"
+              |      groups: ["ingest"]
+              |
+              |  pkis:
+              |  - name: corporate_pki
+              |    groups:
+              |      group_id_attribute: "OU"
+              |
+              |""".stripMargin
+
+          impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(
+            List(
+              impersonationNotSupportedWarning("test_block1", "pki_auth"),
+              impersonationNotSupportedWarning("test_block2", "pki_authorization")
+            )
+          )
+        }
+        "pki authentication rule without an accepted users list" in {
+          val settings =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    pki_authentication: "corporate_pki"
+              |
+              |  pkis:
+              |  - name: corporate_pki
+              |
+              |""".stripMargin
+
+          impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(
+            List(
+              impersonationNotSupportedWarning("test_block1", "pki_authentication")
             )
           )
         }

@@ -181,6 +181,27 @@ object ImpersonationWarning {
         )
       }
 
+    // with a `users` list the impersonated user can be checked against it, exactly as proxy_auth does;
+    // without one there is nothing to check against, so impersonation degrades to "cannot check"
+    implicit val pkiAuthenticationRule: ImpersonationWarningExtractor[PkiAuthenticationRule] =
+      ImpersonationWarningExtractor[PkiAuthenticationRule] { (rule, blockName, _) =>
+        rule.settings.userIds match {
+          case Some(_) => None
+          case None    => Some(impersonationNotSupportedWarning(rule, blockName))
+        }
+      }
+
+    // groups live on the caller's certificate, which an impersonated request does not carry
+    implicit val pkiAuthorizationRule: ImpersonationWarningExtractor[PkiAuthorizationRule] =
+      ImpersonationWarningExtractor[PkiAuthorizationRule] { (rule, blockName, _) =>
+        Some(impersonationNotSupportedWarning(rule, blockName))
+      }
+
+    implicit val pkiAuthRule: ImpersonationWarningExtractor[PkiAuthRule] =
+      ImpersonationWarningExtractor[PkiAuthRule] { (rule, blockName, _) =>
+        Some(impersonationNotSupportedWarning(rule, blockName))
+      }
+
     implicit val proxyAuthRule: ImpersonationWarningExtractor[ProxyAuthRule] = noWarnings[ProxyAuthRule]
 
     implicit val rorKbnAuthRule: ImpersonationWarningExtractor[RorKbnAuthRule] =

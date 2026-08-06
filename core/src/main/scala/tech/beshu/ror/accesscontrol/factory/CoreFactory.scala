@@ -503,11 +503,13 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
           systemContext.clock
         )
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(variableCreator))
+        pkiDefs <- AsyncDecoderCreator.from(PkiDefinitionsDecoder.instance)
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
           globalSettings,
           authenticationServices,
           authProxies,
           ldapServices,
+          pkiDefs,
           mocksProvider,
           esEnv
         )
@@ -520,6 +522,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
             jwtDefs,
             rorKbnDefs,
             ldapServices,
+            pkiDefs,
             Some(impersonationDefs),
             mocksProvider,
             globalSettings,
@@ -538,6 +541,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
                 jwts = jwtDefs,
                 rorKbns = rorKbnDefs,
                 ldaps = ldapServices,
+                pkis = pkiDefs,
                 impersonators = impersonationDefs,
                 variableTransformationAliases = dynamicVariableTransformationAliases,
               ),

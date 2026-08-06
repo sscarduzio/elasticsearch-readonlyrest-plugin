@@ -61,6 +61,8 @@ object RuleOrdering {
     classOf[AuthKeySha512Rule],
     classOf[AuthKeyUnixRule],
     classOf[ProxyAuthRule],
+    classOf[PkiAuthRule],
+    classOf[PkiAuthenticationRule],
     classOf[JwtAuthRule],
     classOf[RorKbnAuthRule],
     classOf[TokenAuthenticationRule],
@@ -77,6 +79,7 @@ object RuleOrdering {
     classOf[CombinedLogicGroupsRule],
     // all authorization rules should be placed after any authentication rule
     classOf[LdapAuthorizationRule],
+    classOf[PkiAuthorizationRule],
     classOf[JwtAuthorizationRule],
     classOf[RorKbnAuthorizationRule],
     classOf[ExternalAuthorizationRule],

@@ -42,6 +42,7 @@ class ImpersonationDefinitionsDecoderCreator(
     authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
     authProxyDefinitions: Definitions[ProxyAuth],
     ldapDefinitions: Definitions[LdapService],
+    pkiDefinitions: Definitions[PkiDef],
     mocksProvider: MocksProvider,
     esEnv: EsEnv
 ) {
@@ -106,6 +107,7 @@ class ImpersonationDefinitionsDecoderCreator(
             authenticationServiceDefinitions,
             authProxyDefinitions,
             ldapDefinitions,
+            pkiDefinitions,
             impersonatorsDefinitions = None,
             mocksProvider,
             globalSettings,

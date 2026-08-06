@@ -114,6 +114,7 @@ object ruleDecoders {
           definitions.jwts,
           definitions.rorKbns,
           definitions.ldaps,
+          definitions.pkis,
           Some(definitions.impersonators),
           mocksProvider,
           globalSettings,
@@ -131,6 +132,7 @@ object ruleDecoders {
       jwtDefinitions: Definitions[JwtDef],
       rorKbnDefinitions: Definitions[RorKbnDef],
       ldapServiceDefinitions: Definitions[LdapService],
+      pkiDefinitions: Definitions[PkiDef],
       impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
       mocksProvider: MocksProvider,
       globalSettings: GlobalSettings,
@@ -166,6 +168,10 @@ object ruleDecoders {
         )
       case LdapAuthRule.Name.name =>
         Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
+      case PkiAuthorizationRule.Name.name =>
+        Some(new PkiAuthorizationRuleDecoder(pkiDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
+      case PkiAuthRule.Name.name =>
+        Some(new PkiAuthRuleDecoder(pkiDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case RorKbnAuthRule.Name.name =>
         Some(new RorKbnRulesDecoders.AuthRuleDecoder(rorKbnDefinitions.items, rorKbnDefinitions.items, globalSettings))
       case RorKbnAuthenticationRule.Name.name =>
@@ -184,6 +190,7 @@ object ruleDecoders {
           authenticationServiceDefinitions,
           authProxyDefinitions,
           ldapServiceDefinitions,
+          pkiDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
           globalSettings,
@@ -198,6 +205,7 @@ object ruleDecoders {
       authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
       authProxyDefinitions: Definitions[ProxyAuth],
       ldapServiceDefinitions: Definitions[LdapService],
+      pkiDefinitions: Definitions[PkiDef],
       impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
       mocksProvider: MocksProvider,
       globalSettings: GlobalSettings,
@@ -234,6 +242,8 @@ object ruleDecoders {
             globalSettings
           )
         )
+      case PkiAuthenticationRule.Name.name =>
+        Some(new PkiAuthenticationRuleDecoder(pkiDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case ProxyAuthRule.Name.name =>
         Some(new ProxyAuthRuleDecoder(authProxyDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case TokenAuthenticationRule.Name.name =>

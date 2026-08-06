@@ -160,6 +160,10 @@ final case class MockGeneralIndexRequestContext(
     this.copy(esServices = esServices)
   }
 
+  def withClientCertificate(clientCertificate: ClientCertificate): MockGeneralIndexRequestContext = {
+    this.copy(restRequest = this.restRequest.copy(clientCertificate = Some(clientCertificate)))
+  }
+
 }
 
 final case class MockFilterableMultiRequestContext(

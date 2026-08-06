@@ -50,6 +50,22 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           expected = allUsersResolved(UniqueNonEmptyList.of(User.Id("admin")))
         )
       }
+      "pki authentication rule with an accepted users list" in {
+        assertLocalUsersFromSettings(
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    pki_authentication:
+             |      name: "corporate_pki"
+             |      users: ["svc-logstash", "svc-beats"]
+             |
+             |  pkis:
+             |  - name: corporate_pki
+             |""".stripMargin,
+          expected = allUsersResolved(UniqueNonEmptyList.of(User.Id("svc-logstash"), User.Id("svc-beats")))
+        )
+      }
       "username used in two rules" in {
         assertLocalUsersFromSettings(
           s"""
@@ -310,6 +326,21 @@ class LocalUsersTest extends AnyWordSpec with Inside {
       }
     }
     "return info that unknown users in settings" when {
+      "a pki authentication rule has no accepted users list, so the population it identifies is unbounded" in {
+        val settings =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    pki_authentication: "corporate_pki"
+             |  - name: test_block2
+             |    auth_key: admin:container
+             |
+             |  pkis:
+             |  - name: corporate_pki
+             |""".stripMargin
+        assertLocalUsersFromSettings(settings, expected = withUnknownUsers(UniqueNonEmptyList.of(User.Id("admin"))))
+      }
       "hashed username and password" in {
         val settings =
           s"""
