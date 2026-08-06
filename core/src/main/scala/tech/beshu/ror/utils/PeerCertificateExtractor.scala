@@ -35,13 +35,19 @@ import scala.util.{Failure, Success, Try}
   * The walk down to the `SSLEngine` is done reflectively on purpose. The ROR patcher copies ES's
   * `transport-netty4` jar into the plugin directory, so ROR's classloader holds its own copy of
   * `Netty4HttpChannel`; a channel Elasticsearch created (the X-Pack-terminated case) is an instance of
-  * ES's copy, and a direct cast would fail. Only public methods are used - no `setAccessible`, which
-  * ES 9's entitlements restrict - and everything from the `SSLEngine` onwards is a JDK type, loaded once
-  * and therefore identical in every classloader.
+  * ES's copy, and a direct cast would fail. Everything from the `SSLEngine` onwards is a JDK type,
+  * loaded once and therefore identical in every classloader.
+  *
+  * Elasticsearch hands out a wrapped channel - `AbstractHttpServerTransport$RequestTrackingHttpChannel`,
+  * a private class whose delegate is a field with no accessor - so the wrapper has to be opened before
+  * the Netty channel is in reach. Public methods are tried first and cover an unwrapped channel without
+  * touching field access at all; only a wrapper falls back to reading fields.
   */
 object PeerCertificateExtractor extends RequestIdAwareLogging {
 
   private val sslHandlerClassName = "io.netty.handler.ssl.SslHandler"
+
+  private val maxChannelUnwrapDepth = 3
 
   // ROR names its handler, ES/X-Pack names its own; both are checked before falling back to a scan
   private val knownSslHandlerNames = List("ssl", "ssl_netty4_handler")
@@ -69,7 +75,9 @@ object PeerCertificateExtractor extends RequestIdAwareLogging {
       case Success(chain) =>
         chain.headOption.collect { case certificate: X509Certificate => certificate }
       case Failure(_: SSLPeerUnverifiedException) =>
-        // the client presented no certificate - the normal case when client authentication is optional
+        // the client presented no certificate - the normal case when client authentication is optional,
+        // but also what a session read at the wrong moment looks like, so it is worth being able to see
+        noRequestIdLogger.debug("The TLS session carries no client certificate")
         None
       case Failure(ex) =>
         noRequestIdLogger.debug("Cannot read the peer certificate from the TLS session", ex)
@@ -79,7 +87,7 @@ object PeerCertificateExtractor extends RequestIdAwareLogging {
 
   private[ror] def sslEngineOf(httpChannel: AnyRef): Option[SSLEngine] = {
     for {
-      nettyChannel <- step("getNettyChannel", httpChannel)(invoke(_, "getNettyChannel"))
+      nettyChannel <- step("getNettyChannel", httpChannel)(nettyChannelOf(_))
       pipeline <- step("pipeline", nettyChannel)(invoke(_, "pipeline"))
       sslHandler <- step("ssl handler", pipeline)(sslHandlerIn)
       sslEngine <- step("engine", sslHandler)(invoke(_, "engine").collect { case engine: SSLEngine => engine })
@@ -96,6 +104,28 @@ object PeerCertificateExtractor extends RequestIdAwareLogging {
       )
     }
     result
+  }
+
+  /** Elasticsearch wraps the channel it hands to a request, so the delegate may sit a few fields down. */
+  private def nettyChannelOf(httpChannel: AnyRef, depth: Int = 0): Option[AnyRef] = {
+    invoke(httpChannel, "getNettyChannel")
+      .orElse {
+        if (depth >= maxChannelUnwrapDepth) None
+        else delegatesOf(httpChannel).flatMap(nettyChannelOf(_, depth + 1)).headOption
+      }
+  }
+
+  private def delegatesOf(target: AnyRef): LazyList[AnyRef] = {
+    LazyList
+      .from(target.getClass.getDeclaredFields.toList)
+      .filterNot(field => Modifier.isStatic(field.getModifiers))
+      .flatMap { field =>
+        Try {
+          field.setAccessible(true)
+          Option(field.get(target))
+        }.toOption.flatten
+      }
+      .filterNot(_ eq target)
   }
 
   private def sslHandlerIn(pipeline: AnyRef): Option[AnyRef] = {

@@ -497,6 +497,17 @@ The ACL is not a certificate validator. One code path for chain validation, no "
 invalid at layer B" bugs, and a simple invariant for rules: *any certificate a rule sees has already
 been verified*.
 
+The invariant is inherited, not enforced, and integration testing showed it can be lost. With
+`xpack.security.http.ssl.verification_mode: none`, Elasticsearch still asks for a client certificate
+but validates nothing, so a certificate minted by any CA is accepted. A rogue CA can then issue
+`CN=svc-logstash,...` - byte-identical to a real service - and PKI authenticates it. ROR cannot detect
+this: by the time a rule sees the certificate it is indistinguishable from a legitimate one.
+
+Two consequences. The documentation has to state that PKI is only as strong as the TLS layer's
+verification, and name the settings that weaken it. And `issuer_dn` (§3.3) is the one constraint that
+still bites in that situation, since a rogue CA can forge a subject but not its own name - which makes
+it worth more than the "two CAs in one truststore" case it was originally justified by.
+
 **D2 — Propagation must be unforgeable.**
 The cheap implementation — inject the subject DN as an HTTP header — is **explicitly rejected**. A
 client-supplied header of the same name would be indistinguishable from an ROR-supplied one, turning
@@ -901,6 +912,10 @@ clusters.
 - **PKI requires Elasticsearch 7.0+.** On ES 6.7 a request cannot be traced back to the connection it
   arrived on, so no certificate is ever available.
 - FIPS mode must continue to work (§4.4).
+- **PKI inherits the TLS layer's verification, and cannot check it.** Client authentication that
+  requests a certificate without validating its chain - `xpack.security.http.ssl.verification_mode: none`
+  being the obvious way to get there - reduces PKI to trusting whatever subject DN the caller asserts.
+  Deployments must verify chains; see §4.3 D1.
 
 ### 6.4 Interaction with LDAP rules
 

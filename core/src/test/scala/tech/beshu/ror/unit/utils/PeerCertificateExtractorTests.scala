@@ -56,6 +56,12 @@ class PeerCertificateExtractorTests extends AnyWordSpec {
 
       PeerCertificateExtractor.sslEngineOf(httpChannel) should be(None)
     }
+    "reach through the wrapper Elasticsearch puts around the channel it hands to a request" in {
+      val sslEngine = newSslEngine
+      val httpChannel = new WrappedHttpChannel(httpChannelWith("ssl" -> new HandlerWithEngine(sslEngine)))
+
+      PeerCertificateExtractor.sslEngineOf(httpChannel) should be(Some(sslEngine))
+    }
     "find nothing when the channel doesn't expose the underlying Netty channel" in {
       PeerCertificateExtractor.sslEngineOf(new Object()) should be(None)
     }
@@ -93,6 +99,14 @@ class PeerCertificateExtractorTests extends AnyWordSpec {
 /** Stands in for `org.elasticsearch.http.netty4.Netty4HttpChannel`, which core cannot depend on. */
 final class FakeHttpChannel(channel: Channel) {
   def getNettyChannel: Channel = channel
+}
+
+/** Stands in for `AbstractHttpServerTransport$RequestTrackingHttpChannel`: Elasticsearch does not hand a
+  * request the channel itself, but a private wrapper whose delegate is a field with no accessor.
+  */
+final class WrappedHttpChannel(private val inner: FakeHttpChannel) {
+  // as in Elasticsearch's wrapper: the delegate is reachable only as a field
+  override def toString: String = inner.toString
 }
 
 /** A handler that is not an `SslHandler` but exposes an engine the same way, so that the by-name lookup

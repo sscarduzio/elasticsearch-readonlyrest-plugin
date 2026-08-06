@@ -92,7 +92,12 @@ class XpackSecurityPlugin(esVersion: String, config: Config) extends Elasticsear
         val clientAuthentication = config.attributes.restSslClientAuthentication
         builder
           .add("xpack.security.http.ssl.enabled: true")
-          .add("xpack.security.http.ssl.verification_mode: none")
+          // 'none' verifies nothing, so a client certificate from any CA is accepted and its subject DN
+          // proves nothing at all - a PKI provider reading an identity out of it needs the chain checked
+          .add(clientAuthentication match {
+            case ClientAuthentication.None => "xpack.security.http.ssl.verification_mode: none"
+            case _                         => "xpack.security.http.ssl.verification_mode: certificate"
+          })
           .add(s"xpack.security.http.ssl.client_authentication: ${clientAuthentication.configValue}")
           .add("xpack.security.http.ssl.keystore.path: elastic-certificates.p12")
           .add(clientAuthentication match {

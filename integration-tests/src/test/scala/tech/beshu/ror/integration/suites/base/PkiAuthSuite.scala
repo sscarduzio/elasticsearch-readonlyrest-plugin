@@ -68,7 +68,9 @@ abstract class PkiAuthSuite
     "be forbidden where those groups do not reach" in {
       val indexManager = indexManagerFor("/pki/pki-svc-logstash.jks")
 
-      indexManager.getIndex("facebook") should have statusCode 403
+      // 404, not 403: the certificate did authenticate the caller, and ReadonlyREST hides an index the
+      // caller may not see by rewriting it to a name that does not exist rather than admitting it exists
+      indexManager.getIndex("facebook") should have statusCode 404
     }
     "be allowed by name alone, without any groups" in {
       val indexManager = indexManagerFor("/pki/pki-svc-dashboard.jks")
