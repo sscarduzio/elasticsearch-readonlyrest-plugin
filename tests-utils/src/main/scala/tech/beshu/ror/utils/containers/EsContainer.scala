@@ -24,7 +24,7 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
-import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
+import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, ClientCertificate, Header, None, Token}
 import tech.beshu.ror.utils.containers.EsContainer.{Credentials, EsContainerImplementation}
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
 import tech.beshu.ror.utils.containers.logs.CompositeLogConsumer
@@ -147,7 +147,15 @@ abstract class EsContainer(
     case BasicAuth(user, password) => new RestClient(sslEnabled, ip, port, Some(user, password))
     case Token(token) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader("Authorization", token))
     case Header(name, value) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader(name, value))
-    case None                => new RestClient(sslEnabled, ip, port, Option.empty)
+    case ClientCertificate(keystoreResource, keystorePassword) =>
+      new RestClient(
+        sslEnabled,
+        ip,
+        port,
+        Option.empty,
+        Some(RestClient.ClientCertificate(keystoreResource, keystorePassword, keystorePassword))
+      )
+    case None => new RestClient(sslEnabled, ip, port, Option.empty)
   }
 
   override def start(): Unit = {
@@ -197,6 +205,10 @@ object EsContainer {
     final case class Header(name: String, value: String) extends Credentials
 
     final case class Token(token: String) extends Credentials
+
+    /** Authenticate by presenting a TLS client certificate, rather than by anything in the request. */
+    final case class ClientCertificate(keystoreResource: String, keystorePassword: String = "readonlyrest")
+        extends Credentials
 
     case object None extends Credentials
   }

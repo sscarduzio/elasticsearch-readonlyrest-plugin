@@ -63,6 +63,10 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
 
     object RestSsl {
       case object Xpack extends RestSsl
+
+      /** X-Pack-terminated TLS that asks the caller for a certificate - the deployment shape PKI targets. */
+      final case class XpackPki(clientAuthentication: XpackSecurityPlugin.Config.ClientAuthentication) extends RestSsl
+
       final case class Ror(rorrestSsl: ReadonlyRestPlugin.Config.RestSsl) extends RestSsl
     }
 
@@ -124,6 +128,7 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String, config: Conf
     config.attributes.restSsl match {
       case Enabled.Yes(RestSsl.Ror(rorRestSsl)) => Enabled.Yes(rorRestSsl)
       case Enabled.Yes(RestSsl.Xpack)           => Enabled.No
+      case Enabled.Yes(RestSsl.XpackPki(_))     => Enabled.No
       case Enabled.No                           => Enabled.No
     }
   }
@@ -140,9 +145,15 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String, config: Conf
     XpackSecurityPlugin.Config(
       XpackSecurityPlugin.Config.Attributes(
         restSslEnabled = config.attributes.restSsl match {
-          case Enabled.Yes(RestSsl.Xpack)  => true
-          case Enabled.Yes(RestSsl.Ror(_)) => false
-          case Enabled.No                  => false
+          case Enabled.Yes(RestSsl.Xpack)       => true
+          case Enabled.Yes(RestSsl.XpackPki(_)) => true
+          case Enabled.Yes(RestSsl.Ror(_))      => false
+          case Enabled.No                       => false
+        },
+        restSslClientAuthentication = config.attributes.restSsl match {
+          case Enabled.Yes(RestSsl.XpackPki(clientAuthentication))                   => clientAuthentication
+          case Enabled.Yes(RestSsl.Xpack) | Enabled.Yes(RestSsl.Ror(_)) | Enabled.No =>
+            XpackSecurityPlugin.Config.ClientAuthentication.None
         },
         internodeSslEnabled = config.attributes.internodeSsl match {
           case Enabled.Yes(InternodeSsl.Xpack)  => true

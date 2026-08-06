@@ -60,6 +60,16 @@ object ReadonlyRestPlugin {
     object RestSsl {
       final case class Ror(sourceFile: SourceFile) extends RestSsl
       final case class RorFips(sourceFile: SourceFile) extends RestSsl
+
+      /** ROR-terminated TLS that asks the caller for a certificate, so that PKI rules have one to read. */
+      final case class RorPki(clientAuthentication: ClientAuthentication) extends RestSsl
+    }
+
+    sealed abstract class ClientAuthentication(val configValue: String)
+
+    object ClientAuthentication {
+      case object Optional extends ClientAuthentication("optional")
+      case object Required extends ClientAuthentication("required")
     }
 
     sealed trait InternodeSsl
@@ -81,6 +91,8 @@ class ReadonlyRestPlugin(esVersion: String, config: Config, performPatching: Boo
       .copyFile(esConfig.esConfigDir / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
       .copyFile(esConfig.esConfigDir / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
       .copyFile(esConfig.esConfigDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
+      .copyFile(esConfig.esConfigDir / "pki-server.jks", fromResourceBy(name = "pki/pki-server.jks"))
+      .copyFile(esConfig.esConfigDir / "pki-truststore.jks", fromResourceBy(name = "pki/pki-truststore.jks"))
       .copyFile(
         esConfig.esConfigDir / "elastic-certificates-cert.pem",
         fromResourceBy(name = "elastic-certificates-cert.pem")
@@ -200,6 +212,7 @@ class ReadonlyRestPlugin(esVersion: String, config: Config, performPatching: Boo
       (config.attributes.restSsl match {
         case Enabled.Yes(RestSsl.RorFips(_)) => true
         case Enabled.Yes(RestSsl.Ror(_))     => false
+        case Enabled.Yes(RestSsl.RorPki(_))  => false
         case Enabled.No                      => false
       }) ||
       (config.attributes.internodeSsl match {
@@ -257,6 +270,15 @@ class ReadonlyRestPlugin(esVersion: String, config: Config, performPatching: Boo
             .add("truststore_file: elastic-certificates.bcfks")
             .add("truststore_pass: readonlyrest")
             .add("key_pass: readonlyrest")
+        case Enabled.Yes(RestSsl.RorPki(clientAuthentication)) =>
+          builder
+            .add("http.type: ssl_netty4")
+            .add("readonlyrest.ssl.keystore_file: pki-server.jks")
+            .add("readonlyrest.ssl.keystore_pass: readonlyrest")
+            .add("readonlyrest.ssl.key_pass: readonlyrest")
+            .add("readonlyrest.ssl.truststore_file: pki-truststore.jks")
+            .add("readonlyrest.ssl.truststore_pass: readonlyrest")
+            .add(s"readonlyrest.ssl.client_authentication: ${clientAuthentication.configValue}")
         case Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)) =>
           builder
             .add("http.type: ssl_netty4")

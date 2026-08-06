@@ -20,7 +20,7 @@ import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstall
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.PluginInstallationSteps.emptyPluginInstallationSteps
 import tech.beshu.ror.utils.containers.images.Elasticsearch.{esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config
-import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin.Config.{Attributes, ClientAuthentication}
 import tech.beshu.ror.utils.misc.Version
 
 object XpackSecurityPlugin {
@@ -28,7 +28,12 @@ object XpackSecurityPlugin {
   final case class Config(attributes: Attributes)
 
   object Config {
-    final case class Attributes(restSslEnabled: Boolean, internodeSslEnabled: Boolean)
+
+    final case class Attributes(
+        restSslEnabled: Boolean,
+        internodeSslEnabled: Boolean,
+        restSslClientAuthentication: ClientAuthentication = ClientAuthentication.None
+    )
 
     object Attributes {
 
@@ -37,6 +42,17 @@ object XpackSecurityPlugin {
         internodeSslEnabled = true
       )
 
+    }
+
+    /** What the HTTP layer asks of callers. Anything but `None` also swaps the HTTP truststore for the
+      * PKI one, so that the test client certificates are trusted.
+      */
+    sealed abstract class ClientAuthentication(val configValue: String)
+
+    object ClientAuthentication {
+      case object None extends ClientAuthentication("none")
+      case object Optional extends ClientAuthentication("optional")
+      case object Required extends ClientAuthentication("required")
     }
 
   }
@@ -48,6 +64,7 @@ class XpackSecurityPlugin(esVersion: String, config: Config) extends Elasticsear
   override def installationSteps(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
     emptyPluginInstallationSteps
       .copyFile(esConfig.esConfigDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
+      .copyFile(esConfig.esConfigDir / "pki-truststore.jks", fromResourceBy(name = "pki/pki-truststore.jks"))
       .copyFile(
         esConfig.esConfigDir / "elastic-certificates-cert.pem",
         fromResourceBy(name = "elastic-certificates-cert.pem")
@@ -72,12 +89,16 @@ class XpackSecurityPlugin(esVersion: String, config: Config) extends Elasticsear
 
     def configureRestSsl(): EsConfigBuilder = {
       if (config.attributes.restSslEnabled) {
+        val clientAuthentication = config.attributes.restSslClientAuthentication
         builder
           .add("xpack.security.http.ssl.enabled: true")
           .add("xpack.security.http.ssl.verification_mode: none")
-          .add("xpack.security.http.ssl.client_authentication: none")
+          .add(s"xpack.security.http.ssl.client_authentication: ${clientAuthentication.configValue}")
           .add("xpack.security.http.ssl.keystore.path: elastic-certificates.p12")
-          .add("xpack.security.http.ssl.truststore.path: elastic-certificates.p12")
+          .add(clientAuthentication match {
+            case ClientAuthentication.None => "xpack.security.http.ssl.truststore.path: elastic-certificates.p12"
+            case _                         => "xpack.security.http.ssl.truststore.path: pki-truststore.jks"
+          })
       } else {
         builder
       }

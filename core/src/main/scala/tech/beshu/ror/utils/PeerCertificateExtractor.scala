@@ -79,11 +79,23 @@ object PeerCertificateExtractor extends RequestIdAwareLogging {
 
   private[ror] def sslEngineOf(httpChannel: AnyRef): Option[SSLEngine] = {
     for {
-      nettyChannel <- invoke(httpChannel, "getNettyChannel")
-      pipeline <- invoke(nettyChannel, "pipeline")
-      sslHandler <- sslHandlerIn(pipeline)
-      sslEngine <- invoke(sslHandler, "engine").collect { case sslEngine: SSLEngine => sslEngine }
+      nettyChannel <- step("getNettyChannel", httpChannel)(invoke(_, "getNettyChannel"))
+      pipeline <- step("pipeline", nettyChannel)(invoke(_, "pipeline"))
+      sslHandler <- step("ssl handler", pipeline)(sslHandlerIn)
+      sslEngine <- step("engine", sslHandler)(invoke(_, "engine").collect { case engine: SSLEngine => engine })
     } yield sslEngine
+  }
+
+  // Every hop below is reflective, so a mismatch with the Elasticsearch or Netty of the day shows up as
+  // a silent None and PKI rules that never match. Saying which hop gave up turns that into one log line.
+  private def step[A, B](what: String, from: A)(f: A => Option[B]): Option[B] = {
+    val result = f(from)
+    if (result.isEmpty) {
+      noRequestIdLogger.debug(
+        s"Cannot read the TLS client certificate: '${what.show}' is not reachable on ${from.getClass.getName.show}. PKI rules will not match."
+      )
+    }
+    result
   }
 
   private def sslHandlerIn(pipeline: AnyRef): Option[AnyRef] = {
@@ -107,10 +119,17 @@ object PeerCertificateExtractor extends RequestIdAwareLogging {
     classHierarchyOf(handler.getClass).exists(_.getName == sslHandlerClassName)
 
   private def invoke(target: AnyRef, methodName: String, arguments: (Class[?], AnyRef)*): Option[AnyRef] = {
-    for {
-      method <- accessibleMethod(target.getClass, methodName, arguments.map(_._1).toList)
-      result <- Try(method.invoke(target, arguments.map(_._2)*)).toOption.flatMap(Option(_))
-    } yield result
+    accessibleMethod(target.getClass, methodName, arguments.map(_._1).toList)
+      .flatMap { method =>
+        Try(method.invoke(target, arguments.map(_._2)*)) match {
+          case Success(result) => Option(result)
+          case Failure(ex)     =>
+            noRequestIdLogger.debug(
+              s"Cannot call '${methodName.show}' on ${target.getClass.getName.show}: ${ex.toString.show}"
+            )
+            None
+        }
+      }
   }
 
   private def accessibleMethod(clazz: Class[?], methodName: String, parameterTypes: List[Class[?]]) = {

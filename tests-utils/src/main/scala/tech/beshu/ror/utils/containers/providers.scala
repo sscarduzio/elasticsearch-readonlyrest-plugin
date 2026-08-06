@@ -45,6 +45,10 @@ object providers {
 
     def noBasicAuthClient: RestClient = client(Credentials.None)
 
+    /** A client whose only credential is the TLS client certificate it presents during the handshake. */
+    def clientCertificateAuthClient(keystoreResource: String): RestClient =
+      client(Credentials.ClientCertificate(keystoreResource))
+
     def adminClient: RestClient
 
     private[providers] def client(credentials: Credentials): RestClient

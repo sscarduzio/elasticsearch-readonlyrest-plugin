@@ -35,13 +35,25 @@ import org.apache.http.util.EntityUtils
 import org.apache.http.{Header, HttpResponse}
 
 import java.net.URI
+import java.security.KeyStore
 import scala.annotation.nowarn
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 import scala.util.Try
 
-class RestClient(ssl: Boolean, host: String, port: Int, basicAuth: Option[(String, String)], headers: Header*) {
+class RestClient(
+    ssl: Boolean,
+    host: String,
+    port: Int,
+    basicAuth: Option[(String, String)],
+    clientCertificate: Option[RestClient.ClientCertificate],
+    headers: Header*
+) {
+
+  def this(ssl: Boolean, host: String, port: Int, basicAuth: Option[(String, String)], headers: Header*) = {
+    this(ssl, host, port, basicAuth, None, headers*)
+  }
 
   def this(ssl: Boolean, host: String, port: Int) = {
     this(ssl, host, port, None)
@@ -108,8 +120,20 @@ class RestClient(ssl: Boolean, host: String, port: Int, basicAuth: Option[(Strin
   private def withSsl(builder: HttpClientBuilder): HttpClientBuilder = {
     val sslCtxBuilder = new SSLContextBuilder();
     sslCtxBuilder.loadTrustMaterial(null, new TrustAllCertificatesStrategy());
+    clientCertificate.foreach { certificate =>
+      sslCtxBuilder.loadKeyMaterial(keystoreOf(certificate), certificate.keyPassword.toCharArray)
+    }
     val sslsf = new SSLConnectionSocketFactory(sslCtxBuilder.build(), NoopHostnameVerifier.INSTANCE);
     builder.setSSLSocketFactory(sslsf)
+  }
+
+  private def keystoreOf(certificate: RestClient.ClientCertificate) = {
+    val keystore = KeyStore.getInstance("JKS")
+    val stream = Option(getClass.getResourceAsStream(certificate.keystoreResource))
+      .getOrElse(throw new IllegalArgumentException(s"Cannot find keystore: ${certificate.keystoreResource}"))
+    try keystore.load(stream, certificate.keystorePassword.toCharArray)
+    finally stream.close()
+    keystore
   }
 
   private def readTimeout() = {
@@ -139,6 +163,9 @@ class RestClient(ssl: Boolean, host: String, port: Int, basicAuth: Option[(Strin
 }
 
 object RestClient {
+
+  /** A client certificate to present during the TLS handshake, loaded from a classpath keystore. */
+  final case class ClientCertificate(keystoreResource: String, keystorePassword: String, keyPassword: String)
 
   def bodyFrom(response: HttpResponse): String = {
     EntityUtils.toString(response.getEntity)

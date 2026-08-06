@@ -1,0 +1,47 @@
+readonlyrest:
+
+  access_control_rules:
+
+  # The container initializer and the readiness probe come in as this user.
+  - name: "CONTAINER ADMIN"
+    verbosity: error
+    type: allow
+    auth_key: admin:container
+
+  # Machine identities whose certificate carries a role the users section maps to a local group.
+  - name: "Machine identities"
+    groups: ["ingest"]
+    indices: ["twitter"]
+
+  # A service identified by its certificate alone - no groups involved.
+  - name: "Named service"
+    pki_authentication:
+      name: "services_pki"
+      users: ["svc-dashboard"]
+    indices: ["facebook"]
+
+  # Callers with no certificate fall through to here, which is what makes mixed mode work.
+  - name: "Humans"
+    auth_key: "analyst:passwd"
+    indices: ["twitter"]
+
+  users:
+  - username: "*"
+    groups:
+    # Only svc-ingest is mapped. A certificate carrying any other OU - including the 'Services'
+    # branch OU every one of them carries - contributes nothing, which is why no group filtering
+    # mechanism is needed.
+    - local_group: { id: "ingest", name: "ingest" }
+      external_group_ids: ["svc-ingest"]
+    pki_auth:
+      name: "services_pki"
+      groups: ["svc-ingest", "svc-query"]
+
+  pkis:
+  - name: services_pki
+    # The test CA also issues to the People branch; this keeps those certificates out.
+    subject_dn_base: "OU=Services,DC=corp,DC=example,DC=com"
+    users:
+      user_id_attribute: "CN"
+    groups:
+      group_id_attribute: "OU"
