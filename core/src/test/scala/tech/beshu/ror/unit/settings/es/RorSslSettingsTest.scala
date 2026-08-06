@@ -62,7 +62,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                   Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))),
                   allowedProtocols,
                   allowedCiphers,
-                  clientAuthenticationEnabled,
+                  clientAuthentication,
                   FipsMode.NonFips
                 )
               ) =>
@@ -73,7 +73,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
+            clientAuthentication should be(ClientAuthentication.NotRequested)
         }
         ssl.internodeSsl should be(None)
       }
@@ -101,7 +101,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                   Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))),
                   allowedProtocols,
                   allowedCiphers,
-                  clientAuthenticationEnabled,
+                  clientAuthentication,
                   FipsMode.NonFips
                 )
               ) =>
@@ -112,7 +112,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             truststorePassword should be(TruststorePassword("1234"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
+            clientAuthentication should be(ClientAuthentication.NotRequested)
         }
         ssl.internodeSsl should be(None)
       }
@@ -136,7 +136,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                   Some(ClientCertificateSettings.FileBasedSettings(clientTrustedCertificateFile)),
                   allowedProtocols,
                   allowedCiphers,
-                  clientAuthenticationEnabled,
+                  clientAuthentication,
                   FipsMode.NonFips
                 )
               ) =>
@@ -145,7 +145,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             clientTrustedCertificateFile.value.name should be("client_certificate.pem")
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
+            clientAuthentication should be(ClientAuthentication.NotRequested)
         }
         ssl.internodeSsl should be(None)
       }
@@ -166,13 +166,13 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                     None,
                     _,
                     _,
-                    clientAuthenticationEnabled,
+                    clientAuthentication,
                     FipsMode.NonFips
                   )
                 ) =>
               serverCertificateKeyFile.value.name should be("pkcs8-ec-key.pem")
               serverCertificateFile.value.name should be("pkcs8-ec-cert.pem")
-              assertServerSslContextCreatedCorrectly(sslSettings, clientAuthenticationEnabled)
+              assertServerSslContextCreatedCorrectly(sslSettings, clientAuthentication)
           }
         }
         "traditional EC private key" in {
@@ -191,13 +191,13 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                     None,
                     _,
                     _,
-                    clientAuthenticationEnabled,
+                    clientAuthentication,
                     FipsMode.NonFips
                   )
                 ) =>
               serverCertificateKeyFile.value.name should be("traditional-ec-key.pem")
               serverCertificateFile.value.name should be("traditional-ec-cert.pem")
-              assertServerSslContextCreatedCorrectly(sslSettings, clientAuthenticationEnabled)
+              assertServerSslContextCreatedCorrectly(sslSettings, clientAuthentication)
           }
         }
         "traditional RSA private key" in {
@@ -216,13 +216,13 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                     None,
                     _,
                     _,
-                    clientAuthenticationEnabled,
+                    clientAuthentication,
                     FipsMode.NonFips
                   )
                 ) =>
               serverCertificateKeyFile.value.name should be("traditional-rsa-key.pem")
               serverCertificateFile.value.name should be("traditional-rsa-cert.pem")
-              assertServerSslContextCreatedCorrectly(sslSettings, clientAuthenticationEnabled)
+              assertServerSslContextCreatedCorrectly(sslSettings, clientAuthentication)
           }
         }
       }
@@ -253,7 +253,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                   Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))),
                   allowedProtocols,
                   allowedCiphers,
-                  clientAuthenticationEnabled,
+                  clientAuthentication,
                   FipsMode.NonFips
                 )
               ) =>
@@ -264,9 +264,51 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
+            clientAuthentication should be(ClientAuthentication.NotRequested)
         }
         ssl.internodeSsl should be(None)
+      }
+    }
+    "support client authentication" when {
+      "one of the documented values is used" in {
+        clientAuthenticationFrom("client_authentication: none") should be(ClientAuthentication.NotRequested)
+        clientAuthenticationFrom("client_authentication: optional") should be(ClientAuthentication.Optional)
+        clientAuthenticationFrom("client_authentication: required") should be(ClientAuthentication.Required)
+      }
+      "the value is written in a different case" in {
+        clientAuthenticationFrom("client_authentication: REQUIRED") should be(ClientAuthentication.Required)
+      }
+      "the legacy boolean values are used" in {
+        clientAuthenticationFrom("client_authentication: true") should be(ClientAuthentication.Required)
+        clientAuthenticationFrom("client_authentication: false") should be(ClientAuthentication.NotRequested)
+      }
+      "the deprecated 'verification' key is used" in {
+        clientAuthenticationFrom("verification: true") should be(ClientAuthentication.Required)
+        clientAuthenticationFrom("verification: false") should be(ClientAuthentication.NotRequested)
+      }
+      "'client_authentication' and 'verification' are both defined" in {
+        clientAuthenticationFrom(
+          """client_authentication: optional
+            |    verification: true""".stripMargin
+        ) should be(ClientAuthentication.Optional)
+      }
+      "no client authentication key is defined" in {
+        clientAuthenticationFrom("keystore_pass: readonlyrest1") should be(ClientAuthentication.NotRequested)
+      }
+    }
+    "not be able to load client authentication" when {
+      "'client_authentication' value is not supported" in {
+        inside(loadSslWith("client_authentication: whatever")) { case Left(MalformedSettings(_, message)) =>
+          message should include(
+            "Invalid settings option 'whatever' for client authentication. Valid values are: none, optional, required"
+          )
+        }
+      }
+      "'verification' is given one of the new named values" in {
+        // the deprecated key stays boolean-only - three-state behaviour requires 'client_authentication'
+        inside(loadSslWith("verification: optional")) { case Left(MalformedSettings(_, message)) =>
+          message should include("Cannot convert 'optional' to boolean")
+        }
       }
     }
     "be disabled" when {
@@ -353,7 +395,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                   None,
                   allowedProtocols,
                   allowedCiphers,
-                  clientAuthenticationEnabled,
+                  clientAuthentication,
                   FipsMode.NonFips
                 )
               ) =>
@@ -362,7 +404,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             keyPass should be(KeyPass("readonlyrest2"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
+            clientAuthentication should be(ClientAuthentication.NotRequested)
         }
         ssl.internodeSsl should be(None)
       }
@@ -387,7 +429,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                   None,
                   allowedProtocols,
                   allowedCiphers,
-                  clientAuthenticationEnabled,
+                  clientAuthentication,
                   certificateVerificationEnabled,
                   hostnameVerificationEnabled,
                   FipsMode.NonFips
@@ -398,7 +440,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             keyPass should be(KeyPass("readonlyrest2"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
+            clientAuthentication should be(ClientAuthentication.NotRequested)
             certificateVerificationEnabled should be(false)
             hostnameVerificationEnabled should be(false)
         }
@@ -446,7 +488,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                   None,
                   allowedProtocols,
                   allowedCiphers,
-                  clientAuthenticationEnabled,
+                  clientAuthentication,
                   FipsMode.NonFips
                 )
               ) =>
@@ -455,7 +497,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             keyPass should be(KeyPass("readonlyrest2"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
+            clientAuthentication should be(ClientAuthentication.NotRequested)
         }
         ssl.internodeSsl should be(None)
       }
@@ -480,7 +522,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                   None,
                   allowedProtocols,
                   allowedCiphers,
-                  clientAuthenticationEnabled,
+                  clientAuthentication,
                   certificateVerificationEnabled,
                   hostnameVerificationEnabled,
                   FipsMode.NonFips
@@ -491,7 +533,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             keyPass should be(KeyPass("readonlyrest2"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
+            clientAuthentication should be(ClientAuthentication.NotRequested)
             certificateVerificationEnabled should be(false)
             hostnameVerificationEnabled should be(false)
         }
@@ -617,7 +659,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                 truststoreConfiguration,
                 allowedProtocols,
                 allowedCiphers,
-                clientAuthenticationEnabled,
+                clientAuthentication,
                 certificateVerificationEnabled,
                 hostnameVerificationEnabled,
                 FipsMode.NonFips
@@ -629,7 +671,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
           truststoreConfiguration should be(None)
           allowedProtocols should be(Set.empty)
           allowedCiphers should be(Set.empty)
-          clientAuthenticationEnabled should be(false)
+          clientAuthentication should be(ClientAuthentication.NotRequested)
           certificateVerificationEnabled should be(true)
           hostnameVerificationEnabled should be(true)
       }
@@ -659,7 +701,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                 Some(ClientCertificateSettings.FileBasedSettings(clientTrustedCertificateFile)),
                 allowedProtocols,
                 allowedCiphers,
-                clientAuthenticationEnabled,
+                clientAuthentication,
                 certificateVerificationEnabled,
                 hostnameVerificationEnabled,
                 FipsMode.NonFips
@@ -670,7 +712,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
           clientTrustedCertificateFile.value.name should be("client_certificate.pem")
           allowedProtocols should be(Set.empty)
           allowedCiphers should be(Set.empty)
-          clientAuthenticationEnabled should be(false)
+          clientAuthentication should be(ClientAuthentication.NotRequested)
           certificateVerificationEnabled should be(true)
           hostnameVerificationEnabled should be(false)
       }
@@ -704,7 +746,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
                   Some(ClientCertificateSettings.TruststoreBasedSettings(truststoreFile, Some(truststorePassword))),
                   allowedProtocols,
                   allowedCiphers,
-                  clientAuthenticationEnabled,
+                  clientAuthentication,
                   certificateVerificationEnabled,
                   hostnameVerificationEnabled,
                   FipsMode.NonFips
@@ -717,7 +759,7 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
+            clientAuthentication should be(ClientAuthentication.NotRequested)
             certificateVerificationEnabled should be(true)
             hostnameVerificationEnabled should be(true)
         }
@@ -891,11 +933,39 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
     }
   }
 
+  private def clientAuthenticationFrom(sslEntries: String): ClientAuthentication = {
+    loadSslWith(sslEntries) match {
+      case Right(Some(ssl)) =>
+        ssl.externalSsl
+          .getOrElse(throw new IllegalStateException("No external SSL settings to load"))
+          .clientAuthentication
+      case Right(None) => throw new IllegalStateException("No SSL settings to load")
+      case Left(error) => throw new IllegalStateException(s"Cannot load SSL settings: $error")
+    }
+  }
+
+  private def loadSslWith(sslEntries: String) = {
+    load(
+      s"""
+         |node.name: n1_it
+         |cluster.initial_master_nodes: n1_it
+         |xpack.security.enabled: false
+         |
+         |readonlyrest:
+         |  ssl:
+         |    enable: true
+         |    keystore_file: "ror-keystore.jks"
+         |    truststore_file: "ror-truststore.jks"
+         |    $sslEntries
+         |""".stripMargin
+    )
+  }
+
   private def assertServerSslContextCreatedCorrectly(
       sslSettings: ExternalSslSettings,
-      clientAuthenticationEnabled: Boolean
+      clientAuthentication: ClientAuthentication
   ): Unit = {
-    val sslContext = SSLCertHelper.prepareServerSSLContext(sslSettings, clientAuthenticationEnabled)
+    val sslContext = SSLCertHelper.prepareServerSSLContext(sslSettings, clientAuthentication)
     sslContext should not be null
     sslContext.isServer should be(true)
     noException should be thrownBy sslContext.newHandler(ByteBufAllocator.DEFAULT)

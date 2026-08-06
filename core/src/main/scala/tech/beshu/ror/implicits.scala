@@ -644,13 +644,13 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   implicit val externalSslSettingsShow: Show[SslSettings.ExternalSslSettings] = Show.show { s =>
     val protocols = if (s.allowedProtocols.isEmpty) "<default>" else s.allowedProtocols.map(_.value).mkString(",")
     val ciphers = if (s.allowedCiphers.isEmpty) "<default>" else s.allowedCiphers.map(_.value).mkString(",")
-    s"serverCert=[${s.serverCertificateSettings.show}], clientCert=[${s.clientCertificateSettings.map(_.show).getOrElse("none")}], protocols=[$protocols], ciphers=[$ciphers], clientAuth=${s.clientAuthenticationEnabled}, fips=${s.fipsMode.show}"
+    s"serverCert=[${s.serverCertificateSettings.show}], clientCert=[${s.clientCertificateSettings.map(_.show).getOrElse("none")}], protocols=[$protocols], ciphers=[$ciphers], clientAuth=${s.clientAuthentication.configValue}, fips=${s.fipsMode.show}"
   }
 
   implicit val internodeSslSettingsShow: Show[SslSettings.InternodeSslSettings] = Show.show { s =>
     val protocols = if (s.allowedProtocols.isEmpty) "<default>" else s.allowedProtocols.map(_.value).mkString(",")
     val ciphers = if (s.allowedCiphers.isEmpty) "<default>" else s.allowedCiphers.map(_.value).mkString(",")
-    s"serverCert=[${s.serverCertificateSettings.show}], clientCert=[${s.clientCertificateSettings.map(_.show).getOrElse("none")}], protocols=[$protocols], ciphers=[$ciphers], clientAuth=${s.clientAuthenticationEnabled}, certVerification=${s.certificateVerificationEnabled}, hostnameVerification=${s.hostnameVerificationEnabled}, fips=${s.fipsMode.show}"
+    s"serverCert=[${s.serverCertificateSettings.show}], clientCert=[${s.clientCertificateSettings.map(_.show).getOrElse("none")}], protocols=[$protocols], ciphers=[$ciphers], clientAuth=${s.clientAuthentication.configValue}, certVerification=${s.certificateVerificationEnabled}, hostnameVerification=${s.hostnameVerificationEnabled}, fips=${s.fipsMode.show}"
   }
 
   implicit val rorSslSettingsShow: Show[RorSslSettings] = Show.show {

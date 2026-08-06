@@ -113,7 +113,7 @@ object SSLCertHelper extends RequestIdAwareLogging {
     result.unsafeRunSync().build()
   }
 
-  def prepareServerSSLContext(sslSettings: SslSettings, clientAuthenticationEnabled: Boolean): SslContext = {
+  def prepareServerSSLContext(sslSettings: SslSettings, clientAuthentication: ClientAuthentication): SslContext = {
     prepareSslContextBuilder(sslSettings).attempt
       .map {
         case Right(sslCtxBuilder) =>
@@ -121,8 +121,8 @@ object SSLCertHelper extends RequestIdAwareLogging {
           if (sslSettings.allowedCiphers.nonEmpty) {
             sslCtxBuilder.ciphers(sslSettings.allowedCiphers.map(_.value).asJava)
           }
-          if (clientAuthenticationEnabled) {
-            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
+          clientAuthenticationModeOf(clientAuthentication).foreach { clientAuthMode =>
+            sslCtxBuilder.clientAuth(clientAuthMode)
             sslSettings.clientCertificateSettings match {
               case Some(truststoreBasedSettings: TruststoreBasedSettings) =>
                 sslCtxBuilder.trustManager(
@@ -147,6 +147,13 @@ object SSLCertHelper extends RequestIdAwareLogging {
       }
       .unsafeRunSync()
   }
+
+  private def clientAuthenticationModeOf(clientAuthentication: ClientAuthentication): Option[ClientAuth] =
+    clientAuthentication match {
+      case ClientAuthentication.NotRequested => None
+      case ClientAuthentication.Optional     => Some(ClientAuth.OPTIONAL)
+      case ClientAuthentication.Required     => Some(ClientAuth.REQUIRE)
+    }
 
   def isPEMHandlingAvailable: Boolean = {
     Try {

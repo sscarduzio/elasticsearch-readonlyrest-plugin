@@ -51,7 +51,7 @@ class SSLNetty4HttpServerTransport(
     with RequestIdAwareLogging {
 
   private val serverSslContext = doPrivileged {
-    SSLCertHelper.prepareServerSSLContext(ssl, ssl.clientAuthenticationEnabled)
+    SSLCertHelper.prepareServerSSLContext(ssl, ssl.clientAuthentication)
   }
 
   override def configureServerChannelHandler = new SSLHandler(this)

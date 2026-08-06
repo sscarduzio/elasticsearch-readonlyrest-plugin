@@ -18,6 +18,7 @@ package tech.beshu.ror.settings.es
 
 import better.files.*
 import cats.data.{EitherT, NonEmptyList}
+import enumeratum.{Enum, EnumEntry}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
@@ -151,7 +152,7 @@ sealed trait SslSettings {
 
   def allowedCiphers: Set[SslSettings.Cipher]
 
-  def clientAuthenticationEnabled: Boolean
+  def clientAuthentication: ClientAuthentication
 
   def certificateVerificationEnabled: Boolean
 
@@ -208,7 +209,7 @@ object SslSettings {
       clientCertificateSettings: Option[ClientCertificateSettings],
       allowedProtocols: Set[SslSettings.Protocol],
       allowedCiphers: Set[SslSettings.Cipher],
-      clientAuthenticationEnabled: Boolean,
+      clientAuthentication: ClientAuthentication,
       fipsMode: FipsMode
   ) extends SslSettings {
 
@@ -220,7 +221,7 @@ object SslSettings {
       clientCertificateSettings: Option[ClientCertificateSettings],
       allowedProtocols: Set[SslSettings.Protocol],
       allowedCiphers: Set[SslSettings.Cipher],
-      clientAuthenticationEnabled: Boolean,
+      clientAuthentication: ClientAuthentication,
       certificateVerificationEnabled: Boolean,
       hostnameVerificationEnabled: Boolean,
       fipsMode: FipsMode
@@ -231,6 +232,24 @@ object SslSettings {
   object FipsMode {
     case object NonFips extends FipsMode
     case object SslOnly extends FipsMode
+  }
+
+  sealed abstract class ClientAuthentication(val configValue: String) extends EnumEntry
+
+  object ClientAuthentication extends Enum[ClientAuthentication] {
+
+    case object NotRequested extends ClientAuthentication("none")
+    case object Optional extends ClientAuthentication("optional")
+    case object Required extends ClientAuthentication("required")
+
+    override val values: IndexedSeq[ClientAuthentication] = findValues
+
+    def fromConfigValue(str: String): Option[ClientAuthentication] =
+      values.find(_.configValue == str.toLowerCase)
+
+    // 'client_authentication' used to be a boolean; both values are still accepted, but undocumented
+    def fromLegacyBoolean(enabled: Boolean): ClientAuthentication =
+      if (enabled) Required else NotRequested
   }
 
 }
@@ -293,6 +312,28 @@ private object SslDecoders extends RequestIdAwareLogging {
     )
   }
 
+  // Accepts the documented names, plus the legacy booleans this setting used to be. Legacy values stay
+  // supported indefinitely, but are absent from the docs and from the error message below.
+  private val clientAuthenticationFromString: FromString[ClientAuthentication] = FromString.instance { str =>
+    ClientAuthentication.fromConfigValue(str) match {
+      case Some(clientAuthentication) =>
+        Right(clientAuthentication)
+      case None =>
+        FromString.boolean.decode(str).toOption.map(ClientAuthentication.fromLegacyBoolean) match {
+          case Some(clientAuthentication) =>
+            noRequestIdLogger.info(
+              s"'${consts.clientAuthentication.show}: ${str.show}' is a legacy value. Consider using '${clientAuthentication.configValue.show}' instead."
+            )
+            Right(clientAuthentication)
+          case None =>
+            val supportedValues = ClientAuthentication.values.map(_.configValue).mkString(", ")
+            Left(
+              s"Invalid settings option '${str.show}' for client authentication. Valid values are: ${supportedValues.show}"
+            )
+        }
+    }
+  }
+
   private def externalSslSectionDecoder(basePath: File, fipsMode: FipsMode)(
       implicit sc: SystemContext
   ): YamlLeafOrPropertyOrEnvDecoder[Option[ExternalSslSettings]] = {
@@ -308,8 +349,9 @@ private object SslDecoders extends RequestIdAwareLogging {
             for {
               ciphers <- ciphersDecoder(sectionPath)
               protocols <- protocolsDecoder(sectionPath)
-              clientAuthentication <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(
-                sectionPath :+ consts.clientAuthentication
+              clientAuthentication <- YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
+                sectionPath :+ consts.clientAuthentication,
+                clientAuthenticationFromString
               )
               verification <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
               keystoreFile <- keystoreFileDecoder(basePath, sectionPath)
@@ -346,7 +388,9 @@ private object SslDecoders extends RequestIdAwareLogging {
                     clientCertificateSettings = clientCert,
                     allowedProtocols = protocols.getOrElse(Set.empty),
                     allowedCiphers = ciphers.getOrElse(Set.empty),
-                    clientAuthenticationEnabled = clientAuthentication.orElse(verification).getOrElse(false),
+                    clientAuthentication = clientAuthentication
+                      .orElse(verification.map(ClientAuthentication.fromLegacyBoolean))
+                      .getOrElse(ClientAuthentication.NotRequested),
                     fipsMode = fipsMode
                   )
                 )
@@ -417,7 +461,8 @@ private object SslDecoders extends RequestIdAwareLogging {
                     clientCertificateSettings = clientCert,
                     allowedProtocols = protocols.getOrElse(Set.empty),
                     allowedCiphers = ciphers.getOrElse(Set.empty),
-                    clientAuthenticationEnabled = clientAuthentication.getOrElse(false),
+                    clientAuthentication =
+                      ClientAuthentication.fromLegacyBoolean(clientAuthentication.getOrElse(false)),
                     certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false),
                     hostnameVerificationEnabled = hostnameVerification.getOrElse(false),
                     fipsMode = fipsMode
