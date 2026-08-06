@@ -201,14 +201,20 @@ tasks.register('prebuildEsImage', JavaExec) {
 //   ./gradlew integration-tests:test -PesModule=es90x && ./gradlew integration-tests:regenerateSuiteTimings
 tasks.register('regenerateSuiteTimings') {
     doLast {
-        def times = new TreeMap()
+        // Wall-time estimation (boot + exec, median first-boot) lives in build-base's
+        // SuiteTimings.wallTimes (pure, unit-tested); this task only parses the junit XMLs
+        // and does the JSON I/O around it (same split as SuiteSharder).
+        def byShard = [:].withDefault { [] }
         fileTree(dir: layout.buildDirectory, includes: ['test-results/**/TEST-*.xml']).each { f ->
             def suite = new groovy.xml.XmlSlurper().parse(f)
             def name = suite.@name.toString()
             if (!name.startsWith('tech.beshu.ror.integration.suites')) return
-            def seconds = Math.round(Double.parseDouble(suite.@time.toString()))
-            times[name] = Math.max((long) times.getOrDefault(name, 0L), seconds)
+            byShard[f.parentFile.path] << new tech.beshu.ror.buildbase.SuiteTimings.SuiteRun(
+                name,
+                java.time.Instant.parse(suite.@timestamp.toString()),
+                Double.parseDouble(suite.@time.toString()))
         }
+        def times = tech.beshu.ror.buildbase.SuiteTimings.wallTimes(byShard.values())
         if (times.isEmpty()) {
             logger.quiet('No test-results found under build/ — run the integration tests first.')
             return
