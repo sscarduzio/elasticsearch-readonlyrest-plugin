@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.request
 
 import squants.information.Information
-import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{Address, ClientCertificate, Header, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.syntax.Set
 
@@ -29,6 +29,15 @@ trait RestRequest {
 
   def localAddress: Address
   def remoteAddress: Option[Address]
+
+  /** The TLS client certificate the connection was established with, if any.
+    *
+    * Already verified by whichever component terminated TLS - so a rule reading it never has to decide
+    * whether the certificate is trustworthy, only who it identifies. Absent for plain HTTP connections,
+    * for TLS connections where the client presented no certificate, and where TLS was terminated upstream
+    * of Elasticsearch.
+    */
+  def clientCertificate: Option[ClientCertificate]
 
   def content: String
   def contentLength: Information

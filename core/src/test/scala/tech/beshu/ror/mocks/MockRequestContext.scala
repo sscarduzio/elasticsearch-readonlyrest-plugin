@@ -427,6 +427,7 @@ final case class MockRestRequest(
     override val allHeaders: Set[Header] = Set.empty,
     override val localAddress: Address = Address.from("localhost").get,
     override val remoteAddress: Option[Address] = Address.from("localhost"),
+    override val clientCertificate: Option[ClientCertificate] = None,
     override val content: String = "",
     override val contentLength: Information = Bytes(0)
 ) extends RestRequest

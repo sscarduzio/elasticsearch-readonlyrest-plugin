@@ -24,13 +24,13 @@ import org.elasticsearch.rest.{
   RestResponse as EsRestResponse
 }
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{Address, ClientCertificate, Header, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.RestRequest
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
-import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.{PeerCertificateExtractor, RequestIdAwareLogging}
 
 import java.net.InetSocketAddress
 import scala.jdk.CollectionConverters.*
@@ -82,6 +82,11 @@ final class RorRestRequest private (underlying: EsRestRequest, headers: Set[Head
       .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
 
   override lazy val remoteAddress: Option[Address] = createAddressFrom(_.getRemoteAddress)
+
+  // lazy on purpose - reading it means walking down to the TLS session, which is wasted work unless a PKI
+  // rule asks for it. Rules run before the response is sent, so the channel is still live at that point.
+  override lazy val clientCertificate: Option[ClientCertificate] =
+    Option(underlying.getHttpChannel).flatMap(PeerCertificateExtractor.clientCertificateOf)
 
   override val content: String =
     if (underlying.isFullContent) Option(underlying.content()).map(_.utf8ToString()).getOrElse("")
