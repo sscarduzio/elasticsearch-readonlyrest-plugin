@@ -394,7 +394,8 @@ only the role-bearing attributes is the customer's responsibility.
 | 12 | Malformed `pattern` (uncompilable, wrong capture-group count, can match empty) | Config load | Rejected. |
 | 13 | Certificate revoked | **Not detected** | Out of scope; see §6.6. |
 | 14 | TLS terminated **upstream of Elasticsearch** (LB, service mesh) | ACL | No certificate available; PKI rules never match. Must be documented prominently — the most likely support case. |
-| 15 | `pkis` configured but client authentication is `none` / disabled | Config load | **WARN** — always a mistake; PKI rules can never match. |
+| 16 | Elasticsearch 6.7 | ACL | No certificate available; PKI rules never match. ES 6.7 predates the request-to-connection link ROR reads the certificate through, so PKI requires **ES 7.0+**. |
+| 15 | `pkis` configured but client authentication is `none` / disabled | **Not detected** | The ACL is built from `readonlyrest.yml` alone and never sees the TLS configuration; on the X-Pack path ROR has no SSL settings at all, so a warning could only ever fire for ROR-terminated TLS and its silence elsewhere would mislead. See §6.3. |
 
 Scenarios 2–4 deserve documentation beyond correctness: TLS-layer failures reach the client as
 opaque connection errors and cannot carry an ROR message. Operators debugging "my Beats agent can't
@@ -554,8 +555,11 @@ changes. One documented limitation: audit cannot distinguish two certificates sh
 reissued certificate, or the same CN from two CAs). Accepted.
 
 **Impersonation — as `proxy_auth`.** ROR requires each authentication rule to answer "does this user
-exist?". PKI has no user store to query, only a certificate present on this connection or not, so
-the answer is *cannot check* — precisely what `proxy_auth` does. This needs **no ROR Kibana change**:
+exist?". `proxy_auth` answers it from its static `users` list, and `pki_authentication` does the same
+when one is configured. Without a list there is nothing to check against, so the answer is *cannot
+check* and impersonation is refused for that rule — which the config-time impersonation warning says.
+Certificate-derived groups can never be impersonated at all, because an impersonator presents no
+certificate belonging to the impersonated caller. This needs **no ROR Kibana change**:
 KBN's impersonation is username-based and rule-agnostic, it sends a generic impersonation header, and
 the local-users API already models an "unknown users" flag for exactly the unbounded-population case
 a wildcard PKI `users` entry produces.
@@ -890,8 +894,12 @@ clusters.
   X-Pack Security is enabled and ROR SSL settings are present. PKI does not change this.
 - Trust anchors belong to whichever component terminates TLS. ROR neither duplicates nor overrides
   them, and per-provider truststores are not supported (D3).
-- If SSL is disabled, or client authentication is `none`, PKI rules can never match. The loader
-  **warns** rather than accepting silently; it is always a mistake.
+- If SSL is disabled, or client authentication is `none`, PKI rules can never match. This is **not**
+  detected at config load: the ACL is built from `readonlyrest.yml` and has no view of the TLS
+  configuration, which on the X-Pack path lives entirely in `elasticsearch.yml`. Documentation has to
+  carry this instead.
+- **PKI requires Elasticsearch 7.0+.** On ES 6.7 a request cannot be traced back to the connection it
+  arrived on, so no certificate is ever available.
 - FIPS mode must continue to work (§4.4).
 
 ### 6.4 Interaction with LDAP rules
@@ -969,6 +977,7 @@ them rather than against Elastic.
 | Impersonation | As `proxy_auth` (cannot-check). No ROR Kibana change required. |
 | Impersonation mocks | Deferred to a separate change. |
 | `@{cert:...}` variables | Not in v1 (D7). |
+| Supported ES versions | 7.0+. ES 6.7 cannot link a request to its connection, so PKI rules never match there. |
 | Delivery | Implement on `es94x` first; port to remaining ES modules after review. |
 
 ### 7.2 Remaining open questions
