@@ -137,6 +137,17 @@ private[patches] class ModifyPolicyUtilClass private (
         "()Ljava/lang/String;",
         true
       )
+      // Normalise separators first: on Windows the path is ...\readonlyrest\plugin-security.policy,
+      // so matching the forward-slash form directly would never identify the ROR policy there.
+      methodVisitor.visitIntInsn(Opcodes.BIPUSH, '\\'.toInt)
+      methodVisitor.visitIntInsn(Opcodes.BIPUSH, '/'.toInt)
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        "java/lang/String",
+        "replace",
+        "(CC)Ljava/lang/String;",
+        false
+      )
       methodVisitor.visitLdcInsn("/readonlyrest/plugin-security.policy")
       methodVisitor.visitMethodInsn(
         Opcodes.INVOKEVIRTUAL,
@@ -146,7 +157,7 @@ private[patches] class ModifyPolicyUtilClass private (
         false
       )
       methodVisitor.visitInsn(Opcodes.IRETURN)
-      methodVisitor.visitMaxs(2, 1)
+      methodVisitor.visitMaxs(3, 1)
       methodVisitor.visitEnd()
     }
 
