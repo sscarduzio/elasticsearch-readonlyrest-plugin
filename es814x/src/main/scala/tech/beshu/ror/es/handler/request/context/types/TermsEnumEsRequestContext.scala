@@ -29,11 +29,8 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
   UsedField,
   UsingFields
 }
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
-  BasedOnBlockContextOnly,
-  FlsAtLuceneLevelApproach
-}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
+import tech.beshu.ror.accesscontrol.request.{TermsEnumFieldAction, TermsEnumRequestFieldsSupport}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -90,19 +87,14 @@ class TermsEnumEsRequestContext(
   }
 
   private def applyFieldLevelSecurity(fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    fieldLevelSecurity match {
-      case None =>
+    TermsEnumRequestFieldsSupport.fieldActionFor(fieldLevelSecurity) match {
+      case TermsEnumFieldAction.NoChange =>
         Modified
-      case Some(definedFields) =>
-        definedFields.strategy match {
-          case FlsAtLuceneLevelApproach =>
-            FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions)
-            Modified
-          case BasedOnBlockContextOnly.NotAllowedFieldsUsed(notAllowedFields) =>
-            obfuscateRequestedField(notAllowedFields.head.obfuscate.value)
-          case BasedOnBlockContextOnly.EverythingAllowed =>
-            Modified
-        }
+      case TermsEnumFieldAction.ApplyLuceneRestrictions(restrictions) =>
+        FLSContextHeaderHandler.addContextHeader(threadPool, restrictions)
+        Modified
+      case TermsEnumFieldAction.ObfuscateFieldWith(value) =>
+        obfuscateRequestedField(value)
     }
   }
 
