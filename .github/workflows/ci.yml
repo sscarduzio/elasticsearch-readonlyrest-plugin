@@ -8,8 +8,9 @@ on:
       - '.claude/**'
       - '**/*.md'
   pull_request:
-    # ready_for_review is NOT a default type: without it, flipping a draft to "ready" would not
-    # start the full run — and with no required checks, a PR could merge on draft-level checks only.
+    # Draft PRs run a reduced test matrix, so marking a draft "ready for review" must start a run
+    # with the full PR matrix. That only happens if ready_for_review is listed here — it is not
+    # part of the default trigger types (opened, synchronize, reopened).
     types: [ opened, synchronize, reopened, ready_for_review ]
     branches: [ master, develop, 'epic/**', '**/epic/**' ]
     paths-ignore:
@@ -88,40 +89,34 @@ jobs:
           case "$REF" in *newes/*) echo "is_newes=true" >> "$GITHUB_OUTPUT";; *) echo "is_newes=false" >> "$GITHUB_OUTPUT";; esac
       - id: m
         env:
-          IS_FULL: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
-          IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
-          IS_DRAFT: ${{ github.event.pull_request.draft == true }}
-          ACTION: ${{ github.event.inputs.actionToPerform || '' }}
+          IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
+          IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
+          MANUAL_RUN_ACTION: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.actionToPerform || '') }}
         run: |
-          # ES-version sets — keep in sync with azure-pipelines.yml until Azure is deleted.
-          LINUX_FULL='["integration_es94x","integration_es92x","integration_es91x","integration_es90x","integration_es818x","integration_es816x","integration_es815x","integration_es814x","integration_es813x","integration_es812x","integration_es811x","integration_es810x","integration_es89x","integration_es88x","integration_es87x","integration_es85x","integration_es84x","integration_es83x","integration_es82x","integration_es81x","integration_es80x","integration_es717x","integration_es716x","integration_es714x","integration_es711x","integration_es710x","integration_es79x","integration_es78x","integration_es77x","integration_es74x","integration_es73x","integration_es72x","integration_es70x","integration_es67x"]'
-          LINUX_PR='["integration_es94x","integration_es90x","integration_es818x","integration_es816x","integration_es810x","integration_es80x","integration_es717x","integration_es710x","integration_es70x","integration_es67x"]'
-          WIN_FULL='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
-          WIN_BRANCH='["es94x","es92x","es90x","es818x","es80x","es717x","es70x"]'
-          WIN_PR='["es94x","es818x","es717x"]'
-          # Draft PRs: iteration feedback only — newest module per major on Linux, no Windows.
-          # The full PR set runs when the draft is marked ready (ready_for_review trigger above).
-          LINUX_DRAFT='["integration_es94x","integration_es818x","integration_es717x","integration_es67x"]'
+          LINUX_IT_FULL_SET='["integration_es94x","integration_es92x","integration_es91x","integration_es90x","integration_es818x","integration_es816x","integration_es815x","integration_es814x","integration_es813x","integration_es812x","integration_es811x","integration_es810x","integration_es89x","integration_es88x","integration_es87x","integration_es85x","integration_es84x","integration_es83x","integration_es82x","integration_es81x","integration_es80x","integration_es717x","integration_es716x","integration_es714x","integration_es711x","integration_es710x","integration_es79x","integration_es78x","integration_es77x","integration_es74x","integration_es73x","integration_es72x","integration_es70x","integration_es67x"]'
+          LINUX_IT_PR_READY_SET='["integration_es94x","integration_es90x","integration_es818x","integration_es816x","integration_es810x","integration_es80x","integration_es717x","integration_es710x","integration_es70x","integration_es67x"]'
+          LINUX_IT_PR_DRAFT_SET='["integration_es94x","integration_es818x","integration_es717x","integration_es67x"]'
+          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
+          WIN_IT_MASTER_OR_DEVELOP_SET='["es94x","es90x","es818x","es80x","es717x","es70x"]'
+          WIN_IT_PR_READY_SET='["es94x","es818x","es717x"]'
+          WIN_IT_PR_DRAFT_SET='[]'
 
-          # IS_DRAFT is checked FIRST: an epic-branch PR sets IS_FULL too, and a draft epic PR
-          # should iterate light like any draft — the full set returns on ready_for_review.
-          # (push/dispatch events have no PR context, so IS_DRAFT is always false there.)
-          if [ "$IS_DRAFT" = "true" ]; then
-            echo "linux=$LINUX_DRAFT" >> "$GITHUB_OUTPUT"
-          elif [ "$IS_DISPATCH" = "true" ] || [ "$IS_FULL" = "true" ]; then
-            echo "linux=$LINUX_FULL" >> "$GITHUB_OUTPUT"
+          if [ "$IS_PR_DRAFT" = "true" ]; then
+            echo "linux=$LINUX_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_linux" ] || [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
+            echo "linux=$LINUX_IT_FULL_SET" >> "$GITHUB_OUTPUT"
           else
-            echo "linux=$LINUX_PR" >> "$GITHUB_OUTPUT"
+            echo "linux=$LINUX_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           fi
 
-          if [ "$IS_DRAFT" = "true" ]; then
-            echo "windows=[]" >> "$GITHUB_OUTPUT"
-          elif [ "$IS_DISPATCH" = "true" ] && [ "$ACTION" = "run_all_tests_on_windows" ]; then
-            echo "windows=$WIN_FULL" >> "$GITHUB_OUTPUT"
-          elif [ "$IS_FULL" = "true" ]; then
-            echo "windows=$WIN_BRANCH" >> "$GITHUB_OUTPUT"
+          if [ "$IS_PR_DRAFT" = "true" ]; then
+            echo "windows=$WIN_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_windows" ]; then
+            echo "windows=$WIN_IT_FULL_SET" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
+            echo "windows=$WIN_IT_MASTER_OR_DEVELOP_SET" >> "$GITHUB_OUTPUT"
           else
-            echo "windows=$WIN_PR" >> "$GITHUB_OUTPUT"
+            echo "windows=$WIN_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           fi
 
   # ── BUILD_TOOLCHAINS_IMAGE (schedule / manual) ────────────────────────────
@@ -335,6 +330,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
+      needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubicloud-standard-4  # premium probe measured only ~15% faster at 1.6x price — not worth it
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
