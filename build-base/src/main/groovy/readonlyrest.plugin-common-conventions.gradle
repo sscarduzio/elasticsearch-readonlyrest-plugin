@@ -72,6 +72,7 @@ repositories {
     maven {
         url = uri("${project.ext.s3StoreAddress.replaceAll('/+$', '')}/${project.ext.s3BucketName}/${project.ext.s3LibsPathPrefix}")
         metadataSources {
+            mavenPom()
             artifact()
         }
     }

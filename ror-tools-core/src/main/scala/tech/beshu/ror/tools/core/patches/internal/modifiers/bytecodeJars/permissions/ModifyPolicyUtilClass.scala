@@ -20,11 +20,10 @@ import better.files.File
 import cats.data.NonEmptyList
 import just.semver.SemVer
 import org.objectweb.asm.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
+import tech.beshu.ror.tools.core.patches.internal.modifiers.{BytecodeJarModifier, PermissionDefinition}
 import tech.beshu.ror.tools.core.utils.EsUtil.es800
 
 import java.io.InputStream
-import java.security.Permission
 
 /**
  * Modifies the PolicyUtil class to grant ReadonlyREST an extended (but still controlled) set of
@@ -43,7 +42,7 @@ import java.security.Permission
  */
 private[patches] class ModifyPolicyUtilClass private (
     esVersion: SemVer,
-    additionalAllowedPermissions: NonEmptyList[Permission]
+    additionalAllowedPermissions: NonEmptyList[PermissionDefinition]
 ) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -138,6 +137,17 @@ private[patches] class ModifyPolicyUtilClass private (
         "()Ljava/lang/String;",
         true
       )
+      // Normalise separators first: on Windows the path is ...\readonlyrest\plugin-security.policy,
+      // so matching the forward-slash form directly would never identify the ROR policy there.
+      methodVisitor.visitIntInsn(Opcodes.BIPUSH, '\\'.toInt)
+      methodVisitor.visitIntInsn(Opcodes.BIPUSH, '/'.toInt)
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        "java/lang/String",
+        "replace",
+        "(CC)Ljava/lang/String;",
+        false
+      )
       methodVisitor.visitLdcInsn("/readonlyrest/plugin-security.policy")
       methodVisitor.visitMethodInsn(
         Opcodes.INVOKEVIRTUAL,
@@ -147,7 +157,7 @@ private[patches] class ModifyPolicyUtilClass private (
         false
       )
       methodVisitor.visitInsn(Opcodes.IRETURN)
-      methodVisitor.visitMaxs(2, 1)
+      methodVisitor.visitMaxs(3, 1)
       methodVisitor.visitEnd()
     }
 
@@ -241,9 +251,38 @@ private[patches] class ModifyPolicyUtilClass private (
         "()V",
         false
       )
+      buildExtendedClassPermissionsMap(methodVisitor)
       methodVisitor.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher")
       methodVisitor.visitInsn(Opcodes.DUP)
       methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 1)
+      methodVisitor.visitMethodInsn(
+        Opcodes.INVOKESPECIAL,
+        "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher",
+        "<init>",
+        "(Ljava/security/PermissionCollection;Ljava/util/Map;)V",
+        false
+      )
+      methodVisitor.visitInsn(Opcodes.ARETURN)
+      methodVisitor.visitMaxs(5, 3)
+      methodVisitor.visitEnd()
+    }
+
+    /**
+     * Stores into slot 1 a copy of `ALLOWED_PLUGIN_PERMISSIONS.classPermissions` extended with an entry per
+     * additional permission.
+     *
+     * `namedPermissions` alone is not enough: the policy parser resolves permission classes with a classloader
+     * that cannot see Elasticsearch-owned ones (e.g. `org.elasticsearch.secure_sm.ThreadPermission`), so those
+     * end up as `UnresolvedPermission`, which no `Permissions` collection ever implies. `PermissionMatcher`
+     * falls back to matching such entries by class name and permission name against this map.
+     */
+    private def buildExtendedClassPermissionsMap(methodVisitor: MethodVisitor): Unit = {
+      methodVisitor.visitTypeInsn(Opcodes.NEW, "java/util/HashMap")
+      methodVisitor.visitInsn(Opcodes.DUP)
+      methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/util/HashMap", "<init>", "()V", false)
+      methodVisitor.visitVarInsn(Opcodes.ASTORE, 1)
+      methodVisitor.visitVarInsn(Opcodes.ALOAD, 1)
       methodVisitor.visitFieldInsn(
         Opcodes.GETSTATIC,
         "org/elasticsearch/bootstrap/PolicyUtil",
@@ -256,24 +295,46 @@ private[patches] class ModifyPolicyUtilClass private (
         "classPermissions",
         "Ljava/util/Map;"
       )
-      methodVisitor.visitMethodInsn(
-        Opcodes.INVOKESPECIAL,
-        "org/elasticsearch/bootstrap/PolicyUtil$PermissionMatcher",
-        "<init>",
-        "(Ljava/security/PermissionCollection;Ljava/util/Map;)V",
-        false
-      )
-      methodVisitor.visitInsn(Opcodes.ARETURN)
-      methodVisitor.visitMaxs(4, 1)
-      methodVisitor.visitEnd()
+      methodVisitor.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map", "putAll", "(Ljava/util/Map;)V", true)
+      additionalAllowedPermissions.toList
+        .groupBy(_.className)
+        .foreach { case (className, permissions) =>
+          methodVisitor.visitTypeInsn(Opcodes.NEW, "java/util/ArrayList")
+          methodVisitor.visitInsn(Opcodes.DUP)
+          methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false)
+          methodVisitor.visitVarInsn(Opcodes.ASTORE, 2)
+          permissions.foreach { permission =>
+            methodVisitor.visitVarInsn(Opcodes.ALOAD, 2)
+            methodVisitor.visitLdcInsn(permission.name)
+            methodVisitor.visitMethodInsn(
+              Opcodes.INVOKEVIRTUAL,
+              "java/util/ArrayList",
+              "add",
+              "(Ljava/lang/Object;)Z",
+              false
+            )
+            methodVisitor.visitInsn(Opcodes.POP)
+          }
+          methodVisitor.visitVarInsn(Opcodes.ALOAD, 1)
+          methodVisitor.visitLdcInsn(className)
+          methodVisitor.visitVarInsn(Opcodes.ALOAD, 2)
+          methodVisitor.visitMethodInsn(
+            Opcodes.INVOKEINTERFACE,
+            "java/util/Map",
+            "put",
+            "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+            true
+          )
+          methodVisitor.visitInsn(Opcodes.POP)
+        }
     }
 
-    private def includeAdditionalPermission(methodVisitor: MethodVisitor, permission: Permission): Unit = {
-      val jvmStylePermissionClassName = permission.getClass.getName.replace('.', '/')
+    private def includeAdditionalPermission(methodVisitor: MethodVisitor, permission: PermissionDefinition): Unit = {
+      val jvmStylePermissionClassName = permission.jvmStyleClassName
       methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
       methodVisitor.visitTypeInsn(Opcodes.NEW, jvmStylePermissionClassName)
       methodVisitor.visitInsn(Opcodes.DUP)
-      methodVisitor.visitLdcInsn(permission.getName)
+      methodVisitor.visitLdcInsn(permission.name)
       methodVisitor.visitMethodInsn(
         Opcodes.INVOKESPECIAL,
         jvmStylePermissionClassName,
@@ -390,6 +451,11 @@ private[patches] class ModifyPolicyUtilClass private (
 }
 
 object ModifyPolicyUtilClass {
-  def apply(esVersion: SemVer, additionalAllowedPermissions: NonEmptyList[Permission]): ModifyPolicyUtilClass =
+
+  def apply(
+      esVersion: SemVer,
+      additionalAllowedPermissions: NonEmptyList[PermissionDefinition]
+  ): ModifyPolicyUtilClass =
     new ModifyPolicyUtilClass(esVersion, additionalAllowedPermissions)
+
 }

@@ -84,12 +84,15 @@ class ElasticsearchNodeWaitingStrategy(
           .reachableEsChecker(containerName, client)
           .waitForStart()
       case CurrentOs.OtherThanWindows =>
+        // Inherit our timeout: a fresh HttpWaitStrategy defaults to testcontainers' 60s,
+        // which a cold ES boot on a loaded CI runner regularly exceeds (top CI flake).
         val esRestApiWaitStrategy = new HttpWaitStrategy()
           .usingTls()
           .allowInsecure()
           .forPort(esPort)
           .forPath("/")
           .forStatusCodeMatching(_ => true)
+          .withStartupTimeout(startupTimeout)
         Try(esRestApiWaitStrategy.waitUntilReady(waitStrategyTarget)).isSuccess
     }
   }
