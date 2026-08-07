@@ -442,6 +442,15 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: false }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21' }
+      # Windows has no baked toolchains image: without this every leg cold-downloads the wrapper,
+      # deps + JDKs and cold-compiles Scala (~9 min). Develop runs write the cache; PRs read it.
+      # jdks: not in the action's default include set, but auto-download=true provisions there.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            jdks
       - name: ${{ matrix.ES_MODULE }}
         shell: pwsh
         env:
@@ -461,7 +470,7 @@ jobs:
           # Windows (no docker), 3 fit the 16GB box. 4 workers measured no faster (CPU-bound).
           # ror-tools:test is NOT run per-leg: it took ~10 min/leg and every node install already
           # exercises the patcher end-to-end; the suite still runs via unit_tests_windows.
-          $gradleArgs = "--no-daemon", "integration-tests:shardedTest", "-PshardCount=3", "-PesModule=$env:ES_MODULE",
+          $gradleArgs = "--no-daemon", "--build-cache", "integration-tests:shardedTest", "-PshardCount=3", "-PesModule=$env:ES_MODULE",
             "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
           .\gradlew @gradleArgs
           if ($LASTEXITCODE -ne 0) {
