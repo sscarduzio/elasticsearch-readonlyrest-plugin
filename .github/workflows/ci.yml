@@ -89,6 +89,7 @@ jobs:
           case "$REF" in *newes/*) echo "is_newes=true" >> "$GITHUB_OUTPUT";; *) echo "is_newes=false" >> "$GITHUB_OUTPUT";; esac
       - id: m
         env:
+          # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
           IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
           IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
           MANUAL_RUN_ACTION: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.actionToPerform || '') }}
@@ -413,8 +414,8 @@ jobs:
 
 
   # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
-  # Matrix from setup: 7-version subset on develop/master/epic, 3 on PRs, full 33 on manual
-  # run_all_tests_on_windows — exactly Azure's three Windows IT jobs collapsed into one.
+  # Matrix from setup: 6-version subset on develop/master/epic, 3 on ready PRs, none on draft
+  # PRs (job skipped), full 33 on manual run_all_tests_on_windows.
   it_windows:
     # toolchains_verify is in needs even though Windows doesn't use the image: Azure's TEST stage
     # depended on TOOLCHAINS_VERIFY, so a broken image fails fast instead of running doomed legs.
