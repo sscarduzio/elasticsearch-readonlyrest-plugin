@@ -41,15 +41,17 @@ sourceSets {
     }
 }
 
-// No -PesModule → newest supported module. Hardcoded until buildSrc's EsModuleResolver lands
-// and can derive it automatically.
-def defaultEsModule = 'es94x'
+// No -PesModule → the newest supported module, derived from the es* modules' supportedEsVersions
+// (same resolver RorTaskFinder uses). Auto-flips when a newer es module is added.
+def defaultEsModule = tech.beshu.ror.gradle.utils.EsModuleFinder
+        .sortedEsModules(rootProject, tech.beshu.ror.gradle.utils.EsModuleFinder.newestEsVersionComparator())
+        .last().name
 
 test {
     systemProperty "project.dir", rootProject.projectDir
     def module = project.findProperty('esModule') ?: defaultEsModule
     // Skips in bare aggregate builds (build/check); runs when the task is explicitly requested.
-    // The module always defaults to es94x — no need to detect if -PesModule was passed.
+    // The module always has a default — no need to detect if -PesModule was passed.
     def explicitlyRequested = gradle.startParameter.taskNames.any { it.endsWith('integration-tests:test') || it == 'integration-tests:test' }
     onlyIf { explicitlyRequested }
     doFirst {

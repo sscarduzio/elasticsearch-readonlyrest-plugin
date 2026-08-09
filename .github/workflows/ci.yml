@@ -44,9 +44,10 @@ defaults:
     shell: bash
 
 env:
-  # The single source of truth for the toolchains image tag is the `container:` lines below —
-  # bump them together with this env (used by build_toolchains_image) on a JDK/Gradle change.
-  TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+  # Single source of truth for the toolchains image tag: the &toolchains anchor. Every job's
+  # `container: *toolchains` resolves to it, so a JDK/Gradle bump edits ONE line. Kept per-branch
+  # (not a repo variable) on purpose: the tag is coupled to this commit's baked dependency cache.
+  TOOLCHAINS_IMAGE: &toolchains beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
   # 4 shards per leg + HeavySuiteGate (max 2 concurrent multi-cluster suites, machine-wide).
@@ -159,7 +160,7 @@ jobs:
     needs: setup
     if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -179,7 +180,7 @@ jobs:
       needs.setup.outputs.is_newes == 'true' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubicloud-standard-4
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -212,7 +213,7 @@ jobs:
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     continue-on-error: true
     name: ${{ matrix.ROR_TASK }}
     strategy:
@@ -260,7 +261,7 @@ jobs:
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
@@ -290,7 +291,7 @@ jobs:
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -323,7 +324,7 @@ jobs:
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubicloud-standard-4  # premium probe measured only ~15% faster at 1.6x price — not worth it
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 120
     # Job name = the matrix value alone ("integration_es94x"), not "it_linux (integration_es94x)":
     # the default composite gets truncated to an indistinguishable prefix in the graph view.
@@ -547,7 +548,7 @@ jobs:
       needs.it_linux.result == 'success' &&
       needs.it_windows.result == 'success'
     runs-on: ubicloud-standard-4
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 180
     name: ${{ matrix.ROR_TASK }}
     strategy:
@@ -607,7 +608,7 @@ jobs:
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubicloud-standard-4
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 600
     strategy:
       fail-fast: false
@@ -663,7 +664,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-4
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 180
     strategy:
       fail-fast: false
@@ -719,7 +720,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-4
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 1, persist-credentials: false }

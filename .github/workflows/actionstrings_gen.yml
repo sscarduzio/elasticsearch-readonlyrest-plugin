@@ -2,31 +2,41 @@ on:
   push:
     branches:
       - master
+    paths:
+      - 'es*/gradle.properties'
+      - 'ci/actionstrings/**'
+  workflow_dispatch:
+
+# Serialize racing master pushes: a stale parallel run must not push over a newer one.
+concurrency:
+  group: actionstrings
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout ror es
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: main
-          
+
       - name: Checkout docs
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
-          path: docs 
+          path: docs
           repository: beshu-tech/readonlyrest-docs
           token: ${{ secrets.GH_PAT }}
-          
+
       - run: |
           mv docs main/readonlyrest-docs
-          cd main 
+          cd main
           git config --global advice.detachedHead false
           bash -x ci/actionstrings/run.sh
           cd readonlyrest-docs
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
+          # `|| true` on commit only: an empty diff is a normal outcome. A FAILED PUSH IS NOT --
+          # it previously went green silently and the docs stopped updating.
           git commit -m "commit new action strings" || true
-          git push || true
+          git push
