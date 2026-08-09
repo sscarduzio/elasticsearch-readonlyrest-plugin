@@ -83,21 +83,6 @@ java {
     }
 }
 
-compileScala {
-    options.compilerArgs.addAll(
-            "-feature",
-            "-Xfatal-warnings",
-            "-Wunused:implicits",
-            "-Wunused:imports",
-            "-Wunused:explicits",
-            "-Wunused:strict-no-implicit-warn",
-            "-Wunused:locals",
-            "-Wunused:params",
-            "-Wunused:privates",
-            "-Wunused:nowarn",
-    )
-}
-
 tasks.withType(ScalaCompile).configureEach {
     scalaCompileOptions.additionalParameters = ["-feature", "-Xfatal-warnings"]
 }

@@ -120,9 +120,6 @@ dependencies {
 }
 
 configurations {
-    scalaCompilerPlugin {
-        transitive = false
-    }
     all*.exclude group: 'org.hdrhistogram', module: 'HdrHistogram'
     all*.exclude group: 'org.scala-lang',   module: 'scala-compiler'
     all*.exclude group: 'dom4j',            module: 'dom4j'
@@ -137,15 +134,7 @@ test {
 }
 
 tasks.withType(ScalaCompile).configureEach {
-    // Use artifactView to safely access configuration files in Gradle 9.x
-    def pluginFiles = configurations.scalaCompilerPlugin.incoming.artifactView {
-        attributes { }
-    }.files
-    // Map plugin jars to -Xplugin parameter
-    List<String> parameters = pluginFiles.collect { '-Xplugin:' + it.absolutePath }
-
-    // Add whatever flags you typically add
-    parameters += [
+    List<String> parameters = [
             "-feature",
             "-Xfatal-warnings",
             "-Wunused:implicits",
@@ -158,8 +147,6 @@ tasks.withType(ScalaCompile).configureEach {
             "-Wunused:nowarn",
             "-Wconf:cat=deprecation&msg=\\[ROR\\].*:i"
     ]
-
-    parameters -= ["-target:8"]
 
     // Finally set the additionalParameters
     scalaCompileOptions.additionalParameters = parameters
