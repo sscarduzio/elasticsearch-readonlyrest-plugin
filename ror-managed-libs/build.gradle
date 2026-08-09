@@ -31,7 +31,6 @@ repositories {
 
 configurations {
     shadowCompile
-    compile.extendsFrom(shadowCompile)
 }
 
 java {

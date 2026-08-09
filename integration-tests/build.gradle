@@ -171,12 +171,6 @@ dependencies {
     testImplementation  group: 'org.scalatest',                 name: 'scalatest_3',                version: '3.2.19'
 }
 
-tasks.register('ldapserver', JavaExec) {
-    systemProperties = System.properties
-    mainClass.set('tech.beshu.ror.integration.LDAPServer')
-    classpath = sourceSets.test.runtimeClasspath
-}
-
 // Builds + stably tags the singleton ES image ONCE before parallel workers; without it concurrent
 // identical builds fail intermittently at shardCount>=3. Pre-building gives every worker a cache hit.
 tasks.register('prebuildEsImage', JavaExec) {
