@@ -35,7 +35,6 @@ version = pluginVersion
 
 repositories {
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
-    maven { url 'https://jitpack.io' }
     maven {
         url = "s3://" + s3BucketName + "/build"
         authentication {
