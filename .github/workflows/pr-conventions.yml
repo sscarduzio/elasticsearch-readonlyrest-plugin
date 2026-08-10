@@ -1,0 +1,31 @@
+name: PR Conventions
+
+# Checks the conventions a reviewer used to check by hand: the Jira key in the title, and a changelog
+# entry when the change can reach a client. The logic lives in ci/check-pr-conventions.sh so it can be
+# run locally before opening the pull request.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled, ready_for_review]
+
+# A new push or edit makes an in-flight check obsolete.
+concurrency:
+  group: pr-conventions-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  conventions:
+    name: conventions
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1, persist-credentials: false }
+
+      - name: Check PR conventions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: ci/check-pr-conventions.sh "${{ github.event.pull_request.number }}"
