@@ -41,11 +41,12 @@ sourceSets {
     }
 }
 
-// No -PesModule → the newest supported module, derived from the es* modules' supportedEsVersions
-// (same resolver RorTaskFinder uses). Auto-flips when a newer es module is added.
+// No -PesModule → the module that publishes the newest supported ES version. Both facts come from
+// the es* modules' supportedEsVersions, so this follows automatically when a newer module is added.
+def newestEsVersion = tech.beshu.ror.gradle.utils.EsModuleFinder
+        .findTheNewestSupportedEsVersion(rootProject).orElseThrow()
 def defaultEsModule = tech.beshu.ror.gradle.utils.EsModuleFinder
-        .sortedEsModules(rootProject, tech.beshu.ror.gradle.utils.EsModuleFinder.newestEsVersionComparator())
-        .last().name
+        .findEsModuleFor(rootProject, newestEsVersion).orElseThrow().name
 
 test {
     systemProperty "project.dir", rootProject.projectDir

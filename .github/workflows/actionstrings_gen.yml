@@ -1,3 +1,5 @@
+name: ROR ES Action Strings
+
 on:
   push:
     branches:
@@ -36,7 +38,7 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
-          # `|| true` on commit only: an empty diff is a normal outcome. A FAILED PUSH IS NOT --
-          # it previously went green silently and the docs stopped updating.
+          # `|| true` on the commit only: an empty diff is a normal outcome. The push has no
+          # `|| true`, so a failed push to the docs repo fails this job.
           git commit -m "commit new action strings" || true
           git push
