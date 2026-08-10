@@ -34,220 +34,198 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 class EsLibsMirrorTest {
 
-  private static final MavenCoordinate ELASTICSEARCH =
-      new MavenCoordinate("org.elasticsearch", "elasticsearch");
   private static final MavenCoordinate REST_CLIENT =
       new MavenCoordinate("org.elasticsearch.client", "elasticsearch-rest-client");
 
+  /** Places nothing but the jars the release itself ships, as the real chain's last step does. */
+  private static final ArtifactGroups ELASTICS = EsGroups.shippedWith("9.5.0");
+
   @TempDir Path tempDir;
 
-  // --- referenceVersion() ---
+  // --- what a POM declares ---
 
   @Test
-  void takesTheNewestPublishedVersionBelowTheTarget() {
-    List<String> published = List.of("9.3.8", "9.4.0", "9.4.4");
-
-    assertEquals("9.4.4", EsLibsMirror.referenceVersion(published, "9.5.0"));
-  }
-
-  @Test
-  void prefersTheSameMajorEvenWhenAnOlderMajorPublishedLater() {
-    List<String> published = List.of("8.19.19", "9.4.4");
-
-    assertEquals("8.19.19", EsLibsMirror.referenceVersion(published, "8.19.20"));
-  }
-
-  @Test
-  void usesTheTargetItselfOnceElasticHasPublishedIt() {
-    assertEquals("9.5.0", EsLibsMirror.referenceVersion(List.of("9.4.4", "9.5.0"), "9.5.0"));
-  }
-
-  @Test
-  void ignoresVersionsAboveTheTarget() {
-    assertEquals("9.4.4", EsLibsMirror.referenceVersion(List.of("9.4.4", "9.6.0"), "9.5.0"));
-  }
-
-  @Test
-  void nothingPublishedBelowTheTargetThrows() {
-    assertThrows(
-        GradleException.class, () -> EsLibsMirror.referenceVersion(List.of("9.6.0"), "9.5.0"));
-  }
-
-  // --- dependency versions in the generated POMs ---
-
-  @Test
-  void esVersionedDependenciesMoveToTheTargetVersion() {
+  void theServersDependenciesAreTheJarsShippedBesideItInLib() throws IOException {
     EsDistribution distribution =
-        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-core-9.5.0.jar");
-    Map<MavenCoordinate, List<Dependency>> reference =
-        Map.of(
-            ELASTICSEARCH,
-            List.of(dependency("org.elasticsearch", "elasticsearch-core", "9.4.4", "compile")));
+        distributionWith(
+            "lib/elasticsearch-9.5.0.jar",
+            "lib/elasticsearch-core-9.5.0.jar",
+            "lib/lucene-core-10.5.0.jar");
 
-    MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);
+    MirrorPlan plan = planFor(distribution, placing("lucene-core:10.5.0", "org.apache.lucene"));
 
-    assertEquals("9.5.0", onlyPom(plan).dependencies().get(0).version());
+    assertEquals(
+        List.of(
+            "org.elasticsearch:elasticsearch-core:9.5.0", "org.apache.lucene:lucene-core:10.5.0"),
+        declared(onlyPom(plan)));
   }
 
   @Test
-  void thirdPartyDependenciesTakeTheBundledVersion() {
+  void aJarThisReleaseAddedIsDeclaredWithoutAnythingHavingToNameIt() throws IOException {
+    // ES 9.5.0 added elasticsearch-ip-location-api, which the 9.4.4 POM knows nothing about.
     EsDistribution distribution =
-        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/lucene-core-10.5.0.jar");
-    Map<MavenCoordinate, List<Dependency>> reference =
-        Map.of(
-            ELASTICSEARCH,
-            List.of(dependency("org.apache.lucene", "lucene-core", "10.4.0", "compile")));
+        distributionWith(
+            "lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-ip-location-api-9.5.0.jar");
 
-    MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);
+    MirrorPlan plan = planFor(distribution, ELASTICS);
 
-    assertEquals("10.5.0", onlyPom(plan).dependencies().get(0).version());
+    assertEquals(
+        List.of("org.elasticsearch:elasticsearch-ip-location-api:9.5.0"), declared(onlyPom(plan)));
+    assertTrue(mirrored(plan).contains("elasticsearch-ip-location-api"));
   }
 
   @Test
-  void dependenciesTheDistributionDoesNotBundleKeepElasticsVersion() {
-    // ES ships log4j-api but not log4j-core.
-    EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
-    Map<MavenCoordinate, List<Dependency>> reference =
-        Map.of(
-            ELASTICSEARCH,
-            List.of(dependency("org.apache.logging.log4j", "log4j-core", "2.26.0", "compile")));
+  void aModulesDependenciesAreTheJarsInItsOwnDirectory() throws IOException {
+    EsDistribution distribution =
+        distributionWith(
+            "modules/transport-netty4/transport-netty4-9.5.0.jar",
+            "modules/transport-netty4/netty-buffer-4.1.135.Final.jar",
+            "lib/elasticsearch-9.5.0.jar");
 
-    MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);
+    MirrorPlan plan =
+        EsLibsMirror.planFor(
+            distribution,
+            List.of("transport-netty4"),
+            placing("netty-buffer:4.1.135.Final", "io.netty"));
 
-    assertEquals("2.26.0", onlyPom(plan).dependencies().get(0).version());
+    assertEquals(List.of("io.netty:netty-buffer:4.1.135.Final"), declared(onlyPom(plan)));
   }
 
   @Test
-  void esVersionedDependencyMissingFromTheDistributionThrows() {
+  void theModuleShippingAnArtifactIsNotOneOfItsDependencies() throws IOException {
+    // The rest client rides along in modules/reindex, whose own jar is nothing to do with it.
+    EsDistribution distribution =
+        distributionWith(
+            "modules/reindex/elasticsearch-rest-client-9.5.0.jar",
+            "modules/reindex/reindex-9.5.0.jar",
+            "modules/reindex/httpcore-4.4.16.jar");
+
+    MirrorPlan plan =
+        EsLibsMirror.planFor(
+            distribution,
+            List.of("elasticsearch-rest-client"),
+            placing("httpcore:4.4.16", "org.apache.httpcomponents"));
+
+    assertEquals(List.of("org.apache.httpcomponents:httpcore:4.4.16"), declared(onlyPom(plan)));
+  }
+
+  @Test
+  void thePomCarriesTheVersionOfTheJarItIsPublishedBeside() throws IOException {
     EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
-    Map<MavenCoordinate, List<Dependency>> reference =
-        Map.of(
-            ELASTICSEARCH,
-            List.of(dependency("org.elasticsearch", "elasticsearch-dropped", "9.4.4", "compile")));
+
+    MirrorPlan plan = planFor(distribution, ELASTICS);
+
+    assertEquals("9.5.0", onlyPom(plan).version());
+  }
+
+  @Test
+  void theCoordinateMissingFromTheDistributionThrows() throws IOException {
+    EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
 
     GradleException failure =
         assertThrows(
             GradleException.class,
-            () -> EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference));
+            () ->
+                EsLibsMirror.planFor(distribution, List.of("elasticsearch-rest-client"), ELASTICS));
 
-    assertTrue(failure.getMessage().contains("elasticsearch-dropped"));
+    assertTrue(failure.getMessage().contains("elasticsearch-rest-client"));
   }
 
-  @Test
-  void mirroredCoordinateMissingFromTheDistributionThrows() {
-    EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
-
-    assertThrows(
-        GradleException.class,
-        () -> EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", Map.of(REST_CLIENT, List.of())));
-  }
+  // --- the group a jar is published under ---
 
   @Test
-  void scopesSurviveTheRewrite() {
+  void anArtifactElasticShipsWithoutPublishingTakesTheirGroup() throws IOException {
+    // elasticsearch-log4j is log4j-core repackaged, and is on no repository to be looked up in.
     EsDistribution distribution =
-        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-native-9.5.0.jar");
-    Map<MavenCoordinate, List<Dependency>> reference =
-        Map.of(
-            ELASTICSEARCH,
-            List.of(dependency("org.elasticsearch", "elasticsearch-native", "9.4.4", "runtime")));
+        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-log4j-9.5.0.jar");
 
-    MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);
+    MirrorPlan plan = planFor(distribution, ELASTICS);
 
-    assertEquals("runtime", onlyPom(plan).dependencies().get(0).scope());
+    assertEquals(List.of("org.elasticsearch:elasticsearch-log4j:9.5.0"), declared(onlyPom(plan)));
   }
 
   @Test
-  void versionComesFromTheCopyShippedAlongsideTheArtifact() {
+  void anArtifactOfElasticsIsPlacedByWhatPublishesItRatherThanByItsName() throws IOException {
+    // Named like the rest of them, published under another group.
     EsDistribution distribution =
         distributionWith(
-            "modules/reindex/elasticsearch-rest-client-9.5.0.jar",
-            "modules/reindex/commons-codec-1.15.jar",
-            "modules/ingest-attachment/commons-codec-1.19.0.jar");
-    Map<MavenCoordinate, List<Dependency>> reference =
-        Map.of(
-            REST_CLIENT, List.of(dependency("commons-codec", "commons-codec", "1.15", "compile")));
+            "lib/elasticsearch-9.5.0.jar",
+            "lib/elasticsearch-plugin-api-9.5.0.jar",
+            "lib/elasticsearch-core-9.5.0.jar");
 
-    MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);
+    MirrorPlan plan =
+        planFor(
+            distribution, placing("elasticsearch-plugin-api:9.5.0", "org.elasticsearch.plugin"));
 
-    assertEquals("1.15", onlyPom(plan).dependencies().get(0).version());
+    assertEquals(
+        List.of(
+            "org.elasticsearch:elasticsearch-core:9.5.0",
+            "org.elasticsearch.plugin:elasticsearch-plugin-api:9.5.0"),
+        declared(onlyPom(plan)));
+  }
+
+  @Test
+  void aThirdPartyGroupIsLookedUpAtTheVersionTheDistributionShips() throws IOException {
+    EsDistribution distribution =
+        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/commons-codec-1.15.jar");
+
+    MirrorPlan plan = planFor(distribution, placing("commons-codec:1.15", "commons-codec"));
+
+    assertEquals(List.of("commons-codec:commons-codec:1.15"), declared(onlyPom(plan)));
+  }
+
+  @Test
+  void aJarNoSourceCanPlaceThrows() throws IOException {
+    EsDistribution distribution =
+        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/mystery-1.0.jar");
+
+    GradleException failure =
+        assertThrows(GradleException.class, () -> planFor(distribution, ELASTICS));
+
+    assertTrue(failure.getMessage().contains("mystery-1.0.jar"));
   }
 
   // --- jars to publish ---
 
   @Test
-  void mirrorsTheCoordinateItselfAndItsEsDependenciesOnly() {
+  void onlyElasticsOwnArtifactsAreMirrored() throws IOException {
+    // Third-party artifacts are published under their own versions, which Central has already.
     EsDistribution distribution =
         distributionWith(
             "lib/elasticsearch-9.5.0.jar",
             "lib/elasticsearch-core-9.5.0.jar",
-            "lib/elasticsearch-plugin-api-9.5.0.jar",
             "lib/lucene-core-10.5.0.jar");
-    Map<MavenCoordinate, List<Dependency>> reference =
-        Map.of(
-            ELASTICSEARCH,
-            List.of(
-                dependency("org.elasticsearch", "elasticsearch-core", "9.4.4", "compile"),
-                dependency(
-                    "org.elasticsearch.plugin", "elasticsearch-plugin-api", "9.4.4", "compile"),
-                dependency("org.apache.lucene", "lucene-core", "10.4.0", "compile")));
 
-    MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);
+    MirrorPlan plan = planFor(distribution, placing("lucene-core:10.5.0", "org.apache.lucene"));
 
-    assertEquals(
-        List.of("elasticsearch", "elasticsearch-core", "elasticsearch-plugin-api"),
-        plan.jars().stream().map(jar -> jar.coordinate().artifactId()).sorted().toList());
+    assertEquals(List.of("elasticsearch", "elasticsearch-core"), mirrored(plan));
   }
 
   @Test
-  void mirroredJarKeepsTheGroupElasticDeclared() {
-    EsDistribution distribution =
-        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-plugin-api-9.5.0.jar");
-    Map<MavenCoordinate, List<Dependency>> reference =
-        Map.of(
-            ELASTICSEARCH,
-            List.of(
-                dependency(
-                    "org.elasticsearch.plugin", "elasticsearch-plugin-api", "9.4.4", "compile")));
-
-    MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);
-
-    MirroredJar pluginApi =
-        plan.jars().stream()
-            .filter(jar -> jar.coordinate().artifactId().equals("elasticsearch-plugin-api"))
-            .findFirst()
-            .orElseThrow();
-    assertEquals("org.elasticsearch.plugin", pluginApi.coordinate().groupId());
-  }
-
-  @Test
-  void aJarSharedBySeveralPomsIsMirroredOnce() {
+  void aJarSharedByTwoPomsIsMirroredOnce() throws IOException {
     EsDistribution distribution =
         distributionWith(
             "lib/elasticsearch-9.5.0.jar",
-            "lib/elasticsearch-core-9.5.0.jar",
-            "modules/reindex/elasticsearch-rest-client-9.5.0.jar");
-    Dependency core = dependency("org.elasticsearch", "elasticsearch-core", "9.4.4", "compile");
-    Map<MavenCoordinate, List<Dependency>> reference =
-        Map.of(ELASTICSEARCH, List.of(core), REST_CLIENT, List.of(core));
-
-    MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);
-
-    assertEquals(
-        1,
-        plan.jars().stream()
-            .filter(jar -> jar.coordinate().artifactId().equals("elasticsearch-core"))
-            .count());
-  }
-
-  @Test
-  void mirroredFilesAreNamedAsMavenExpects() {
-    EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
+            "lib/elasticsearch-ssl-config-9.5.0.jar",
+            "modules/transport-netty4/transport-netty4-9.5.0.jar",
+            "modules/transport-netty4/elasticsearch-ssl-config-9.5.0.jar");
 
     MirrorPlan plan =
-        EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", Map.of(ELASTICSEARCH, List.of()));
+        EsLibsMirror.planFor(distribution, List.of("elasticsearch", "transport-netty4"), ELASTICS);
+
+    assertEquals(
+        1, mirrored(plan).stream().filter(id -> id.equals("elasticsearch-ssl-config")).count());
+  }
+
+  @Test
+  void mirroredFilesAreNamedAsMavenExpects() throws IOException {
+    EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
+
+    MirrorPlan plan = planFor(distribution, ELASTICS);
 
     assertEquals("elasticsearch-9.5.0.jar", plan.jars().get(0).fileName());
     assertEquals("elasticsearch-9.5.0.pom", onlyPom(plan).fileName());
@@ -256,26 +234,21 @@ class EsLibsMirrorTest {
   // --- pomFor() ---
 
   @Test
-  void aMirroredCoordinateUploadsItsPomAlongsideItsJar() {
+  void aMirroredCoordinateUploadsItsPomAlongsideItsJar() throws IOException {
     EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
 
-    MirrorPlan plan =
-        EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", Map.of(ELASTICSEARCH, List.of()));
+    MirrorPlan plan = planFor(distribution, ELASTICS);
 
     assertEquals(
         "elasticsearch-9.5.0.pom", plan.pomFor(plan.jars().get(0)).orElseThrow().fileName());
   }
 
   @Test
-  void aJarMirroredOnlyAsADependencyHasNoPom() {
+  void aJarMirroredOnlyAsADependencyHasNoPom() throws IOException {
     EsDistribution distribution =
         distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-core-9.5.0.jar");
-    Map<MavenCoordinate, List<Dependency>> reference =
-        Map.of(
-            ELASTICSEARCH,
-            List.of(dependency("org.elasticsearch", "elasticsearch-core", "9.4.4", "compile")));
 
-    MirrorPlan plan = EsLibsMirror.plan(distribution, "9.5.0", "9.4.4", reference);
+    MirrorPlan plan = planFor(distribution, ELASTICS);
 
     MirroredJar core =
         plan.jars().stream()
@@ -292,67 +265,36 @@ class EsLibsMirrorTest {
     MirroredJar jar =
         new MirroredJar(REST_CLIENT, "9.5.0", Path.of("elasticsearch-rest-client-9.5.0.jar"));
     MirrorPlan plan =
-        new MirrorPlan(
-            "9.4.4", List.of(new MirroredPom(REST_CLIENT, "9.6.0", List.of())), List.of(jar));
+        new MirrorPlan(List.of(new MirroredPom(REST_CLIENT, "9.6.0", List.of())), List.of(jar));
 
     GradleException failure = assertThrows(GradleException.class, () -> plan.pomFor(jar));
 
     assertTrue(failure.getMessage().contains("elasticsearch-rest-client-9.6.0.pom"));
   }
 
-  // --- planFor() ---
-
-  @Test
-  void takesTheDependenciesFromThePomOfTheReferenceVersion() throws IOException {
-    EsDistribution distribution =
-        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/elasticsearch-core-9.5.0.jar");
-    MavenRepository central =
-        repositoryPublishing(
-            List.of("9.3.8", "9.4.4"),
-            "9.4.4",
-            List.of(dependency("org.elasticsearch", "elasticsearch-core", "9.4.4", "compile")));
-
-    MirrorPlan plan = EsLibsMirror.planFor(distribution, "9.5.0", List.of(ELASTICSEARCH), central);
-
-    assertEquals("9.4.4", plan.referenceVersion());
-    assertEquals("9.5.0", onlyPom(plan).dependencies().get(0).version());
-    assertEquals(
-        List.of("elasticsearch", "elasticsearch-core"),
-        plan.jars().stream().map(jar -> jar.coordinate().artifactId()).sorted().toList());
+  private static MirrorPlan planFor(EsDistribution distribution, ArtifactGroups groups) {
+    return EsLibsMirror.planFor(distribution, List.of("elasticsearch"), groups);
   }
 
-  @Test
-  void referencePomTheRepositoryDoesNotServeThrows() throws IOException {
-    EsDistribution distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
-    MavenRepository central = repositoryPublishing(List.of("9.4.4"), "9.3.8", List.of());
-
-    assertThrows(
-        GradleException.class,
-        () -> EsLibsMirror.planFor(distribution, "9.5.0", List.of(ELASTICSEARCH), central));
+  /** Stands in for what places an artifact: a group per artifact and version, and nothing else. */
+  /** One artifact placed explicitly, on top of what the release ships. */
+  private static ArtifactGroups placing(String artifactAndVersion, String groupId) {
+    Map<String, String> known = Map.of(artifactAndVersion, groupId);
+    ArtifactGroups explicit =
+        (artifactId, version) -> Optional.ofNullable(known.get(artifactId + ":" + version));
+    return ArtifactGroups.firstOf(explicit, ELASTICS);
   }
 
-  private MavenRepository repositoryPublishing(
-      List<String> publishedVersions, String pomVersion, List<Dependency> dependencies)
-      throws IOException {
-    Path repository = tempDir.resolve("central");
-    StringBuilder metadata = new StringBuilder("<metadata><versioning><versions>");
-    publishedVersions.forEach(
-        version -> metadata.append("<version>").append(version).append("</version>"));
-    metadata.append("</versions></versioning></metadata>");
-
-    write(
-        repository.resolve(ELASTICSEARCH.repositoryPath() + "/maven-metadata.xml"),
-        metadata.toString());
-    write(
-        repository.resolve(
-            ELASTICSEARCH.repositoryPath(pomVersion) + "/" + ELASTICSEARCH.pomFileName(pomVersion)),
-        MavenPoms.render(ELASTICSEARCH, pomVersion, dependencies));
-    return MavenRepository.at(repository.toUri().toString());
+  private static List<String> declared(MirroredPom pom) {
+    return pom.dependencies().stream().map(EsLibsMirrorTest::coordinatesOf).toList();
   }
 
-  private static void write(Path file, String content) throws IOException {
-    Files.createDirectories(file.getParent());
-    Files.writeString(file, content);
+  private static String coordinatesOf(Dependency dependency) {
+    return dependency.groupId() + ":" + dependency.artifactId() + ":" + dependency.version();
+  }
+
+  private static List<String> mirrored(MirrorPlan plan) {
+    return plan.jars().stream().map(jar -> jar.coordinate().artifactId()).sorted().toList();
   }
 
   private static MirroredPom onlyPom(MirrorPlan plan) {
@@ -360,23 +302,14 @@ class EsLibsMirrorTest {
     return plan.poms().get(0);
   }
 
-  private static Dependency dependency(
-      String groupId, String artifactId, String version, String scope) {
-    return new Dependency(groupId, artifactId, version, scope);
-  }
-
-  private EsDistribution distributionWith(String... relativeJarPaths) {
-    try {
-      Path distribution = tempDir.resolve("es");
-      for (String relativePath : relativeJarPaths) {
-        Path jar = distribution.resolve(relativePath);
-        Files.createDirectories(jar.getParent());
-        Files.writeString(jar, "");
-      }
-      Files.createDirectories(distribution.resolve("lib"));
-      return EsDistribution.scan(distribution);
-    } catch (IOException e) {
-      throw new IllegalStateException(e);
+  private EsDistribution distributionWith(String... relativeJarPaths) throws IOException {
+    Path distribution = tempDir.resolve("es");
+    for (String relativePath : relativeJarPaths) {
+      Path jar = distribution.resolve(relativePath);
+      Files.createDirectories(jar.getParent());
+      Files.writeString(jar, "");
     }
+    Files.createDirectories(distribution.resolve("lib"));
+    return EsDistribution.scan(distribution);
   }
 }

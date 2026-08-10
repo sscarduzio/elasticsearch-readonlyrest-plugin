@@ -33,7 +33,6 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -53,19 +52,15 @@ class EsDistributionTest {
 
     EsDistribution scanned = EsDistribution.scan(distribution);
 
-    assertEquals(
-        "9.5.0", scanned.preferredJarOf("elasticsearch", Set.of()).orElseThrow().version());
-    assertEquals(
-        "9.5.0",
-        scanned.preferredJarOf("elasticsearch-rest-client", Set.of()).orElseThrow().version());
+    assertEquals("9.5.0", scanned.jarsOf("elasticsearch").get(0).version());
+    assertEquals("9.5.0", scanned.jarsOf("elasticsearch-rest-client").get(0).version());
   }
 
   @Test
   void parsesVersionsWithNonNumericSegments() throws IOException {
     Path distribution = distributionWith("modules/transport-netty4/netty-buffer-4.1.135.Final.jar");
 
-    BundledJar netty =
-        EsDistribution.scan(distribution).preferredJarOf("netty-buffer", Set.of()).orElseThrow();
+    BundledJar netty = EsDistribution.scan(distribution).jarsOf("netty-buffer").get(0);
 
     assertEquals("netty-buffer", netty.artifactId());
     assertEquals("4.1.135.Final", netty.version());
@@ -88,7 +83,7 @@ class EsDistributionTest {
   void unknownArtifactIsEmpty() throws IOException {
     Path distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
 
-    assertTrue(EsDistribution.scan(distribution).preferredJarOf("nope", Set.of()).isEmpty());
+    assertTrue(EsDistribution.scan(distribution).jarsOf("nope").isEmpty());
   }
 
   @Test
@@ -96,84 +91,69 @@ class EsDistributionTest {
     assertThrows(GradleException.class, () -> EsDistribution.scan(tempDir.resolve("missing")));
   }
 
-  // --- preferredJarOf() ---
+  // --- classpathDirOf() ---
 
   @Test
-  void copyShippedAlongsideTheArtifactWinsOverANewerOneElsewhere() throws IOException {
-    // The versions ES 9.5.0 ships: commons-codec 1.15 in modules/reindex, 1.19.0 in
-    // ingest-attachment.
+  void theServerIsShippedWithItsClasspathInLib() throws IOException {
+    Path distribution =
+        distributionWith("lib/elasticsearch-9.5.0.jar", "lib/lucene-core-10.5.0.jar");
+
+    EsDistribution scanned = EsDistribution.scan(distribution);
+
+    assertEquals(
+        distribution.resolve("lib"), scanned.classpathDirOf("elasticsearch").orElseThrow());
+    assertEquals(2, scanned.jarsIn(distribution.resolve("lib")).size());
+  }
+
+  @Test
+  void aModuleTakesTheDirectoryNamedAfterIt() throws IOException {
+    // ES 9.5.0 ships transport-netty4 in three modules; only one of them is its own.
     Path distribution =
         distributionWith(
+            "modules/repository-azure/transport-netty4-9.5.0.jar",
+            "modules/x-pack-security/transport-netty4-9.5.0.jar",
+            "modules/transport-netty4/transport-netty4-9.5.0.jar",
+            "modules/transport-netty4/netty-buffer-4.1.135.Final.jar");
+
+    assertEquals(
+        distribution.resolve("modules/transport-netty4"),
+        EsDistribution.scan(distribution).classpathDirOf("transport-netty4").orElseThrow());
+  }
+
+  @Test
+  void anArtifactWithoutADirectoryOfItsOwnTakesTheFullestOne() throws IOException {
+    // Only modules/reindex ships the HTTP client jars the rest client needs alongside it.
+    Path distribution =
+        distributionWith(
+            "modules/x-pack-enrich/elasticsearch-rest-client-9.5.0.jar",
             "modules/reindex/elasticsearch-rest-client-9.5.0.jar",
-            "modules/reindex/commons-codec-1.15.jar",
-            "modules/ingest-attachment/commons-codec-1.19.0.jar");
-    EsDistribution scanned = EsDistribution.scan(distribution);
-
-    Optional<BundledJar> codec =
-        scanned.preferredJarOf(
-            "commons-codec", scanned.directoriesShipping("elasticsearch-rest-client"));
-
-    assertEquals("1.15", codec.orElseThrow().version());
-  }
-
-  @Test
-  void libCopyWinsWhenNoneIsShippedAlongsideTheArtifact() throws IOException {
-    Path distribution =
-        distributionWith(
-            "lib/log4j-api-2.26.1.jar", "modules/ingest-attachment/log4j-api-2.20.0.jar");
-    EsDistribution scanned = EsDistribution.scan(distribution);
+            "modules/reindex/httpclient-4.5.14.jar",
+            "modules/reindex/httpcore-4.4.16.jar");
 
     assertEquals(
-        "2.26.1",
-        scanned
-            .preferredJarOf("log4j-api", Set.of(tempDir.resolve("es/modules/reindex")))
-            .orElseThrow()
-            .version());
-  }
-
-  @Test
-  void newestCopyWinsWhenNeitherAlongsideNorInLib() throws IOException {
-    Path distribution =
-        distributionWith("modules/a/commons-codec-1.15.jar", "modules/b/commons-codec-1.19.0.jar");
-
-    assertEquals(
-        "1.19.0",
+        distribution.resolve("modules/reindex"),
         EsDistribution.scan(distribution)
-            .preferredJarOf("commons-codec", Set.of())
-            .orElseThrow()
-            .version());
+            .classpathDirOf("elasticsearch-rest-client")
+            .orElseThrow());
   }
 
   @Test
-  void selectionIsStableAcrossScansWhenVersionsAreEqual() throws IOException {
+  void theDirectoryIsTheSameAcrossScansWhenTwoAreEquallyFull() throws IOException {
     Path distribution =
         distributionWith(
             "modules/b/elasticsearch-ssl-config-9.5.0.jar",
             "modules/a/elasticsearch-ssl-config-9.5.0.jar");
-    EsDistribution scanned = EsDistribution.scan(distribution);
 
-    Path first = scanned.preferredJarOf("elasticsearch-ssl-config", Set.of()).orElseThrow().file();
-    Path second =
-        EsDistribution.scan(distribution)
-            .preferredJarOf("elasticsearch-ssl-config", Set.of())
-            .orElseThrow()
-            .file();
-
-    assertEquals(first, second);
+    assertEquals(
+        EsDistribution.scan(distribution).classpathDirOf("elasticsearch-ssl-config"),
+        EsDistribution.scan(distribution).classpathDirOf("elasticsearch-ssl-config"));
   }
 
   @Test
-  void newestCopyIsChosenByVersionOrderNotFileName() throws IOException {
-    Path distribution =
-        distributionWith(
-            "modules/a/netty-buffer-4.1.9.Final.jar", "modules/b/netty-buffer-4.1.10.Final.jar");
+  void anArtifactTheDistributionDoesNotShipHasNoClasspathDirectory() throws IOException {
+    Path distribution = distributionWith("lib/elasticsearch-9.5.0.jar");
 
-    assertEquals(
-        "4.1.10.Final",
-        EsDistribution.scan(distribution)
-            .preferredJarOf("netty-buffer", Set.of())
-            .orElseThrow()
-            .version());
+    assertTrue(EsDistribution.scan(distribution).classpathDirOf("nope").isEmpty());
   }
 
   // --- download and unpack layout ---

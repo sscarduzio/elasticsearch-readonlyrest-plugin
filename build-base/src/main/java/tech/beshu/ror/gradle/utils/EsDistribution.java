@@ -23,8 +23,6 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,9 +30,9 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,9 +48,9 @@ import java.util.stream.Stream;
  * scanned -- an index of the jars it ships, taken from {@code lib} and every {@code modules/*} directory and
  * keyed by artifact id.
  *
- * <p>A library can be shipped by several modules at different versions: ES 9.5.0 ships commons-codec 1.15 in
- * {@code modules/reindex} and 1.19.0 in {@code modules/ingest-attachment}. All copies are kept, and
- * {@link #preferredJarOf} picks between them.
+ * <p>The same library can be shipped by several modules, and not always at the same version -- one module can
+ * bundle a newer copy than another does. Every copy is kept, and picking between them is left to the caller:
+ * {@link #jarOf} selects one by version, {@link #classpathDirOf} by the directory ES loads the artifact from.
  */
 public final class EsDistribution {
 
@@ -71,12 +69,14 @@ public final class EsDistribution {
   private static final String DOWNLOADS_URL =
       "https://artifacts.elastic.co/downloads/elasticsearch";
   private static final String CHECKSUM_SUFFIX = ".sha512";
-  private static final int TIMEOUT_MS = 30_000;
 
   private final Map<String, List<BundledJar>> jarsByArtifactId;
+  private final Map<Path, List<BundledJar>> jarsByDirectory;
 
-  private EsDistribution(Map<String, List<BundledJar>> jarsByArtifactId) {
+  private EsDistribution(
+      Map<String, List<BundledJar>> jarsByArtifactId, Map<Path, List<BundledJar>> jarsByDirectory) {
     this.jarsByArtifactId = jarsByArtifactId;
+    this.jarsByDirectory = jarsByDirectory;
   }
 
   /** The Linux archive Elastic publishes for an ES version. */
@@ -130,7 +130,7 @@ public final class EsDistribution {
   }
 
   private static void downloadTo(String url, Path target) throws IOException {
-    try (InputStream content = open(url)) {
+    try (InputStream content = Downloads.open(url)) {
       Files.copy(content, target, StandardCopyOption.REPLACE_EXISTING);
     }
   }
@@ -138,7 +138,7 @@ public final class EsDistribution {
   /** The checksum file holds the hash and the file name it belongs to, separated by whitespace. */
   private static String publishedChecksum(String url) throws IOException {
     String published;
-    try (InputStream content = open(url)) {
+    try (InputStream content = Downloads.open(url)) {
       published = new String(content.readAllBytes(), StandardCharsets.UTF_8).trim();
     }
     String checksum = published.split("\\s+", 2)[0];
@@ -180,13 +180,6 @@ public final class EsDistribution {
     return HexFormat.of().formatHex(digest.digest());
   }
 
-  private static InputStream open(String url) throws IOException {
-    URLConnection connection = URI.create(url).toURL().openConnection();
-    connection.setConnectTimeout(TIMEOUT_MS);
-    connection.setReadTimeout(TIMEOUT_MS);
-    return connection.getInputStream();
-  }
-
   /** Drops the temporary file, which a successful download has already moved away. */
   private static void discard(Path partial) {
     if (partial != null) {
@@ -222,15 +215,17 @@ public final class EsDistribution {
     directories.add(extractedDir.resolve(LIB_DIR));
     directories.addAll(subDirectoriesOf(extractedDir.resolve(MODULES_DIR)));
 
-    Map<String, List<BundledJar>> index =
-        directories.stream()
-            .flatMap(EsDistribution::jarsIn)
-            .collect(Collectors.groupingBy(BundledJar::artifactId));
-    if (index.isEmpty()) {
+    List<BundledJar> jars = directories.stream().flatMap(EsDistribution::jarsOfDirectory).toList();
+    if (jars.isEmpty()) {
       throw new GradleException(
           "No jars found in " + extractedDir + "/" + LIB_DIR + " or its modules");
     }
-    return new EsDistribution(index);
+    return new EsDistribution(
+        jars.stream().collect(Collectors.groupingBy(BundledJar::artifactId)),
+        jars.stream()
+            .collect(
+                Collectors.groupingBy(
+                    BundledJar::directory, LinkedHashMap::new, Collectors.toList())));
   }
 
   /** Every copy of {@code artifactId} the distribution ships, in no particular order. */
@@ -238,39 +233,37 @@ public final class EsDistribution {
     return jarsByArtifactId.getOrDefault(artifactId, List.of());
   }
 
+  /** One copy of {@code artifactId} at {@code version}; several modules may ship the same one. */
+  public Optional<BundledJar> jarOf(String artifactId, String version) {
+    return jarsOf(artifactId).stream().filter(jar -> jar.version().equals(version)).findFirst();
+  }
+
   /** Every directory shipping {@code artifactId}, which several modules may do. */
   public Set<Path> directoriesShipping(String artifactId) {
     return jarsOf(artifactId).stream().map(BundledJar::directory).collect(Collectors.toSet());
   }
 
-  /**
-   * Picks one copy of {@code artifactId}: from {@code preferredDirs} if it is shipped there, otherwise from
-   * {@code lib}, otherwise the newest copy anywhere. Equal versions are ordered by file path, so repeated
-   * scans of the same distribution return the same jar.
-   */
-  public Optional<BundledJar> preferredJarOf(String artifactId, Collection<Path> preferredDirs) {
-    List<BundledJar> candidates = jarsOf(artifactId);
-    if (candidates.isEmpty()) {
-      return Optional.empty();
-    }
-    List<BundledJar> alongsideTheArtifact =
-        candidates.stream().filter(jar -> preferredDirs.contains(jar.directory())).toList();
-    if (!alongsideTheArtifact.isEmpty()) {
-      return Optional.of(newestOf(alongsideTheArtifact));
-    }
-    List<BundledJar> inLibDir =
-        candidates.stream()
-            .filter(jar -> LIB_DIR.equals(jar.directory().getFileName().toString()))
-            .toList();
-    return Optional.of(newestOf(inLibDir.isEmpty() ? candidates : inLibDir));
+  /** The jars one directory of the distribution ships, ordered by file name. */
+  public List<BundledJar> jarsIn(Path directory) {
+    return jarsByDirectory.getOrDefault(directory, List.of());
   }
 
-  private static BundledJar newestOf(List<BundledJar> candidates) {
-    return candidates.stream()
-        .max(
-            Comparator.comparing(BundledJar::version, EsVersions.VERSION_COMPARATOR)
-                .thenComparing(jar -> jar.file().toString()))
-        .orElseThrow();
+  /**
+   * The directory whose contents make up {@code artifactId}'s classpath: {@code lib} for the server, and a
+   * module's own directory for a module.
+   *
+   * <p>An artifact is shipped by every module that needs it, so several directories can hold it. The one named
+   * after it wins, that being the module the artifact belongs to; otherwise the fullest one, that being the
+   * module ES loads the artifact's dependencies with -- {@code elasticsearch-rest-client} is shipped by three
+   * modules, and only {@code reindex} ships the HTTP client jars it needs alongside it. Equal sizes are broken
+   * by path, so repeated scans of one distribution answer the same.
+   */
+  public Optional<Path> classpathDirOf(String artifactId) {
+    Comparator<Path> theArtifactsOwnDirectoryThenTheFullest =
+        Comparator.<Path, Boolean>comparing(dir -> dir.getFileName().toString().equals(artifactId))
+            .thenComparingInt(dir -> jarsIn(dir).size())
+            .thenComparing(Path::toString);
+    return directoriesShipping(artifactId).stream().max(theArtifactsOwnDirectoryThenTheFullest);
   }
 
   private static List<Path> subDirectoriesOf(Path dir) {
@@ -284,13 +277,16 @@ public final class EsDistribution {
     }
   }
 
-  private static Stream<BundledJar> jarsIn(Path dir) {
+  private static Stream<BundledJar> jarsOfDirectory(Path dir) {
     File[] files = dir.toFile().listFiles();
     if (files == null) {
       return Stream.empty();
     }
     return Stream.of(files)
         .filter(file -> file.getName().endsWith(".jar"))
+        // The file system orders a directory as it pleases, and what is read here ends up in the
+        // POMs.
+        .sorted(Comparator.comparing(File::getName))
         .map(
             file -> {
               Matcher matcher = JAR_NAME_PATTERN.matcher(file.getName());

@@ -22,23 +22,26 @@ import tech.beshu.ror.gradle.utils.EsDistribution.BundledJar;
 import tech.beshu.ror.gradle.utils.MavenPoms.Dependency;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * Plans the jars and POMs to publish to the ROR libs store for an ES version Elastic has released but not yet
  * published to Maven Central.
  *
  * <p>The store serves plain files, so a jar published on its own resolves as a leaf and brings none of the ES
- * dependency graph with it. POMs are published alongside the jars to supply that graph. Each POM is derived
- * from the one Elastic published for the closest ES version at or below the one being published, with every
- * dependency version replaced by the version that distribution bundles; the jars to publish are then the ES
- * artifacts those dependencies name.
+ * dependency graph with it. POMs are published alongside the jars to supply that graph.
+ *
+ * <p>What a POM declares is read out of the distribution being mirrored: an artifact's dependencies are the
+ * jars ES ships on its classpath, which is {@code lib} for the server and its own directory for a module.
+ * Nothing is taken from an earlier release, so a jar this one adds is published and a jar it drops is not,
+ * neither of which anyone has to notice. The distribution names an artifact and its version but never the
+ * group it is published under, which {@link ArtifactGroups} answers.
+ *
+ * <p>That makes the POMs wider than the ones Elastic publishes, which declare what the artifact needs rather
+ * than everything ES loads beside it. Wider is the safe direction: the extra entries are jars ES itself ships,
+ * and the alternative is a dependency nothing resolves.
  */
 public final class EsLibsMirror {
 
@@ -58,9 +61,7 @@ public final class EsLibsMirror {
     }
   }
 
-  /** @param referenceVersion the published ES version the POMs are shaped after */
-  public record MirrorPlan(
-      String referenceVersion, List<MirroredPom> poms, List<MirroredJar> jars) {
+  public record MirrorPlan(List<MirroredPom> poms, List<MirroredJar> jars) {
 
     /**
      * The POM to publish alongside {@code jar}, when the plan has one -- jars mirrored only because a POM names
@@ -89,174 +90,126 @@ public final class EsLibsMirror {
     }
   }
 
-  private static final String ES_GROUP_PREFIX = "org.elasticsearch";
-
-  /** The artifact whose published versions tell whether Central has an ES release yet. */
-  private static final MavenCoordinate ELASTICSEARCH =
-      new MavenCoordinate("org.elasticsearch", "elasticsearch");
+  /**
+   * Everything a generated POM declares is on the classpath ES loads the artifact with, so it is there to be
+   * compiled and run against.
+   */
+  private static final String SCOPE = "compile";
 
   /** The ES artifacts the es*x modules depend on, and so the ones the store has to serve POMs for. */
-  public static final List<MavenCoordinate> MIRRORED_COORDINATES =
-      List.of(
-          ELASTICSEARCH,
-          new MavenCoordinate("org.elasticsearch.plugin", "transport-netty4"),
-          new MavenCoordinate("org.elasticsearch.client", "elasticsearch-rest-client"));
+  public static final List<String> MIRRORED_ARTIFACTS =
+      List.of("elasticsearch", "transport-netty4", "elasticsearch-rest-client");
 
   private EsLibsMirror() {}
 
-  /** Plans what to publish for {@code targetVersion}, taking the reference POMs from {@code reference}. */
-  public static MirrorPlan planFor(
-      EsDistribution distribution, String targetVersion, MavenRepository reference) {
-    return planFor(distribution, targetVersion, MIRRORED_COORDINATES, reference);
+  /** Plans what to publish out of an extracted distribution, placing artifacts with {@code groups}. */
+  public static MirrorPlan planFor(EsDistribution distribution, ArtifactGroups groups) {
+    return planFor(distribution, MIRRORED_ARTIFACTS, groups);
   }
 
   static MirrorPlan planFor(
-      EsDistribution distribution,
-      String targetVersion,
-      List<MavenCoordinate> coordinates,
-      MavenRepository reference) {
-    String referenceVersion =
-        referenceVersion(reference.publishedVersions(ELASTICSEARCH), targetVersion);
-    Map<MavenCoordinate, List<Dependency>> referenceDependencies = new LinkedHashMap<>();
-    for (MavenCoordinate coordinate : coordinates) {
-      referenceDependencies.put(
-          coordinate, MavenPoms.parseDependencies(reference.pomOf(coordinate, referenceVersion)));
-    }
-    return plan(distribution, targetVersion, referenceVersion, referenceDependencies);
+      EsDistribution distribution, List<String> artifacts, ArtifactGroups groups) {
+    List<MirroredPom> poms =
+        artifacts.stream().map(artifact -> pomOf(artifact, distribution, groups)).toList();
+    return new MirrorPlan(poms, jarsToPublish(poms, distribution));
   }
 
-  /**
-   * The published version whose POMs the generated ones are derived from: {@code targetVersion} itself when
-   * Elastic has published it, otherwise the newest published version below it, preferring the same major.
-   */
-  static String referenceVersion(List<String> publishedVersions, String targetVersion) {
-    if (publishedVersions.contains(targetVersion)) {
-      return targetVersion;
-    }
-    List<String> earlier =
-        publishedVersions.stream()
-            .filter(version -> EsVersions.VERSION_COMPARATOR.compare(version, targetVersion) < 0)
+  /** What one artifact needs: the jars ES loads it with, which is what its classpath directory holds. */
+  private static MirroredPom pomOf(
+      String artifact, EsDistribution distribution, ArtifactGroups groups) {
+    Path classpathDir = classpathDirOf(artifact, distribution);
+    BundledJar bundled = jarIn(classpathDir, artifact, distribution);
+    List<Dependency> dependencies =
+        distribution.jarsIn(classpathDir).stream()
+            .filter(jar -> isADependencyOf(jar, artifact, classpathDir))
+            .map(jar -> dependencyOn(jar, groups))
             .toList();
-    if (earlier.isEmpty()) {
-      throw new GradleException(
-          "Cannot generate POMs for ES "
-              + targetVersion
-              + ": Maven Central has no earlier version to take the dependencies from");
-    }
-    String targetMajor = majorOf(targetVersion);
-    List<String> sameMajor =
-        earlier.stream().filter(version -> majorOf(version).equals(targetMajor)).toList();
-    return (sameMajor.isEmpty() ? earlier : sameMajor)
-        .stream().max(EsVersions.VERSION_COMPARATOR).orElseThrow();
+    // The POM carries the bundled jar's version, so that a POM and the jar it is published beside
+    // always
+    // name the same version -- see MirrorPlan.pomFor.
+    return new MirroredPom(
+        coordinateOf(bundled, groups), bundled.version(), List.copyOf(dependencies));
   }
 
   /**
-   * @param referenceDependencies the dependencies each coordinate declares in its {@code referenceVersion}
-   *     POM, in declaration order, which the generated POMs keep
+   * The jars to upload: the artifacts themselves and the ones only Elastic publishes, which this release is
+   * too new for. Everything else a POM declares is published under its own version and already resolves.
    */
-  static MirrorPlan plan(
-      EsDistribution distribution,
-      String targetVersion,
-      String referenceVersion,
-      Map<MavenCoordinate, List<Dependency>> referenceDependencies) {
-    List<MirroredPom> poms = new ArrayList<>();
-    for (Map.Entry<MavenCoordinate, List<Dependency>> entry : referenceDependencies.entrySet()) {
-      MavenCoordinate coordinate = entry.getKey();
-      Set<Path> dirsShippingTheArtifact = distribution.directoriesShipping(coordinate.artifactId());
-      if (dirsShippingTheArtifact.isEmpty()) {
-        throw new GradleException(
-            coordinate.artifactId()
-                + "-"
-                + targetVersion
-                + ".jar is not bundled in the ES "
-                + targetVersion
-                + " distribution");
-      }
-      List<Dependency> dependencies =
-          entry.getValue().stream()
-              .map(
-                  dependency ->
-                      versionedForTarget(
-                          dependency,
-                          distribution,
-                          dirsShippingTheArtifact,
-                          coordinate,
-                          targetVersion,
-                          referenceVersion))
-              .toList();
-      poms.add(new MirroredPom(coordinate, targetVersion, dependencies));
+  private static List<MirroredJar> jarsToPublish(
+      List<MirroredPom> poms, EsDistribution distribution) {
+    Stream<MavenCoordinateAt> theArtifacts =
+        poms.stream().map(pom -> new MavenCoordinateAt(pom.coordinate(), pom.version()));
+    Stream<MavenCoordinateAt> theirElasticDependencies =
+        poms.stream()
+            .flatMap(pom -> pom.dependencies().stream())
+            .filter(EsLibsMirror::isElastics)
+            .map(
+                dependency ->
+                    new MavenCoordinateAt(
+                        new MavenCoordinate(dependency.groupId(), dependency.artifactId()),
+                        dependency.version()));
+    return Stream.concat(theArtifacts, theirElasticDependencies)
+        .distinct()
+        .map(at -> at.mirroredFrom(distribution))
+        .toList();
+  }
+
+  /** One version of one coordinate, which is what the store holds a directory of. */
+  private record MavenCoordinateAt(MavenCoordinate coordinate, String version) {
+
+    MirroredJar mirroredFrom(EsDistribution distribution) {
+      return distribution
+          .jarOf(coordinate.artifactId(), version)
+          .map(bundled -> new MirroredJar(coordinate, version, bundled.file()))
+          .orElseThrow();
     }
-    return new MirrorPlan(
-        referenceVersion, List.copyOf(poms), jarsFor(poms, distribution, targetVersion));
+  }
+
+  private static boolean isElastics(Dependency dependency) {
+    return dependency.groupId().startsWith(EsGroups.DEFAULT_GROUP);
   }
 
   /**
-   * Retargets one dependency at {@code targetVersion}: it takes the version the distribution bundles, or keeps
-   * the reference POM's version when the distribution does not ship the artifact at all (log4j-core, for one).
-   * A dependency versioned with ES that the distribution does not ship means the reference POM no longer
-   * describes this release, and fails rather than naming a jar that cannot be published.
+   * Everything in the classpath directory except the artifact itself and, when the directory is a module's,
+   * the module's own jar -- a module ships what it needs alongside what it is.
    */
-  private static Dependency versionedForTarget(
-      Dependency dependency,
-      EsDistribution distribution,
-      Set<Path> dirsShippingTheArtifact,
-      MavenCoordinate coordinate,
-      String targetVersion,
-      String referenceVersion) {
+  private static boolean isADependencyOf(BundledJar jar, String artifact, Path classpathDir) {
+    return !jar.artifactId().equals(artifact)
+        && !jar.artifactId().equals(classpathDir.getFileName().toString());
+  }
+
+  private static Dependency dependencyOn(BundledJar jar, ArtifactGroups groups) {
+    MavenCoordinate coordinate = coordinateOf(jar, groups);
+    return new Dependency(coordinate.groupId(), coordinate.artifactId(), jar.version(), SCOPE);
+  }
+
+  /** A jar names its artifact and version; only {@code groups} knows where it is published. */
+  private static MavenCoordinate coordinateOf(BundledJar jar, ArtifactGroups groups) {
+    String group =
+        groups
+            .groupOf(jar.artifactId(), jar.version())
+            .orElseThrow(
+                () ->
+                    new GradleException(
+                        "Cannot tell which Maven group "
+                            + jar.file().getFileName()
+                            + " is published under: nothing that places an artifact names it."));
+    return new MavenCoordinate(group, jar.artifactId());
+  }
+
+  private static Path classpathDirOf(String artifact, EsDistribution distribution) {
     return distribution
-        .preferredJarOf(dependency.artifactId(), dirsShippingTheArtifact)
-        .map(bundled -> dependency.withVersion(bundled.version()))
-        .orElseGet(
-            () -> {
-              if (dependency.version().equals(referenceVersion)) {
-                throw new GradleException(
-                    "ES "
-                        + targetVersion
-                        + " does not bundle '"
-                        + dependency.artifactId()
-                        + "', which "
-                        + coordinate.artifactId()
-                        + " "
-                        + referenceVersion
-                        + " depends on");
-              }
-              return dependency;
-            });
+        .classpathDirOf(artifact)
+        .orElseThrow(
+            () ->
+                new GradleException(
+                    artifact + " is not bundled in the ES distribution being mirrored"));
   }
 
-  /** The planned coordinates plus every ES artifact their POMs name; the rest resolve from Central. */
-  private static List<MirroredJar> jarsFor(
-      List<MirroredPom> poms, EsDistribution distribution, String targetVersion) {
-    Set<MavenCoordinate> coordinates = new LinkedHashSet<>();
-    poms.forEach(pom -> coordinates.add(pom.coordinate()));
-    poms.stream()
-        .flatMap(pom -> pom.dependencies().stream())
-        .filter(dependency -> dependency.groupId().startsWith(ES_GROUP_PREFIX))
-        .forEach(
-            dependency ->
-                coordinates.add(
-                    new MavenCoordinate(dependency.groupId(), dependency.artifactId())));
-
-    List<MirroredJar> jars = new ArrayList<>();
-    for (MavenCoordinate coordinate : coordinates) {
-      BundledJar bundled =
-          distribution
-              .preferredJarOf(coordinate.artifactId(), Set.of())
-              .orElseThrow(
-                  () ->
-                      new GradleException(
-                          coordinate.artifactId()
-                              + "-"
-                              + targetVersion
-                              + ".jar is not bundled in the ES "
-                              + targetVersion
-                              + " distribution"));
-      jars.add(new MirroredJar(coordinate, bundled.version(), bundled.file()));
-    }
-    return List.copyOf(jars);
-  }
-
-  private static String majorOf(String version) {
-    return version.split("\\.", 2)[0];
+  private static BundledJar jarIn(Path directory, String artifact, EsDistribution distribution) {
+    return distribution.jarsIn(directory).stream()
+        .filter(jar -> jar.artifactId().equals(artifact))
+        .findFirst()
+        .orElseThrow();
   }
 }

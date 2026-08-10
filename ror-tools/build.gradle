@@ -126,9 +126,9 @@ tasks.withType(AbstractArchiveTask).configureEach {
 import javax.inject.Inject
 import org.gradle.process.ExecOperations
 import tech.beshu.ror.gradle.utils.EsDistribution
+import tech.beshu.ror.gradle.utils.ArtifactGroups
 import tech.beshu.ror.gradle.utils.EsLibsMirror
 import tech.beshu.ror.gradle.utils.MavenPoms
-import tech.beshu.ror.gradle.utils.MavenRepository
 
 // Publishes the ES jars and their POMs to the libs store, for ES versions Elastic has released but not yet
 // published to Maven Central. The es*x modules resolve those versions from the store until Central catches up
@@ -156,8 +156,8 @@ def mirrorPlanCache = [:]
 def mirrorPlan = {
     mirrorPlanCache.computeIfAbsent('plan') {
         def distribution = EsDistribution.scan(EsDistribution.distributionDirIn(buildDirPath(), targetEsVersion))
-        def plan = EsLibsMirror.planFor(distribution, targetEsVersion, MavenRepository.mavenCentral())
-        project.logger.lifecycle("Shaping the ES ${targetEsVersion} POMs after the ones published for ${plan.referenceVersion()}")
+        def plan = EsLibsMirror.planFor(distribution, ArtifactGroups.ofEsRelease(targetEsVersion))
+        project.logger.lifecycle("Publishing ${plan.jars().size()} jars and ${plan.poms().size()} POMs, read from the ES ${targetEsVersion} distribution")
         plan
     }
 }

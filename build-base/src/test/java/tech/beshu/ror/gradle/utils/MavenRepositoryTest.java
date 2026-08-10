@@ -49,11 +49,9 @@ class MavenRepositoryTest {
   }
 
   @Test
-  void unreadableMetadataThrowsNamingTheUrl() {
-    GradleException failure =
-        assertThrows(GradleException.class, () -> repository().publishedVersions(ELASTICSEARCH));
-
-    assertTrue(failure.getMessage().contains("org/elasticsearch/elasticsearch/maven-metadata.xml"));
+  void anArtifactTheRepositoryDoesNotPublishHasNoVersions() {
+    // How an artifact published under some other group reads.
+    assertTrue(repository().publishedVersions(ELASTICSEARCH).isEmpty());
   }
 
   @Test
@@ -65,31 +63,15 @@ class MavenRepositoryTest {
     assertThrows(GradleException.class, () -> repository().publishedVersions(ELASTICSEARCH));
   }
 
-  // --- pomOf() ---
-
-  @Test
-  void readsThePomOfOneVersion() throws IOException {
-    publish("org/elasticsearch/elasticsearch/9.4.4/elasticsearch-9.4.4.pom", "<project/>");
-
-    assertEquals("<project/>", repository().pomOf(ELASTICSEARCH, "9.4.4"));
-  }
-
-  @Test
-  void unpublishedPomThrowsNamingTheUrl() {
-    GradleException failure =
-        assertThrows(GradleException.class, () -> repository().pomOf(ELASTICSEARCH, "9.4.4"));
-
-    assertTrue(failure.getMessage().contains("elasticsearch-9.4.4.pom"));
-  }
-
   // --- base url ---
 
   @Test
   void trailingSlashesInTheBaseUrlAreIgnored() throws IOException {
-    publish("org/elasticsearch/elasticsearch/9.4.4/elasticsearch-9.4.4.pom", "<project/>");
+    publish("org/elasticsearch/elasticsearch/maven-metadata.xml", metadataListing("9.4.4"));
 
     assertEquals(
-        "<project/>", MavenRepository.at(tempDir.toUri() + "//").pomOf(ELASTICSEARCH, "9.4.4"));
+        List.of("9.4.4"),
+        MavenRepository.at(tempDir.toUri() + "//").publishedVersions(ELASTICSEARCH));
   }
 
   private MavenRepository repository() {

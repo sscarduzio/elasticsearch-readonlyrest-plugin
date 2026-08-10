@@ -20,18 +20,13 @@ package tech.beshu.ror.gradle.utils;
 import org.gradle.api.GradleException;
 import org.w3c.dom.Element;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 
-/** Reads what a Maven repository publishes: the versions of an artifact, and the POM of one version. */
+/** Reads what a Maven repository publishes: the versions of an artifact. */
 public final class MavenRepository {
 
   private static final String MAVEN_CENTRAL_URL = "https://repo1.maven.org/maven2";
-  private static final int TIMEOUT_MS = 30_000;
 
   private final String baseUrl;
 
@@ -48,10 +43,19 @@ public final class MavenRepository {
     return new MavenRepository(baseUrl.replaceAll("/+$", ""));
   }
 
-  /** The versions of {@code coordinate} the repository publishes, in the order its metadata lists them. */
+  /**
+   * The versions of {@code coordinate} the repository publishes, in the order its metadata lists them, and
+   * empty when it publishes the artifact under no version at all -- which is how an artifact that lives under
+   * a different group reads. Only a missing metadata file reads as empty; an unreachable repository still
+   * throws, so a network problem is never taken for an artifact nobody published.
+   */
   public List<String> publishedVersions(MavenCoordinate coordinate) {
     String url = baseUrl + "/" + coordinate.repositoryPath() + "/maven-metadata.xml";
-    Element metadata = XmlDocuments.rootOf(read(url), url);
+    Optional<String> published = Downloads.find(url);
+    if (published.isEmpty()) {
+      return List.of();
+    }
+    Element metadata = XmlDocuments.rootOf(published.get(), url);
     return XmlDocuments.childNamed(metadata, "versioning")
         .flatMap(versioning -> XmlDocuments.childNamed(versioning, "versions"))
         .map(
@@ -60,24 +64,5 @@ public final class MavenRepository {
                     .map(XmlDocuments::textOf)
                     .toList())
         .orElseThrow(() -> new GradleException("No <versioning><versions> in " + url));
-  }
-
-  /** The POM the repository publishes for one version of {@code coordinate}. */
-  public String pomOf(MavenCoordinate coordinate, String version) {
-    return read(
-        baseUrl + "/" + coordinate.repositoryPath(version) + "/" + coordinate.pomFileName(version));
-  }
-
-  private static String read(String url) {
-    try {
-      URLConnection connection = URI.create(url).toURL().openConnection();
-      connection.setConnectTimeout(TIMEOUT_MS);
-      connection.setReadTimeout(TIMEOUT_MS);
-      try (InputStream content = connection.getInputStream()) {
-        return new String(content.readAllBytes(), StandardCharsets.UTF_8);
-      }
-    } catch (IOException | IllegalArgumentException e) {
-      throw new GradleException("Cannot read " + url + ": " + e, e);
-    }
   }
 }
