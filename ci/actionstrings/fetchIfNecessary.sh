@@ -37,6 +37,8 @@ mv "$TMP_FILE" "$FILENAME"
 trap - EXIT
 cat "$FILENAME"
 
-git add "$FILENAME"
-git commit "$FILENAME" -m "adding actions list for ES $ES_VERSION"
-git push
+# No git commands here on purpose. This script runs with the ROR repo as the working directory, and
+# $FILENAME lives inside the NESTED readonlyrest-docs checkout, so `git add` here stages nothing (git
+# ignores paths inside an embedded repository) and `git commit <that path>` fails with "did not match
+# any file(s) known to git". The workflow publishes everything with a single commit in the docs repo
+# after run.sh finishes.

@@ -40,12 +40,19 @@ jobs:
           mv docs main/readonlyrest-docs
           cd main
           git config --global advice.detachedHead false
+          # Set the commit identity BEFORE generating, and in the docs repo — that is the repo we commit to.
+          git -C readonlyrest-docs config user.name github-actions
+          git -C readonlyrest-docs config user.email github-actions@github.com
+          # Generate first and remember the outcome, then publish whatever was generated: one ES version
+          # that fails must not discard the versions that succeeded. The job still fails afterwards.
+          set +e
           bash -x ci/actionstrings/run.sh
+          generated=$?
+          set -e
           cd readonlyrest-docs
-          git config user.name github-actions
-          git config user.email github-actions@github.com
           git add .
           # `|| true` on the commit only: an empty diff is a normal outcome. The push has no
           # `|| true`, so a failed push to the docs repo fails this job.
           git commit -m "commit new action strings" || true
           git push
+          exit $generated
