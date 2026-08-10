@@ -21,11 +21,24 @@ jobs:
       contents: read
       pull-requests: read
     steps:
+      # Check out the BASE branch's copy of the script, not the pull request's: a pull request must not
+      # be able to edit the rule it is judged by. Only the script is fetched; everything else the check
+      # needs comes from the API.
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1, persist-credentials: false }
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: ci/check-pr-conventions.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
 
       - name: Check PR conventions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-        run: ci/check-pr-conventions.sh "${{ github.event.pull_request.number }}"
+        run: |
+          # Only true for the pull request that introduces the check.
+          if [ ! -x ci/check-pr-conventions.sh ]; then
+            echo "::notice::ci/check-pr-conventions.sh is not on the base branch yet; skipping"
+            exit 0
+          fi
+          ci/check-pr-conventions.sh "${{ github.event.pull_request.number }}"

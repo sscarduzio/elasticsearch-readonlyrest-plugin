@@ -58,10 +58,17 @@ if [ "$production_changed" -eq 0 ] && [ "$dependencies_changed" -eq 0 ]; then
   pass "changelog: not needed (no production sources or dependencies changed)"
 elif has_label no-changelog; then
   pass "changelog: skipped ('no-changelog' label)"
-elif { grep -q 'type:' <<<"$body" && grep -q 'components:' <<<"$body" && grep -q 'text:' <<<"$body"; } \
+# Both documented forms count: the YAML entry of readonlyrest-docs/changelog/<version>.yaml, and the
+# emoji phrase of the `ror-dev-process` skill (which is how the YAML renders in changelog.md).
+# The YAML form asks for a complete entry — a `type:` line with a real type, then `components:` and
+# `text:` within the following lines — so that three unrelated lines elsewhere in the description
+# cannot pass the check by accident.
+elif awk '
+      /^[[:space:]]*-?[[:space:]]*type:[[:space:]]*(security|new|fix|enhancement)[[:space:]]*$/ { found=NR }
+      found && NR>found && NR<=found+3 && /components:/ { c=1 }
+      found && NR>found && NR<=found+3 && /text:/       { t=1 }
+      END { exit !(c && t) }' <<<"$body" \
   || grep -qE '\*\*(Security Fix|New|Enhancement|Fix)\*\*[[:space:]]*\((ES|KBN)\)' <<<"$body"; then
-  # Both documented forms count: the YAML entry of readonlyrest-docs/changelog/<version>.yaml, and the
-  # emoji phrase of the `ror-dev-process` skill (which is how the YAML renders in changelog.md).
   pass "changelog: entry found in the description"
 else
   fail "this pull request changes production sources ($production_changed file(s)) or dependencies
