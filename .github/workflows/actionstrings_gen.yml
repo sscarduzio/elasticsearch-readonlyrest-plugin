@@ -51,8 +51,12 @@ jobs:
           set -e
           cd readonlyrest-docs
           git add .
-          # `|| true` on the commit only: an empty diff is a normal outcome. The push has no
-          # `|| true`, so a failed push to the docs repo fails this job.
-          git commit -m "commit new action strings" || true
+          # Commit only when there is something staged. `git commit || true` would also swallow a REAL
+          # failure (a hook, an index lock) and report success while publishing nothing.
+          if git diff --cached --quiet; then
+            echo "no new action strings to commit"
+          else
+            git commit -m "commit new action strings"
+          fi
           git push
           exit $generated
