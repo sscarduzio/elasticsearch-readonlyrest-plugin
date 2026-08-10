@@ -35,7 +35,6 @@ version = pluginVersion
 
 repositories {
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
-    maven { url 'https://jitpack.io' }
     maven {
         url = "s3://" + s3BucketName + "/build"
         authentication {
@@ -80,9 +79,9 @@ dependencies {
     // ES 9.1+ (auto-read disabled, elastic/elasticsearch#127817) affects the TLS-over-HTTP read flow. 4.1.136
     // (netty#15053) required the SslHandshakeReadTrigger workaround used by es{version}x SSLNetty4HttpServerTransport
     // (tech.beshu.ror.utils.SslHandshakeReadTrigger) — re-verify that path before/after changing this version.
-    api group: 'io.netty',                          name: 'netty-codec-http2',                   version: '4.1.136.Final'
-    api group: 'io.netty',                          name: 'netty-handler',                       version: '4.1.136.Final'
-    api group: 'io.netty',                          name: 'netty-transport',                     version: '4.1.136.Final'
+    api group: 'io.netty',                          name: 'netty-codec-http2',                   version: '4.1.137.Final'
+    api group: 'io.netty',                          name: 'netty-handler',                       version: '4.1.137.Final'
+    api group: 'io.netty',                          name: 'netty-transport',                     version: '4.1.137.Final'
     api group: 'eu.timepit',                        name: 'refined_3',                           version: '0.11.3'
     api group: 'org.reflections',                   name: 'reflections',                         version: '0.9.11'
     api group: 'org.mozilla',                       name: 'rhino',                               version: '1.8.1'
@@ -109,20 +108,17 @@ dependencies {
     testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala-core_3',    version: '0.44.0'
 
     constraints {
-        api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.136.Final'
-        api group: 'io.netty',              name: 'netty-handler-proxy',                version: '4.1.136.Final'
-        api group: 'io.netty',              name: 'netty-resolver-dns',                 version: '4.1.136.Final'
-        api group: 'io.netty',              name: 'netty-transport-native-unix-common', version: '4.1.136.Final'
-        api group: 'io.netty',              name: 'netty-transport-native-epoll',       version: '4.1.136.Final'
-        api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.136.Final'
+        api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.137.Final'
+        api group: 'io.netty',              name: 'netty-handler-proxy',                version: '4.1.137.Final'
+        api group: 'io.netty',              name: 'netty-resolver-dns',                 version: '4.1.137.Final'
+        api group: 'io.netty',              name: 'netty-transport-native-unix-common', version: '4.1.137.Final'
+        api group: 'io.netty',              name: 'netty-transport-native-epoll',       version: '4.1.137.Final'
+        api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.137.Final'
         api group: 'com.google.guava',      name: 'guava',                              version: '32.0.1-jre'
     }
 }
 
 configurations {
-    scalaCompilerPlugin {
-        transitive = false
-    }
     all*.exclude group: 'org.hdrhistogram', module: 'HdrHistogram'
     all*.exclude group: 'org.scala-lang',   module: 'scala-compiler'
     all*.exclude group: 'dom4j',            module: 'dom4j'
@@ -137,15 +133,7 @@ test {
 }
 
 tasks.withType(ScalaCompile).configureEach {
-    // Use artifactView to safely access configuration files in Gradle 9.x
-    def pluginFiles = configurations.scalaCompilerPlugin.incoming.artifactView {
-        attributes { }
-    }.files
-    // Map plugin jars to -Xplugin parameter
-    List<String> parameters = pluginFiles.collect { '-Xplugin:' + it.absolutePath }
-
-    // Add whatever flags you typically add
-    parameters += [
+    List<String> parameters = [
             "-feature",
             "-Xfatal-warnings",
             "-Wunused:implicits",
@@ -158,8 +146,6 @@ tasks.withType(ScalaCompile).configureEach {
             "-Wunused:nowarn",
             "-Wconf:cat=deprecation&msg=\\[ROR\\].*:i"
     ]
-
-    parameters -= ["-target:8"]
 
     // Finally set the additionalParameters
     scalaCompileOptions.additionalParameters = parameters

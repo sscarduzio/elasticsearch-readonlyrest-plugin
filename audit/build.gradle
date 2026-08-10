@@ -68,21 +68,6 @@ test {
     }
 }
 
-compileScala {
-    options.compilerArgs.addAll(
-            "-feature",
-            "-Xfatal-warnings",
-            "-Wunused:implicits",
-            "-Wunused:imports",
-            "-Wunused:explicits",
-            "-Wunused:strict-no-implicit-warn",
-            "-Wunused:locals",
-            "-Wunused:params",
-            "-Wunused:privates",
-            "-Wunused:nowarn",
-    )
-}
-
 def ror_pom = { ->
     name.set("ReadonlyREST audit library")
     description.set("A library to writing custom audit log serializer for Elasticsearch ReadonlyREST plugin")

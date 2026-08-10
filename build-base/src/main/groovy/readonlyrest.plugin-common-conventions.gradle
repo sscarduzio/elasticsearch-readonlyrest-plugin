@@ -92,7 +92,6 @@ java {
 }
 
 configurations {
-    wagon
     distJars {
         extendsFrom runtimeClasspath
         exclude group: 'org.elasticsearch'

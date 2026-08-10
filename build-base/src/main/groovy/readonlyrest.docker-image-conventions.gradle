@@ -23,8 +23,8 @@ import tech.beshu.ror.gradle.utils.PluginArtifact
 // Self-contained (like readonlyrest.verify-repackage-bytecode): it derives esVersion / names / the source zip
 // straight from the gradle properties rather than the ext values set by readonlyrest.plugin-common-conventions,
 // so it can be applied from that plugin's `plugins {}` block (i.e. before its body runs). buildRorPluginZip is
-// referenced by name (lazy string) so it resolves regardless of registration order. The `docker {}` extension
-// comes from com.bmuschko.docker-remote-api (loaded by the root project's classloader).
+// referenced by name (lazy string) so it resolves regardless of registration order. Registry auth is plain
+// `docker login` in CI; all docker work here shells out to the docker CLI.
 def esVersion = EsVersions.delivered(project)
 def pluginVersion = PluginArtifact.version(project)
 def dockerImageSourceZip = PluginArtifact.zip(project, esVersion)
@@ -49,13 +49,6 @@ def buildxPushArgs = { List<String> tags ->
     def cmd = ['buildx', 'build', '--platform', platforms] + commonBuildArgs
     tags.each { cmd += ['-t', it] }
     cmd + ['--output', 'type=image,push=true,rewrite-timestamp=true', '.']
-}
-
-docker {
-    registryCredentials {
-        username = System.getenv('DOCKER_REGISTRY_USER')
-        password = System.getenv('DOCKER_REGISTRY_PASSWORD')
-    }
 }
 
 tasks.register('prepareMultiplatformBuilder') {
