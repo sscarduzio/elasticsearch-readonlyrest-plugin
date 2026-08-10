@@ -29,6 +29,13 @@ jobs:
           repository: beshu-tech/readonlyrest-docs
           token: ${{ secrets.GH_PAT }}
 
+      # run.sh asks the build for the supported ES versions, so this job needs a JDK.
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
       - run: |
           mv docs main/readonlyrest-docs
           cd main

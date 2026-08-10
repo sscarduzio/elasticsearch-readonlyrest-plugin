@@ -61,6 +61,23 @@ tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
 // Usage: ./gradlew printEsModules -PesMajor=8 --quiet
 tasks.register("printEsModules", PrintEsModulesTask)
 
+// Prints every ES version ROR supports, one per line, oldest first. The versions come from each es module's
+// `supportedEsVersions` (gradle.properties), so scripts that need the full list cannot drift from what CI
+// actually builds and tests. Invoke with --quiet to suppress Gradle's own output.
+// Usage: ./gradlew printAllSupportedEsVersions --quiet
+tasks.register("printAllSupportedEsVersions") {
+    group = 'help'
+    description = 'Prints every supported ES version (one per line, oldest first)'
+    outputs.upToDateWhen { false }
+    doLast {
+        tech.beshu.ror.gradle.utils.EsModuleFinder
+                .sortedEsModules(rootProject, tech.beshu.ror.gradle.utils.EsModuleFinder.newestEsVersionComparator())
+                .collectMany { tech.beshu.ror.gradle.utils.EsVersions.of(it).all }
+                .unique()
+                .each { println it }
+    }
+}
+
 group = 'tech.beshu.ror'
 version = pluginVersion
 
