@@ -64,10 +64,15 @@ elif has_label no-changelog; then
 # `text:` within the following lines — so that three unrelated lines elsewhere in the description
 # cannot pass the check by accident.
 elif awk '
-      /^[[:space:]]*-?[[:space:]]*type:[[:space:]]*(security|new|fix|enhancement)[[:space:]]*$/ { found=NR }
-      found && NR>found && NR<=found+3 && /components:/ { c=1 }
-      found && NR>found && NR<=found+3 && /text:/       { t=1 }
-      END { exit !(c && t) }' <<<"$body" \
+      # A new type: line starts a new entry, so the seen-flags reset: `components:` from one entry and
+      # `text:` from another must not add up to a complete entry between them.
+      /^[[:space:]]*-?[[:space:]]*type:[[:space:]]*(security|new|fix|enhancement)[[:space:]]*$/ {
+        found=NR; c=0; t=0; next
+      }
+      found && NR<=found+3 && /components:/ { c=1 }
+      found && NR<=found+3 && /text:[[:space:]]*[^[:space:]]/ { t=1 }
+      c && t { complete=1 }
+      END { exit !complete }' <<<"$body" \
   || grep -qE '\*\*(Security Fix|New|Enhancement|Fix)\*\*[[:space:]]*\((ES|KBN)\)' <<<"$body"; then
   pass "changelog: entry found in the description"
 else
