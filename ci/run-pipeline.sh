@@ -364,5 +364,9 @@ fi
 
 if [[ $ROR_TASK == "run_e2e_tests" ]]; then
   E2E_ELK_VERSION=$(./gradlew --quiet ":${E2E_ES_MODULE:?E2E_ES_MODULE is not set}:printNewestEsVersionForModule")
-  run_e2e_tests "$E2E_ELK_VERSION" "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" "$E2E_BUILD_ID"
+  run_e2e_tests \
+    "$E2E_ELK_VERSION" \
+    "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
+    "${E2E_FALLBACK_BRANCH:-master}" \
+    "$E2E_BUILD_ID"
 fi

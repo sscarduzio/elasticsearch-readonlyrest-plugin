@@ -605,6 +605,10 @@ jobs:
           E2E_ES_MODULE: ${{ matrix.E2E_ES_MODULE }}
           # PR: the source branch (github.head_ref); push: the pushed branch (github.ref_name)
           E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+          # Used when E2E_TARGET_BRANCH doesn't exist in the e2e repo. PR: the base branch
+          # (github.base_ref — develop or master); push: the pushed branch itself. A change based on
+          # develop must fall back to the e2e repo's develop, not to master.
+          E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
           # Unique per attempt
           E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ACTIVATION_KEY }}

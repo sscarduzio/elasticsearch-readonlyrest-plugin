@@ -30,27 +30,42 @@ E2E_PREBUILD_IMAGES_LIB="ci/prebuild-images-lib.sh"
 
 # Clone the e2e tests repo into a fresh temp dir and echo the path (all logging goes to stderr so
 # the caller can capture the path from stdout).
-# target_branch may be a feature branch that doesn't exist in the e2e repo (e.g. on ES-only PRs);
-# fall back to master in that case.
+# target_branch may be a feature branch that doesn't exist in the e2e repo (e.g. on ES-only PRs).
+# In that case fall back to the branch this change is based on (the PR's base branch, or the pushed
+# branch itself) — a PR against `develop` must take the e2e suite from `develop`, not from `master`,
+# because the two lines can be out of sync (e.g. the shared prebuild-images lib exists on one only).
+# `master` stays as the last-resort candidate so a missing base branch never sinks the whole run.
 clone_e2e_tests_repo() {
-  if [ "$#" -ne 1 ]; then
-    echo "Usage: clone_e2e_tests_repo <target branch>" >&2
+  if [ "$#" -ne 2 ]; then
+    echo "Usage: clone_e2e_tests_repo <target branch> <fallback branch>" >&2
     return 1
   fi
 
   local TARGET_BRANCH=$1
+  local FALLBACK_BRANCH=$2
   local E2E_DIR
   E2E_DIR=$(mktemp -d) || return 2
 
-  echo "" >&2
-  if ! git clone --depth 1 --branch "$TARGET_BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" >/dev/null 2>&1; then
-    echo ">>> Branch '$TARGET_BRANCH' not found in e2e repo, falling back to master" >&2
-    git clone --depth 1 --branch master "$E2E_TESTS_REPO" "$E2E_DIR" >&2 || return 3
-  else
-    echo ">>> Cloned e2e tests repo (branch: $TARGET_BRANCH) into $E2E_DIR" >&2
-  fi
+  local CANDIDATES=("$TARGET_BRANCH")
+  local BRANCH
+  for BRANCH in "$FALLBACK_BRANCH" master; do
+    [ -n "$BRANCH" ] && ! printf '%s\n' "${CANDIDATES[@]}" | grep -qxF "$BRANCH" && CANDIDATES+=("$BRANCH")
+  done
 
-  echo "$E2E_DIR"
+  echo "" >&2
+  for BRANCH in "${CANDIDATES[@]}"; do
+    # A failed clone can leave partial content behind; git refuses to clone into a non-empty dir.
+    rm -rf "${E2E_DIR:?}" && mkdir -p "$E2E_DIR" || return 2
+    if git clone --depth 1 --branch "$BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" >/dev/null 2>&1; then
+      echo ">>> Cloned e2e tests repo (branch: $BRANCH) into $E2E_DIR" >&2
+      echo "$E2E_DIR"
+      return 0
+    fi
+    echo ">>> Branch '$BRANCH' not found in e2e repo" >&2
+  done
+
+  echo "ERROR: none of the e2e repo branches [${CANDIDATES[*]}] could be cloned" >&2
+  return 3
 }
 
 # Source the shared pre-build dispatch/poll helpers out of the e2e tests clone. After this returns,
@@ -120,19 +135,22 @@ run_e2e_against_dev_images() {
 }
 
 # Entry point for the `run_e2e_tests` task in run-pipeline.sh.
-# Args: <elk version> <target branch> <build id>
-#   elk version   — ELK version to test (X.Y.Z)
-#   target branch — branch to build the KBN plugin from / to take the e2e suite from
-#   build id      — E2E_BUILD_ID (<run id>-<attempt>); unique per attempt (run-<id>)
+# Args: <elk version> <target branch> <fallback branch> <build id>
+#   elk version     — ELK version to test (X.Y.Z)
+#   target branch   — branch to build the KBN plugin from / to take the e2e suite from
+#   fallback branch — branch this change is based on (PR base branch, or the pushed branch itself);
+#                     used when <target branch> doesn't exist in the e2e repo
+#   build id        — E2E_BUILD_ID (<run id>-<attempt>); unique per attempt (run-<id>)
 run_e2e_tests() {
-  if [ "$#" -ne 3 ]; then
-    echo "Usage: run_e2e_tests <elk version> <target branch> <build id>"
+  if [ "$#" -ne 4 ]; then
+    echo "Usage: run_e2e_tests <elk version> <target branch> <fallback branch> <build id>"
     return 1
   fi
 
   local ELK_VERSION=$1
   local TARGET_BRANCH=$2
-  local RUN_TAG="run-$3"
+  local FALLBACK_BRANCH=$3
+  local RUN_TAG="run-$4"
 
   # Validate before the clone so a typo fails in seconds rather than after a network round trip
   # (the shared lib re-validates the version it is handed).
@@ -146,7 +164,7 @@ run_e2e_tests() {
   # Step 0: get the e2e repo first — it owns both the pre-build contract used by steps 1/3 and the
   # runner used by step 4.
   local E2E_DIR
-  E2E_DIR=$(clone_e2e_tests_repo "$TARGET_BRANCH") || return $?
+  E2E_DIR=$(clone_e2e_tests_repo "$TARGET_BRANCH" "$FALLBACK_BRANCH") || return $?
   source_prebuild_images_lib "$E2E_DIR" || return $?
 
   # Step 1: fire off the KBN build without blocking. Runs remotely while we build the ES image.
