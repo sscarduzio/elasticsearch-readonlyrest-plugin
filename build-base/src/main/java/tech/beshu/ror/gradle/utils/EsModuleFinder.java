@@ -48,6 +48,17 @@ public final class EsModuleFinder {
     return EsVersions.of(esModule).newest;
   }
 
+  /**
+   * Every ES version ROR supports, oldest first, from each module's {@code supportedEsVersions}. The
+   * single source of truth for anything that needs the full list (see {@code printAllSupportedEsVersions}).
+   */
+  public static List<String> allSupportedEsVersions(Project rootProject) {
+    return sortedEsModules(rootProject, newestEsVersionComparator()).stream()
+        .flatMap(module -> EsVersions.of(module).all.stream())
+        .distinct()
+        .collect(Collectors.toList());
+  }
+
   public static List<Project> sortedEsModules(Project rootProject, Comparator<Project> comparator) {
     List<Project> esModules = allEsModules(rootProject);
     esModules.sort(comparator);
