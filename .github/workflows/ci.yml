@@ -8,6 +8,10 @@ on:
       - '.claude/**'
       - '**/*.md'
   pull_request:
+    # Draft PRs run a reduced test matrix, so marking a draft "ready for review" must start a run
+    # with the full PR matrix. That only happens if ready_for_review is listed here — it is not
+    # part of the default trigger types (opened, synchronize, reopened).
+    types: [ opened, synchronize, reopened, ready_for_review ]
     branches: [ master, develop, 'epic/**', '**/epic/**' ]
     paths-ignore:
       - 'docs/**'
@@ -45,9 +49,10 @@ defaults:
     shell: bash
 
 env:
-  # The single source of truth for the toolchains image tag is the `container:` lines below —
-  # bump them together with this env (used by build_toolchains_image) on a JDK/Gradle change.
-  TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+  # Single source of truth for the toolchains image tag: the &toolchains anchor. Every job's
+  # `container: *toolchains` resolves to it, so a JDK/Gradle bump edits ONE line. Kept per-branch
+  # (not a repo variable) on purpose: the tag is coupled to this commit's baked dependency cache.
+  TOOLCHAINS_IMAGE: &toolchains beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
   # 4 shards per leg + HeavySuiteGate (max 2 concurrent multi-cluster suites, machine-wide).
@@ -87,30 +92,36 @@ jobs:
           case "$REF" in *newes/*) echo "is_newes=true" >> "$GITHUB_OUTPUT";; *) echo "is_newes=false" >> "$GITHUB_OUTPUT";; esac
       - id: m
         env:
-          IS_FULL: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
-          IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
-          ACTION: ${{ github.event.inputs.actionToPerform || '' }}
+          # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
+          IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
+          IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
+          MANUAL_RUN_ACTION: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.actionToPerform || '') }}
         run: |
-          # ES-version sets — keep in sync with azure-pipelines.yml until Azure is deleted.
-          LINUX_FULL='["integration_es94x","integration_es92x","integration_es91x","integration_es90x","integration_es818x","integration_es816x","integration_es815x","integration_es814x","integration_es813x","integration_es812x","integration_es811x","integration_es810x","integration_es89x","integration_es88x","integration_es87x","integration_es85x","integration_es84x","integration_es83x","integration_es82x","integration_es81x","integration_es80x","integration_es717x","integration_es716x","integration_es714x","integration_es711x","integration_es710x","integration_es79x","integration_es78x","integration_es77x","integration_es74x","integration_es73x","integration_es72x","integration_es70x","integration_es67x"]'
-          LINUX_PR='["integration_es94x","integration_es90x","integration_es818x","integration_es816x","integration_es810x","integration_es80x","integration_es717x","integration_es710x","integration_es70x","integration_es67x"]'
-          WIN_FULL='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
-          WIN_BRANCH='["es94x","es90x","es818x","es80x","es717x","es70x"]'
-          WIN_PR='["es94x","es818x","es717x"]'
+          LINUX_IT_FULL_SET='["integration_es94x","integration_es92x","integration_es91x","integration_es90x","integration_es818x","integration_es816x","integration_es815x","integration_es814x","integration_es813x","integration_es812x","integration_es811x","integration_es810x","integration_es89x","integration_es88x","integration_es87x","integration_es85x","integration_es84x","integration_es83x","integration_es82x","integration_es81x","integration_es80x","integration_es717x","integration_es716x","integration_es714x","integration_es711x","integration_es710x","integration_es79x","integration_es78x","integration_es77x","integration_es74x","integration_es73x","integration_es72x","integration_es70x","integration_es67x"]'
+          LINUX_IT_PR_READY_SET='["integration_es94x","integration_es90x","integration_es818x","integration_es816x","integration_es810x","integration_es80x","integration_es717x","integration_es710x","integration_es70x","integration_es67x"]'
+          LINUX_IT_PR_DRAFT_SET='["integration_es94x","integration_es818x","integration_es717x","integration_es67x"]'
+          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
+          WIN_IT_MASTER_OR_DEVELOP_SET='["es94x","es90x","es818x","es80x","es717x","es70x"]'
+          WIN_IT_PR_READY_SET='["es94x","es818x","es717x"]'
+          WIN_IT_PR_DRAFT_SET='[]'
           E2E_MODULES='["es94x","es818x","es717x"]'
 
-          if [ "$IS_DISPATCH" = "true" ] || [ "$IS_FULL" = "true" ]; then
-            echo "linux=$LINUX_FULL" >> "$GITHUB_OUTPUT"
+          if [ "$IS_PR_DRAFT" = "true" ]; then
+            echo "linux=$LINUX_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_linux" ] || [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
+            echo "linux=$LINUX_IT_FULL_SET" >> "$GITHUB_OUTPUT"
           else
-            echo "linux=$LINUX_PR" >> "$GITHUB_OUTPUT"
+            echo "linux=$LINUX_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           fi
 
-          if [ "$IS_DISPATCH" = "true" ] && [ "$ACTION" = "run_all_tests_on_windows" ]; then
-            echo "windows=$WIN_FULL" >> "$GITHUB_OUTPUT"
-          elif [ "$IS_FULL" = "true" ]; then
-            echo "windows=$WIN_BRANCH" >> "$GITHUB_OUTPUT"
+          if [ "$IS_PR_DRAFT" = "true" ]; then
+            echo "windows=$WIN_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_windows" ]; then
+            echo "windows=$WIN_IT_FULL_SET" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
+            echo "windows=$WIN_IT_MASTER_OR_DEVELOP_SET" >> "$GITHUB_OUTPUT"
           else
-            echo "windows=$WIN_PR" >> "$GITHUB_OUTPUT"
+            echo "windows=$WIN_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           fi
 
           echo "e2e=$E2E_MODULES" >> "$GITHUB_OUTPUT"
@@ -164,7 +175,7 @@ jobs:
     needs: setup
     if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -184,7 +195,7 @@ jobs:
       needs.setup.outputs.is_newes == 'true' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubicloud-standard-4
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -217,7 +228,7 @@ jobs:
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     continue-on-error: true
     name: ${{ matrix.ROR_TASK }}
     strategy:
@@ -265,7 +276,7 @@ jobs:
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
@@ -295,7 +306,7 @@ jobs:
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -326,9 +337,10 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
+      needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubicloud-standard-4  # premium probe measured only ~15% faster at 1.6x price — not worth it
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 120
     # Job name = the matrix value alone ("integration_es94x"), not "it_linux (integration_es94x)":
     # the default composite gets truncated to an indistinguishable prefix in the graph view.
@@ -408,8 +420,8 @@ jobs:
 
 
   # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
-  # Matrix from setup: 7-version subset on develop/master/epic, 3 on PRs, full 33 on manual
-  # run_all_tests_on_windows — exactly Azure's three Windows IT jobs collapsed into one.
+  # Matrix from setup: 6-version subset on develop/master/epic, 3 on ready PRs, none on draft
+  # PRs (job skipped), full 33 on manual run_all_tests_on_windows.
   it_windows:
     # toolchains_verify is in needs even though Windows doesn't use the image: Azure's TEST stage
     # depended on TOOLCHAINS_VERIFY, so a broken image fails fast instead of running doomed legs.
@@ -419,6 +431,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
+      needs.setup.outputs.it_windows_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')
     runs-on: windows-2025
     timeout-minutes: 150
@@ -447,6 +460,15 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: false }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21' }
+      # Windows has no baked toolchains image: without this every leg cold-downloads the wrapper,
+      # deps + JDKs and cold-compiles Scala (~9 min). Develop runs write the cache; PRs read it.
+      # jdks: not in the action's default include set, but auto-download=true provisions there.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            jdks
       - name: ${{ matrix.ES_MODULE }}
         shell: pwsh
         env:
@@ -466,7 +488,7 @@ jobs:
           # Windows (no docker), 3 fit the 16GB box. 4 workers measured no faster (CPU-bound).
           # ror-tools:test is NOT run per-leg: it took ~10 min/leg and every node install already
           # exercises the patcher end-to-end; the suite still runs via unit_tests_windows.
-          $gradleArgs = "--no-daemon", "integration-tests:shardedTest", "-PshardCount=3", "-PesModule=$env:ES_MODULE",
+          $gradleArgs = "--no-daemon", "--build-cache", "integration-tests:shardedTest", "-PshardCount=3", "-PesModule=$env:ES_MODULE",
             "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
           .\gradlew @gradleArgs
           if ($LASTEXITCODE -ne 0) {
@@ -605,10 +627,10 @@ jobs:
       needs.required_checks.result == 'success' &&
       needs.unit_tests_linux.result == 'success' &&
       needs.it_linux.result == 'success' &&
-      needs.it_windows.result == 'success' &&
+      (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
       needs.e2e_tests.result == 'success'
     runs-on: ubicloud-standard-4
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 180
     name: ${{ matrix.ROR_TASK }}
     strategy:
@@ -669,7 +691,7 @@ jobs:
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubicloud-standard-4
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 600
     strategy:
       fail-fast: false
@@ -726,7 +748,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-4
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     timeout-minutes: 180
     strategy:
       fail-fast: false
@@ -783,7 +805,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-4
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    container: *toolchains
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 1, persist-credentials: false }

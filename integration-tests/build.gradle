@@ -4,7 +4,6 @@ plugins {
 
 repositories {
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
-    maven { url 'https://jitpack.io' }
     maven { url 'https://artifacts.elastic.co/maven' }
 }
 
@@ -14,22 +13,8 @@ java {
     }
 }
 
-configurations {
-    scalaCompilerPlugin {
-        transitive = false
-    }
-}
-
 tasks.withType(ScalaCompile).configureEach {
-    // Use artifactView to safely access configuration files in Gradle 9.x
-    def pluginFiles = configurations.scalaCompilerPlugin.incoming.artifactView {
-        attributes { }
-    }.files
-    // Map plugin jars to -Xplugin parameter
-    List<String> parameters = pluginFiles.collect { '-Xplugin:' + it.absolutePath }
-
-    // Add whatever flags you typically add
-    parameters += [
+    List<String> parameters = [
             "-feature",
             "-Xfatal-warnings",
             "-Wunused:implicits",
@@ -56,15 +41,18 @@ sourceSets {
     }
 }
 
-// No -PesModule → newest supported module. Hardcoded until buildSrc's EsModuleResolver lands
-// and can derive it automatically.
-def defaultEsModule = 'es94x'
+// No -PesModule → the module that publishes the newest supported ES version. Both facts come from
+// the es* modules' supportedEsVersions, so this follows automatically when a newer module is added.
+def newestEsVersion = tech.beshu.ror.gradle.utils.EsModuleFinder
+        .findTheNewestSupportedEsVersion(rootProject).orElseThrow()
+def defaultEsModule = tech.beshu.ror.gradle.utils.EsModuleFinder
+        .findEsModuleFor(rootProject, newestEsVersion).orElseThrow().name
 
 test {
     systemProperty "project.dir", rootProject.projectDir
     def module = project.findProperty('esModule') ?: defaultEsModule
     // Skips in bare aggregate builds (build/check); runs when the task is explicitly requested.
-    // The module always defaults to es94x — no need to detect if -PesModule was passed.
+    // The module always has a default — no need to detect if -PesModule was passed.
     def explicitlyRequested = gradle.startParameter.taskNames.any { it.endsWith('integration-tests:test') || it == 'integration-tests:test' }
     onlyIf { explicitlyRequested }
     doFirst {
@@ -171,12 +159,6 @@ dependencies {
     testImplementation  group: 'org.scalatest',                 name: 'scalatest_3',                version: '3.2.19'
 }
 
-tasks.register('ldapserver', JavaExec) {
-    systemProperties = System.properties
-    mainClass.set('tech.beshu.ror.integration.LDAPServer')
-    classpath = sourceSets.test.runtimeClasspath
-}
-
 // Builds + stably tags the singleton ES image ONCE before parallel workers; without it concurrent
 // identical builds fail intermittently at shardCount>=3. Pre-building gives every worker a cache hit.
 tasks.register('prebuildEsImage', JavaExec) {
@@ -201,14 +183,20 @@ tasks.register('prebuildEsImage', JavaExec) {
 //   ./gradlew integration-tests:test -PesModule=es90x && ./gradlew integration-tests:regenerateSuiteTimings
 tasks.register('regenerateSuiteTimings') {
     doLast {
-        def times = new TreeMap()
+        // Wall-time estimation (boot + exec, median first-boot) lives in build-base's
+        // SuiteTimings.wallTimes (pure, unit-tested); this task only parses the junit XMLs
+        // and does the JSON I/O around it (same split as SuiteSharder).
+        def byShard = [:].withDefault { [] }
         fileTree(dir: layout.buildDirectory, includes: ['test-results/**/TEST-*.xml']).each { f ->
             def suite = new groovy.xml.XmlSlurper().parse(f)
             def name = suite.@name.toString()
             if (!name.startsWith('tech.beshu.ror.integration.suites')) return
-            def seconds = Math.round(Double.parseDouble(suite.@time.toString()))
-            times[name] = Math.max((long) times.getOrDefault(name, 0L), seconds)
+            byShard[f.parentFile.path] << new tech.beshu.ror.buildbase.SuiteTimings.SuiteRun(
+                name,
+                java.time.Instant.parse(suite.@timestamp.toString()),
+                Double.parseDouble(suite.@time.toString()))
         }
+        def times = tech.beshu.ror.buildbase.SuiteTimings.wallTimes(byShard.values())
         if (times.isEmpty()) {
             logger.quiet('No test-results found under build/ — run the integration tests first.')
             return
