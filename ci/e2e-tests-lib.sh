@@ -307,6 +307,13 @@ run_e2e_tests() {
   E2E_DIR=$(clone_e2e_tests_repo "$TARGET_BRANCH" "$FALLBACK_BRANCH") || return $?
   source_prebuild_images_lib "$E2E_DIR" || return $?
 
+  # The suite writes its videos/screenshots under $E2E_DIR/results, and that path is a mktemp dir the
+  # caller cannot guess. Publish it so a later step can still collect them once this one has failed.
+  # A no-op outside GitHub Actions.
+  if [ -n "${GITHUB_ENV:-}" ]; then
+    echo "E2E_TESTS_DIR=$E2E_DIR" >> "$GITHUB_ENV"
+  fi
+
   # Step 3: build & publish the ROR ES dev image (publish_ror_prebuild_plugin is defined in ci-lib.sh).
   # The skip optimization applies: if the sha-frozen image already exists, Gradle is not re-run.
   # The run tag is applied as an alias so the e2e runner can reference it.

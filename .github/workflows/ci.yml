@@ -686,6 +686,39 @@ jobs:
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
           ci/run-pipeline.sh
 
+      # Cypress videos/screenshots go to S3, NOT to GitHub artifacts, which count against the metered
+      # Actions-storage quota. Same arrangement as the ROR KBN repo's e2e job. The suite runs from a
+      # temp clone of the e2e repo, so the path comes from E2E_TESTS_DIR, which run_e2e_tests
+      # published to GITHUB_ENV before running it.
+      - name: Upload Cypress artifacts to S3 on failure
+        if: failure()
+        continue-on-error: true
+        # The E2E_REPORTS store — the bucket's e2e_reports/ tree, alongside builds/ (ARTIFACTS) and
+        # libs/ (LIBS), following ci-lib.sh's ROR_<STORE>_STORE_* convention. It has its OWN
+        # credentials on purpose: the gateway authorizes each prefix separately, so the publishing
+        # creds are 403ed here — and a key that only test videos need must not be able to write to
+        # the customer-facing builds/ tree. As with the other two stores, only the key pair is a
+        # secret and the rest are `vars`; the secret fallback keeps it working either way.
+        env:
+          ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID }}
+          ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET }}
+          ROR_E2E_REPORTS_STORE_BUCKET: ${{ vars.ROR_E2E_REPORTS_STORE_BUCKET || secrets.ROR_E2E_REPORTS_STORE_BUCKET }}
+          ROR_E2E_REPORTS_STORE_REGION: ${{ vars.ROR_E2E_REPORTS_STORE_REGION || secrets.ROR_E2E_REPORTS_STORE_REGION }}
+          ROR_E2E_REPORTS_STORE_ENDPOINT_URL: ${{ vars.ROR_E2E_REPORTS_STORE_ENDPOINT_URL || secrets.ROR_E2E_REPORTS_STORE_ENDPOINT_URL }}
+          E2E_REPORTS_PATH_PREFIX: ${{ vars.ROR_E2E_REPORTS_STORE_PATH_PREFIX || secrets.ROR_E2E_REPORTS_STORE_PATH_PREFIX }}
+        run: |
+          set -e
+          # Layout, matching the KBN repo so both plugins' reports browse the same way:
+          #   <PATH_PREFIX>/YYYY-MM-DD/build_<run id>/<module>_<elk>/<videos|screenshots>/<file>
+          # The e2e_reports root IS the store's configured PATH_PREFIX (e.g. ror/e2e_reports/, as
+          # ARTIFACTS uses ror/builds/) — never hardcode it here, or it ends up prefixed twice. The
+          # date level is inserted so report folders sort chronologically.
+          BASE="${E2E_REPORTS_PATH_PREFIX:+${E2E_REPORTS_PATH_PREFIX%/}/}"
+          export ROR_E2E_REPORTS_STORE_PATH_PREFIX="${BASE}$(date -u +%Y-%m-%d)/build_${{ github.run_id }}"
+          ci/upload-cypress-artifacts-to-s3.sh \
+            "${E2E_TESTS_DIR:?run_e2e_tests did not publish the e2e clone path}/results" \
+            "${{ matrix.module }}_${{ matrix.elk }}"
+
   # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────
   build_ror:
     needs: [ setup, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
