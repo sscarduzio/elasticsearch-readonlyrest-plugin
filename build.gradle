@@ -19,9 +19,7 @@ import tech.beshu.ror.gradle.PrintEsModulesTask
 
 plugins {
     id 'base'
-    id 'com.bmuschko.docker-remote-api'             version '9.4.0'
     id 'io.github.gradle-nexus.publish-plugin'      version '2.0.0-rc-1'
-    id 'org.gradle.crypto.checksum'                 version '1.4.0'
     id "idea"
     id "readonlyrest.format-conventions"
 }
@@ -63,6 +61,19 @@ tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
 // Usage: ./gradlew printEsModules -PesMajor=8 --quiet
 tasks.register("printEsModules", PrintEsModulesTask)
 
+// Prints every ES version ROR supports, one per line, oldest first. The versions come from each es module's
+// `supportedEsVersions` (gradle.properties), so scripts that need the full list cannot drift from what CI
+// actually builds and tests. Invoke with --quiet to suppress Gradle's own output.
+// Usage: ./gradlew printAllSupportedEsVersions --quiet
+tasks.register("printAllSupportedEsVersions") {
+    group = 'help'
+    description = 'Prints every supported ES version (one per line, oldest first)'
+    outputs.upToDateWhen { false }
+    doLast {
+        tech.beshu.ror.gradle.utils.EsModuleFinder.allSupportedEsVersions(rootProject).each { println it }
+    }
+}
+
 group = 'tech.beshu.ror'
 version = pluginVersion
 
@@ -85,9 +96,3 @@ nexusPublishing {
     }
 }
 
-docker {
-    registryCredentials {
-        username = System.getenv('DOCKER_REGISTRY_USER')
-        password = System.getenv('DOCKER_REGISTRY_PASSWORD')
-    }
-}

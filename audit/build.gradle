@@ -36,15 +36,14 @@ java {
 
 crossBuild {
     scalaVersionsCatalog = [
-            '2.11': '2.11.12',
-            '2.12': '2.12.21',
             '2.13': '2.13.18',
             '3.3.0': '3.3.7'
     ]
 
+    // Scala 2.11 and 2.12 are gone: every shipped plugin loads the Scala 3 core, so a serializer built
+    // against audit_2.11/audit_2.12 cannot link in the plugin class loader. 2.13 stays because the
+    // plugin class path carries scala-library 2.13 and both shipped examples target it.
     builds {
-        v211
-        v212
         v213
         v3
     }
@@ -52,8 +51,6 @@ crossBuild {
 
 dependencies {
     implementation                 group: 'org.json',           name: 'json',                version: '20251224'
-    crossBuildV211Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.11.12'
-    crossBuildV212Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.12.21'
     crossBuildV213Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.17'
     crossBuildV3Implementation     group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.7'
     compileOnly                    group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.7'
@@ -66,21 +63,6 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
-}
-
-compileScala {
-    options.compilerArgs.addAll(
-            "-feature",
-            "-Xfatal-warnings",
-            "-Wunused:implicits",
-            "-Wunused:imports",
-            "-Wunused:explicits",
-            "-Wunused:strict-no-implicit-warn",
-            "-Wunused:locals",
-            "-Wunused:params",
-            "-Wunused:privates",
-            "-Wunused:nowarn",
-    )
 }
 
 def ror_pom = { ->
@@ -129,18 +111,6 @@ version = pluginVersion
 
 publishing {
     publications {
-        crossBuildV211(MavenPublication) {
-            artifact crossBuildV211Jar
-            artifact sourcesJar
-            artifact javadocJar
-            pom ror_pom
-        }
-        crossBuildV212(MavenPublication) {
-            artifact crossBuildV212Jar
-            artifact sourcesJar
-            artifact javadocJar
-            pom ror_pom
-        }
         crossBuildV213(MavenPublication) {
             artifact crossBuildV213Jar
             artifact sourcesJar

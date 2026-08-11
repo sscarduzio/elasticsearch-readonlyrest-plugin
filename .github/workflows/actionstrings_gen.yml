@@ -1,32 +1,62 @@
+name: ROR ES Action Strings
+
 on:
   push:
     branches:
       - master
+    paths:
+      - 'es*/gradle.properties'
+      - 'ci/actionstrings/**'
+  workflow_dispatch:
+
+# Serialize racing master pushes: a stale parallel run must not push over a newer one.
+concurrency:
+  group: actionstrings
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout ror es
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: main
-          
+
       - name: Checkout docs
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
-          path: docs 
+          path: docs
           repository: beshu-tech/readonlyrest-docs
           token: ${{ secrets.GH_PAT }}
-          
+
+      # run.sh asks the build for the supported ES versions, so this job needs a JDK.
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
       - run: |
           mv docs main/readonlyrest-docs
-          cd main 
+          cd main
           git config --global advice.detachedHead false
+          # Set the commit identity BEFORE generating, and in the docs repo — that is the repo we commit to.
+          git -C readonlyrest-docs config user.name github-actions
+          git -C readonlyrest-docs config user.email github-actions@github.com
+          # Generate first and remember the outcome, then publish whatever was generated: one ES version
+          # that fails must not discard the versions that succeeded. The job still fails afterwards.
+          set +e
           bash -x ci/actionstrings/run.sh
+          generated=$?
+          set -e
           cd readonlyrest-docs
-          git config user.name github-actions
-          git config user.email github-actions@github.com
           git add .
-          git commit -m "commit new action strings" || true
-          git push || true
+          # Commit only when there is something staged. `git commit || true` would also swallow a REAL
+          # failure (a hook, an index lock) and report success while publishing nothing.
+          if git diff --cached --quiet; then
+            echo "no new action strings to commit"
+          else
+            git commit -m "commit new action strings"
+          fi
+          git push
+          exit $generated
