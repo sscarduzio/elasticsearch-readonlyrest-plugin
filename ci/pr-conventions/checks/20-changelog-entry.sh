@@ -1,6 +1,10 @@
 # A change a client can see needs a changelog entry in the description.
 # Escape hatch: the `no-changelog` label, for a refactor, a build change or a test.
 
+: "${PR_JSON_FILE:?this check is sourced by ci/pr-conventions/run.sh}"
+: "${PR_FILES_FILE:?this check is sourced by ci/pr-conventions/run.sh}"
+: "${PR_BUILD_DIFF_FILE:?this check is sourced by ci/pr-conventions/run.sh}"
+
 body=$(jq -r '.body // ""' "$PR_JSON_FILE")
 labels=$(jq -r '.labels[].name' "$PR_JSON_FILE")
 
@@ -19,7 +23,9 @@ dependencies_changed=$(grep -cE "$DEPENDENCY_LINE" "$PR_BUILD_DIFF_FILE" || true
 # treat it as changed and let the label be the way out. Failing open here would silently let the
 # biggest changes through, which are the ones most likely to need a changelog entry.
 changed_total=$(jq -r '.changed_files' "$PR_JSON_FILE")
-files_listed=$(wc -l < "$PR_FILES_FILE")
+# awk, not `wc -l`: wc counts NEWLINES, so a last line without one is not counted and a
+# one-file pull request would look truncated.
+files_listed=$(awk 'END{print NR}' "$PR_FILES_FILE")
 truncated=false
 if [ "$changed_total" -gt "$files_listed" ]; then
   truncated=true
@@ -35,7 +41,9 @@ elif grep -qx 'no-changelog' <<<"$labels"; then
 # The YAML form asks for one COMPLETE entry. EVERY `type:` line starts a new entry and resets the
 # state, including an unsupported one, so an incomplete entry cannot be completed by the keys of the
 # entry that follows it.
-elif awk '
+# `window` = how many lines after a `type:` line its `components:`/`text:` may sit on. Widen it if
+# the changelog format ever grows more keys per entry.
+elif awk -v window=3 '
       /^[[:space:]]*-?[[:space:]]*type:/ {
         found=0; c=0; t=0
         if ($0 ~ /^[[:space:]]*-?[[:space:]]*type:[[:space:]]*(security|new|fix|enhancement)[[:space:]]*$/) {
@@ -43,8 +51,8 @@ elif awk '
         }
         next
       }
-      found && NR<=found+3 && /components:/ { c=1 }
-      found && NR<=found+3 && /text:[[:space:]]*[^[:space:]]/ { t=1 }
+      found && NR<=found+window && /components:/ { c=1 }
+      found && NR<=found+window && /text:[[:space:]]*[^[:space:]]/ { t=1 }
       c && t { complete=1 }
       END { exit !complete }' <<<"$body" \
   || grep -qE '\*\*(Security Fix|New|Enhancement|Fix)\*\*[[:space:]]*\((ES|KBN)\)' <<<"$body"; then

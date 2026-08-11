@@ -35,12 +35,16 @@ export PR_FILES_FILE="$WORK_DIR/files"
 export PR_BUILD_DIFF_FILE="$WORK_DIR/build-diff"
 
 gh api "repos/$REPO/pulls/$PR" > "$PR_JSON_FILE"
+# One crawl of the files endpoint, then derive both views locally. Paginating it twice cost ~17s per
+# crawl on PR #1313 and twice the rate limit, for the same data.
+#
 # NOTE: GitHub caps this endpoint at 3,000 files even with --paginate, so for a very large pull
 # request this list is INCOMPLETE. `.changed_files` in the JSON above is the true count; a check that
 # needs completeness must compare the two and decide what to do (see 20-changelog-entry.sh).
-gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename' > "$PR_FILES_FILE"
-gh api "repos/$REPO/pulls/$PR/files" --paginate \
-  --jq '.[] | select(.filename | test("(^|/)build\\.gradle$")) | .patch // ""' > "$PR_BUILD_DIFF_FILE"
+gh api "repos/$REPO/pulls/$PR/files" --paginate > "$WORK_DIR/files.json"
+jq -r '.[].filename' "$WORK_DIR/files.json" > "$PR_FILES_FILE"
+jq -r '.[] | select(.filename | test("(^|/)build\\.gradle$")) | .patch // ""' \
+  "$WORK_DIR/files.json" > "$PR_BUILD_DIFF_FILE"
 
 failed=0
 # Reporting only. `fail` records the failure and lets the remaining checks still run, so one run
