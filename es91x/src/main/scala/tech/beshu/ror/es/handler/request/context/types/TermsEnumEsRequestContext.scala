@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
   UsedField,
   UsingFields
 }
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{Action, ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.accesscontrol.request.{TermsEnumFieldAction, TermsEnumRequestFieldsSupport}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -41,7 +41,7 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.util.{Failure, Success, Try}
 
-class TermsEnumEsRequestContext(
+class TermsEnumEsRequestContext private (
     actionRequest: ActionRequest with Replaceable,
     esContext: EsContext,
     aclContext: AccessControlStaticContext,
@@ -105,6 +105,19 @@ class TermsEnumEsRequestContext(
       case Failure(ex) =>
         logger.error("Cannot modify the requested field of a '_terms_enum' request. Please report the issue.", ex)
         ShouldBeInterrupted
+    }
+  }
+
+}
+
+object TermsEnumEsRequestContext {
+
+  def unapply(arg: ReflectionBasedActionRequest): Option[TermsEnumEsRequestContext] = {
+    (arg.esContext.action == Action.EsAction.termsEnumAction, arg.esContext.actionRequest) match {
+      case (true, request: Replaceable) =>
+        Some(new TermsEnumEsRequestContext(request, arg.esContext, arg.aclContext, arg.threadPool))
+      case _ =>
+        None
     }
   }
 
