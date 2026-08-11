@@ -104,7 +104,8 @@ jobs:
           WIN_IT_MASTER_OR_DEVELOP_SET='["es94x","es90x","es818x","es80x","es717x","es70x"]'
           WIN_IT_PR_READY_SET='["es94x","es818x","es717x"]'
           WIN_IT_PR_DRAFT_SET='[]'
-          E2E_MODULES='["es94x","es818x","es717x"]'
+          E2E_FULL_SET='["es94x","es818x","es717x"]'
+          E2E_PR_DRAFT_SET='[]'
 
           if [ "$IS_PR_DRAFT" = "true" ]; then
             echo "linux=$LINUX_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
@@ -124,7 +125,11 @@ jobs:
             echo "windows=$WIN_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "e2e=$E2E_MODULES" >> "$GITHUB_OUTPUT"
+          if [ "$IS_PR_DRAFT" = "true" ]; then
+            echo "e2e=$E2E_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          else
+            echo "e2e=$E2E_FULL_SET" >> "$GITHUB_OUTPUT"
+          fi
 
   # ── BUILD_TOOLCHAINS_IMAGE (schedule / manual) ────────────────────────────
   build_toolchains_image:
@@ -572,6 +577,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
+      needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || startsWith(needs.setup.outputs.action, 'run_all_tests') || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest   # free for public repos; this job only configures Gradle and calls an API
     timeout-minutes: 30
@@ -614,8 +620,9 @@ jobs:
   # once by e2e_prepare; run-pipeline.sh's run_e2e_tests builds & publishes the ROR ES dev image for
   # this version (the expensive step, hence still per-version and parallel), waits for the matching
   # KBN image, then runs the suite (see ci/e2e-tests-lib.sh).
-  # Runs on plain PRs and branch pushes; on manual dispatch only for the run_all_tests_* actions;
-  # never on schedule. Same TOOLCHAINS_VERIFY/ES_S3_UP gate as the other TEST legs.
+  # Runs on ready PRs and branch pushes; on manual dispatch only for the run_all_tests_* actions;
+  # never on schedule, and never on DRAFT PRs (setup emits an empty e2e module list for those).
+  # Same TOOLCHAINS_VERIFY/ES_S3_UP gate as the other TEST legs.
   e2e_tests:
     needs: [ setup, toolchains_verify, es_s3_up, e2e_prepare ]
     if: >-
@@ -624,6 +631,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
+      needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || startsWith(needs.setup.outputs.action, 'run_all_tests') || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubicloud-standard-4
     timeout-minutes: 120
@@ -723,6 +731,9 @@ jobs:
             "${{ matrix.module }}_${{ matrix.elk }}"
 
   # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────
+  # it_windows / e2e_tests may legitimately not run (draft PRs get reduced matrices, and no e2e at
+  # all). e2e is tolerated via setup's empty list rather than a 'skipped' result, so that a FAILED
+  # e2e_prepare — which also leaves e2e_tests 'skipped' — still blocks this job.
   build_ror:
     needs: [ setup, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     if: >-
@@ -732,7 +743,7 @@ jobs:
       needs.unit_tests_linux.result == 'success' &&
       needs.it_linux.result == 'success' &&
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
-      needs.e2e_tests.result == 'success'
+      (needs.e2e_tests.result == 'success' || needs.setup.outputs.e2e_modules == '[]')
     runs-on: ubicloud-standard-4
     container: *toolchains
     timeout-minutes: 180
