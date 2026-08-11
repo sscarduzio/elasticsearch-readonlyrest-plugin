@@ -79,7 +79,7 @@ jobs:
       action:     ${{ github.event.inputs.actionToPerform || 'run_all_tests_on_linux' }}
       it_linux_matrix:   ${{ steps.m.outputs.linux }}
       it_windows_matrix: ${{ steps.m.outputs.windows }}
-      e2e_matrix:        ${{ steps.m.outputs.e2e }}
+      e2e_modules:       ${{ steps.m.outputs.e2e }}
     steps:
       - id: f
         env:
@@ -554,16 +554,70 @@ jobs:
           path: '**/TEST*.xml'
           if-no-files-found: ignore
 
-  # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
-  # Cypress e2e suite (docker env) for es94x against per-run dev images of BOTH ROR plugins
-  # (ES + KBN). Ported from Azure's E2E_TESTS stage. run-pipeline.sh's run_e2e_tests dispatches the
-  # KBN pre-build, builds & publishes the ROR ES dev image, then runs the suite (see ci/e2e-tests-lib.sh).
-  # Runs on plain PRs and branch pushes; on manual dispatch only for the run_all_tests_* actions;
-  # never on schedule. Same TOOLCHAINS_VERIFY/ES_S3_UP gate as the other TEST legs.
-  e2e_tests:
+  # ── E2E_PREPARE (one KBN pre-build for the whole e2e matrix) ──────────────
+  # Mirrors readonlyrest-e2e-tests' own "prepare dev images" stage: ONE dispatch covers every version
+  # (the KBN pre-build workflow takes a version list), instead of one per e2e module. Beyond the
+  # wasted runs, N concurrent dispatches make the shared lib's run lookup ambiguous — each job takes
+  # the newest run of that workflow and can latch onto a sibling's (see ci/e2e-tests-lib.sh).
+  # It also resolves each module's ELK version and publishes the matrix the test jobs fan out over,
+  # so a version bump in a module's gradle.properties needs no edit here.
+  # Gate identical to e2e_tests, which consumes its outputs.
+  e2e_prepare:
     needs: [ setup, toolchains_verify, es_s3_up ]
     if: >-
       !cancelled() &&
+      needs.toolchains_verify.result == 'success' &&
+      needs.es_s3_up.result != 'cancelled' &&
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' || startsWith(needs.setup.outputs.action, 'run_all_tests') || needs.setup.outputs.action == 'run_e2e_tests')
+    runs-on: ubuntu-latest   # free for public repos; this job only configures Gradle and calls an API
+    timeout-minutes: 30
+    # No container: the dispatch helpers shell out to `gh` and `jq`, which the toolchains image does
+    # not carry (the GH-hosted image does). The cost is that Gradle runs without the baked Gradle
+    # home, so — as in e2e_tests below — point GRADLE_USER_HOME at a writable workspace path (an
+    # EMPTY value can't unset it), blank the baked installations.paths and let Gradle auto-provision.
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
+      GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
+    outputs:
+      matrix: ${{ steps.prepare.outputs.matrix }}
+      kbn_run_id: ${{ steps.prepare.outputs.kbn_run_id }}
+      kbn_run_url: ${{ steps.prepare.outputs.kbn_run_url }}
+      kbn_wait_timeout_seconds: ${{ steps.prepare.outputs.kbn_wait_timeout_seconds }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1, persist-credentials: true }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: prepare_e2e_kbn_images
+        id: prepare
+        env:
+          ROR_TASK: prepare_e2e_kbn_images
+          E2E_ES_MODULES: ${{ join(fromJSON(needs.setup.outputs.e2e_modules), ' ') }}
+          # PR: the source branch (github.head_ref); push: the pushed branch (github.ref_name)
+          E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+          # Used when E2E_TARGET_BRANCH doesn't exist in the e2e repo. PR: the base branch
+          # (github.base_ref — develop or master); push: the pushed branch itself. A change based on
+          # develop must fall back to the e2e repo's develop, not to master.
+          E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
+          # Unique per attempt; e2e_tests derives the same image tag from it.
+          E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
+        run: ci/run-pipeline.sh
+
+  # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
+  # Cypress e2e suite (docker env), one job per e2e module, against per-run dev images of BOTH ROR
+  # plugins (ES + KBN). Ported from Azure's E2E_TESTS stage. The KBN pre-build was already dispatched
+  # once by e2e_prepare; run-pipeline.sh's run_e2e_tests builds & publishes the ROR ES dev image for
+  # this version (the expensive step, hence still per-version and parallel), waits for the matching
+  # KBN image, then runs the suite (see ci/e2e-tests-lib.sh).
+  # Runs on plain PRs and branch pushes; on manual dispatch only for the run_all_tests_* actions;
+  # never on schedule. Same TOOLCHAINS_VERIFY/ES_S3_UP gate as the other TEST legs.
+  e2e_tests:
+    needs: [ setup, toolchains_verify, es_s3_up, e2e_prepare ]
+    if: >-
+      !cancelled() &&
+      needs.e2e_prepare.result == 'success' &&
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
@@ -580,13 +634,15 @@ jobs:
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
-    # "e2e_es94x", not the truncated "e2e_tests (es94x)" composite, in the graph view.
-    name: e2e_${{ matrix.E2E_ES_MODULE }}
+    # "e2e_es94x", not the truncated "e2e_tests (es94x)" composite, in the graph view. Named after
+    # the MODULE, not the ELK version, so the check name survives a version bump.
+    name: e2e_${{ matrix.module }}
     strategy:
       fail-fast: false
       max-parallel: 99
-      matrix:
-        E2E_ES_MODULE: ${{ fromJSON(needs.setup.outputs.e2e_matrix) }}
+      # { include: [ { module: es94x, elk: 9.4.4 }, ... ] } — built by e2e_prepare, which reads each
+      # module's newest supported ES version out of the build.
+      matrix: ${{ fromJSON(needs.e2e_prepare.outputs.matrix) }}
     steps:
       # persist-credentials: true mirrors Azure (persistCredentials). The e2e flow authenticates to
       # the KBN repo via KBN_REPO_GH_TOKEN and clones the (public) e2e-tests repo; keep the checkout
@@ -602,15 +658,23 @@ jobs:
       - name: run_e2e_tests
         env:
           ROR_TASK: run_e2e_tests
-          E2E_ES_MODULE: ${{ matrix.E2E_ES_MODULE }}
+          E2E_ES_MODULE: ${{ matrix.module }}
+          # Resolved once, by e2e_prepare, from this module's supportedEsVersions.
+          E2E_ELK_VERSION: ${{ matrix.elk }}
           # PR: the source branch (github.head_ref); push: the pushed branch (github.ref_name)
           E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           # Used when E2E_TARGET_BRANCH doesn't exist in the e2e repo. PR: the base branch
           # (github.base_ref — develop or master); push: the pushed branch itself. A change based on
           # develop must fall back to the e2e repo's develop, not to master.
           E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          # Unique per attempt
+          # Unique per attempt. Same value e2e_prepare used, so both derive the same image tag.
           E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          # The KBN pre-build run e2e_prepare started. Lets the image poll below fail as soon as that
+          # run fails, instead of spending its whole timeout, and scales the timeout with the number
+          # of versions that one run has to build.
+          ROR_KBN_PREBUILD_RUN_ID: ${{ needs.e2e_prepare.outputs.kbn_run_id }}
+          ROR_KBN_PREBUILD_RUN_URL: ${{ needs.e2e_prepare.outputs.kbn_run_url }}
+          ROR_KBN_WAIT_TIMEOUT_SECONDS: ${{ needs.e2e_prepare.outputs.kbn_wait_timeout_seconds }}
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ACTIVATION_KEY }}
           KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
@@ -619,7 +683,7 @@ jobs:
           set -e
           corepack enable || npm install -g yarn
           echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
-          echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE"
+          echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
           ci/run-pipeline.sh
 
   # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────

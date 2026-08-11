@@ -1,19 +1,35 @@
 # Sourced by run-pipeline.sh — do not execute directly.
 
-# E2E tests helpers used by the `run_e2e_tests` task in run-pipeline.sh.
+# E2E tests helpers used by the `prepare_e2e_kbn_images` and `run_e2e_tests` tasks in
+# run-pipeline.sh.
 #
-# The flow runs the Cypress e2e suite (docker env only) for a given ES version against per-run dev
-# Docker images of both ROR plugins (ES + KBN):
-#   0) Clone the e2e tests repo and source its ci/prebuild-images-lib.sh — the single, cross-repo
-#      home of the pre-build dispatch/poll contract (see below). The suite in step 4 runs from this
-#      same clone, so the clone is hoisted here rather than done at the end.
-#   1) Dispatch the ROR KBN dev image build in the KBN repo (non-blocking). The build is skip-optimized:
-#      if sources are unchanged it only applies a cheap registry-side alias tag, so the wait is short.
-#   2) Build & publish the ROR ES dev image from this repo (runs in parallel with step 1).
-#   3) Wait until the per-run KBN image tag appears on Docker Hub, then run the e2e suite.
+# The flow runs the Cypress e2e suite (docker env only) against per-run dev Docker images of both
+# ROR plugins (ES + KBN), and is split over two CI jobs:
 #
-# Both images are tagged with a per-run tag (run-<BUILD_BUILDID>) so each pipeline run gets its own
+#   prepare_e2e_kbn_images — ONCE per pipeline run, for every ES version in the e2e matrix:
+#     0) Clone the e2e tests repo and source its ci/prebuild-images-lib.sh — the single, cross-repo
+#        home of the pre-build dispatch/poll contract (see below).
+#     1) Dispatch ONE ROR KBN dev image build in the KBN repo, for the whole version list
+#        (non-blocking). The build is skip-optimized: if sources are unchanged it only applies a
+#        cheap registry-side alias tag, so the wait in the test jobs is short.
+#
+#   run_e2e_tests — once per ES version, in parallel, downstream of the above:
+#     2) Clone the e2e tests repo (the suite runs from it) and source the shared lib again.
+#     3) Build & publish the ROR ES dev image for THIS version from this repo. This is the expensive
+#        step and the reason it stays per-version: the versions build in parallel, on separate
+#        runners, while the single KBN run proceeds remotely.
+#     4) Wait until this version's KBN image tag appears on Docker Hub.
+#     5) Run the Cypress suite against both dev images.
+#
+# The dispatch is deliberately NOT per-version. The KBN pre-build workflow takes a version list, so
+# one run covers the matrix; N dispatches would also make _locate_prebuild_run ambiguous — it picks
+# the newest run of that workflow started since the dispatch, so N jobs dispatching within seconds
+# of each other can each latch onto a sibling's run and mis-report its outcome.
+#
+# Both images are tagged with a per-run tag (run-<E2E_BUILD_ID>) so each pipeline run gets its own
 # immutable refs. This prevents false hits from a previous run's image and makes concurrent runs safe.
+# Both jobs derive that tag from the same build id (e2e_run_tag), so no value has to be passed
+# between them.
 #
 # dispatch_kbn_prebuild_image / wait_for_kbn_prebuild_image are NOT defined here: the same pair is
 # needed by the ROR KBN repo (mirrored) and by the e2e repo (both plugins), so they live once in
@@ -27,6 +43,16 @@
 E2E_TESTS_REPO="https://github.com/beshu-tech/readonlyrest-e2e-tests.git"
 # Path of the shared pre-build contract WITHIN the e2e tests clone.
 E2E_PREBUILD_IMAGES_LIB="ci/prebuild-images-lib.sh"
+
+# The per-run image tag both jobs use. Derived from the build id in one place so the preparing job
+# and the test jobs cannot disagree about which images belong to this run.
+e2e_run_tag() {
+  if [ "$#" -ne 1 ] || [ -z "$1" ]; then
+    echo "Usage: e2e_run_tag <build id>" >&2
+    return 1
+  fi
+  echo "run-$1"
+}
 
 # Clone the e2e tests repo into a fresh temp dir and echo the path (all logging goes to stderr so
 # the caller can capture the path from stdout).
@@ -89,6 +115,117 @@ source_prebuild_images_lib() {
   . "$LIB" || return 3
 }
 
+# The ELK version an e2e module is tested at: the newest ES version that module supports, straight
+# from the build (each module's supportedEsVersions is the single source of truth — never re-derive
+# it here). Gradle's stdout can carry build-script logging even under --quiet, so take the last
+# non-empty line and insist it looks like a version rather than trusting the whole output.
+e2e_elk_version_for_module() {
+  if [ "$#" -ne 1 ] || [ -z "$1" ]; then
+    echo "Usage: e2e_elk_version_for_module <es module>" >&2
+    return 1
+  fi
+
+  local MODULE=$1 OUTPUT VERSION
+  OUTPUT=$(./gradlew --quiet ":${MODULE}:printNewestEsVersionForModule" </dev/null) || {
+    echo "ERROR: could not resolve the newest ES version of module '$MODULE'" >&2
+    return 2
+  }
+  VERSION=$(echo "$OUTPUT" | sed '/^[[:space:]]*$/d' | tail -n 1 | tr -d '[:space:]')
+
+  if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+    echo "ERROR: ':${MODULE}:printNewestEsVersionForModule' did not print a version. Got:" >&2
+    echo "$OUTPUT" >&2
+    return 3
+  fi
+
+  echo "$VERSION"
+}
+
+# The e2e job matrix as GitHub Actions matrix JSON: one entry per module, carrying the module name
+# (stable job names, so branch-protection checks survive a version bump) and its ELK version.
+# Usage: e2e_matrix_json "es94x es818x es717x"
+e2e_matrix_json() {
+  if [ "$#" -ne 1 ] || [ -z "${1// /}" ]; then
+    echo "Usage: e2e_matrix_json <es modules>" >&2
+    return 1
+  fi
+
+  local MODULE VERSION ENTRIES=()
+  for MODULE in $(echo "$1" | tr ',' ' '); do
+    VERSION=$(e2e_elk_version_for_module "$MODULE") || return $?
+    echo ">>> $MODULE -> ELK $VERSION" >&2
+    ENTRIES+=("$(jq -cn --arg m "$MODULE" --arg v "$VERSION" '{module: $m, elk: $v}')")
+  done
+
+  printf '%s\n' "${ENTRIES[@]}" | jq -cs '{include: .}'
+}
+
+# Hand the dispatched KBN run's coordinates, and the poll timeout its shape implies, to the
+# downstream test jobs — separate processes on separate machines, which would otherwise poll blind:
+# without a run id, a KBN build that fails in two minutes costs every test job its full poll timeout
+# instead of failing immediately. The shared lib seeds ROR_KBN_PREBUILD_RUN_ID/_URL and
+# ROR_KBN_WAIT_TIMEOUT_SECONDS from the environment, so the test jobs only have to export what is
+# written here. A no-op outside GitHub Actions.
+# Usage: export_kbn_prebuild_run_info <version count>
+export_kbn_prebuild_run_info() {
+  [ -n "${GITHUB_OUTPUT:-}" ] || return 0
+
+  # One run builds the versions one after another, so the last image can appear roughly N× later
+  # than it would have when every version had a run of its own. Scale the wait with the count, off
+  # the shared lib's single-version default.
+  local WAIT_TIMEOUT=$(( ${1:-1} * ${ROR_KBN_WAIT_TIMEOUT_SECONDS:-1800} ))
+  {
+    echo "kbn_run_id=${ROR_KBN_PREBUILD_RUN_ID:-}"
+    echo "kbn_run_url=${ROR_KBN_PREBUILD_RUN_URL:-}"
+    echo "kbn_wait_timeout_seconds=$WAIT_TIMEOUT"
+  } >> "$GITHUB_OUTPUT"
+}
+
+# Entry point for the `prepare_e2e_kbn_images` task in run-pipeline.sh. Runs once per pipeline run.
+# Resolves the ELK version of every e2e module, publishes the resulting test matrix, and dispatches
+# a single KBN pre-build covering all of them.
+# Args: <es modules> <target branch> <fallback branch> <build id>
+#   es modules      — space- or comma-separated e2e ES modules (e.g. "es94x es818x es717x")
+#   target branch   — branch to build the KBN plugin from
+#   fallback branch — branch this change is based on; used when <target branch> doesn't exist in the
+#                     e2e repo (the KBN pre-build workflow does its own fallback for its own repo)
+#   build id        — E2E_BUILD_ID (<run id>-<attempt>); unique per attempt
+prepare_e2e_kbn_images() {
+  if [ "$#" -ne 4 ]; then
+    echo "Usage: prepare_e2e_kbn_images <es modules> <target branch> <fallback branch> <build id>"
+    return 1
+  fi
+
+  local ES_MODULES=$1
+  local TARGET_BRANCH=$2
+  local FALLBACK_BRANCH=$3
+  local RUN_TAG
+  RUN_TAG=$(e2e_run_tag "$4") || return $?
+
+  local MATRIX ELK_VERSIONS
+  MATRIX=$(e2e_matrix_json "$ES_MODULES") || return $?
+  ELK_VERSIONS=$(echo "$MATRIX" | jq -r '[.include[].elk] | join(" ")')
+  # The matrix the test jobs fan out over. A no-op outside GitHub Actions.
+  if [ -n "${GITHUB_OUTPUT:-}" ]; then
+    echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+  fi
+
+  echo ">>> Preparing e2e KBN dev images: ELK [$ELK_VERSIONS], run tag: $RUN_TAG"
+
+  # The e2e repo owns the dispatch contract; clone it just for that (the suite itself runs from the
+  # test jobs' own clones).
+  local E2E_DIR
+  E2E_DIR=$(clone_e2e_tests_repo "$TARGET_BRANCH" "$FALLBACK_BRANCH") || return $?
+  source_prebuild_images_lib "$E2E_DIR" || return $?
+
+  # One dispatch for every version, and non-blocking: the KBN build runs remotely while the test
+  # jobs build their ES images. We always dispatch — even when the canonical image exists — so the
+  # per-run alias tag is guaranteed to exist by the time a test job's poll succeeds.
+  dispatch_kbn_prebuild_image "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG" || return $?
+
+  export_kbn_prebuild_run_info "$(echo "$MATRIX" | jq '.include | length')"
+}
+
 # Run the Cypress suite from an already-cloned e2e tests repo, against dev images of both plugins.
 # Both images are identified by the same run tag so the same per-run alias is passed to both sides.
 run_e2e_against_dev_images() {
@@ -134,13 +271,15 @@ run_e2e_against_dev_images() {
   )
 }
 
-# Entry point for the `run_e2e_tests` task in run-pipeline.sh.
+# Entry point for the `run_e2e_tests` task in run-pipeline.sh. Runs once per ES version, downstream
+# of prepare_e2e_kbn_images — the KBN build for this version was already dispatched there.
 # Args: <elk version> <target branch> <fallback branch> <build id>
 #   elk version     — ELK version to test (X.Y.Z)
-#   target branch   — branch to build the KBN plugin from / to take the e2e suite from
+#   target branch   — branch to take the e2e suite from
 #   fallback branch — branch this change is based on (PR base branch, or the pushed branch itself);
 #                     used when <target branch> doesn't exist in the e2e repo
-#   build id        — E2E_BUILD_ID (<run id>-<attempt>); unique per attempt (run-<id>)
+#   build id        — E2E_BUILD_ID (<run id>-<attempt>); must be the one the preparing job used, as
+#                     it identifies this run's images
 run_e2e_tests() {
   if [ "$#" -ne 4 ]; then
     echo "Usage: run_e2e_tests <elk version> <target branch> <fallback branch> <build id>"
@@ -150,7 +289,8 @@ run_e2e_tests() {
   local ELK_VERSION=$1
   local TARGET_BRANCH=$2
   local FALLBACK_BRANCH=$3
-  local RUN_TAG="run-$4"
+  local RUN_TAG
+  RUN_TAG=$(e2e_run_tag "$4") || return $?
 
   # Validate before the clone so a typo fails in seconds rather than after a network round trip
   # (the shared lib re-validates the version it is handed).
@@ -161,25 +301,25 @@ run_e2e_tests() {
 
   echo ">>> Running e2e tests: ELK $ELK_VERSION, run tag: $RUN_TAG"
 
-  # Step 0: get the e2e repo first — it owns both the pre-build contract used by steps 1/3 and the
-  # runner used by step 4.
+  # Step 2: get the e2e repo first — it owns both the poll contract used by step 4 and the runner
+  # used by step 5.
   local E2E_DIR
   E2E_DIR=$(clone_e2e_tests_repo "$TARGET_BRANCH" "$FALLBACK_BRANCH") || return $?
   source_prebuild_images_lib "$E2E_DIR" || return $?
 
-  # Step 1: fire off the KBN build without blocking. Runs remotely while we build the ES image.
-  # We always dispatch — even when the canonical image exists — so the per-run alias tag is
-  # guaranteed to exist by the time the step 3 poll succeeds.
-  dispatch_kbn_prebuild_image "$ELK_VERSION" "$TARGET_BRANCH" "$RUN_TAG" || return $?
-
-  # Step 2: build & publish the ROR ES dev image (publish_ror_prebuild_plugin is defined in ci-lib.sh).
+  # Step 3: build & publish the ROR ES dev image (publish_ror_prebuild_plugin is defined in ci-lib.sh).
   # The skip optimization applies: if the sha-frozen image already exists, Gradle is not re-run.
   # The run tag is applied as an alias so the e2e runner can reference it.
   publish_ror_prebuild_plugin "$ELK_VERSION" "$RUN_TAG" || return $?
 
-  # Step 3: block until the KBN image dispatched in step 1 appears (fast on the skip path).
+  # Step 4: block until this version's KBN image appears (fast on the skip path). The poll fast-fails
+  # on a failed KBN build only if ROR_KBN_PREBUILD_RUN_ID was exported from the preparing job.
+  if [ -z "${ROR_KBN_PREBUILD_RUN_ID:-}" ]; then
+    echo ">>> ROR_KBN_PREBUILD_RUN_ID is not set: the poll below cannot stop early if the KBN"
+    echo "    pre-build run fails, and will instead use its whole timeout."
+  fi
   wait_for_kbn_prebuild_image "$ELK_VERSION" "$RUN_TAG" || return $?
 
-  # Step 4: run the e2e suite against both dev images (now both available as <version>-ror-<RUN_TAG>).
+  # Step 5: run the e2e suite against both dev images (now both available as <version>-ror-<RUN_TAG>).
   run_e2e_against_dev_images "$E2E_DIR" "$ELK_VERSION" "$RUN_TAG"
 }

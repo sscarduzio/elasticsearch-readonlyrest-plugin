@@ -362,8 +362,22 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
 
 fi
 
+# Runs once for the whole e2e matrix: resolves each module's ELK version, publishes the matrix, and
+# dispatches a SINGLE KBN pre-build for every one of those versions.
+if [[ $ROR_TASK == "prepare_e2e_kbn_images" ]]; then
+  prepare_e2e_kbn_images \
+    "${E2E_ES_MODULES:?E2E_ES_MODULES is not set}" \
+    "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
+    "${E2E_FALLBACK_BRANCH:-master}" \
+    "$E2E_BUILD_ID"
+fi
+
+# Runs once per ES version, after prepare_e2e_kbn_images. E2E_ELK_VERSION comes from the matrix that
+# job published; resolving it from E2E_ES_MODULE is the fallback for a standalone/local invocation.
 if [[ $ROR_TASK == "run_e2e_tests" ]]; then
-  E2E_ELK_VERSION=$(./gradlew --quiet ":${E2E_ES_MODULE:?E2E_ES_MODULE is not set}:printNewestEsVersionForModule")
+  if [ -z "${E2E_ELK_VERSION:-}" ]; then
+    E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
+  fi
   run_e2e_tests \
     "$E2E_ELK_VERSION" \
     "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
