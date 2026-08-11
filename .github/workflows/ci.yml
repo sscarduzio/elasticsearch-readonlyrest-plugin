@@ -97,9 +97,9 @@ jobs:
           IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
           MANUAL_RUN_ACTION: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.actionToPerform || '') }}
         run: |
-          LINUX_IT_FULL_SET='["integration_es94x","integration_es92x","integration_es91x","integration_es90x","integration_es818x","integration_es816x","integration_es815x","integration_es814x","integration_es813x","integration_es812x","integration_es811x","integration_es810x","integration_es89x","integration_es88x","integration_es87x","integration_es85x","integration_es84x","integration_es83x","integration_es82x","integration_es81x","integration_es80x","integration_es717x","integration_es716x","integration_es714x","integration_es711x","integration_es710x","integration_es79x","integration_es78x","integration_es77x","integration_es74x","integration_es73x","integration_es72x","integration_es70x","integration_es67x"]'
-          LINUX_IT_PR_READY_SET='["integration_es94x","integration_es90x","integration_es818x","integration_es816x","integration_es810x","integration_es80x","integration_es717x","integration_es710x","integration_es70x","integration_es67x"]'
-          LINUX_IT_PR_DRAFT_SET='["integration_es94x","integration_es818x","integration_es717x","integration_es67x"]'
+          LINUX_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x","es67x"]'
+          LINUX_IT_PR_READY_SET='["es94x","es90x","es818x","es816x","es810x","es80x","es717x","es710x","es70x","es67x"]'
+          LINUX_IT_PR_DRAFT_SET='["es94x","es818x","es717x","es67x"]'
           WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
           WIN_IT_MASTER_OR_DEVELOP_SET='["es94x","es90x","es818x","es80x","es717x","es70x"]'
           WIN_IT_PR_READY_SET='["es94x","es818x","es717x"]'
@@ -342,22 +342,24 @@ jobs:
     runs-on: ubicloud-standard-4  # premium probe measured only ~15% faster at 1.6x price — not worth it
     container: *toolchains
     timeout-minutes: 120
-    # Job name = the matrix value alone ("integration_es94x"), not "it_linux (integration_es94x)":
-    # the default composite gets truncated to an indistinguishable prefix in the graph view.
-    name: ${{ matrix.ROR_TASK }}
+    # "it_linux_es94x", not the truncated "it_linux (es94x)" composite, in the graph view. Same
+    # <leg>_<module> shape as it_win_* and e2e_*, so the three test families sort together.
+    name: it_linux_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
-        ROR_TASK: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
+        ES_MODULE: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Free host disk (no-op on self-hosted)
         run: ci/free-host-disk.sh
-      - name: ${{ matrix.ROR_TASK }}
+      - name: integration_${{ matrix.ES_MODULE }}
         env:
-          ROR_TASK: ${{ matrix.ROR_TASK }}
+          # The pipeline task name run-pipeline.sh dispatches on — unchanged, only the matrix now
+          # carries the bare module (see setup).
+          ROR_TASK: integration_${{ matrix.ES_MODULE }}
           ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
           # Balanced (level) shard packing + the memory gate that makes it survivable on 16GB.
           # 2 permits, not 3: at k=4 with 3 permits the worst case (3 heavies x 3 nodes + a
@@ -382,7 +384,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: it-${{ matrix.ROR_TASK }}-results
+          name: it-linux-${{ matrix.ES_MODULE }}-results
           path: '**/TEST*.xml'
           if-no-files-found: ignore
       # Shard stdout goes to shard-<i>.log files during the run (live interleaving would be
@@ -401,10 +403,10 @@ jobs:
       # the artifact, commit it). One leg only — es90x (the first ES 9 module: a stable reference
       # that never moves when a newer es9Xx module is added).
       - name: Suite-timings drift check
-        if: always() && matrix.ROR_TASK == 'integration_es90x'
+        if: always() && matrix.ES_MODULE == 'es90x'
         run: ./gradlew integration-tests:regenerateSuiteTimings || true
       - name: Publish regenerated suite timings
-        if: always() && matrix.ROR_TASK == 'integration_es90x'
+        if: always() && matrix.ES_MODULE == 'es90x'
         uses: actions/upload-artifact@v4
         with:
           name: suite-timings-regenerated
@@ -414,7 +416,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sharded-logs-${{ matrix.ROR_TASK }}
+          name: sharded-logs-it-linux-${{ matrix.ES_MODULE }}
           path: integration-tests/build/sharded-logs/
           if-no-files-found: ignore
 
@@ -440,8 +442,9 @@ jobs:
     env:
       GRADLE_USER_HOME: ''
       GRADLE_OPTS: ''
-    # "win_es94x", not the truncated "it_windows (es94x)" composite, in the graph view.
-    name: win_${{ matrix.ES_MODULE }}
+    # "it_win_es94x", not the truncated "it_windows (es94x)" composite, in the graph view. Same
+    # <leg>_<module> shape as it_linux_* and e2e_*, so the three test families sort together.
+    name: it_win_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
       max-parallel: 10
@@ -499,7 +502,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: win-it-${{ matrix.ES_MODULE }}-results
+          name: it-win-${{ matrix.ES_MODULE }}-results
           path: '**/TEST*.xml'
           if-no-files-found: ignore
       - name: Shard logs (browsable)
@@ -515,7 +518,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sharded-logs-win-${{ matrix.ES_MODULE }}
+          name: sharded-logs-it-win-${{ matrix.ES_MODULE }}
           path: integration-tests/build/sharded-logs/
           if-no-files-found: ignore
 
