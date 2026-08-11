@@ -1,8 +1,8 @@
 # A change a client can see needs a changelog entry in the description.
 # Escape hatch: the `no-changelog` label, for a refactor, a build change or a test.
-#
-# Sourced by run.sh; uses PR_FILES_FILE, PR_BUILD_DIFF_FILE, PR_BODY and the has_label / pass / fail
-# helpers. The two big inputs arrive as files, not environment variables (see run.sh).
+
+body=$(jq -r '.body // ""' "$PR_JSON_FILE")
+labels=$(jq -r '.labels[].name' "$PR_JSON_FILE")
 
 # Production code: a change here can reach a client. Test sources, CI files, build logic and docs do not.
 PRODUCTION_PATHS='^(core|audit|ror-tools|ror-tools-core|es[0-9]+x|es[0-9]+-base)/src/main/'
@@ -14,24 +14,40 @@ DEPENDENCY_LINE='^[+-][[:space:]]*(api|implementation|compileOnly|runtimeOnly|te
 production_changed=$(grep -cE "$PRODUCTION_PATHS" "$PR_FILES_FILE" || true)
 dependencies_changed=$(grep -cE "$DEPENDENCY_LINE" "$PR_BUILD_DIFF_FILE" || true)
 
-if [ "$production_changed" -eq 0 ] && [ "$dependencies_changed" -eq 0 ]; then
+# GitHub caps the changed-files endpoint at 3,000 entries, and this repository has pull requests above
+# it (#1313 changed 4,590 files). A truncated list cannot prove that no production file changed, so
+# treat it as changed and let the label be the way out. Failing open here would silently let the
+# biggest changes through, which are the ones most likely to need a changelog entry.
+changed_total=$(jq -r '.changed_files' "$PR_JSON_FILE")
+files_listed=$(wc -l < "$PR_FILES_FILE")
+truncated=false
+if [ "$changed_total" -gt "$files_listed" ]; then
+  truncated=true
+  echo "note: the changed-file list is truncated ($files_listed of $changed_total); assuming production code changed"
+fi
+
+if [ "$truncated" = false ] && [ "$production_changed" -eq 0 ] && [ "$dependencies_changed" -eq 0 ]; then
   pass "changelog: not needed (no production sources or dependencies changed)"
-elif has_label no-changelog; then
+elif grep -qx 'no-changelog' <<<"$labels"; then
   pass "changelog: skipped ('no-changelog' label)"
 # Both documented forms count: the YAML entry of readonlyrest-docs/changelog/<version>.yaml, and the
 # emoji phrase of the `ror-dev-process` skill (which is how the YAML renders in changelog.md).
-# The YAML form asks for one COMPLETE entry — a `type:` line with a real type, then `components:` and
-# `text:` within the following lines — so that unrelated lines elsewhere cannot pass the check between
-# them.
+# The YAML form asks for one COMPLETE entry. EVERY `type:` line starts a new entry and resets the
+# state, including an unsupported one, so an incomplete entry cannot be completed by the keys of the
+# entry that follows it.
 elif awk '
-      /^[[:space:]]*-?[[:space:]]*type:[[:space:]]*(security|new|fix|enhancement)[[:space:]]*$/ {
-        found=NR; c=0; t=0; next
+      /^[[:space:]]*-?[[:space:]]*type:/ {
+        found=0; c=0; t=0
+        if ($0 ~ /^[[:space:]]*-?[[:space:]]*type:[[:space:]]*(security|new|fix|enhancement)[[:space:]]*$/) {
+          found=NR
+        }
+        next
       }
       found && NR<=found+3 && /components:/ { c=1 }
       found && NR<=found+3 && /text:[[:space:]]*[^[:space:]]/ { t=1 }
       c && t { complete=1 }
-      END { exit !complete }' <<<"$PR_BODY" \
-  || grep -qE '\*\*(Security Fix|New|Enhancement|Fix)\*\*[[:space:]]*\((ES|KBN)\)' <<<"$PR_BODY"; then
+      END { exit !complete }' <<<"$body" \
+  || grep -qE '\*\*(Security Fix|New|Enhancement|Fix)\*\*[[:space:]]*\((ES|KBN)\)' <<<"$body"; then
   pass "changelog: entry found in the description"
 else
   fail "this pull request changes production sources ($production_changed file(s)) or dependencies

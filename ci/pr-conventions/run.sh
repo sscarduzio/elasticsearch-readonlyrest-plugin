@@ -3,8 +3,13 @@ set -euo pipefail
 
 # Runs every convention check against one pull request, in name order.
 #
-# Each check is its own file in checks/, so adding a convention means adding a file — nothing here
-# changes. The pull request data is fetched once and exported, so a check never makes its own API call.
+# Each check is its own file in checks/, so adding a convention means adding a file. This runner only
+# fetches the pull request data once and reports the results; every check reads what it needs from the
+# files below and keeps its own logic visible.
+#
+#   PR_JSON_FILE        the pull request object (title, body, labels, changed_files, ...)
+#   PR_FILES_FILE       the changed file names, one per line (see the truncation note below)
+#   PR_BUILD_DIFF_FILE  the diffs of the changed build.gradle files
 #
 # Run it before you open the pull request, or on an open one:
 #   ci/pr-conventions/run.sh 1234
@@ -19,28 +24,27 @@ PR="$1"
 REPO="${GH_REPO:-sscarduzio/elasticsearch-readonlyrest-plugin}"
 CHECKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/checks"
 
-data=$(gh api "repos/$REPO/pulls/$PR" --jq '{title,body,labels:[.labels[].name]}')
-export PR_NUMBER="$PR"
-PR_TITLE=$(jq -r '.title' <<<"$data"); export PR_TITLE
-PR_BODY=$(jq -r '.body // ""' <<<"$data"); export PR_BODY
-PR_LABELS=$(jq -r '.labels[]' <<<"$data"); export PR_LABELS
-# The file list and the build diffs go in files, not in the environment: a big pull request produces
-# hundreds of kilobytes, and an environment variable over 128 KB makes every later command fail to
-# start with "Argument list too long". (PR #1313 changed 4,590 files.)
+# The data goes in files, not in the environment: a big pull request produces hundreds of kilobytes,
+# and an environment variable over 128 KB makes every later command fail to start with "Argument list
+# too long". (PR #1313 changed 4,590 files.)
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
+export PR_NUMBER="$PR"
+export PR_JSON_FILE="$WORK_DIR/pr.json"
 export PR_FILES_FILE="$WORK_DIR/files"
 export PR_BUILD_DIFF_FILE="$WORK_DIR/build-diff"
+
+gh api "repos/$REPO/pulls/$PR" > "$PR_JSON_FILE"
+# NOTE: GitHub caps this endpoint at 3,000 files even with --paginate, so for a very large pull
+# request this list is INCOMPLETE. `.changed_files` in the JSON above is the true count; a check that
+# needs completeness must compare the two and decide what to do (see 20-changelog-entry.sh).
 gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename' > "$PR_FILES_FILE"
-# Only the build files' diffs: a check that cares about dependencies needs the changed lines, not just
-# the file names.
 gh api "repos/$REPO/pulls/$PR/files" --paginate \
   --jq '.[] | select(.filename | test("(^|/)build\\.gradle$")) | .patch // ""' > "$PR_BUILD_DIFF_FILE"
 
 failed=0
-# Helpers every check uses. `fail` records the failure and lets the remaining checks still run, so one
-# run reports everything that is wrong instead of only the first thing.
-has_label() { grep -qx "$1" <<<"$PR_LABELS"; }
+# Reporting only. `fail` records the failure and lets the remaining checks still run, so one run
+# reports everything that is wrong instead of only the first thing.
 pass() { echo "ok:   $1"; }
 fail() { echo "FAIL: $1"; failed=1; }
 
