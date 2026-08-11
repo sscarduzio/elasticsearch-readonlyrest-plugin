@@ -70,11 +70,7 @@ tasks.register("printAllSupportedEsVersions") {
     description = 'Prints every supported ES version (one per line, oldest first)'
     outputs.upToDateWhen { false }
     doLast {
-        tech.beshu.ror.gradle.utils.EsModuleFinder
-                .sortedEsModules(rootProject, tech.beshu.ror.gradle.utils.EsModuleFinder.newestEsVersionComparator())
-                .collectMany { tech.beshu.ror.gradle.utils.EsVersions.of(it).all }
-                .unique()
-                .each { println it }
+        tech.beshu.ror.gradle.utils.EsModuleFinder.allSupportedEsVersions(rootProject).each { println it }
     }
 }
 
