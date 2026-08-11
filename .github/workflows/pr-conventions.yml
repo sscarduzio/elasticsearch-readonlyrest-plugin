@@ -1,8 +1,8 @@
 name: PR Conventions
 
 # Checks the conventions a reviewer used to check by hand: the Jira key in the title, and a changelog
-# entry when the change can reach a client. The logic lives in ci/check-pr-conventions.sh so it can be
-# run locally before opening the pull request.
+# entry when the change can reach a client. Each convention is its own file in ci/pr-conventions/checks,
+# run by ci/pr-conventions/run.sh, which also runs locally before you open the pull request.
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize, labeled, unlabeled, ready_for_review]
@@ -21,24 +21,33 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      # Check out the BASE branch's copy of the script, not the pull request's: a pull request must not
-      # be able to edit the rule it is judged by. Only the script is fetched; everything else the check
-      # needs comes from the API.
+      # The checks come from the BASE branch: a pull request must not be able to edit the rule it is
+      # judged by. Only ci/pr-conventions is fetched; everything else the checks need comes from the API.
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
-          sparse-checkout: ci/check-pr-conventions.sh
+          sparse-checkout: ci/pr-conventions
           sparse-checkout-cone-mode: false
           persist-credentials: false
+          path: base
+
+      # Fallback source, used only while the base branch does not have the checks yet (the pull request
+      # that introduces them). The check then runs from the pull request instead of being skipped.
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ci/pr-conventions
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+          path: pr
 
       - name: Check PR conventions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          # Only true for the pull request that introduces the check.
-          if [ ! -x ci/check-pr-conventions.sh ]; then
-            echo "::notice::ci/check-pr-conventions.sh is not on the base branch yet; skipping"
-            exit 0
+          runner=base/ci/pr-conventions/run.sh
+          if [ ! -x "$runner" ]; then
+            echo "::warning::the checks are not on the base branch yet, so this run uses the pull request's own copy"
+            runner=pr/ci/pr-conventions/run.sh
           fi
-          ci/check-pr-conventions.sh "${{ github.event.pull_request.number }}"
+          "$runner" "${{ github.event.pull_request.number }}"

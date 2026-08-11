@@ -20,11 +20,13 @@ Source of truth: `beshu-tech/readonlyrest-internal/development_guide.md`. This s
 - PRs are squash-and-merged into `develop`; `master` carries stable versions only (mechanics: see the `ror-release` skill; internal architecture: `ror-internals`).
 - New ES version support: PR must come from the main repo (not a fork — `ES_S3_UP` needs S3 credentials). The step that actually gates CI build/test is `supportedEsVersions` in the module's `gradle.properties` — NOT `ci/upload-es-artifacts.sh` (a separate, all-commented manual upload step). Full checklist: `ror-release` skill, "Supporting a new ES version".
 
-**CI checks the first two conventions** (`PR Conventions` workflow, `ci/check-pr-conventions.sh`): the Jira key in the title, and a changelog entry when the PR changes production sources or dependencies. Both changelog forms above are accepted. Run it yourself before opening the PR:
+**CI checks the first two conventions** (`PR Conventions` workflow): the Jira key in the title, and a changelog entry when the PR changes production sources or dependencies. Both changelog forms above are accepted. Run it yourself before opening the PR:
 
 ```bash
-ci/check-pr-conventions.sh <pr-number>
+ci/pr-conventions/run.sh <pr-number>
 ```
+
+Each convention is one file in `ci/pr-conventions/checks/`, run in name order by `run.sh`; adding a convention means adding a file.
 
 Escape hatches, for the cases a script cannot judge: the `no-jira` label, and the `no-changelog` label for a change a client cannot see (a refactor, a build change, a test). A reviewer should never have to ask for either of these — that is what the check is for.
 
