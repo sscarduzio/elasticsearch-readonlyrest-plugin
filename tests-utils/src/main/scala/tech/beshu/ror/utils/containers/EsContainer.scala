@@ -59,15 +59,20 @@ abstract class EsContainer(
   // unrelated Gradle daemon or test worker dying while the container that took the memory kept running.
   // With a limit, Docker kills the container that went over and the failure names itself.
   //
-  // Measured on ES 8.18 with the 512m heap these tests pin: ~1.09 GiB resident idle and ~1.10 GiB under
-  // indexing and search load (heap 319/512 MiB, non-heap 197 MiB). 2 GiB leaves room for a full heap plus
-  // the ROR plugin -- a node boots and serves at ~54% of it -- while still catching a runaway node.
+  // Measured on ES 8.18 with the 512m heap every Docker profile pins: ~1.09 GiB resident idle and ~1.10 GiB
+  // under indexing and search load (heap 319/512 MiB, non-heap 197 MiB). 2 GiB leaves room for a full heap
+  // plus the ROR plugin -- a node boots and serves at ~54% of it -- while still catching a runaway node.
   // Override with ROR_ES_CONTAINER_MEMORY_MB when a suite genuinely needs more.
-  private val esContainerMemoryLimitBytes: Long =
+  private val esContainerMemoryLimitBytes: Long = {
+    val defaultMb = 2048L
+    // Upper bound before the multiplication, not after: a value above this overflows Long and would hand
+    // Docker a NEGATIVE byte count, which fails every container in the run instead of raising the limit.
+    val maxMb = Long.MaxValue / (1024L * 1024L)
     Option(System.getenv("ROR_ES_CONTAINER_MEMORY_MB"))
       .flatMap(_.toLongOption)
-      .filter(_ > 0)
-      .getOrElse(2048L) * 1024L * 1024L
+      .filter(mb => mb > 0 && mb <= maxMb)
+      .getOrElse(defaultMb) * 1024L * 1024L
+  }
 
   private val containerImplementation: EsContainerImplementation = {
     OsUtils.currentOs match {
