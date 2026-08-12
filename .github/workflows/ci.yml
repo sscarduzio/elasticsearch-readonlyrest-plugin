@@ -566,14 +566,8 @@ jobs:
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
+    container: *toolchains
     timeout-minutes: 30
-    # No container: the dispatch helpers shell out to `gh` and `jq`, which the toolchains image does
-    # not carry (the GH-hosted image does). The cost is that Gradle runs without the baked Gradle
-    # home, so — as in e2e_tests below — point GRADLE_USER_HOME at a writable workspace path (an
-    # EMPTY value can't unset it), blank the baked installations.paths and let Gradle auto-provision.
-    env:
-      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
-      GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
     outputs:
       matrix: ${{ steps.prepare.outputs.matrix }}
       kbn_run_id: ${{ steps.prepare.outputs.kbn_run_id }}
@@ -582,8 +576,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 1, persist-credentials: true }
-      - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '17' }
       - name: prepare_e2e_kbn_images
         id: prepare
         env:
