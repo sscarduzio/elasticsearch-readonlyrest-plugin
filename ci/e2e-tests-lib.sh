@@ -60,7 +60,9 @@ e2e_run_tag() {
 # In that case fall back to the branch this change is based on (the PR's base branch, or the pushed
 # branch itself) — a PR against `develop` must take the e2e suite from `develop`, not from `master`,
 # because the two lines can be out of sync (e.g. the shared prebuild-images lib exists on one only).
-# `master` stays as the last-resort candidate so a missing base branch never sinks the whole run.
+# `develop` and `master` stay as last-resort candidates so a missing base branch never sinks the
+# whole run. `develop` is needed because a manual run (workflow_dispatch) has no base branch at all:
+# there the fallback IS the feature branch, so without it the chain would jump straight to `master`.
 clone_e2e_tests_repo() {
   if [ "$#" -ne 2 ]; then
     echo "Usage: clone_e2e_tests_repo <target branch> <fallback branch>" >&2
@@ -74,7 +76,7 @@ clone_e2e_tests_repo() {
 
   local CANDIDATES=("$TARGET_BRANCH")
   local BRANCH
-  for BRANCH in "$FALLBACK_BRANCH" master; do
+  for BRANCH in "$FALLBACK_BRANCH" develop master; do
     [ -n "$BRANCH" ] && ! printf '%s\n' "${CANDIDATES[@]}" | grep -qxF "$BRANCH" && CANDIDATES+=("$BRANCH")
   done
 
