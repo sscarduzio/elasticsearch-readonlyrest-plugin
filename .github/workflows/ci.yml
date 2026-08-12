@@ -350,6 +350,8 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Free host disk (no-op on self-hosted)
         run: ci/free-host-disk.sh
+      - name: Start memory telemetry
+        run: ci/mem-telemetry.sh start integration-tests/build/mem-telemetry-${{ matrix.ROR_TASK }}.log > "$RUNNER_TEMP/mem-telemetry.pid"
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
@@ -361,6 +363,8 @@ jobs:
           # es94x tolerated 3 only because it excludes some of the heavy suites other modules run.
           ROR_BALANCED_SHARDS: 'true'
           ROR_HEAVY_SUITE_PERMITS: '2'
+          # the JDWP agent costs ~90MB RSS per ES container and nothing attaches to it in CI
+          ROR_ES_JDWP: 'false'
           ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
           ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
           ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
@@ -391,6 +395,25 @@ jobs:
             cat "$f"
             echo "::endgroup::"
           done
+      - name: Memory telemetry report
+        if: always()
+        env:
+          ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
+        run: |
+          [ -f "$RUNNER_TEMP/mem-telemetry.pid" ] && ci/mem-telemetry.sh stop "$(cat "$RUNNER_TEMP/mem-telemetry.pid")" || true
+          for f in integration-tests/build/mem-telemetry-*.log; do
+            [ -f "$f" ] || continue
+            echo "::group::$(basename "$f") report"
+            ci/mem-telemetry.sh report "$f"
+            echo "::endgroup::"
+          done
+      - name: Publish memory telemetry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mem-telemetry-${{ matrix.ROR_TASK }}
+          path: integration-tests/build/mem-telemetry-*.log
+          if-no-files-found: ignore
       # Drift guard for duration-balanced sharding: warns when measured suite times diverge from
       # the committed suite-timings.json and uploads a regenerated file (regeneration = download
       # the artifact, commit it). One leg only — es90x (the first ES 9 module: a stable reference

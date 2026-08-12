@@ -145,6 +145,8 @@ test {
     // Per worker JVM. The JVM only orchestrates (streams small HTTP to ES, no bulk data); measured peak
     // live heap is ~50MB, so 512m is ~10x headroom. Overridable via -PitTestHeap for outlier suites.
     maxHeapSize = project.findProperty('itTestHeap') ?: '512m'
+    // bounded like every other JVM in the CI leg, so a runaway fails in-process, not via the host OOM killer
+    jvmArgs '-XX:MaxMetaspaceSize=512m'
 }
 
 dependencies {
