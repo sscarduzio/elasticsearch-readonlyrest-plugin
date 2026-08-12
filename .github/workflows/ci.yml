@@ -309,7 +309,7 @@ jobs:
       github.event_name != 'schedule' &&
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubicloud-standard-4  # premium probe measured only ~15% faster at 1.6x price — not worth it
+    runs-on: ubicloud-standard-4
     container: *toolchains
     timeout-minutes: 120
     # "it_linux_es94x", not the truncated "it_linux (es94x)" composite, in the graph view. Same
@@ -530,14 +530,10 @@ jobs:
           path: '**/TEST*.xml'
           if-no-files-found: ignore
 
-  # ── E2E_PREPARE (one KBN pre-build for the whole e2e matrix) ──────────────
-  # Mirrors readonlyrest-e2e-tests' own "prepare dev images" stage: ONE dispatch covers every version
-  # (the KBN pre-build workflow takes a version list), instead of one per e2e module. Beyond the
-  # wasted runs, N concurrent dispatches make the shared lib's run lookup ambiguous — each job takes
-  # the newest run of that workflow and can latch onto a sibling's (see ci/e2e-tests-lib.sh).
-  # It also resolves each module's ELK version and publishes the matrix the test jobs fan out over,
-  # so a version bump in a module's gradle.properties needs no edit here.
-  # Gate identical to e2e_tests, which consumes its outputs.
+  # ── E2E_PREPARE (setup for the e2e matrix) ────────────────────────────────
+  # Takes the newest ES version of every ES module picked for e2e, and starts ONE build of the ROR
+  # KBN dev image for all of them. Outputs those versions as the matrix the e2e_tests jobs run on,
+  # plus the build's run id so they know which build to wait for.
   e2e_prepare:
     needs: [ setup, toolchains_verify ]
     if: >-
@@ -546,7 +542,7 @@ jobs:
       github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux' || needs.setup.outputs.action == 'run_e2e_tests')
-    runs-on: ubuntu-latest   # free for public repos; this job only configures Gradle and calls an API
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     timeout-minutes: 30
     # No container: the dispatch helpers shell out to `gh` and `jq`, which the toolchains image does
     # not carry (the GH-hosted image does). The cost is that Gradle runs without the baked Gradle
