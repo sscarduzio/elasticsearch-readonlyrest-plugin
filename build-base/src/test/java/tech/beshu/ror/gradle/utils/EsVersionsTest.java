@@ -19,6 +19,7 @@ package tech.beshu.ror.gradle.utils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
@@ -90,6 +91,36 @@ class EsVersionsTest {
   void misorderedQualifiersThrow() {
     assertThrows(
         GradleException.class, () -> EsVersions.of(project("10.0.0-beta1, 10.0.0-alpha1, 10.0.0")));
+  }
+
+  // --- VERSION_COMPARATOR on library versions ---
+
+  @Test
+  void ordersSegmentsThatAreNotNumbers() {
+    assertTrue(EsVersions.VERSION_COMPARATOR.compare("4.1.134.Final", "4.1.135.Final") < 0);
+    assertTrue(EsVersions.VERSION_COMPARATOR.compare("4.1.9.Final", "4.1.10.Final") < 0);
+  }
+
+  @Test
+  void ordersVersionsOfAnyDepth() {
+    assertTrue(EsVersions.VERSION_COMPARATOR.compare("1.7.0", "1.7.0.1") < 0);
+    assertTrue(EsVersions.VERSION_COMPARATOR.compare("1.15", "1.19.0") < 0);
+    assertEquals(0, EsVersions.VERSION_COMPARATOR.compare("9.4", "9.4.0"));
+  }
+
+  // --- property validation ---
+
+  @Test
+  void versionThatIsNotAnEsVersionThrows() {
+    GradleException failure =
+        assertThrows(GradleException.class, () -> EsVersions.of(project("8.18.0, 8.19.x")));
+
+    assertTrue(failure.getMessage().contains("8.19.x"));
+  }
+
+  @Test
+  void versionWithTooFewSegmentsThrows() {
+    assertThrows(GradleException.class, () -> EsVersions.of(project("8.18")));
   }
 
   // --- delivered() / baseline() ---
