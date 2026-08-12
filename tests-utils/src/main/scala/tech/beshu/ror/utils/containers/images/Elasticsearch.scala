@@ -429,7 +429,7 @@ final case class EsJavaOptsBuilder(options: Seq[String]) {
   }
 
   def addWhen(condition: Boolean, option: => String, more: String*): EsJavaOptsBuilder = {
-    if (condition) add(option +: more.toSeq *) else this
+    if (condition) add(option +: more.toSeq*) else this
   }
 
 }
