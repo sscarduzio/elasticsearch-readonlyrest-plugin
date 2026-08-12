@@ -104,7 +104,11 @@ run_integration_tests() {
   # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the CI job). Also warms :build-base/:buildSrc.
   run_one ror-tools:test
   wait "$LAST_PID"; local rc=$?
-  if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
+  if [ "$rc" -ne 0 ]; then
+    # Stop the sampler on this early exit too, so it cannot keep writing while ci.yml reads the log.
+    [ -n "${TELEMETRY_PID:-}" ] && ci/mem-telemetry.sh stop "$TELEMETRY_PID"
+    find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"
+  fi
 
   # 2) All sharding orchestration lives in integration-tests:shardedTest (see its build.gradle):
   #    prebuild barrier via task deps, K child ./gradlew spawn/wait, ProcessHandle kill on cancel.
