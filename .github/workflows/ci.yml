@@ -361,6 +361,9 @@ jobs:
           # es94x tolerated 3 only because it excludes some of the heavy suites other modules run.
           ROR_BALANCED_SHARDS: 'true'
           ROR_HEAVY_SUITE_PERMITS: '2'
+          # No debugger ever attaches to a CI ES container; the JDWP agent costs ~90MB RSS per
+          # container (~1GB at the ~11-container worst case). Local runs keep it on. (RORDEV-2168)
+          ROR_ES_JDWP: 'false'
           ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
           ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
           ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
@@ -391,6 +394,26 @@ jobs:
             cat "$f"
             echo "::endgroup::"
           done
+      # Memory-pressure evidence (RORDEV-2168): worst sample + OOM forensics, so an exit-137 leg
+      # shows WHAT was resident when the host ran dry instead of a bare SIGKILL.
+      - name: Memory telemetry report
+        if: always()
+        env:
+          ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
+        run: |
+          for f in integration-tests/build/mem-telemetry-*.log; do
+            [ -f "$f" ] || continue
+            echo "::group::$(basename "$f") report"
+            ci/mem-telemetry.sh report "$f"
+            echo "::endgroup::"
+          done
+      - name: Publish memory telemetry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mem-telemetry-${{ matrix.ROR_TASK }}
+          path: integration-tests/build/mem-telemetry-*.log
+          if-no-files-found: ignore
       # Drift guard for duration-balanced sharding: warns when measured suite times diverge from
       # the committed suite-timings.json and uploads a regenerated file (regeneration = download
       # the artifact, commit it). One leg only — es90x (the first ES 9 module: a stable reference

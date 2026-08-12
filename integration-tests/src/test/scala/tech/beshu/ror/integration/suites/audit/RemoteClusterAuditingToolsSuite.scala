@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites.audit
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
-import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.suites.base.support.{BaseSingleNodeEsClusterTest, HeavySuiteGated}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
@@ -32,10 +32,15 @@ import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
 import java.util.UUID
 
+// HeavySuiteGated mixed in LAST so its run() is the outermost layer: this suite boots 2 extra ES
+// nodes + 2 toxiproxy containers ON TOP of the shared singleton ES, which is exactly the load the
+// machine-wide heavy-suite permit exists to bound — but BaseSingleNodeEsClusterTest (unlike the
+// Base*IntegrationTest cluster traits) does not carry the gate. (RORDEV-2168)
 class RemoteClusterAuditingToolsSuite
     extends BaseAuditingToolsSuite
     with BaseSingleNodeEsClusterTest
-    with SingletonPluginTestSupport {
+    with SingletonPluginTestSupport
+    with HeavySuiteGated {
 
   private val isDataStreamSupported = Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)
 

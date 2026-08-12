@@ -372,12 +372,21 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .add("-Xms512m")
       .add("-Xmx512m")
       .add("-Djava.security.egd=file:/dev/./urandoms")
-      .add(
+      // The JDWP agent exists so a developer can attach a debugger to the containerized ES. It is
+      // not free: measured ~90MB extra RSS per container (docker stats, ES 8.18, idle), which at
+      // the CI worst case of ~11 concurrent ES containers on a 16GB runner is ~1GB — so CI turns
+      // it off via ROR_ES_JDWP=false. Default stays ON to keep local debugging zero-setup.
+      // (RORDEV-2168)
+      .addWhen(
+        jdwpEnabled,
         "-Xdebug",
         s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${xDebugAddressBasedOn(esVersion)}"
       )
       .addWhen(needsCorretto19, "--add-modules=jdk.net")
   }
+
+  private def jdwpEnabled: Boolean =
+    Option(System.getenv("ROR_ES_JDWP")).forall(_.equalsIgnoreCase("true"))
 
   private def xDebugAddressBasedOn(esVersion: String) = {
     if (Version.greaterOrEqualThan(esVersion, 6, 3, 0)) "*:8000" else "8000"
@@ -419,8 +428,8 @@ final case class EsJavaOptsBuilder(options: Seq[String]) {
     this.copy(options = this.options ++ option.toSeq)
   }
 
-  def addWhen(condition: Boolean, option: => String): EsJavaOptsBuilder = {
-    if (condition) add(option) else this
+  def addWhen(condition: Boolean, option: => String, more: String*): EsJavaOptsBuilder = {
+    if (condition) add(option +: more.toSeq *) else this
   }
 
 }
