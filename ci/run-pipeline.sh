@@ -73,8 +73,6 @@ run_integration_tests() {
   ES_MODULE=$1
   # IT_PARALLELISM (the user-facing knob) = the gradle -PshardCount it feeds: K parallel shards.
   local parallelism="${IT_PARALLELISM:-1}"
-  # Overridable so a bigger runner can raise it; see run_one for the memory budget.
-  local IT_ORCHESTRATOR_JVMARGS="${IT_ORCHESTRATOR_JVMARGS:--Xmx2048m -XX:MaxMetaspaceSize=512m}"
   local esArgs=("-PesModule=$ES_MODULE")
   [ -n "$ES_VERSION" ] && esArgs+=("-PesVersion=$ES_VERSION")
 
@@ -84,15 +82,7 @@ run_integration_tests() {
   # appends the leader PID to GRADLE_PIDS (never pruned) and sets LAST_PID for the caller.
   LAST_PID=""
   run_one() {  # args: <gradle args...>
-    # Cap the ORCHESTRATOR heap. These invocations only spawn the shard processes and build the ES
-    # image; without this they inherit gradle.properties' -Xmx6144m, which the compile jobs need and
-    # this one does not. The leg already holds, on a 16GB runner:
-    #   K shard JVMs        K x (1024m heap + 512m metaspace)   (capped in ShardedGradlewTest)
-    #   K test workers      K x 512m heap                       (itTestHeap)
-    #   >= K ES containers  512m heap each, ~1.1GB RSS each
-    # At K=4 that is already ~15GB, so a 6GB orchestrator ceiling on top is what tips the host into
-    # OOM. A crashed daemon in integration_es80x reported daemonOpts=-Xmx6144m (RORDEV-2156).
-    setsid ./gradlew --no-daemon -Dorg.gradle.jvmargs="$IT_ORCHESTRATOR_JVMARGS" "$@" &
+    setsid ./gradlew --no-daemon "$@" &
     LAST_PID=$!; GRADLE_PIDS+=("$LAST_PID")
   }
 

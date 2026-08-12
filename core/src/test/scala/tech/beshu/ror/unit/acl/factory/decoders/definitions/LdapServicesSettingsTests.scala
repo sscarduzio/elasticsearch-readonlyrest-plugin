@@ -2314,19 +2314,14 @@ class LdapServicesSettingsTests private (ldapConnectionPoolProvider: UnboundidLd
           }
         )
       }
-      // The hosts must RESOLVE and refuse the connection, so that the failure is the connection one and not
-      // the name-resolution one. `localhost` on a closed port is the only choice that behaves the same
-      // everywhere; the earlier name (ssl-ldap2.foo.com) depended on how the machine's resolver treats an
-      // unknown subdomain, so this test failed whenever the resolver answered NXDOMAIN.
-      // Resolution failure has its own test above ("one of LDAP services is unavailable (invalid host)").
       "some of LDAP services are unavailable" in {
         assertDecodingFailure(
           yaml = s"""
                     |  ldaps:
                     |  - name: ldap1
                     |    hosts:
-                    |      - ldaps://localhost:12345
-                    |      - ldaps://localhost:12346
+                    |      - ldaps://ssl-ldap2.foo.com:836
+                    |      - ldaps://ssl-ldap3.foo.com:836
                     |    search_user_base_DN: "ou=People,dc=example,dc=com"
                     |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                     |    connection_timeout_in_sec: 2
@@ -2335,7 +2330,7 @@ class LdapServicesSettingsTests private (ldapConnectionPoolProvider: UnboundidLd
             error should be(
               CoreCreationError.DefinitionsLevelCreationError(
                 Message(
-                  "There was a problem with 'ldap1' LDAP connection to: ldaps://localhost:12345, ldaps://localhost:12346"
+                  "There was a problem with 'ldap1' LDAP connection to: ldaps://ssl-ldap2.foo.com:836, ldaps://ssl-ldap3.foo.com:836"
                 )
               )
             )
