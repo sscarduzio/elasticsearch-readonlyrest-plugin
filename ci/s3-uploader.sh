@@ -142,7 +142,7 @@ else
     CURL_FLAGS="-f"
 fi
 curl                            \
-    -# -k $CURL_FLAGS           \
+    -# $CURL_FLAGS              \
     -F "key=$targfile"          \
     $key_and_sig_args           \
     -F "Content-Type=$mime"     \

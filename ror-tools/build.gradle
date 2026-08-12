@@ -44,7 +44,7 @@ sourceSets {
 test {
     // Run tests with Java 21 (required by Gradle Tooling API used in tests, matches CI environment)
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
-    
+
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')
     if (enabled) {
@@ -107,6 +107,28 @@ tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
 }
+import javax.inject.Inject
+import org.gradle.process.ExecOperations
+import tech.beshu.ror.gradle.utils.EsDistribution
+import tech.beshu.ror.gradle.utils.ArtifactGroups
+import tech.beshu.ror.gradle.utils.EsLibsMirror
+import tech.beshu.ror.gradle.utils.LibsStore
+import tech.beshu.ror.gradle.utils.MavenPoms
+
+// Publishes the ES jars and their POMs to the libs store, for ES versions Elastic has released but not yet
+// published to Maven Central. The es*x modules resolve those versions from the store until Central catches up
+// (see the repository in readonlyrest.plugin-common-conventions).
+//
+// EsLibsMirror decides what to publish and what the POMs declare; the tasks below do the I/O around it: copying
+// jars out of the unpacked distribution, writing the generated POMs and uploading both.
+
+// Same store the es*x modules RESOLVE from (see the repository in readonlyrest.plugin-common-conventions):
+// LibsStore is where its coordinates and their defaults are defined, once, for both sides.
+def libsStoreEnvironment = LibsStore.fromEnv().uploadEnvironment()
+
+def targetEsVersion = esVersion.toString()
+def buildDirPath = { layout.buildDirectory.get().asFile.toPath() }
+def fileInBuildDir = { String name -> buildDirPath().resolve(name).toFile() }
 
 def netty4TransportArtifactName = "transport-netty4-${esVersion}.jar"
 def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/${esVersion}/"

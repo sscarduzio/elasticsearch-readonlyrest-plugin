@@ -32,10 +32,9 @@ Source: `beshu-tech/readonlyrest-internal` (`versioning.md`, `releasing.md`), re
 
 Verified against recent PRs (e.g. #1257). Files touched:
 
-1. `es{NN}x/gradle.properties` — bump `esVersion` in the newest matching module.
-2. `ci/supported-es-versions/es{N}x.txt` — prepend the new version (newest first). **This is what CI build/test actually keys off** (read by `ci/run-pipeline.sh`).
-3. `ci/upload-es-artifacts.sh` — add a *commented-out* line for the new version (the existing entries are all commented, kept as a historical record). To actually upload raw ES jars to S3: uncomment the line, push to a `newes/*` branch (the `ES_S3_UP` pipeline stage fires on that branch name), then re-comment before merging. This is a separate manual step — it is NOT what gates CI build/test (that's `ci/supported-es-versions/*.txt`, step 2).
-4. Sometimes `ror-tools/build.gradle`.
+1. `es{NN}x/gradle.properties` — add the version to `supportedEsVersions` in the matching module. **This is the single source of truth**: CI build/test, the default ES module, and the docs action-string sync all derive from it (`EsModuleFinder` / `printAllSupportedEsVersions`). There is no separate version list to update.
+2. Mirror the ES jars into the libs store, for versions Maven Central doesn't carry yet: run the **Mirror ES Libs** workflow (`.github/workflows/mirror-es-libs.yml`) with `es_versions` set to the new versions (e.g. `9.5.1 9.4.5`). Manual, once per version, and **before** the branch adding that version goes through CI — the build resolves ES dependencies from the store, so it cannot compile against jars that aren't there yet. Not what gates CI build/test (that's `supportedEsVersions`, step 1). *(Until 2026-08: uncomment a line in `ci/upload-es-artifacts.sh`, push a `newes/*` branch to fire ci.yml's `es_s3_up` job, re-comment before merge. Both that job and the `newes/*` trigger are gone.)*
+3. Sometimes `ror-tools/build.gradle`.
 
 Test locally first: `./gradlew integration-tests:test '-PesModule=es{NN}x'`.
 

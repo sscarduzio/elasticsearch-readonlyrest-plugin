@@ -1,6 +1,9 @@
 #!/bin/bash -e
 
-CI_DIR=$(dirname "$0")
+# This file's OWN directory — used to locate the sibling scripts it shells out to (s3-uploader.sh).
+# BASH_SOURCE, not $0: $0 is the script that INVOKED us, which is a different directory whenever this
+# lib is sourced rather than run (`source ci/ci-lib.sh && reap_ci_job_containers` resolved it to ".").
+CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 docker_image_exists() {
   docker manifest inspect "$1" >/dev/null 2>&1
@@ -134,18 +137,30 @@ tag() {
 # Upload a file to an S3-compatible store using the SigV4 curl uploader.
 #
 # The store is selected by the 3rd arg (default ARTIFACTS) and resolves the matching
-# ROR_<STORE>_STORE_* env vars, so the same logic serves both the artifacts store
-# (ROR_ARTIFACTS_STORE_*) and the libs store (ROR_LIBS_STORE_*). Each store keeps its
-# own endpoint, credentials, bucket, region and path-prefix.
-upload_using_aws_s3_uploader() {
+# ROR_<STORE>_STORE_* env vars, so the same logic serves any store: each one keeps its own
+# endpoint, credentials, bucket, region and path-prefix under its own name.
+#
+# This is the ONE place that turns a store name into a set of values. Anything uploading to a
+# ROR store goes through it rather than resolving ROR_<STORE>_STORE_* itself — a second copy of
+# this resolution is how the two sides of the libs store drifted apart before (see LibsStore).
+#
+# For the libs store the caller (ror-tools, via LibsStore) always passes explicit values, so the
+# fallbacks below never apply to it; they only cover a store whose vars are partly unset.
+#
+# Two entry points, differing only in what the destination MEANS:
+#   upload_using_aws_s3_uploader        <file> <dir>  [store] [mime]  — key is <dir>/<basename>
+#   upload_using_aws_s3_uploader_to_key <file> <key>  [store] [mime]  — key is exactly <key>
+# The mime type is optional; without it the uploader guesses (which needs `file` on the runner).
+function _upload_to_s3_target {
   local LOCAL_FILE="$1"
-  local S3_PATH STORE BUCKET PATH_PREFIX
-  S3_PATH=$(echo "$2" | sed 's:/*$::')
-  STORE="${3:-ARTIFACTS}"
+  local S3_TARGET="$2"
+  local STORE="${3:-ARTIFACTS}"
+  local MIME="${4:-}"
+  local BUCKET PATH_PREFIX
 
   if [[ ! -f "$LOCAL_FILE" ]]; then
     echo "ERROR: artifact to upload not found (or not a regular file): $LOCAL_FILE"
-    exit 1
+    return 1
   fi
 
   # Indirectly resolve the store-specific env vars (e.g. ROR_LIBS_STORE_BUCKET).
@@ -167,7 +182,22 @@ upload_using_aws_s3_uploader() {
   S3_ENDPOINT_URL="$ENDPOINT" \
     "$CI_DIR"/s3-uploader.sh \
       "$AK" "$SK" \
-      "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
+      "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_TARGET}" ${MIME:+"$MIME"}
+}
+
+# Upload into a directory: the uploader appends the file's basename to it.
+function upload_using_aws_s3_uploader {
+  local S3_DIR
+  S3_DIR=$(echo "$2" | sed 's:/*$::')
+  _upload_to_s3_target "$1" "${S3_DIR}/" "${3:-ARTIFACTS}" "${4:-}"
+}
+
+# Upload to an exact key. For callers that mirror a directory tree, where the key is the file's
+# path within that tree and not its basename. Its caller is the e2e Cypress report uploader
+# (RORDEV-1229, change/RORDEV-1229_run_e2e_tests), which today resolves ROR_<STORE>_STORE_* with its
+# own inline copy — the duplication this file exists to remove. Unused until that branch lands.
+function upload_using_aws_s3_uploader_to_key {
+  _upload_to_s3_target "$1" "$2" "${3:-ARTIFACTS}" "${4:-}"
 }
 
 log_disk_usage() {
