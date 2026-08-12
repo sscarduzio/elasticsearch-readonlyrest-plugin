@@ -582,7 +582,7 @@ jobs:
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
-      (github.event_name != 'workflow_dispatch' || startsWith(needs.setup.outputs.action, 'run_all_tests') || needs.setup.outputs.action == 'run_e2e_tests')
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest   # free for public repos; this job only configures Gradle and calls an API
     timeout-minutes: 30
     # No container: the dispatch helpers shell out to `gh` and `jq`, which the toolchains image does
@@ -624,7 +624,9 @@ jobs:
   # once by e2e_prepare; run-pipeline.sh's run_e2e_tests builds & publishes the ROR ES dev image for
   # this version (the expensive step, hence still per-version and parallel), waits for the matching
   # KBN image, then runs the suite (see ci/e2e-tests-lib.sh).
-  # Runs on ready PRs and branch pushes; on manual dispatch only for the run_all_tests_* actions;
+  # Runs on ready PRs and branch pushes; on manual dispatch only for run_all_tests_on_linux and the
+  # dedicated run_e2e_tests action (there is no Windows e2e variant, so run_all_tests_on_windows
+  # deliberately does NOT pull these Linux/docker legs in);
   # never on schedule, and never on DRAFT PRs (setup emits an empty e2e module list for those).
   # Same TOOLCHAINS_VERIFY/ES_S3_UP gate as the other TEST legs.
   e2e_tests:
@@ -636,7 +638,7 @@ jobs:
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
-      (github.event_name != 'workflow_dispatch' || startsWith(needs.setup.outputs.action, 'run_all_tests') || needs.setup.outputs.action == 'run_e2e_tests')
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubicloud-standard-4
     timeout-minutes: 120
     # No container: the e2e runner drives docker compose on the host and needs Node + a JDK provided
