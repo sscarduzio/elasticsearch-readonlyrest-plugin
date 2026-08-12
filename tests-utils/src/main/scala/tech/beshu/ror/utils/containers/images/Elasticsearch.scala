@@ -372,11 +372,6 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .add("-Xms512m")
       .add("-Xmx512m")
       .add("-Djava.security.egd=file:/dev/./urandoms")
-      // The JDWP agent exists so a developer can attach a debugger to the containerized ES. It is
-      // not free: measured ~90MB extra RSS per container (docker stats, ES 8.18, idle), which at
-      // the CI worst case of ~11 concurrent ES containers on a 16GB runner is ~1GB — so CI turns
-      // it off via ROR_ES_JDWP=false. Default stays ON to keep local debugging zero-setup.
-      // (RORDEV-2168)
       .addWhen(
         jdwpEnabled,
         "-Xdebug",

@@ -11,7 +11,6 @@ source "$(dirname "$0")/publish-ror-plugins.sh"
 GRADLE_PIDS=()
 terminate() {
   echo ">>> Termination signal received — killing gradle tree(s) + reaping this CI job's containers..."
-  [ -n "${TELEMETRY_PID:-}" ] && kill "$TELEMETRY_PID" 2>/dev/null
   # Negative PID = signal the whole process group (gradle + its worker JVMs).
   for pid in "${GRADLE_PIDS[@]}"; do kill -TERM -- "-$pid" 2>/dev/null || true; done
   sleep 5
@@ -80,11 +79,6 @@ run_integration_tests() {
 
   echo ">>> $ES_MODULE => ror-tools:test (serial gate) + integration-tests:shardedTest (${parallelism} shard(s)).."
 
-  # Background memory sampler (RORDEV-2168): records host MemAvailable + per-process/container RSS
-  # so an exit-137 (host OOM SIGKILL) leaves evidence. Reported/uploaded by ci.yml `if: always()`.
-  # Global, not local: terminate() must reach it. Self-terminates after 3h even if never stopped.
-  TELEMETRY_PID=$(ci/mem-telemetry.sh start "integration-tests/build/mem-telemetry-${ES_MODULE}.log") || TELEMETRY_PID=""
-
   # Each gradle invocation runs in its OWN process group (setsid) so the trap can reap the whole tree;
   # appends the leader PID to GRADLE_PIDS (never pruned) and sets LAST_PID for the caller.
   LAST_PID=""
@@ -104,17 +98,12 @@ run_integration_tests() {
   # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the CI job). Also warms :build-base/:buildSrc.
   run_one ror-tools:test
   wait "$LAST_PID"; local rc=$?
-  if [ "$rc" -ne 0 ]; then
-    # Stop the sampler on this early exit too, so it cannot keep writing while ci.yml reads the log.
-    [ -n "${TELEMETRY_PID:-}" ] && ci/mem-telemetry.sh stop "$TELEMETRY_PID"
-    find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"
-  fi
+  if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 
   # 2) All sharding orchestration lives in integration-tests:shardedTest (see its build.gradle):
   #    prebuild barrier via task deps, K child ./gradlew spawn/wait, ProcessHandle kill on cancel.
   run_one integration-tests:shardedTest "${esArgs[@]}" -PshardCount="$parallelism"
   wait "$LAST_PID"; rc=$?
-  [ -n "${TELEMETRY_PID:-}" ] && ci/mem-telemetry.sh stop "$TELEMETRY_PID"
   if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 }
 

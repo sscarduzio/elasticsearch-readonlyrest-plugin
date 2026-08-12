@@ -32,10 +32,6 @@ import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
 import java.util.UUID
 
-// HeavySuiteGated mixed in LAST so its run() is the outermost layer: this suite boots 2 extra ES
-// nodes + 2 toxiproxy containers ON TOP of the shared singleton ES, which is exactly the load the
-// machine-wide heavy-suite permit exists to bound — but BaseSingleNodeEsClusterTest (unlike the
-// Base*IntegrationTest cluster traits) does not carry the gate. (RORDEV-2168)
 class RemoteClusterAuditingToolsSuite
     extends BaseAuditingToolsSuite
     with BaseSingleNodeEsClusterTest

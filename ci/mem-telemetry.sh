@@ -1,5 +1,5 @@
 #!/bin/bash
-# Memory telemetry for the integration CI legs (RORDEV-2168).
+# Memory telemetry for the integration CI legs.
 #
 # A leg runs ~9 JVMs plus up to 8 ES containers on a 16GB runner. When the tail of that sum
 # crosses physical RAM, the kernel OOM killer SIGKILLs the fattest process and the job dies

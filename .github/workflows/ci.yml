@@ -350,6 +350,8 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Free host disk (no-op on self-hosted)
         run: ci/free-host-disk.sh
+      - name: Start memory telemetry
+        run: ci/mem-telemetry.sh start integration-tests/build/mem-telemetry-${{ matrix.ROR_TASK }}.log > "$RUNNER_TEMP/mem-telemetry.pid"
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
@@ -361,8 +363,7 @@ jobs:
           # es94x tolerated 3 only because it excludes some of the heavy suites other modules run.
           ROR_BALANCED_SHARDS: 'true'
           ROR_HEAVY_SUITE_PERMITS: '2'
-          # No debugger ever attaches to a CI ES container; the JDWP agent costs ~90MB RSS per
-          # container (~1GB at the ~11-container worst case). Local runs keep it on. (RORDEV-2168)
+          # the JDWP agent costs ~90MB RSS per ES container and nothing attaches to it in CI
           ROR_ES_JDWP: 'false'
           ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
           ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
@@ -394,13 +395,12 @@ jobs:
             cat "$f"
             echo "::endgroup::"
           done
-      # Memory-pressure evidence (RORDEV-2168): worst sample + OOM forensics, so an exit-137 leg
-      # shows WHAT was resident when the host ran dry instead of a bare SIGKILL.
       - name: Memory telemetry report
         if: always()
         env:
           ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
         run: |
+          [ -f "$RUNNER_TEMP/mem-telemetry.pid" ] && ci/mem-telemetry.sh stop "$(cat "$RUNNER_TEMP/mem-telemetry.pid")" || true
           for f in integration-tests/build/mem-telemetry-*.log; do
             [ -f "$f" ] || continue
             echo "::group::$(basename "$f") report"
