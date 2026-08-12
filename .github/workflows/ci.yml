@@ -564,8 +564,8 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux' || needs.setup.outputs.action == 'run_e2e_tests')
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
+    runs-on: ubuntu-latest
     container: *toolchains
     timeout-minutes: 30
     outputs:
@@ -610,7 +610,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux' || needs.setup.outputs.action == 'run_e2e_tests')
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubicloud-standard-4
     timeout-minutes: 120
     # No container: the e2e runner drives docker compose on the host and needs Node + a JDK provided
