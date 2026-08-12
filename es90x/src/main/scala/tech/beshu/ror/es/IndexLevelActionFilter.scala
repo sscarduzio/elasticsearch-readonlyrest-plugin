@@ -110,7 +110,7 @@ class IndexLevelActionFilter(
     private def createService(cluster: AuditCluster): IndexBasedAuditSinkService & DataStreamBasedAuditSinkService = {
       cluster match {
         case AuditCluster.LocalAuditCluster =>
-          new NodeClientBasedAuditSinkService(client, new XContentJsonParserFactory(xContentRegistry))(
+          new NodeClientBasedAuditSinkService(client, new XContentJsonParserFactory(xContentRegistry), threadPool)(
             using systemContext.clock
           )
         case remote: AuditCluster.RemoteAuditCluster =>
@@ -177,6 +177,7 @@ class IndexLevelActionFilter(
               rorActionListener,
               chain,
               EsServices.withCaching(esServices),
+              esEnv.esVersion
             )
           )
         } recover {

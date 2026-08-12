@@ -301,7 +301,8 @@ object AclAwareRequestFilter {
       val actionRequest: ActionRequest,
       val listener: RorActionListener[ActionResponse],
       val chain: EsChain,
-      val esServices: EsServices
+      val esServices: EsServices,
+      val esVersion: EsVersion
   ) extends BaseEsContext {
 
     override val esTaskId: Long = task.getId

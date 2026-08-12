@@ -372,12 +372,16 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .add("-Xms512m")
       .add("-Xmx512m")
       .add("-Djava.security.egd=file:/dev/./urandoms")
-      .add(
+      .addWhen(
+        jdwpEnabled,
         "-Xdebug",
         s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${xDebugAddressBasedOn(esVersion)}"
       )
       .addWhen(needsCorretto19, "--add-modules=jdk.net")
   }
+
+  private def jdwpEnabled: Boolean =
+    Option(System.getenv("ROR_ES_JDWP")).forall(_.equalsIgnoreCase("true"))
 
   private def xDebugAddressBasedOn(esVersion: String) = {
     if (Version.greaterOrEqualThan(esVersion, 6, 3, 0)) "*:8000" else "8000"
@@ -419,8 +423,8 @@ final case class EsJavaOptsBuilder(options: Seq[String]) {
     this.copy(options = this.options ++ option.toSeq)
   }
 
-  def addWhen(condition: Boolean, option: => String): EsJavaOptsBuilder = {
-    if (condition) add(option) else this
+  def addWhen(condition: Boolean, option: => String, more: String*): EsJavaOptsBuilder = {
+    if (condition) add(option +: more.toSeq*) else this
   }
 
 }
