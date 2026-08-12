@@ -539,11 +539,10 @@ jobs:
   # so a version bump in a module's gradle.properties needs no edit here.
   # Gate identical to e2e_tests, which consumes its outputs.
   e2e_prepare:
-    needs: [ setup, toolchains_verify, es_s3_up ]
+    needs: [ setup, toolchains_verify ]
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux' || needs.setup.outputs.action == 'run_e2e_tests')
@@ -592,14 +591,12 @@ jobs:
   # dedicated run_e2e_tests action (there is no Windows e2e variant, so run_all_tests_on_windows
   # deliberately does NOT pull these Linux/docker legs in);
   # never on schedule, and never on DRAFT PRs (setup emits an empty e2e module list for those).
-  # Same TOOLCHAINS_VERIFY/ES_S3_UP gate as the other TEST legs.
   e2e_tests:
-    needs: [ setup, toolchains_verify, es_s3_up, e2e_prepare ]
+    needs: [ setup, toolchains_verify, e2e_prepare ]
     if: >-
       !cancelled() &&
       needs.e2e_prepare.result == 'success' &&
       needs.toolchains_verify.result == 'success' &&
-      needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux' || needs.setup.outputs.action == 'run_e2e_tests')
