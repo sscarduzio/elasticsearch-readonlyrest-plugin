@@ -193,7 +193,9 @@ function upload_using_aws_s3_uploader {
 }
 
 # Upload to an exact key. For callers that mirror a directory tree, where the key is the file's
-# path within that tree and not its basename.
+# path within that tree and not its basename. Its caller is the e2e Cypress report uploader
+# (RORDEV-1229, change/RORDEV-1229_run_e2e_tests), which today resolves ROR_<STORE>_STORE_* with its
+# own inline copy — the duplication this file exists to remove. Unused until that branch lands.
 function upload_using_aws_s3_uploader_to_key {
   _upload_to_s3_target "$1" "$2" "${3:-ARTIFACTS}" "${4:-}"
 }
