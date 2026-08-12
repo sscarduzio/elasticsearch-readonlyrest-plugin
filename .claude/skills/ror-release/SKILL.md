@@ -32,10 +32,9 @@ Source: `beshu-tech/readonlyrest-internal` (`versioning.md`, `releasing.md`), re
 
 Verified against recent PRs (e.g. #1257). Files touched:
 
-1. `es{NN}x/gradle.properties` — bump `esVersion` in the newest matching module.
-2. `ci/supported-es-versions/es{N}x.txt` — prepend the new version (newest first). **This is what CI build/test actually keys off** (read by `ci/run-pipeline.sh`).
-3. `ci/upload-es-artifacts.sh` — add a *commented-out* line for the new version (the existing entries are all commented, kept as a historical record). To actually upload raw ES jars to S3: uncomment the line, push to a `newes/*` branch (the `ES_S3_UP` pipeline stage fires on that branch name), then re-comment before merging. This is a separate manual step — it is NOT what gates CI build/test (that's `ci/supported-es-versions/*.txt`, step 2).
-4. Sometimes `ror-tools/build.gradle`.
+1. `es{NN}x/gradle.properties` — add the version to `supportedEsVersions` in the matching module. **This is the single source of truth**: CI build/test, the default ES module, and the docs action-string sync all derive from it (`EsModuleFinder` / `printAllSupportedEsVersions`). There is no separate version list to update.
+2. `ci/upload-es-artifacts.sh` — add a *commented-out* line for the new version (the existing entries are all commented, kept as a historical record). To actually upload raw ES jars to S3: uncomment the line, push to a `newes/*` branch (the `ES_S3_UP` pipeline stage fires on that branch name), then re-comment before merging. This is a separate manual step — it is NOT what gates CI build/test (that's `supportedEsVersions`, step 1).
+3. Sometimes `ror-tools/build.gradle`.
 
 Test locally first: `./gradlew integration-tests:test '-PesModule=es{NN}x'`.
 

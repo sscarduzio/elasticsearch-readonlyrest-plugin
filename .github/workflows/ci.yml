@@ -496,7 +496,11 @@ jobs:
           # Windows (no docker), 3 fit the 16GB box. 4 workers measured no faster (CPU-bound).
           # ror-tools:test is NOT run per-leg: it took ~10 min/leg and every node install already
           # exercises the patcher end-to-end; the suite still runs via unit_tests_windows.
+          # Cap the orchestrator heap for the same reason as the Linux legs (RORDEV-2156): it only
+          # spawns the shard processes, but without this it inherits gradle.properties' -Xmx6144m,
+          # on a 16GB box that already holds 3 shard JVMs, 3 test workers and 3 native ES nodes.
           $gradleArgs = "--no-daemon", "--build-cache", "integration-tests:shardedTest", "-PshardCount=3", "-PesModule=$env:ES_MODULE",
+            "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m",
             "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
           .\gradlew @gradleArgs
           if ($LASTEXITCODE -ne 0) {
