@@ -23,6 +23,7 @@ import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.images.builder.ImageFromDockerfile
+import squants.information.{Information, Mebibytes}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
 import tech.beshu.ror.utils.containers.EsContainer.{Credentials, EsContainerImplementation}
@@ -63,16 +64,12 @@ abstract class EsContainer(
   // under indexing and search load (heap 319/512 MiB, non-heap 197 MiB). 2 GiB leaves room for a full heap
   // plus the ROR plugin -- a node boots and serves at ~54% of it -- while still catching a runaway node.
   // Override with ROR_ES_CONTAINER_MEMORY_MB when a suite genuinely needs more.
-  private val esContainerMemoryLimitBytes: Long = {
-    val defaultMb = 2048L
-    // Upper bound before the multiplication, not after: a value above this overflows Long and would hand
-    // Docker a NEGATIVE byte count, which fails every container in the run instead of raising the limit.
-    val maxMb = Long.MaxValue / (1024L * 1024L)
+  private val esContainerMemoryLimit: Information =
     Option(System.getenv("ROR_ES_CONTAINER_MEMORY_MB"))
       .flatMap(_.toLongOption)
-      .filter(mb => mb > 0 && mb <= maxMb)
-      .getOrElse(defaultMb) * 1024L * 1024L
-  }
+      .filter(_ > 0)
+      .map(Mebibytes(_))
+      .getOrElse(Mebibytes(2048))
 
   private val containerImplementation: EsContainerImplementation = {
     OsUtils.currentOs match {
@@ -115,7 +112,7 @@ abstract class EsContainer(
         container.withCreateContainerCmdModifier { cmd =>
           cmd.getHostConfig
             .withCgroupnsMode("host")
-            .withMemory(esContainerMemoryLimitBytes)
+            .withMemory(esContainerMemoryLimit.toBytes.toLong)
         }
         // Stamp this CI job's id so cleanup reaps ONLY this CI job's containers, never a sibling's on the
         // shared self-hosted Docker daemon. Absent off-CI -> no label, no-op.
