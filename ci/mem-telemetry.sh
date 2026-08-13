@@ -83,8 +83,13 @@ case "${1:-}" in
     if [ -n "${ROR_CI_JOB_ID:-}" ]; then
       docker ps -a --filter "label=ror.ci-job=$ROR_CI_JOB_ID" --format '{{.ID}} {{.Names}}' 2>/dev/null \
         | while read -r id name; do
-            docker inspect -f "{{.Name}} oomkilled={{.State.OOMKilled}} exit={{.State.ExitCode}} status={{.State.Status}}" "$id" 2>/dev/null \
-              || echo "$name ($id) is gone - reaped before it could be inspected"
+            if out=$(docker inspect -f "{{.Name}} oomkilled={{.State.OOMKilled}} exit={{.State.ExitCode}} status={{.State.Status}}" "$id" 2>&1); then
+              echo "$out"
+            elif printf '%s' "$out" | grep -qiE "no such (object|container)"; then
+              echo "$name ($id) is gone - reaped before it could be inspected"
+            else
+              echo "$name ($id) could not be inspected: $out"
+            fi
           done
     else
       echo "ROR_CI_JOB_ID not set - skipping container inspection"
