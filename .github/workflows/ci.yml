@@ -570,6 +570,9 @@ jobs:
     timeout-minutes: 30
     outputs:
       matrix: ${{ steps.prepare.outputs.matrix }}
+      # The build id this job actually dispatched the KBN images under. The test jobs MUST take it
+      # from here rather than recomputing it — see the E2E_BUILD_ID note below.
+      build_id: ${{ steps.prepare.outputs.build_id }}
       kbn_run_id: ${{ steps.prepare.outputs.kbn_run_id }}
       kbn_run_url: ${{ steps.prepare.outputs.kbn_run_url }}
       kbn_wait_timeout_seconds: ${{ steps.prepare.outputs.kbn_wait_timeout_seconds }}
@@ -587,7 +590,8 @@ jobs:
           # (github.base_ref — develop or master); push: the pushed branch itself. A change based on
           # develop must fall back to the e2e repo's develop, not to master.
           E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          # Unique per attempt; e2e_tests derives the same image tag from it.
+          # Unique per attempt. Minted HERE only, and re-published as this job's `build_id` output;
+          # e2e_tests reads it back from there so both sides name the same images.
           E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
           KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
         run: ci/run-pipeline.sh
@@ -656,8 +660,12 @@ jobs:
           # (github.base_ref — develop or master); push: the pushed branch itself. A change based on
           # develop must fall back to the e2e repo's develop, not to master.
           E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          # Unique per attempt. Same value e2e_prepare used, so both derive the same image tag.
-          E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          # Taken from e2e_prepare, NEVER recomputed from github.run_id/run_attempt here: a partial
+          # re-run ("Re-run failed jobs") bumps github.run_attempt for the whole run but carries a
+          # successful e2e_prepare over from the previous attempt, so a locally derived id would name
+          # a KBN image tag that no pre-build was ever dispatched for, and this job would poll until
+          # it times out. A full re-run does re-run e2e_prepare, and so still gets a fresh id.
+          E2E_BUILD_ID: ${{ needs.e2e_prepare.outputs.build_id }}
           # The KBN pre-build run e2e_prepare started. Lets the image poll below fail as soon as that
           # run fails, instead of spending its whole timeout, and scales the timeout with the number
           # of versions that one run has to build.

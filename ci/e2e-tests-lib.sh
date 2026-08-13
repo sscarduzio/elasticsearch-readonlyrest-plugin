@@ -28,8 +28,13 @@
 #
 # Both images are tagged with a per-run tag (run-<E2E_BUILD_ID>) so each pipeline run gets its own
 # immutable refs. This prevents false hits from a previous run's image and makes concurrent runs safe.
-# Both jobs derive that tag from the same build id (e2e_run_tag), so no value has to be passed
-# between them.
+# The build id is <run id>-<run attempt>, and ONLY prepare_e2e_kbn_images mints it: it publishes the
+# value as a job output the test jobs consume. The test jobs must not re-derive it from the workflow
+# context, because a partial re-run ("Re-run failed jobs") bumps github.run_attempt for the whole run
+# while carrying prepare_e2e_kbn_images over from the previous attempt — the KBN images then exist
+# under the OLD attempt's tag and every test job waits out its poll on a tag nothing will ever push.
+# Carrying the id through `needs` keeps the attempt meaningful (a full re-run does re-run the
+# preparing job, and so does get fresh images) without the two sides ever disagreeing.
 #
 # dispatch_kbn_prebuild_image / wait_for_kbn_prebuild_image are NOT defined here: the same pair is
 # needed by the ROR KBN repo (mirrored) and by the e2e repo (both plugins), so they live once in
@@ -191,7 +196,8 @@ export_kbn_prebuild_run_info() {
 #   target branch   — branch to build the KBN plugin from
 #   fallback branch — branch this change is based on; used when <target branch> doesn't exist in the
 #                     e2e repo (the KBN pre-build workflow does its own fallback for its own repo)
-#   build id        — E2E_BUILD_ID (<run id>-<attempt>); unique per attempt
+#   build id        — E2E_BUILD_ID (<run id>-<attempt>); unique per attempt, and re-published as the
+#                     `build_id` job output for the test jobs to reuse verbatim
 prepare_e2e_kbn_images() {
   if [ "$#" -ne 4 ]; then
     echo "Usage: prepare_e2e_kbn_images <es modules> <target branch> <fallback branch> <build id>"
@@ -207,9 +213,12 @@ prepare_e2e_kbn_images() {
   local MATRIX ELK_VERSIONS
   MATRIX=$(e2e_matrix_json "$ES_MODULES") || return $?
   ELK_VERSIONS=$(echo "$MATRIX" | jq -r '[.include[].elk] | join(" ")')
-  # The matrix the test jobs fan out over. A no-op outside GitHub Actions.
+  # The matrix the test jobs fan out over, and the build id whose tag the images dispatched below
+  # will carry — the test jobs take it from here instead of re-deriving it, so a partial re-run
+  # cannot point them at an attempt whose KBN build never happened. A no-op outside GitHub Actions.
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
     echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+    echo "build_id=$4" >> "$GITHUB_OUTPUT"
   fi
 
   echo ">>> Preparing e2e KBN dev images: ELK [$ELK_VERSIONS], run tag: $RUN_TAG"
@@ -280,8 +289,9 @@ run_e2e_against_dev_images() {
 #   target branch   — branch to take the e2e suite from
 #   fallback branch — branch this change is based on (PR base branch, or the pushed branch itself);
 #                     used when <target branch> doesn't exist in the e2e repo
-#   build id        — E2E_BUILD_ID (<run id>-<attempt>); must be the one the preparing job used, as
-#                     it identifies this run's images
+#   build id        — E2E_BUILD_ID; must be the id the preparing job PUBLISHED (its `build_id`
+#                     output), not one re-derived from the workflow context — it identifies the
+#                     images that job actually dispatched
 run_e2e_tests() {
   if [ "$#" -ne 4 ]; then
     echo "Usage: run_e2e_tests <elk version> <target branch> <fallback branch> <build id>"

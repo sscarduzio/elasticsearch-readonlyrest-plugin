@@ -214,7 +214,7 @@ if [[ $ROR_TASK == "prepare_e2e_kbn_images" ]]; then
     "${E2E_ES_MODULES:?E2E_ES_MODULES is not set}" \
     "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
     "${E2E_FALLBACK_BRANCH:-master}" \
-    "$E2E_BUILD_ID"
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set}"
 fi
 
 # Runs once per ES version, after prepare_e2e_kbn_images. E2E_ELK_VERSION comes from the matrix that
@@ -227,5 +227,5 @@ if [[ $ROR_TASK == "run_e2e_tests" ]]; then
     "$E2E_ELK_VERSION" \
     "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
     "${E2E_FALLBACK_BRANCH:-master}" \
-    "$E2E_BUILD_ID"
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the build_id output of e2e_prepare}"
 fi
