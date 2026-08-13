@@ -74,7 +74,6 @@ jobs:
       is_master:  ${{ steps.f.outputs.is_master }}
       is_develop: ${{ steps.f.outputs.is_develop }}
       is_epic:    ${{ steps.f.outputs.is_epic }}
-      is_newes:   ${{ steps.f.outputs.is_newes }}
       action:     ${{ github.event.inputs.actionToPerform || 'run_all_tests_on_linux' }}
       it_linux_matrix:   ${{ steps.m.outputs.linux }}
       it_windows_matrix: ${{ steps.m.outputs.windows }}
@@ -85,9 +84,8 @@ jobs:
         run: |
           echo "is_master=${{ github.ref == 'refs/heads/master' }}"   >> "$GITHUB_OUTPUT"
           echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
-          # contains() semantics, matching Azure's isEpicBranchOrPr / isNewEsBranchOrPr
+          # contains() semantics, matching Azure's isEpicBranchOrPr
           case "$REF" in *epic/*)  echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
-          case "$REF" in *newes/*) echo "is_newes=true" >> "$GITHUB_OUTPUT";; *) echo "is_newes=false" >> "$GITHUB_OUTPUT";; esac
       - id: m
         env:
           # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
@@ -182,45 +180,15 @@ jobs:
           ls "$GRADLE_USER_HOME/wrapper/dists" || { echo "No baked Gradle dist in image"; exit 1; }
           ./gradlew --no-daemon -q help
 
-  # ── ES_S3_UP (newes/* only) ───────────────────────────────────────────────
-  # Uploads new ES-version artifacts BEFORE any test job runs (they fetch from the libs store).
-  es_s3_up:
-    needs: setup
-    if: >-
-      needs.setup.outputs.is_newes == 'true' &&
-      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
-    runs-on: ubicloud-standard-4
-    container: *toolchains
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: Upload missing ROR ES dependencies
-        env:
-          ROR_ARTIFACTS_STORE_ENDPOINT_URL: ${{ vars.ROR_ARTIFACTS_STORE_ENDPOINT_URL }}
-          ROR_ARTIFACTS_STORE_REGION: ${{ vars.ROR_ARTIFACTS_STORE_REGION }}
-          ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_ID }}
-          ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET }}
-          ROR_ARTIFACTS_STORE_BUCKET: ${{ vars.ROR_ARTIFACTS_STORE_BUCKET }}
-          ROR_ARTIFACTS_STORE_PATH_PREFIX: ${{ vars.ROR_ARTIFACTS_STORE_PATH_PREFIX }}
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
-        run: ci/upload-es-artifacts.sh
-
   # ── OPTIONAL_CHECKS: CVE (non-blocking) ───────────────────────────────────
   # Azure's OPTIONAL_CHECKS stage: failures annotate the run but never block it
   # (continue-on-error = Azure's "warning, stage passes"). Matrix for symmetry with
   # required_checks; cve_check is currently its only member.
   optional_checks:
-    needs: [ setup, toolchains_verify, es_s3_up ]
+    needs: [ setup, toolchains_verify ]
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains
@@ -264,11 +232,10 @@ jobs:
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
-    needs: [ setup, toolchains_verify, es_s3_up ]
+    needs: [ setup, toolchains_verify ]
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains
@@ -293,11 +260,10 @@ jobs:
 
   # ── TEST: unit (Linux) ────────────────────────────────────────────────────
   unit_tests_linux:
-    needs: [ setup, toolchains_verify, es_s3_up ]
+    needs: [ setup, toolchains_verify ]
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
@@ -326,11 +292,10 @@ jobs:
   # Matrix comes from setup: full 34-version set on develop/master/epic + manual run, the
   # 10-version representative subset on plain PRs (same split Azure encoded as separate jobs).
   it_linux:
-    needs: [ setup, toolchains_verify, es_s3_up ]
+    needs: [ setup, toolchains_verify ]
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
@@ -443,11 +408,10 @@ jobs:
   it_windows:
     # toolchains_verify is in needs even though Windows doesn't use the image: Azure's TEST stage
     # depended on TOOLCHAINS_VERIFY, so a broken image fails fast instead of running doomed legs.
-    needs: [ setup, toolchains_verify, es_s3_up ]
+    needs: [ setup, toolchains_verify ]
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       needs.setup.outputs.it_windows_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')

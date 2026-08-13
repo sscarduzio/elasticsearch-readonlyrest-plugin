@@ -112,6 +112,7 @@ import org.gradle.process.ExecOperations
 import tech.beshu.ror.gradle.utils.EsDistribution
 import tech.beshu.ror.gradle.utils.ArtifactGroups
 import tech.beshu.ror.gradle.utils.EsLibsMirror
+import tech.beshu.ror.gradle.utils.LibsStore
 import tech.beshu.ror.gradle.utils.MavenPoms
 
 // Publishes the ES jars and their POMs to the libs store, for ES versions Elastic has released but not yet
@@ -121,15 +122,9 @@ import tech.beshu.ror.gradle.utils.MavenPoms
 // EsLibsMirror decides what to publish and what the POMs declare; the tasks below do the I/O around it: copying
 // jars out of the unpacked distribution, writing the generated POMs and uploading both.
 
-def libsStoreEnvironment = [
-        'ROR_S3_TARGET_STORE'             : 'LIBS',
-        'ROR_LIBS_STORE_ENDPOINT_URL'     : System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech',
-        'ROR_LIBS_STORE_ACCESS_KEY_ID'    : System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: '',
-        'ROR_LIBS_STORE_ACCESS_KEY_SECRET': System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: '',
-        'ROR_LIBS_STORE_BUCKET'           : System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu',
-        'ROR_LIBS_STORE_REGION'           : System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1',
-        'ROR_LIBS_STORE_PATH_PREFIX'      : System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs',
-]
+// Same store the es*x modules RESOLVE from (see the repository in readonlyrest.plugin-common-conventions):
+// LibsStore is where its coordinates and their defaults are defined, once, for both sides.
+def libsStoreEnvironment = LibsStore.fromEnv().uploadEnvironment()
 
 def targetEsVersion = esVersion.toString()
 def buildDirPath = { layout.buildDirectory.get().asFile.toPath() }
