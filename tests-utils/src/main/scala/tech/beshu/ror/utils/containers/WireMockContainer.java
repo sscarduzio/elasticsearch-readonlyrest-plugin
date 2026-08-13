@@ -59,6 +59,14 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
                   DockerfileBuilder b = builder.from("rodolpheche/wiremock:2.5.1");
                   mappingFiles.forEach(
                       mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
+                  // the image's own CMD plus -Xmx: its JDK 8 is not cgroup-aware and defaults to
+                  // 1/4 of host RAM
+                  b.cmd(
+                      "java",
+                      "-Xmx256m",
+                      "-cp",
+                      "/var/wiremock/lib/*:/var/wiremock/extensions/*",
+                      "com.github.tomakehurst.wiremock.standalone.WireMockServerRunner");
                   b.build();
                 }));
     WireMockContainer cont =

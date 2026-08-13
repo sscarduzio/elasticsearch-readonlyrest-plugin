@@ -31,23 +31,8 @@ jobs:
           persist-credentials: false
           path: base
 
-      # Fallback source, used only while the base branch does not have the checks yet (the pull request
-      # that introduces them). The check then runs from the pull request instead of being skipped.
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: ci/pr-conventions
-          sparse-checkout-cone-mode: false
-          persist-credentials: false
-          path: pr
-
       - name: Check PR conventions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-        run: |
-          runner=base/ci/pr-conventions/run.sh
-          if [ ! -x "$runner" ]; then
-            echo "::warning::the checks are not on the base branch yet, so this run uses the pull request's own copy"
-            runner=pr/ci/pr-conventions/run.sh
-          fi
-          "$runner" "${{ github.event.pull_request.number }}"
+        run: base/ci/pr-conventions/run.sh "${{ github.event.pull_request.number }}"
