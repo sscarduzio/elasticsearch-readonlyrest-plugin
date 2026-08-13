@@ -296,6 +296,6 @@ run_e2e_tests() {
   fi
   wait_for_kbn_prebuild_image "$ELK_VERSION" "$RUN_TAG" || return $?
 
-  # Both images are now available under the run tag.
+  # Both images are now available under the run tag
   run_e2e_against_dev_images "$E2E_DIR" "$ELK_VERSION" "$RUN_TAG"
 }
