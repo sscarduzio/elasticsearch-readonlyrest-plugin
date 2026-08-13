@@ -19,6 +19,7 @@ package tech.beshu.ror.utils.containers
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.RemoteDockerImage
 import org.testcontainers.utility.DockerImageName
+import tech.beshu.ror.utils.misc.OsUtils
 
 /**
  * Warms the Docker image cache ONCE, in a single JVM, before the parallel integration-test workers
@@ -60,10 +61,13 @@ object PrebuildSingletonEsImage extends StrictLogging {
 
   // The images that a worker's own `docker build` starts FROM. Pulled through testcontainers
   // (not `docker pull`) so the configured pull policy and image-name substitutor still apply.
+  // Skipped on Windows, where ES runs as a native process and there is no Docker environment at all.
   private def pullBaseImages(): Unit = {
-    List(WireMockContainer.BASE_IMAGE).foreach { image =>
-      logger.info(s"Pulling base image $image ...")
-      val _ = new RemoteDockerImage(DockerImageName.parse(image)).get()
+    val _ = OsUtils.ignoreOnWindows {
+      List(WireMockContainer.BASE_IMAGE).foreach { image =>
+        logger.info(s"Pulling base image $image ...")
+        val _ = new RemoteDockerImage(DockerImageName.parse(image)).get()
+      }
     }
   }
 
