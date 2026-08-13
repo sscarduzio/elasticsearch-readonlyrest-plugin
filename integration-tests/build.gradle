@@ -161,8 +161,7 @@ dependencies {
     testImplementation  group: 'org.scalatest',                 name: 'scalatest_3',                version: '3.2.19'
 }
 
-// Pulls the base images and builds the singleton ES image ONCE before parallel workers; without it
-// the concurrent pulls/builds fail intermittently at shardCount>=3. See WarmDockerImageCache.
+// Runs ONCE before the parallel workers; see WarmDockerImageCache.
 tasks.register('warmDockerImageCache', JavaExec) {
     // Mirror test's gate: dependsOn targets run even when the dependent is onlyIf-skipped, so this
     // must skip in bare aggregate builds too (else every `./gradlew build` boots a Docker ES image).
