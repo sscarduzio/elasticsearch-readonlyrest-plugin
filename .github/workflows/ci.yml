@@ -570,8 +570,6 @@ jobs:
     timeout-minutes: 30
     outputs:
       matrix: ${{ steps.prepare.outputs.matrix }}
-      # The build id this job actually dispatched the KBN images under. The test jobs MUST take it
-      # from here rather than recomputing it — see the E2E_BUILD_ID note below.
       build_id: ${{ steps.prepare.outputs.build_id }}
       kbn_run_id: ${{ steps.prepare.outputs.kbn_run_id }}
       kbn_run_url: ${{ steps.prepare.outputs.kbn_run_url }}
@@ -584,28 +582,17 @@ jobs:
         env:
           ROR_TASK: prepare_e2e_kbn_images
           E2E_ES_MODULES: ${{ join(fromJSON(needs.setup.outputs.e2e_modules), ' ') }}
-          # PR: the source branch (github.head_ref); push: the pushed branch (github.ref_name)
-          E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          # Used when E2E_TARGET_BRANCH doesn't exist in the e2e repo. PR: the base branch
-          # (github.base_ref — develop or master); push: the pushed branch itself. A change based on
-          # develop must fall back to the e2e repo's develop, not to master.
-          E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          # Unique per attempt. Minted HERE only, and re-published as this job's `build_id` output;
-          # e2e_tests reads it back from there so both sides name the same images.
+          ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+          ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
           E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
           KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
         run: ci/run-pipeline.sh
 
   # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
-  # Cypress e2e suite (docker env), one job per e2e module, against per-run dev images of BOTH ROR
-  # plugins (ES + KBN). Ported from Azure's E2E_TESTS stage. The KBN pre-build was already dispatched
-  # once by e2e_prepare; run-pipeline.sh's run_e2e_tests builds & publishes the ROR ES dev image for
-  # this version (the expensive step, hence still per-version and parallel), waits for the matching
-  # KBN image, then runs the suite (see ci/e2e-tests-lib.sh).
-  # Runs on ready PRs and branch pushes; on manual dispatch only for run_all_tests_on_linux and the
-  # dedicated run_e2e_tests action (there is no Windows e2e variant, so run_all_tests_on_windows
-  # deliberately does NOT pull these Linux/docker legs in);
-  # never on schedule, and never on DRAFT PRs (setup emits an empty e2e module list for those).
+  # Cypress e2e suite, one job per e2e module, against this run's dev images of both ROR plugins.
+  # Each job builds and publishes the ROR ES image for its own version — the expensive step, so it
+  # stays per-version and parallel — then waits for the ROR KBN image e2e_prepare already dispatched
+  # and runs the suite (see ci/e2e-tests-lib.sh).
   e2e_tests:
     needs: [ setup, toolchains_verify, e2e_prepare ]
     if: >-
@@ -617,29 +604,15 @@ jobs:
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubicloud-standard-4
     timeout-minutes: 120
-    # No container: the e2e runner drives docker compose on the host and needs Node + a JDK provided
-    # on the runner directly (Azure used JavaToolInstaller@0 17 + NodeTool 24.11.0), not the baked
-    # toolchains image. Override the image-oriented Gradle settings at JOB scope: the workflow-level
-    # GRADLE_USER_HOME=/opt/gradle-home doesn't exist off-container, so point it at a writable
-    # workspace path (an EMPTY value can't unset it — the Linux wrapper would resolve empty to the
-    # filesystem root and fail creating /wrapper/dists). Blank the baked installations.paths and let
-    # Gradle auto-provision the JDKs the plugin build needs.
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
-    # "e2e_es94x", not the truncated "e2e_tests (es94x)" composite, in the graph view. Named after
-    # the MODULE, not the ELK version, so the check name survives a version bump.
     name: e2e_${{ matrix.module }}
     strategy:
       fail-fast: false
       max-parallel: 99
-      # { include: [ { module: es94x, elk: 9.4.4 }, ... ] } — built by e2e_prepare, which reads each
-      # module's newest supported ES version out of the build.
       matrix: ${{ fromJSON(needs.e2e_prepare.outputs.matrix) }}
     steps:
-      # persist-credentials: true mirrors Azure (persistCredentials). The e2e flow authenticates to
-      # the KBN repo via KBN_REPO_GH_TOKEN and clones the (public) e2e-tests repo; keep the checkout
-      # token available in case a helper reuses it.
       - uses: actions/checkout@v4
         with: { fetch-depth: 1, persist-credentials: true }
       - name: Free host disk (no-op on self-hosted)
@@ -652,23 +625,10 @@ jobs:
         env:
           ROR_TASK: run_e2e_tests
           E2E_ES_MODULE: ${{ matrix.module }}
-          # Resolved once, by e2e_prepare, from this module's supportedEsVersions.
           E2E_ELK_VERSION: ${{ matrix.elk }}
-          # PR: the source branch (github.head_ref); push: the pushed branch (github.ref_name)
           E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          # Used when E2E_TARGET_BRANCH doesn't exist in the e2e repo. PR: the base branch
-          # (github.base_ref — develop or master); push: the pushed branch itself. A change based on
-          # develop must fall back to the e2e repo's develop, not to master.
           E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          # Taken from e2e_prepare, NEVER recomputed from github.run_id/run_attempt here: a partial
-          # re-run ("Re-run failed jobs") bumps github.run_attempt for the whole run but carries a
-          # successful e2e_prepare over from the previous attempt, so a locally derived id would name
-          # a KBN image tag that no pre-build was ever dispatched for, and this job would poll until
-          # it times out. A full re-run does re-run e2e_prepare, and so still gets a fresh id.
           E2E_BUILD_ID: ${{ needs.e2e_prepare.outputs.build_id }}
-          # The KBN pre-build run e2e_prepare started. Lets the image poll below fail as soon as that
-          # run fails, instead of spending its whole timeout, and scales the timeout with the number
-          # of versions that one run has to build.
           ROR_KBN_PREBUILD_RUN_ID: ${{ needs.e2e_prepare.outputs.kbn_run_id }}
           ROR_KBN_PREBUILD_RUN_URL: ${{ needs.e2e_prepare.outputs.kbn_run_url }}
           ROR_KBN_WAIT_TIMEOUT_SECONDS: ${{ needs.e2e_prepare.outputs.kbn_wait_timeout_seconds }}

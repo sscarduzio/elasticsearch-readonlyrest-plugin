@@ -50,9 +50,9 @@ retag_dev_image() {
 #   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
 #   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
 #   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
-publish_ror_prebuild_plugin() {
+publish_ror_es_prebuild_plugin() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    echo "Usage: publish_ror_prebuild_plugin <ES version> [image tag]"
+    echo "Usage: publish_ror_es_prebuild_plugin <ES version> [image tag]"
     return 1
   fi
 

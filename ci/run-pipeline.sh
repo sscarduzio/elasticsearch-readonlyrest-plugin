@@ -200,7 +200,7 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
   IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
   for VERSION in "${VERSIONS[@]}"; do
     if [ -n "$VERSION" ]; then
-      publish_ror_prebuild_plugin "$VERSION" "$IMAGE_TAG"
+      publish_ror_es_prebuild_plugin "$VERSION" "$IMAGE_TAG"
       docker system prune -fa
     fi
   done
@@ -208,17 +208,23 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
 fi
 
 # Runs once for the whole e2e matrix: resolves each module's ELK version, publishes the matrix, and
-# dispatches a SINGLE KBN pre-build for every one of those versions.
+# dispatches a SINGLE ROR KBN pre-build for all of those versions.
+# The branches here are the ROR KBN repo's: this task builds that plugin. ROR_KBN_FALLBACK_BRANCH is
+# the branch this change is based on; the workflow takes it from github.base_ref, the only place that
+# fact is available. It defaults to EMPTY on purpose: outside CI there is no base branch, and
+# clone_e2e_tests_repo already tries `develop` then `master` last. Naming one here would only push it
+# ahead of the other, which is not a call to make blindly.
 if [[ $ROR_TASK == "prepare_e2e_kbn_images" ]]; then
   prepare_e2e_kbn_images \
     "${E2E_ES_MODULES:?E2E_ES_MODULES is not set}" \
-    "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
-    "${E2E_FALLBACK_BRANCH:-master}" \
+    "${ROR_KBN_TARGET_BRANCH:?ROR_KBN_TARGET_BRANCH is not set}" \
+    "${ROR_KBN_FALLBACK_BRANCH:-}" \
     "${E2E_BUILD_ID:?E2E_BUILD_ID is not set}"
 fi
 
-# Runs once per ES version, after prepare_e2e_kbn_images. E2E_ELK_VERSION comes from the matrix that
-# job published; resolving it from E2E_ES_MODULE is the fallback for a standalone/local invocation.
+# Runs once per ES version, after prepare_e2e_kbn_images. The branches here are the e2e repo's: this
+# task takes the suite from there. E2E_ELK_VERSION comes from the matrix that job published; resolving
+# it from E2E_ES_MODULE is the fallback for a standalone/local invocation.
 if [[ $ROR_TASK == "run_e2e_tests" ]]; then
   if [ -z "${E2E_ELK_VERSION:-}" ]; then
     E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
@@ -226,6 +232,6 @@ if [[ $ROR_TASK == "run_e2e_tests" ]]; then
   run_e2e_tests \
     "$E2E_ELK_VERSION" \
     "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
-    "${E2E_FALLBACK_BRANCH:-master}" \
+    "${E2E_FALLBACK_BRANCH:-}" \
     "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the build_id output of e2e_prepare}"
 fi
