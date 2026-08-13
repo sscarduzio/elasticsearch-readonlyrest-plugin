@@ -74,12 +74,12 @@ public abstract class ShardedGradlewTest extends DefaultTask {
       // they inherit gradle.properties' -Xmx6144m, reserving ~6GB x K on a 16GB runner — the real
       // memory ceiling behind the k=5/k=6 host-OOM deaths, not Elasticsearch itself.
       cmd.add("-Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=512m");
-      // THIS task's dependsOn already ran prebuildEsImage once, before any shard spawned. The
-      // child's own prebuildEsImage dependency is NOT a cache hit: it launches a nested Tooling-API
+      // THIS task's dependsOn already ran warmDockerImageCache once, before any shard spawned. The
+      // child's own warmDockerImageCache dependency is NOT a cache hit: it launches a nested Tooling-API
       // build ("Assembling ROR ...") and K concurrent nested builds in one workspace race each
       // other to death. Exclude it — shards consume the image the parent prebuilt.
       cmd.add("-x");
-      cmd.add("integration-tests:prebuildEsImage");
+      cmd.add("integration-tests:warmDockerImageCache");
 
       File shardLog = new File(logDir, "shard-" + i + ".log");
       runner.addCommand(cmd, shardLog);
