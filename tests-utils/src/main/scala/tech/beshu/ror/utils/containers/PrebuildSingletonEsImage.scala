@@ -17,15 +17,19 @@
 package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
+import org.testcontainers.images.RemoteDockerImage
+import org.testcontainers.utility.DockerImageName
 
 /**
- * Builds (and stably tags) the singleton ES+ROR image ONCE, in a single JVM, before the parallel
- * integration-test workers start. Run by the `prebuildEsImage` Gradle task as a `test.dependsOn`.
+ * Warms the Docker image cache ONCE, in a single JVM, before the parallel integration-test workers
+ * start: it builds (and stably tags) the singleton ES+ROR image, and pulls the base images that the
+ * workers build their own images from. Run by the `prebuildEsImage` Gradle task as a `test.dependsOn`.
  *
- * Why: at shardCount>=3 the worker JVMs otherwise build this identical image concurrently, and the
- * Docker build layers (plugin install + ror-tools patch) fail intermittently. Pre-building once means
- * every worker gets a Docker LAYER cache hit and never rebuilds — so parallelism scales without the
- * concurrent-build failures.
+ * Why: at shardCount>=3 the worker JVMs otherwise build these images concurrently, and the Docker
+ * build layers (plugin install + ror-tools patch) fail intermittently. The same race hits a base
+ * image that no worker has yet: 4 concurrent builds pull it at once and the build dies with
+ * "unknown blob". Warming the cache once means every worker gets a LAYER cache hit — so parallelism
+ * scales without the concurrent-build failures.
  *
  * Starts the singleton container (the only reliable way to trigger the full image build+tag), then
  * stops it. The named image is reaped by Ryuk on this JVM's exit; the built LAYERS persist in the
@@ -39,8 +43,9 @@ import com.typesafe.scalalogging.StrictLogging
 object PrebuildSingletonEsImage extends StrictLogging {
 
   def main(args: Array[String]): Unit = {
-    logger.info("Pre-building the singleton ES image (once, before parallel test workers)...")
+    logger.info("Warming the Docker image cache (once, before parallel test workers)...")
     try {
+      pullBaseImages()
       // Touching `singleton` triggers its construction + start(), which builds the image + its layers.
       val _ = SingletonEsContainerWithRorSecurity.singleton.nodes.head
       logger.info("Singleton ES image pre-build complete; layers cached for the test workers to rebuild from.")
@@ -48,8 +53,17 @@ object PrebuildSingletonEsImage extends StrictLogging {
       sys.exit(0)
     } catch {
       case ex: Throwable =>
-        logger.error("Pre-build of the singleton ES image failed", ex)
+        logger.error("Warming the Docker image cache failed", ex)
         sys.exit(1)
+    }
+  }
+
+  // The images that a worker's own `docker build` starts FROM. Pulled through testcontainers
+  // (not `docker pull`) so the configured pull policy and image-name substitutor still apply.
+  private def pullBaseImages(): Unit = {
+    List(WireMockContainer.BASE_IMAGE).foreach { image =>
+      logger.info(s"Pulling base image $image ...")
+      val _ = new RemoteDockerImage(DockerImageName.parse(image)).get()
     }
   }
 
