@@ -62,8 +62,9 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext) ext
 
   override lazy val isAllowedForDLS: Boolean = {
     esContext.actionRequest match {
-      case _ if !isReadOnlyRequest                  => false
-      case sr: SearchRequest if sr.source() == null => true
+      case _ if !isReadOnlyRequest                                  => false
+      case _ if esContext.action == Action.EsAction.termsEnumAction => false
+      case sr: SearchRequest if sr.source() == null                 => true
       case sr: SearchRequest
           if sr.source.profile || (sr.source.suggest != null && !sr.source.suggest.getSuggestions.isEmpty) =>
         false
