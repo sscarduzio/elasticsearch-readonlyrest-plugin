@@ -1,22 +1,18 @@
 # Sourced by run-pipeline.sh — do not execute directly.
 
-# Helpers for the `prepare_e2e_kbn_images` and `run_e2e_tests` tasks in run-pipeline.sh.
-# Together they run the Cypress e2e suite (docker env) against dev Docker images of both ROR plugins.
-# The work is split over two CI jobs:
-#
-#   prepare_e2e_kbn_images — resolves the ELK version of every e2e ES module, publishes the test
-#     matrix, and dispatches one ROR KBN image build for all versions (non-blocking).
-#
-#   run_e2e_tests — once per ELK version, in parallel: builds the ROR ES image, waits for the ROR KBN
-#     image, then runs the test suite against both.
+# Helpers for the `prepare_e2e_kbn_images` and `run_e2e_tests` tasks in run-pipeline.sh. Together
+# they run the Cypress e2e suite (docker env) against dev Docker images of both ROR plugins.
+# What the two jobs are and why they are two: ci/README.md#e2e-tests.
 #
 # Both images carry a per-run tag (run-<build id>). The build id is created by prepare_e2e_kbn_images
 # and passed to the test jobs as a job output. The test jobs must not re-derive it, because a partial
 # re-run bumps the GitHub run attempt without re-running the prepare job, causing the two sides to
 # name different images.
 #
-# The ROR KBN dispatch/wait helpers are not defined here — they live in the e2e repo
-# (ci/prebuild-images-lib.sh) and are loaded from a clone of it. This file handles only what is
+# The ROR KBN dispatch/wait helpers are not defined here — they live in the e2e repo and are loaded
+# from a clone of it: https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/develop/ci/prebuild-images-lib.sh
+# That file owns the cross-repo contract (image names, tag shape, workflow inputs), so a change to
+# how the images are named or dispatched belongs there, not here. This file handles only what is
 # specific to this repo: the ROR ES image and running the test suite.
 # Note: docker_image_exists is defined in the shared file and replaces the copy in ci-lib.sh.
 
