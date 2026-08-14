@@ -634,9 +634,15 @@ jobs:
           KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          # Do not let corepack ask before it downloads yarn. CI has no operator.
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
           set -e
-          corepack enable || npm install -g yarn
+          # The e2e tests repo pins yarn in "packageManager". Corepack reads it there.
+          # Do not put the version here too. The two copies will diverge.
+          # The fallback runs only on hosts without corepack. Keep it on yarn 1.
+          # Yarn 2 removed --frozen-lockfile, and the e2e suite uses that option.
+          corepack enable || npm install -g yarn@1.22.22
           # Authenticate Docker Hub for docker compose (not for testcontainers).
           echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
