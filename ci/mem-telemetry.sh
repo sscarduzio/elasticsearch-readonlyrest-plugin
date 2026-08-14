@@ -83,11 +83,20 @@ case "${1:-}" in
     if [ -n "${ROR_CI_JOB_ID:-}" ]; then
       docker ps -a --filter "label=ror.ci-job=$ROR_CI_JOB_ID" --format '{{.ID}} {{.Names}}' 2>/dev/null \
         | while read -r id name; do
-            docker inspect -f "{{.Name}} oomkilled={{.State.OOMKilled}} exit={{.State.ExitCode}} status={{.State.Status}}" "$id" 2>/dev/null
+            if out=$(docker inspect -f "{{.Name}} oomkilled={{.State.OOMKilled}} exit={{.State.ExitCode}} status={{.State.Status}}" "$id" 2>&1); then
+              echo "$out"
+            elif printf '%s' "$out" | grep -qiE "no such (object|container)"; then
+              echo "$name ($id) is gone - reaped before it could be inspected"
+            else
+              echo "$name ($id) could not be inspected: $out"
+            fi
           done
     else
       echo "ROR_CI_JOB_ID not set - skipping container inspection"
     fi
+    # This report is diagnostics. The workflow step runs it under `bash -e`, so any non-zero exit
+    # here fails a leg whose tests all passed.
+    exit 0
     ;;
 
   *)

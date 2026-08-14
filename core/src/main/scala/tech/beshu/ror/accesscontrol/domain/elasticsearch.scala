@@ -46,6 +46,7 @@ object Action {
     val monitorStateAction: Action = EsAction("cluster:monitor/state")
     val restoreSnapshotAction: Action = EsAction("cluster:admin/snapshot/restore")
     val globalCheckpointSyncAction: Action = EsAction("indices:admin/seq_no/global_checkpoint_sync")
+    val termsEnumAction: Action = EsAction("indices:data/read/xpack/termsenum/list")
   }
 
   sealed abstract class RorAction(override val value: String) extends Action with EnumEntry

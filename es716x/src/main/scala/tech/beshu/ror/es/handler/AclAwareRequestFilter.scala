@@ -232,7 +232,8 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
         regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ResolveIndexAction.Request =>
         regularRequestHandler.handle(new ResolveIndexEsRequestContext(request, esContext, aclContext, threadPool))
-      case request: IndicesRequest.Replaceable if request.notDataStreamRelated =>
+      case request: IndicesRequest.Replaceable
+          if request.notDataStreamRelated && esContext.action != Action.EsAction.termsEnumAction =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ReindexRequest =>
         regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, aclContext, threadPool))
@@ -262,6 +263,8 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
           // data streams
           case ReflectionBasedDataStreamsEsRequestContext(request) => regularRequestHandler.handle(request)
+          // terms enum
+          case TermsEnumEsRequestContext(request) => regularRequestHandler.handle(request)
           // indices based
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
           // rest
