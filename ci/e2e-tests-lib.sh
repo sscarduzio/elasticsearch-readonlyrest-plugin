@@ -1,36 +1,30 @@
 # Sourced by run-pipeline.sh — do not execute directly.
 
 # Helpers for the `prepare_e2e_kbn_images` and `run_e2e_tests` tasks in run-pipeline.sh.
+# Together they run the Cypress e2e suite (docker env) against dev Docker images of both ROR plugins.
+# The work is split over two CI jobs:
 #
-# Together they run the Cypress e2e suite (docker env) against dev Docker images of both ROR plugins,
-# built for this pipeline run. The work is split over two CI jobs:
+#   prepare_e2e_kbn_images — resolves the ELK version of every e2e ES module, publishes the test
+#     matrix, and dispatches one ROR KBN image build for all versions (non-blocking).
 #
-#   prepare_e2e_kbn_images — once per run: resolves the ELK version of every e2e ES module, publishes
-#     that list as the test matrix, and starts ONE ROR KBN image build covering all the versions. It
-#     does not wait for it. One build per version would make it ambiguous which build to track.
+#   run_e2e_tests — once per ELK version, in parallel: builds the ROR ES image, waits for the ROR KBN
+#     image, then runs the test suite against both.
 #
-#   run_e2e_tests — once per ELK version, in parallel: builds and publishes the ROR ES image for its
-#     own version (the expensive step), waits for the ROR KBN image of that version, then runs the
-#     suite against both.
+# Both images carry a per-run tag (run-<build id>). The build id is created by prepare_e2e_kbn_images
+# and passed to the test jobs as a job output. The test jobs must not re-derive it, because a partial
+# re-run bumps the GitHub run attempt without re-running the prepare job, causing the two sides to
+# name different images.
 #
-# Both images carry a per-run tag (run-<build id>), so a run only ever tests its own images. The
-# build id is minted by prepare_e2e_kbn_images and handed to the test jobs as a job output. They must
-# not derive it themselves: a partial re-run bumps the GitHub run attempt without re-running the
-# preparing job, so the two sides would name different images and the test jobs would wait forever.
-#
-# The ROR KBN dispatch/wait helpers are not defined here. The ROR KBN repo and the e2e repo need the
-# same pair, so they live once in the e2e repo (ci/prebuild-images-lib.sh) and are loaded from a
-# clone of it. Only what is specific to this repo stays here: the ROR ES image and running the suite.
-#
-# Note: that shared file also defines docker_image_exists, which then replaces ci-lib.sh's copy for
-# the rest of the process. The two bodies are identical, so this is harmless.
+# The ROR KBN dispatch/wait helpers are not defined here — they live in the e2e repo
+# (ci/prebuild-images-lib.sh) and are loaded from a clone of it. This file handles only what is
+# specific to this repo: the ROR ES image and running the test suite.
+# Note: docker_image_exists is defined in the shared file and replaces the copy in ci-lib.sh.
 
 E2E_TESTS_REPO="https://github.com/beshu-tech/readonlyrest-e2e-tests.git"
-# Where the shared helpers live inside the e2e tests clone.
+# Path to the shared helpers in the e2e tests clone.
 E2E_PREBUILD_IMAGES_LIB="ci/prebuild-images-lib.sh"
 
-# The per-run image tag. Both jobs take it from here, so they cannot disagree about which images
-# belong to this run.
+# Per-run image tag. Both jobs use this, so they reference the same images.
 e2e_run_tag() {
   if [ "$#" -ne 1 ] || [ -z "$1" ]; then
     echo "Usage: e2e_run_tag <build id>" >&2
@@ -39,10 +33,9 @@ e2e_run_tag() {
   echo "run-$1"
 }
 
-# Clones the e2e tests repo into a temp dir and prints the path (logs go to stderr, so the caller can
-# capture it). The target branch is this repo's branch, which often does not exist in the e2e repo;
-# then the fallback branch is used, with `develop` and `master` as last resorts. The fallback matters:
-# a change based on `develop` needs the `develop` suite, not the `master` one.
+# Clones the e2e tests repo into a temp dir and prints the path. Try the target branch first, then
+# the fallback, then `develop`, then `master`. The fallback branch matters: a change based on
+# `develop` must use the `develop` suite, not `master`.
 clone_e2e_tests_repo() {
   if [ "$#" -ne 2 ]; then
     echo "Usage: clone_e2e_tests_repo <target branch> <fallback branch>" >&2
@@ -62,7 +55,7 @@ clone_e2e_tests_repo() {
 
   echo "" >&2
   for BRANCH in "${CANDIDATES[@]}"; do
-    # A failed clone can leave files behind, and git refuses to clone into a non-empty dir.
+    # Clean the temp dir before each attempt (git refuses to clone into a non-empty dir).
     rm -rf "${E2E_DIR:?}" && mkdir -p "$E2E_DIR" || return 2
     if git clone --depth 1 --branch "$BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" >/dev/null 2>&1; then
       echo ">>> Cloned e2e tests repo (branch: $BRANCH) into $E2E_DIR" >&2
@@ -76,8 +69,8 @@ clone_e2e_tests_repo() {
   return 3
 }
 
-# Makes the ROR KBN pre-build helpers callable here: dispatch_kbn_prebuild_image and
-# wait_for_kbn_prebuild_image. They are owned by the e2e tests repo, so they come from its clone.
+# Load the ROR KBN pre-build helpers (dispatch_kbn_prebuild_image and wait_for_kbn_prebuild_image)
+# from the e2e tests repo clone.
 load_kbn_prebuild_helpers() {
   if [ "$#" -ne 1 ]; then
     echo "Usage: load_kbn_prebuild_helpers <e2e tests dir>"
@@ -96,9 +89,8 @@ load_kbn_prebuild_helpers() {
   . "$LIB" || return 3
 }
 
-# The ELK version an e2e module is tested at: the newest ES version that module supports, taken from
-# the build, because each module's supportedEsVersions is the only source of truth. Gradle may print
-# more than the version, so only the last line is used and it has to look like a version.
+# Get the ELK version for an e2e module: the newest ES version it supports. Gradle may print extra
+# output, so use only the last line and check that it looks like a version.
 e2e_elk_version_for_module() {
   if [ "$#" -ne 1 ] || [ -z "$1" ]; then
     echo "Usage: e2e_elk_version_for_module <es module>" >&2
@@ -121,8 +113,8 @@ e2e_elk_version_for_module() {
   echo "$VERSION"
 }
 
-# The test matrix as GitHub Actions JSON: one entry per ES module, with its ELK version. Jobs are
-# named after the module, so branch-protection checks survive a version bump.
+# Build the test matrix as GitHub Actions JSON (one entry per ES module with its ELK version).
+# Job names are based on the module, so branch-protection checks survive version bumps.
 # Usage: e2e_matrix_json "es94x es818x es717x"
 e2e_matrix_json() {
   if [ "$#" -ne 1 ] || [ -z "${1// /}" ]; then
@@ -140,15 +132,14 @@ e2e_matrix_json() {
   printf '%s\n' "${ENTRIES[@]}" | jq -cs '{include: .}'
 }
 
-# Passes the dispatched ROR KBN run (id and url) and the wait timeout to the test jobs. Without the
-# run id they wait blind: a build that fails after two minutes would still cost every test job its
-# full timeout. A no-op outside GitHub Actions.
+# Pass the dispatched ROR KBN run ID, URL, and wait timeout to the test jobs. Without the run ID,
+# test jobs cannot stop early if the build fails. A no-op outside GitHub Actions.
 # Usage: export_kbn_prebuild_run_info <version count>
 export_kbn_prebuild_run_info() {
   [ -n "${GITHUB_OUTPUT:-}" ] || return 0
 
-  # One run builds the versions one after another, so the last image can take N times longer to show
-  # up than a single-version build. Scale the timeout with the number of versions.
+  # One build runs all versions sequentially, so the last image takes N times longer. Scale the
+  # timeout by the number of versions.
   local WAIT_TIMEOUT=$(( ${1:-1} * ${ROR_KBN_WAIT_TIMEOUT_SECONDS:-1800} ))
   {
     echo "kbn_run_id=${ROR_KBN_PREBUILD_RUN_ID:-}"
@@ -157,16 +148,12 @@ export_kbn_prebuild_run_info() {
   } >> "$GITHUB_OUTPUT"
 }
 
-# Entry point for the `prepare_e2e_kbn_images` task. Runs once per pipeline run: resolves the ELK
-# version of every e2e module, publishes the test matrix, and dispatches one ROR KBN pre-build for
-# all of those versions.
+# Entry point for the `prepare_e2e_kbn_images` task. Runs once per pipeline run.
 # Args: <es modules> <target branch> <fallback branch> <build id>
 #   es modules      — e2e ES modules, space- or comma-separated (e.g. "es94x es818x es717x")
-#   target branch   — branch to build the ROR KBN plugin from (ROR_KBN_TARGET_BRANCH). The e2e repo
-#                     is cloned from it too, but only to load the shared pre-build helpers
-#   fallback branch — used for that clone when <target branch> is missing in the e2e repo; the ROR
-#                     KBN pre-build workflow does its own fallback in its own repo
-#   build id        — E2E_BUILD_ID; also published as the `build_id` output for the test jobs to reuse
+#   target branch   — branch to build the ROR KBN plugin from
+#   fallback branch — branch to use when target branch is missing in the e2e repo
+#   build id        — E2E_BUILD_ID (published to test jobs as `build_id` output)
 prepare_e2e_kbn_images() {
   if [ "$#" -ne 4 ]; then
     echo "Usage: prepare_e2e_kbn_images <es modules> <target branch> <fallback branch> <build id>"
@@ -182,8 +169,7 @@ prepare_e2e_kbn_images() {
   local MATRIX ELK_VERSIONS
   MATRIX=$(e2e_matrix_json "$ES_MODULES") || return $?
   ELK_VERSIONS=$(echo "$MATRIX" | jq -r '[.include[].elk] | join(" ")')
-  # The matrix the test jobs fan out over, and the build id whose tag the images dispatched below
-  # will carry. A no-op outside GitHub Actions.
+  # Export the matrix and build id to GitHub (no-op outside CI).
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
     echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
     echo "build_id=$4" >> "$GITHUB_OUTPUT"
@@ -191,20 +177,20 @@ prepare_e2e_kbn_images() {
 
   echo ">>> Preparing e2e ROR KBN dev images: ELK [$ELK_VERSIONS], run tag: $RUN_TAG"
 
-  # Cloned only for the dispatch helper; the suite itself runs from the test jobs' own clones.
+  # Clone the e2e repo only to load the shared dispatch helper (test jobs clone it separately).
   local E2E_DIR
   E2E_DIR=$(clone_e2e_tests_repo "$TARGET_BRANCH" "$FALLBACK_BRANCH") || return $?
   load_kbn_prebuild_helpers "$E2E_DIR" || return $?
 
-  # Non-blocking: the ROR KBN build runs remotely while the test jobs build their ROR ES images. It
-  # is dispatched even when the image already exists, so the per-run tag always gets applied.
+  # Dispatch the ROR KBN build (non-blocking). It is dispatched even if the image exists, so the
+  # per-run tag always gets applied.
   dispatch_kbn_prebuild_image "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG" || return $?
 
   export_kbn_prebuild_run_info "$(echo "$MATRIX" | jq '.include | length')"
 }
 
-# Runs the Cypress suite from an already-cloned e2e tests repo, against this run's ROR ES and ROR KBN
-# dev images (both carry the same run tag).
+# Run the Cypress test suite from an already-cloned e2e tests repo, against this run's dev images
+# (ROR ES and ROR KBN with the same run tag).
 run_e2e_against_dev_images() {
   if [ "$#" -ne 3 ]; then
     echo "Usage: run_e2e_against_dev_images <e2e tests dir> <elk version> <run tag>"
@@ -221,9 +207,8 @@ run_e2e_against_dev_images() {
     return 2
   fi
 
-  # The limits overlays cap each Kibana replica at 1 GB, which the heavier specs exceed: the replica
-  # is OOM-killed, never recovers, and every spec after it fails. They exist only for the small
-  # (~8 GB) Azure host, so apply them only when the host is short on memory.
+  # Apply resource limits only on hosts with less than 12 GB memory. The limits prevent Kibana
+  # OOM-kills on small hosts, but are unnecessary on large runners.
   local apply_limits=false
   local mem_kb
   mem_kb=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)
@@ -244,15 +229,12 @@ run_e2e_against_dev_images() {
   )
 }
 
-# Entry point for the `run_e2e_tests` task. Runs once per ELK version, after prepare_e2e_kbn_images
-# has dispatched the ROR KBN build for it.
+# Entry point for the `run_e2e_tests` task. Runs once per ELK version, after prepare_e2e_kbn_images.
 # Args: <elk version> <target branch> <fallback branch> <build id>
 #   elk version     — ELK version to test (X.Y.Z)
-#   target branch   — branch to take the e2e suite from (E2E_TARGET_BRANCH)
-#   fallback branch — branch this change is based on; used when <target branch> is missing in the
-#                     e2e repo
-#   build id        — E2E_BUILD_ID, as published by the preparing job. Never re-derive it here: it
-#                     names the images that job actually dispatched
+#   target branch   — branch for the e2e suite
+#   fallback branch — branch to use when target branch is missing in the e2e repo
+#   build id        — E2E_BUILD_ID (from the preparing job; do not re-derive it)
 run_e2e_tests() {
   if [ "$#" -ne 4 ]; then
     echo "Usage: run_e2e_tests <elk version> <target branch> <fallback branch> <build id>"
@@ -265,7 +247,7 @@ run_e2e_tests() {
   local RUN_TAG
   RUN_TAG=$(e2e_run_tag "$4") || return $?
 
-  # Checked before the clone, so a typo fails in seconds instead of after a network round trip.
+  # Validate version format early (before network calls).
   if ! [[ $ELK_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
     echo "Invalid ELK version format. Expected format: X.Y.Z"
     return 2
@@ -273,29 +255,26 @@ run_e2e_tests() {
 
   echo ">>> Running e2e tests: ELK $ELK_VERSION, run tag: $RUN_TAG"
 
-  # The e2e repo first: it provides both the wait helper and the test runner used below.
+  # Clone the e2e repo (needed for both the wait helper and the test runner).
   local E2E_DIR
   E2E_DIR=$(clone_e2e_tests_repo "$TARGET_BRANCH" "$FALLBACK_BRANCH") || return $?
   load_kbn_prebuild_helpers "$E2E_DIR" || return $?
 
-  # The suite writes videos and screenshots into a temp dir the caller cannot guess. Publish the path
-  # so a later step can still collect them after this one failed. A no-op outside GitHub Actions.
+  # Export the test directory path so later steps can collect results (no-op outside CI).
   if [ -n "${GITHUB_ENV:-}" ]; then
     echo "E2E_TESTS_DIR=$E2E_DIR" >> "$GITHUB_ENV"
   fi
 
-  # Build and publish the ROR ES dev image for this version, with the run tag as an alias. Gradle is
-  # skipped when an image for the same sources already exists.
+  # Build and publish the ROR ES dev image (Gradle is skipped if the image already exists).
   publish_ror_es_prebuild_plugin "$ELK_VERSION" "$RUN_TAG" || return $?
 
-  # Wait for this version's ROR KBN image. With the run id the wait can stop as soon as that build
-  # fails; without it, it can only time out.
+  # Wait for the ROR KBN image. Without the run ID, the wait cannot stop early if the build fails.
   if [ -z "${ROR_KBN_PREBUILD_RUN_ID:-}" ]; then
-    echo ">>> ROR_KBN_PREBUILD_RUN_ID is not set: the poll below cannot stop early if the ROR KBN"
-    echo "    pre-build run fails, and will instead use its whole timeout."
+    echo ">>> ROR_KBN_PREBUILD_RUN_ID is not set: the wait cannot stop early if the ROR KBN"
+    echo "    pre-build fails, and will use its full timeout."
   fi
   wait_for_kbn_prebuild_image "$ELK_VERSION" "$RUN_TAG" || return $?
 
-  # Both images are now available under the run tag
+  # Both images are now available; run the test suite.
   run_e2e_against_dev_images "$E2E_DIR" "$ELK_VERSION" "$RUN_TAG"
 }

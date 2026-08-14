@@ -207,13 +207,11 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
 
 fi
 
-# Runs once for the whole e2e matrix: resolves each module's ELK version, publishes the matrix, and
-# dispatches a SINGLE ROR KBN pre-build for all of those versions.
-# The branches here are the ROR KBN repo's: this task builds that plugin. ROR_KBN_FALLBACK_BRANCH is
-# the branch this change is based on; the workflow takes it from github.base_ref, the only place that
-# fact is available. It defaults to EMPTY on purpose: outside CI there is no base branch, and
-# clone_e2e_tests_repo already tries `develop` then `master` last. Naming one here would only push it
-# ahead of the other, which is not a call to make blindly.
+# Runs once per pipeline: resolves each module's ELK version, publishes the test matrix, and
+# dispatches one ROR KBN pre-build for all versions.
+# Branches: ROR_KBN_TARGET_BRANCH and ROR_KBN_FALLBACK_BRANCH apply to the ROR KBN repo (not e2e).
+# FALLBACK defaults to empty on purpose: outside CI there is no base branch, and the fallback chain
+# in the e2e clone function already includes `develop` and `master`.
 if [[ $ROR_TASK == "prepare_e2e_kbn_images" ]]; then
   prepare_e2e_kbn_images \
     "${E2E_ES_MODULES:?E2E_ES_MODULES is not set}" \
@@ -222,9 +220,9 @@ if [[ $ROR_TASK == "prepare_e2e_kbn_images" ]]; then
     "${E2E_BUILD_ID:?E2E_BUILD_ID is not set}"
 fi
 
-# Runs once per ES version, after prepare_e2e_kbn_images. The branches here are the e2e repo's: this
-# task takes the suite from there. E2E_ELK_VERSION comes from the matrix that job published; resolving
-# it from E2E_ES_MODULE is the fallback for a standalone/local invocation.
+# Runs once per ELK version, after prepare_e2e_kbn_images. Branches (E2E_TARGET_BRANCH and
+# E2E_FALLBACK_BRANCH) apply to the e2e repo. E2E_ELK_VERSION comes from the published matrix; if
+# missing, it is resolved from E2E_ES_MODULE as a fallback.
 if [[ $ROR_TASK == "run_e2e_tests" ]]; then
   if [ -z "${E2E_ELK_VERSION:-}" ]; then
     E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
