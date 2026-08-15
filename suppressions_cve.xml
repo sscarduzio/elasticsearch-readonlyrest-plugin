@@ -208,4 +208,21 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <packageUrl regex="true">^pkg:maven/org\.scala-lang\.modules/scala-parallel-collections_3@1\.2\.0$</packageUrl>
         <cve>CVE-2017-1000034</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bctls-fips-2.1.24.jar
+   False positive: CVE-2026-12185 is BKS/UBER keystore parsing, and it lists two products --
+   BC-JAVA before 1.85 and BC-LTS-JAVA 2.73.0 to 2.73.12. We ship the FIPS distribution, which is a
+   separate product line with its own versioning (bc-fips 2.1.x), so it is in neither range; the
+   CPE matcher maps the artifact version 2.1.24 onto the generic bouncy_castle_for_java CPE.
+   Two further signs it is a version-number coincidence: the flagged module is the TLS/JSSE
+   provider, while BKS/UBER keystores live in the provider jar, and none of the sibling FIPS
+   artifacts we ship (bc-fips 2.1.3, bcpkix-fips 2.1.12, bcutil-fips 2.1.7) is flagged -- only the
+   one whose version happens to land in the matched range.
+   Scoped to this one CVE and this one artifact so a real future finding is not masked. There is no
+   upgrade to take: all four FIPS pins are already the newest published versions.
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bctls-fips@.*$</packageUrl>
+        <cve>CVE-2026-12185</cve>
+    </suppress>
 </suppressions>
