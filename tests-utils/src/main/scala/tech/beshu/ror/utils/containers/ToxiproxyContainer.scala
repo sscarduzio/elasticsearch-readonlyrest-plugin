@@ -23,12 +23,13 @@ import eu.rekawek.toxiproxy.{Proxy, ToxiproxyClient}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.wait.strategy.{WaitStrategy, WaitStrategyTarget}
-import tech.beshu.ror.utils.containers.ToxiproxyContainer.{httpApiPort, proxiedPort}
+import tech.beshu.ror.utils.containers.ToxiproxyContainer.{httpApiPort, proxiedPort, proxyName}
 import tech.beshu.ror.utils.misc.ScalaUtils.*
 
 import java.time.Duration
 import scala.concurrent.duration.*
 import scala.language.postfixOps
+import scala.util.Try
 
 class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerServicePort: Int)
     extends GenericContainer(
@@ -83,13 +84,31 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     innerContainer.start()
     super.start()
 
-    innerContainerProxy = Some(createProxy())
+    // The admin API can drop this call ("Unexpected end of file from server") on a loaded host, and
+    // the container is already up by then, so withStartupAttempts does not cover it. A retry has to
+    // delete the half-created proxy first, else the next attempt fails with "proxy already exists".
+    retry(times = 3, cleanBeforeRetrying = deleteProxyIfExists(), delayBetweenRetries = 2 seconds) {
+      innerContainerProxy = Some(createProxy())
+    }
+  }
+
+  // Best effort: this runs while the admin API is already misbehaving, so letting it throw would
+  // abort the retry it is supposed to enable.
+  private def deleteProxyIfExists(): Unit = {
+    Try {
+      Option(createToxiproxyClient().getProxyOrNull(proxyName)).foreach(_.delete())
+    }.failed.foreach(ex =>
+      logger.warn(s"[TOXIPROXY] Could not delete the leftover proxy before retrying: ${ex.getMessage}")
+    )
   }
 
   override def stop(): Unit = {
     innerContainer.stop()
     super.stop()
   }
+
+  private def createToxiproxyClient() =
+    new ToxiproxyClient(container.getHost, container.getMappedPort(httpApiPort))
 
   private def createProxy() = {
     // Create proxy AFTER both containers are fully started
@@ -106,8 +125,8 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     val proxyListen = s"0.0.0.0:$proxiedPort"
 
     logger.debug(s"[TOXIPROXY] Creating proxy: listen=$proxyListen, upstream=$proxyUpstream (container IP)")
-    val toxiproxyClient = new ToxiproxyClient(container.getHost, container.getMappedPort(httpApiPort))
-    val proxy = toxiproxyClient.createProxy("proxy", proxyListen, proxyUpstream)
+    val toxiproxyClient = createToxiproxyClient()
+    val proxy = toxiproxyClient.createProxy(proxyName, proxyListen, proxyUpstream)
     logger.debug(s"[TOXIPROXY] Proxy created successfully")
 
     proxy
@@ -155,5 +174,6 @@ private class ToxiproxyApiWaitStrategy extends WaitStrategy with LazyLogging {
 
 object ToxiproxyContainer {
   private[containers] val httpApiPort = 8474
+  private[containers] val proxyName = "toxiproxy"
   val proxiedPort = 5000
 }
