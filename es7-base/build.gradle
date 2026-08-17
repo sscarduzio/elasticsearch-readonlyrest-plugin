@@ -1,0 +1,46 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+plugins {
+    id "readonlyrest.base-common-conventions"
+}
+
+// Gradle does not compile this project: every es7x module compiles these sources against its OWN ES
+// version (the shared-source overlay in readonlyrest.plugin-common-conventions), and each module must
+// produce its own bytecode. The project exists so the shared tree is a real source root -- format and
+// license checks reach it at its real path, and the IDE can open it as one.
+tasks.withType(ScalaCompile).configureEach { enabled = false }
+tasks.withType(JavaCompile).configureEach { enabled = false }
+
+// Nothing in this project is shipped, so there is nothing to scan for CVEs: the dependencies below
+// exist only so the IDE can resolve ES symbols, and every es module's real payload is already
+// scanned through its 'distJars' configuration. Without this, cve_check flags the CVEs of the
+// ES-provided jars themselves, none of which ROR distributes.
+dependencyCheck { skip = true }
+
+// The IDE DOES compile it, and it builds its model from source sets rather than from the compile task's
+// source, so with no classpath here every ES symbol in the shared tree shows up unresolved. Declare the
+// same dependencies an es7x module gets. The version pinned is the oldest ES 7 we support, which is
+// what the modules of this major compile the base against; only symbol resolution depends on it, because
+// nothing here is ever compiled by Gradle.
+ext.esVersion = tech.beshu.ror.gradle.utils.EsModuleFinder.allSupportedEsVersions(rootProject)
+        .find { it.startsWith('7.') }
+apply from: "$projectDir/module.gradle"
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(project.ext.javaLanguageVersion as int)
+    }
+}

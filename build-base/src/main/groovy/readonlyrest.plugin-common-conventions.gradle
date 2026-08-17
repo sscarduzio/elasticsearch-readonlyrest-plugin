@@ -23,6 +23,8 @@ plugins {
     id "readonlyrest.verify-repackage-bytecode"
     id "readonlyrest.scala-compile-conventions"
     id "readonlyrest.docker-image-conventions"
+    // for the IDE-only base-project dependency below; contributes no task to a normal build
+    id "idea"
 }
 
 project.ext {
@@ -79,6 +81,49 @@ repositories {
             mavenPom()
             artifact()
         }
+    }
+}
+
+// Shared-source overlay, one base per ES major: a module compiles /es<major>-base plus its own sources.
+// A local file with the same relative path always wins over the base one (it is an "override").
+//
+// One base PER MAJOR rather than one global base, because a base that always follows the newest ES version
+// is never finished: every new ES version pushes the previous shape down as overrides into every older
+// module, including majors that PR CI does not run. A finished major's base never changes again, and a new
+// minor can only touch modules of its own major.
+//
+// A file lives in the base only when EVERY module of the major has it; otherwise the base would inject it
+// into modules that never had it.
+//
+// The base cannot be a source DIR of the module: SourceDirectorySet excludes apply to ALL source dirs at
+// once, so excluding an overridden path there would also exclude the module's own copy. But per-file
+// selection is fine on the COMPILE TASK's source, so the applicable base files feed compileScala directly —
+// no staged copies, and a compile error reports the real /es<major>-base path.
+def esMajorForBase = project.ext.baselineEsVersion.tokenize('.')[0]
+def esBaseDir = rootProject.file("es${esMajorForBase}-base/src/main/scala")
+if (esBaseDir.exists()) {
+    def overridesDir = file('src/main/scala')
+    def applicableBaseSources = fileTree(esBaseDir) {
+        exclude { !it.directory && new File(overridesDir, it.relativePath.pathString).exists() }
+    }
+    tasks.named('compileScala', ScalaCompile) {
+        source(applicableBaseSources)
+        // The exclude spec reads the overrides dir; declare it as an input so adding or deleting an
+        // override file re-selects the base sources.
+        inputs.files(fileTree(overridesDir)).withPropertyName('moduleOverrides')
+    }
+
+    // IDE ONLY -- nothing below is on any configuration the build compiles, packages or publishes.
+    // The IDE derives a module's classpath from its source sets, and the base sources reach this module
+    // through the compile TASK instead, so without this every base class an override touches would show
+    // as unresolved. A dependency on the base project gives the IDE the symbols the compiler already has.
+    // A shared source DIRECTORY cannot do the job: IntelliJ allows a directory in one module only, and
+    // this one is shared by every module of the major.
+    idea.module {
+        scopes.PROVIDED.plus += [
+                configurations.detachedConfiguration(
+                        dependencies.project(path: ":es${esMajorForBase}-base"))
+        ]
     }
 }
 

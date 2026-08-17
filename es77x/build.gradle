@@ -18,20 +18,12 @@ plugins {
     id "readonlyrest.plugin-common-conventions"
 }
 
-ext.javaLanguageVersion = 11
-ext.jarHellMainClass = 'org.elasticsearch.bootstrap.JarHell'
+apply from: "$rootDir/es7-base/module.gradle"
+
+// No arm64 ES base image published for this line.
 ext.dockerPlatforms = 'linux/amd64'
 
-def moduleEsVersion = project.ext.esVersion
-
 dependencies {
-    implementation  project(path: ':core')
-    implementation  project(path: ':ror-tools', configuration: 'shadow')
-    implementation  project(path: ':ror-tools-core')
-    implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: moduleEsVersion
-    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: moduleEsVersion
-    implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.14'
-    compileOnly     group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',                     version: moduleEsVersion
-    compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
-    implementation  group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: moduleEsVersion
+    compileOnly     group: 'org.codelibs.elasticsearch.lib', name: 'plugin-classloader', version: moduleEsVersion
+    compileOnly     group: 'org.locationtech.spatial4j', name: 'spatial4j',                 version: '0.7'
 }

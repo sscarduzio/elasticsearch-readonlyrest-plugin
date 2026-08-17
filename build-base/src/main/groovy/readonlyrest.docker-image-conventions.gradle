@@ -198,7 +198,21 @@ tasks.register('prepareDockerBuildContext', Copy) {
     dependsOn prepareDockerFatLayer, prepareDockerThinLayer
     outputs.upToDateWhen { false }
 
-    from layout.projectDirectory.file("Dockerfile")
+    // Same base/override rule as the sources and the module build script: the module's own Dockerfile
+    // wins, otherwise its major's base provides one. The differences between the variants are deliberate
+    // (e.g. the JDK-8287073 corretto stages exist only where an affected ES version is published), so a
+    // module that needs its own recipe simply keeps the file.
+    def rorDockerfile = providers.provider {
+        def own = file('Dockerfile')
+        if (own.exists()) return own
+        def esMajor = EsVersions.baseline(project).tokenize('.')[0]
+        def base = rootProject.file("es${esMajor}-base/Dockerfile")
+        if (!base.exists()) {
+            throw new GradleException("${project.name} has no Dockerfile and es${esMajor}-base does not provide one")
+        }
+        base
+    }
+    from(rorDockerfile)
     from(rootProject.files("docker-image")) {
         exclude 'gosu/**'
     }
