@@ -62,6 +62,10 @@ public abstract class ShardedGradlewTest extends DefaultTask {
       // so cancellation reaping works the same on both OSes.
       List<String> cmd = new ArrayList<>(GradlewCommand.forHost(projectDir));
       cmd.add("--no-daemon"); // mandatory for descendant-tree integrity (see class javadoc)
+      // Two SEQUENTIAL phases in one invocation (org.gradle.parallel=false + mustRunAfter): the
+      // singleton suites run and their JVM exits — taking the singleton ES with it — before the
+      // own-cluster suites start in a fresh JVM that never boots one.
+      cmd.add("integration-tests:sharedEsSuitesTest");
       cmd.add("integration-tests:test");
       cmd.add("-PesModule=" + esModuleValue());
       String esVer = esVersionValue();

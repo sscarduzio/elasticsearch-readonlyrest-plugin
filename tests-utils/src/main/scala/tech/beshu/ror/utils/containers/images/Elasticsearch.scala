@@ -37,6 +37,7 @@ object Elasticsearch {
     "counted-keyword",
     "frozen-indices",
     "ingest-attachment",
+    "ingest-geoip",
     "legacy-geo",
     "logsdb",
     "ml-package-loader",
@@ -55,7 +56,9 @@ object Elasticsearch {
     "spatial",
     "transform",
     "vector-tile",
+    "x-pack-apm-data",
     "x-pack-ccr",
+    "x-pack-deprecation",
     "x-pack-downsample",
     "x-pack-enrich",
     "x-pack-ent-search",
@@ -68,6 +71,7 @@ object Elasticsearch {
     "x-pack-kql",
     "x-pack-logstash",
     "x-pack-migrate",
+    "x-pack-monitoring",
     "x-pack-otel-data",
     "x-pack-profiling",
     "x-pack-redact",
@@ -96,6 +100,15 @@ object Elasticsearch {
       case EsInstallationType.NativeWindowsProcess =>
         WindowsEsDirectoryManager.configPath(config.clusterName, config.nodeName)
     }
+
+    // Only the official-image build runs `enableSlimModules`; the apt/Ubuntu image and the native
+    // Windows process keep every module, so their config must still disable those subsystems.
+    def modulesAreStripped: Boolean =
+      Elasticsearch.slimModulesEnabled && (config.esInstallationType match {
+        case EsInstallationType.EsDockerImage                  => true
+        case EsInstallationType.UbuntuDockerImageWithEsFromApt => false
+        case EsInstallationType.NativeWindowsProcess           => false
+      })
 
     def esDir: Path = config.esInstallationType match {
       case EsInstallationType.EsDockerImage =>
@@ -232,7 +245,7 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
-      .enableSlimModules(config.esDir)
+      .enableSlimModules(config.esDir, when = config.modulesAreStripped)
       .when(hasBuggyBundledJdk, replaceBundledJdk)
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
@@ -349,10 +362,7 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
         entry = s"cluster.initial_master_nodes: ${config.masterNodes.toList.mkString(",")}",
         orElseEntry = "node.master: true"
       )
-      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0), entry = "ingest.geoip.downloader.enabled: false")
-      .addWhen(Version.lowerThan(esVersion, 8, 0, 0), entry = "xpack.monitoring.enabled: false")
-      .addWhen(Version.greaterOrEqualThan(esVersion, 8, 15, 0), entry = "xpack.apm_data.enabled: false")
-      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 16, 0), entry = "cluster.deprecation_indexing.enabled: false")
+      .disableSubsystemsOfStrippedModules(esVersion, whenModulesArePresent = !config.modulesAreStripped)
       .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0), entry = "action.destructive_requires_name: false")
       // ML is never exercised by any suite; disabling it drops the ML native processes (~200-400MB
       // RSS per container) and speeds startup. Unlike xpack.monitoring.enabled (removed in 8.0), the
@@ -483,8 +493,22 @@ object EsJavaOptsBuilder {
 // unknown setting and ES refuses to boot. Stripping supersedes disabling.
 extension (image: DockerImageDescription)
 
-  private[images] def enableSlimModules(esDir: Path): DockerImageDescription =
+  private[images] def enableSlimModules(esDir: Path, when: Boolean): DockerImageDescription =
     image.runWhen(
-      Elasticsearch.slimModulesEnabled,
+      when,
       s"cd ${esDir.toString()}/modules && rm -rf ${Elasticsearch.modulesToRemoveInSlimMode.mkString(" ")}"
     )
+
+extension (config: EsConfigBuilder)
+
+  private[images] def disableSubsystemsOfStrippedModules(
+      esVersion: String,
+      whenModulesArePresent: Boolean
+  ): EsConfigBuilder =
+    if (!whenModulesArePresent) config
+    else
+      config
+        .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0), entry = "ingest.geoip.downloader.enabled: false")
+        .addWhen(Version.lowerThan(esVersion, 8, 0, 0), entry = "xpack.monitoring.enabled: false")
+        .addWhen(Version.greaterOrEqualThan(esVersion, 8, 15, 0), entry = "xpack.apm_data.enabled: false")
+        .addWhen(Version.greaterOrEqualThan(esVersion, 7, 16, 0), entry = "cluster.deprecation_indexing.enabled: false")
