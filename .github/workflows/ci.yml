@@ -576,7 +576,7 @@ jobs:
       kbn_wait_timeout_seconds: ${{ steps.prepare.outputs.kbn_wait_timeout_seconds }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: true }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: prepare_e2e_kbn_images
         id: prepare
         env:
@@ -612,7 +612,7 @@ jobs:
       matrix: ${{ fromJSON(needs.e2e_prepare.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: true }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: Free host disk (no-op on self-hosted)
         run: ci/free-host-disk.sh
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3

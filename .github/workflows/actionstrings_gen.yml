@@ -21,7 +21,12 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           path: main
+          # Read-only clone: nothing is pushed back here, so it needs no stored credential.
+          persist-credentials: false
 
+      # This one KEEPS its credential on purpose: the final `git push` below runs in this clone and
+      # authenticates with the GH_PAT that checkout persists. Do not set persist-credentials: false
+      # here without first rewriting that push to carry the token itself.
       - name: Checkout docs
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

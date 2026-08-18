@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # Review is opt-in: run only when the PR's head commit message asks for it.
       - name: Gate on "@claude review" in head commit message

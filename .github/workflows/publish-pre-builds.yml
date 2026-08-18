@@ -42,7 +42,7 @@ jobs:
       AGENT_ISSELFHOSTED: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 0, persist-credentials: true }
+        with: { fetch-depth: 0, persist-credentials: false }
 
       # Pick the branch to build from: empty target_branch keeps the ref the workflow was dispatched
       # on, a known branch is checked out, an unknown one falls back to develop. The fallback lets a
