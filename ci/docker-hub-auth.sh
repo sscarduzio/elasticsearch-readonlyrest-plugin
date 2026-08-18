@@ -42,8 +42,8 @@
 #
 # TWO LIMITS
 # 1. This script cannot authenticate the job `container:` image. The runner pulls that image
-#    before step 1 starts. Put `credentials:` on the container instead. Do not add code for the
-#    container image here.
+#    before step 1 starts. The `credentials:` block on each container does that instead. Do not
+#    add code for the container image here.
 # 2. Docker CLI 27, which the toolchains image contains, ignores DOCKER_AUTH_CONFIG. This is why
 #    the login is necessary. A later CLI reads the variable and gives it priority over the login.
 #    That priority is safe here, because both halves use the same credentials. It is not safe if

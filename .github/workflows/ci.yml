@@ -181,7 +181,15 @@ jobs:
     needs: setup
     if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    # The runner pulls this image before step 1 runs, so ci/docker-hub-auth.sh cannot authenticate
+    # it. These credentials can. Ten jobs pull it, and the pulls were anonymous. A pull request from
+    # a fork supplies empty secrets, and the runner then skips the login and pulls anonymously, as
+    # it does today. The read-only token is enough, because a job only pulls this image.
+    container: &toolchains_container
+      image: *toolchains
+      credentials:
+        username: ${{ secrets.DOCKER_HUB_USER }}
+        password: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -204,7 +212,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    container: *toolchains_container
     continue-on-error: true
     name: ${{ matrix.ROR_TASK }}
     strategy:
@@ -251,7 +259,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    container: *toolchains_container
     name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
@@ -280,7 +288,7 @@ jobs:
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -317,7 +325,7 @@ jobs:
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 120
     # "it_linux_es94x", not the truncated "it_linux (es94x)" composite, in the graph view. Same
     # <leg>_<module> shape as it_win_* and e2e_*, so the three test families sort together.
@@ -577,7 +585,7 @@ jobs:
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 30
     outputs:
       matrix: ${{ steps.prepare.outputs.matrix }}
@@ -697,7 +705,7 @@ jobs:
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
       (needs.e2e_tests.result == 'success' || needs.setup.outputs.e2e_modules == '[]')
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 180
     name: ${{ matrix.ROR_TASK }}
     strategy:
@@ -758,7 +766,7 @@ jobs:
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 600
     strategy:
       fail-fast: false
@@ -815,7 +823,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 180
     strategy:
       fail-fast: false
@@ -872,7 +880,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 1, persist-credentials: false }

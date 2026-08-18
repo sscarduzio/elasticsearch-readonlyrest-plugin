@@ -192,8 +192,11 @@ everywhere else, where a missing secret is a mistake.
 Do not put a `docker login` in a workflow. Two mechanisms with different credentials hide each
 other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
 
-The script cannot authenticate the `container:` image. The runner pulls that image before step 1
-starts. Put `credentials:` on the container, or use a registry that has no pull limit.
+The script cannot authenticate the `container:` image, because the runner pulls that image before
+step 1 starts. Each of the ten `container:` blocks carries a `credentials:` block for that pull.
+They share one anchor, `&toolchains_container`, so the credentials have one definition. A pull
+request from a fork supplies empty secrets, and the runner then skips the login and pulls
+anonymously.
 
 ## Coverage: what happened to every Azure stage
 
