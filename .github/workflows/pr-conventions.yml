@@ -23,7 +23,7 @@ jobs:
     steps:
       # The checks come from the BASE branch: a pull request must not be able to edit the rule it is
       # judged by. Only ci/pr-conventions is fetched; everything else the checks need comes from the API.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           sparse-checkout: ci/pr-conventions

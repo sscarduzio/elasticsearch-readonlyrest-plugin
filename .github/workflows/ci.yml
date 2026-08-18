@@ -140,7 +140,7 @@ jobs:
     runs-on: ubicloud-standard-4
     timeout-minutes: 240
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: docker build & push
         env:
@@ -168,7 +168,7 @@ jobs:
     runs-on: ubicloud-standard-4
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Probe host disk
         run: ci/probe-host-disk.sh
@@ -181,7 +181,7 @@ jobs:
     container: *toolchains
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Verify baked Gradle home
         run: |
@@ -209,13 +209,13 @@ jobs:
       matrix:
         ROR_TASK: [ cve_check ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Compute monthly cache key
         id: month
         run: echo "ym=$(date +%Y%m)" >> "$GITHUB_OUTPUT"
       - name: Restore CVE DB cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: .dependency-check-data
           # Immutable entries; a fresh key appears once a month (Azure Cache@2 semantics)
@@ -255,7 +255,7 @@ jobs:
       matrix:
         ROR_TASK: [ license_check, compile_codebase_check, audit_build_check, format_code_check ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: ${{ matrix.ROR_TASK }}
         env:
@@ -280,7 +280,7 @@ jobs:
     container: *toolchains
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: core_tests
         env:
@@ -292,7 +292,7 @@ jobs:
           ci/run-pipeline.sh
       - name: Publish test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: unit-test-results
           path: '**/TEST*.xml'
@@ -321,7 +321,7 @@ jobs:
       matrix:
         ES_MODULE: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Free host disk (no-op on self-hosted)
         run: ci/free-host-disk.sh
@@ -356,7 +356,7 @@ jobs:
       - name: Publish test results
         # always(): green-run XMLs feed suite-timings.json regeneration (duration-balanced sharding)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: it-linux-${{ matrix.ES_MODULE }}-results
           path: '**/TEST*.xml'
@@ -386,7 +386,7 @@ jobs:
           done
       - name: Publish memory telemetry
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: mem-telemetry-${{ matrix.ROR_TASK }}
           path: integration-tests/build/mem-telemetry-*.log
@@ -400,14 +400,14 @@ jobs:
         run: ./gradlew integration-tests:regenerateSuiteTimings || true
       - name: Publish regenerated suite timings
         if: always() && matrix.ES_MODULE == 'es90x'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: suite-timings-regenerated
           path: integration-tests/build/suite-timings-regenerated.json
           if-no-files-found: ignore
       - name: Publish per-shard logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: sharded-logs-it-linux-${{ matrix.ES_MODULE }}
           path: integration-tests/build/sharded-logs/
@@ -451,14 +451,14 @@ jobs:
           Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE"
           Add-MpPreference -ExclusionPath "$env:RUNNER_TEMP"
           Add-MpPreference -ExclusionProcess "java.exe"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
         with: { distribution: temurin, java-version: '21' }
       # Windows has no baked toolchains image: without this every leg cold-downloads the wrapper,
       # deps + JDKs and cold-compiles Scala (~9 min). Develop runs write the cache; PRs read it.
       # jdks: not in the action's default include set, but auto-download=true provisions there.
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@da187c8e6ffbd3802e00f2477aa5a822b25f2dda
         with:
           gradle-home-cache-includes: |
             caches
@@ -496,7 +496,7 @@ jobs:
           }
       - name: Publish test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: it-win-${{ matrix.ES_MODULE }}-results
           path: '**/TEST*.xml'
@@ -512,7 +512,7 @@ jobs:
           }
       - name: Publish per-shard logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: sharded-logs-it-win-${{ matrix.ES_MODULE }}
           path: integration-tests/build/sharded-logs/
@@ -531,9 +531,9 @@ jobs:
       GRADLE_USER_HOME: ''
       GRADLE_OPTS: ''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
         with: { distribution: temurin, java-version: '21' }
       - name: core:test on Windows
         shell: pwsh
@@ -547,7 +547,7 @@ jobs:
           }
       - name: Publish test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: win-unit-test-results
           path: '**/TEST*.xml'
@@ -575,8 +575,8 @@ jobs:
       kbn_run_url: ${{ steps.prepare.outputs.kbn_run_url }}
       kbn_wait_timeout_seconds: ${{ steps.prepare.outputs.kbn_wait_timeout_seconds }}
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 1, persist-credentials: true }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: prepare_e2e_kbn_images
         id: prepare
         env:
@@ -611,13 +611,13 @@ jobs:
       max-parallel: 99
       matrix: ${{ fromJSON(needs.e2e_prepare.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 1, persist-credentials: true }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: Free host disk (no-op on self-hosted)
         run: ci/free-host-disk.sh
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
         with: { distribution: temurin, java-version: '17' }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: '24.11.0' }
       - name: run_e2e_tests
         env:
@@ -638,11 +638,9 @@ jobs:
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
           set -e
-          # The e2e tests repo pins yarn in "packageManager". Corepack reads it there.
-          # Do not put the version here too. The two copies will diverge.
-          # The fallback runs only on hosts without corepack. Keep it on yarn 1.
-          # Yarn 2 removed --frozen-lockfile, and the e2e suite uses that option.
-          corepack enable || npm install -g yarn@1.22.22
+          # The e2e repo pins yarn in "packageManager". Corepack reads and uses that.
+          # No fallback needed — trust corepack to manage the version per the e2e repo's package.json.
+          corepack enable
           # Authenticate Docker Hub for docker compose (not for testcontainers).
           echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
@@ -695,7 +693,7 @@ jobs:
       matrix:
         ROR_TASK: [ build_es9xx, build_es8xx, build_es7xx, build_es6xx ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: ${{ matrix.ROR_TASK }}
         env:
@@ -728,7 +726,7 @@ jobs:
     outputs:
       is_release: ${{ steps.r.outputs.is_release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - id: r
         run: |
@@ -755,7 +753,7 @@ jobs:
       matrix:
         ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: ${{ matrix.ROR_TASK }}
         env:
@@ -812,7 +810,7 @@ jobs:
       matrix:
         ROR_TASK: [ release_es9xx, release_es8xx, release_es7xx, release_es6xx ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: true }
       - name: ${{ matrix.ROR_TASK }}
         env:
@@ -864,7 +862,7 @@ jobs:
     runs-on: ubicloud-standard-4
     container: *toolchains
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Install PGP signing key
         env:
