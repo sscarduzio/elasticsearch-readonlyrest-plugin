@@ -5,7 +5,7 @@
 # lib is sourced rather than run (`source ci/ci-lib.sh && reap_ci_job_containers` resolved it to ".").
 CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-function docker_image_exists {
+docker_image_exists() {
   docker manifest inspect "$1" >/dev/null 2>&1
 }
 
@@ -13,7 +13,7 @@ function docker_image_exists {
 # never touch a sibling CI job sharing the self-hosted Docker daemon. Single source of truth for "kill
 # this CI job's containers" — used by run-pipeline.sh's SIGTERM trap, the pipeline's always() cleanup
 # step, and the standalone orphan reaper. No-op if ROR_CI_JOB_ID is unset or nothing matches.
-function reap_ci_job_containers {
+reap_ci_job_containers() {
   [ -n "${ROR_CI_JOB_ID:-}" ] || return 0
   local ids
   ids=$(docker ps -aq --filter "label=ror.ci-job=$ROR_CI_JOB_ID" 2>/dev/null)
@@ -25,7 +25,7 @@ function reap_ci_job_containers {
 ES_DEV_IMAGE_REPO="beshultd/elasticsearch-readonlyrest-dev"
 
 # Copies a registry image manifest to a new tag without pulling/rebuilding (multi-platform safe).
-function retag_dev_image {
+retag_dev_image() {
   if [ "$#" -ne 2 ]; then
     echo "Usage: retag_dev_image <source tag> <target tag>"
     return 1
@@ -50,9 +50,9 @@ function retag_dev_image {
 #   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
 #   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
 #   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
-function publish_ror_prebuild_plugin {
+publish_ror_es_prebuild_plugin() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    echo "Usage: publish_ror_prebuild_plugin <ES version> [image tag]"
+    echo "Usage: publish_ror_es_prebuild_plugin <ES version> [image tag]"
     return 1
   fi
 
@@ -108,7 +108,7 @@ function publish_ror_prebuild_plugin {
   fi
 }
 
-function checkTagNotExist {
+checkTagNotExist() {
   GIT_TAG="$1"
 
   # Check only the remote to avoid false positives from stale local tags left by a
@@ -119,7 +119,7 @@ function checkTagNotExist {
   fi
 }
 
-function tag {
+tag() {
   GIT_TAG="$1"
 
   checkTagNotExist "$GIT_TAG" || return 0
@@ -200,7 +200,7 @@ function upload_using_aws_s3_uploader_to_key {
   _upload_to_s3_target "$1" "$2" "${3:-ARTIFACTS}" "${4:-}"
 }
 
-function log_disk_usage {
+log_disk_usage() {
   local label="${1:-}"
   echo "=== Disk usage ($label) ==="
   df -h / || true

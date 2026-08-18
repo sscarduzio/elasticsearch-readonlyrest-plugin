@@ -372,6 +372,18 @@ tasks.register('printEsVersionsForModule') {
     }
 }
 
+// Prints a single line to stdout: the newest supported ES version for this module.
+// Invoke with --quiet to suppress Gradle noise so the output is the bare version string.
+// Usage: ./gradlew :es94x:printNewestEsVersionForModule --quiet
+tasks.register('printNewestEsVersionForModule') {
+    group = 'help'
+    description = "Prints the newest supported ES version for ${project.name} to stdout"
+    outputs.upToDateWhen { false }
+    doLast {
+        println EsVersions.of(project).newest
+    }
+}
+
 tasks.register('uploadRorPluginToS3', Exec) {
     dependsOn(buildRorPluginZip)
 

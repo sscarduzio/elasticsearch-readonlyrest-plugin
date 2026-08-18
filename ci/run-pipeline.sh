@@ -2,6 +2,7 @@
 
 source "$(dirname "$0")/ci-lib.sh"
 source "$(dirname "$0")/publish-ror-plugins.sh"
+source "$(dirname "$0")/e2e-tests-lib.sh"
 
 # On cancel/timeout (SIGTERM) kill the gradle process group + reap this CI job's containers, else they
 # orphan (scoped by ror.ci-job=$ROR_CI_JOB_ID so a sibling CI job on the shared daemon is untouched).
@@ -20,7 +21,7 @@ terminate() {
 }
 trap terminate SIGTERM SIGINT
 
-echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task? $ROR_TASK"
+echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task: $ROR_TASK"
 
 # Log file friendly Gradle output
 export TERM=dumb
@@ -199,9 +200,36 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
   IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
   for VERSION in "${VERSIONS[@]}"; do
     if [ -n "$VERSION" ]; then
-      publish_ror_prebuild_plugin "$VERSION" "$IMAGE_TAG"
+      publish_ror_es_prebuild_plugin "$VERSION" "$IMAGE_TAG"
       docker system prune -fa
     fi
   done
 
+fi
+
+# Runs once per pipeline: resolves each module's ELK version, publishes the test matrix, and
+# dispatches one ROR KBN pre-build for all versions.
+# Branches: ROR_KBN_TARGET_BRANCH and ROR_KBN_FALLBACK_BRANCH apply to the ROR KBN repo (not e2e).
+# FALLBACK defaults to empty on purpose: outside CI there is no base branch, and the fallback chain
+# in the e2e clone function already includes `develop` and `master`.
+if [[ $ROR_TASK == "prepare_e2e_kbn_images" ]]; then
+  prepare_e2e_kbn_images \
+    "${E2E_ES_MODULES:?E2E_ES_MODULES is not set}" \
+    "${ROR_KBN_TARGET_BRANCH:?ROR_KBN_TARGET_BRANCH is not set}" \
+    "${ROR_KBN_FALLBACK_BRANCH:-}" \
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set}"
+fi
+
+# Runs once per ELK version, after prepare_e2e_kbn_images. Branches (E2E_TARGET_BRANCH and
+# E2E_FALLBACK_BRANCH) apply to the e2e repo. E2E_ELK_VERSION comes from the published matrix; if
+# missing, it is resolved from E2E_ES_MODULE as a fallback.
+if [[ $ROR_TASK == "run_e2e_tests" ]]; then
+  if [ -z "${E2E_ELK_VERSION:-}" ]; then
+    E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
+  fi
+  run_e2e_tests \
+    "$E2E_ELK_VERSION" \
+    "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
+    "${E2E_FALLBACK_BRANCH:-}" \
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the build_id output of e2e_prepare}"
 fi
