@@ -6,6 +6,12 @@
 # that limit. A busy CI window then fails with "toomanyrequests: You have reached your
 # unauthenticated pull rate limit". The failure also stops jobs that did not cause it.
 #
+# TWO COPIES
+# The two ROR repositories share this file, and the copies must stay identical:
+#   elasticsearch-readonlyrest-plugin   ci/docker-hub-auth.sh
+#   readonlyrest_kbn                    scripts/docker-hub-auth.sh
+# Make each change in both. `diff` between them must print nothing.
+#
 # HOW TO USE IT
 # Source the script. Do not run it. The caller shell needs the variables that the script exports.
 #
@@ -129,9 +135,19 @@ _ror_docker_auth() {
 # under `set -e`, which the GitHub Actions bash shell sets. It does not stop a caller without
 # errexit, and the Azure `script:` steps have none: they would go on to pull anonymously. So exit
 # also. An interactive shell is the one exception, where exit would close the terminal.
+# Stop the trace of commands while this file runs. Some callers set the xtrace option. The trace of
+# the login command would then put the token in the log.
+_ror_docker_auth_xtrace=0
+case $- in *x*) _ror_docker_auth_xtrace=1; set +x ;; esac
+
 if ! _ror_docker_auth; then
   case $- in
     *i*) return 1 ;;
     *)   exit 1 ;;
   esac
 fi
+
+if [ "$_ror_docker_auth_xtrace" = 1 ]; then set -x; fi
+# `unset` gives this file the status 0. Do not end the file with a test. A test gives the status 1
+# when the trace was off, and a caller with `set -e` then stops.
+unset _ror_docker_auth_xtrace
