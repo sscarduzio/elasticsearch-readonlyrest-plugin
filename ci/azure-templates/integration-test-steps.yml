@@ -50,6 +50,7 @@ steps:
       VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
       DOCKER_HUB_USER: $(DOCKER_HUB_USER)
       DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
+      DOCKER_AUTH_REQUIRED: "false"
 
   - task: PublishTestResults@2
     condition: failed()

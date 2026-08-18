@@ -20,8 +20,8 @@
 #
 # CREDENTIALS
 # The script uses the first pair that the job supplies:
-#   DOCKER_REGISTRY_USER / DOCKER_REGISTRY_PASSWORD   push account, for the publish jobs
-#   DOCKER_HUB_USER      / DOCKER_HUB_RO_TOKEN        read-only token, for the test jobs
+#   DOCKER_REGISTRY_USER / DOCKER_REGISTRY_PASSWORD   push account
+#   DOCKER_HUB_USER      / DOCKER_HUB_RO_TOKEN        read-only token
 # A job gets the read-only token when it does not supply the push pair. The workflow thus controls
 # the permissions, and this script keeps one code path.
 #
@@ -129,6 +129,7 @@ _ror_docker_auth() {
 # under `set -e`, which the GitHub Actions bash shell sets. It does not stop a caller without
 # errexit, and the Azure `script:` steps have none: they would go on to pull anonymously. So exit
 # also. An interactive shell is the one exception, where exit would close the terminal.
+
 # Stop the trace of commands while this file runs. Some callers set the xtrace option. The trace of
 # the login command would then put the token in the log.
 _ror_docker_auth_xtrace=0
