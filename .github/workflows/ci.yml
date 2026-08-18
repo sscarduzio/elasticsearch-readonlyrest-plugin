@@ -638,11 +638,9 @@ jobs:
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
           set -e
-          # The e2e tests repo pins yarn in "packageManager". Corepack reads it there.
-          # Do not put the version here too. The two copies will diverge.
-          # The fallback runs only on hosts without corepack. Keep it on yarn 1.
-          # Yarn 2 removed --frozen-lockfile, and the e2e suite uses that option.
-          corepack enable || npm install -g yarn@1.22.22
+          # The e2e repo pins yarn in "packageManager". Corepack reads and uses that.
+          # No fallback needed — trust corepack to manage the version per the e2e repo's package.json.
+          corepack enable
           # Authenticate Docker Hub for docker compose (not for testcontainers).
           echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
