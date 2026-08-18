@@ -2687,6 +2687,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   private def circeJsonWithIgnoredTimestamp(json: JSONObject): Option[Json] = {
     json
       .withTimestampValue("IGNORED")
+      .withEventDurationValue("IGNORED")
       .circeJsonE
       .toOption
   }
@@ -2695,6 +2696,17 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
     private def withTimestampValue(value: String): JSONObject = {
       jsonObject.put("@timestamp", value)
+    }
+
+    // `AuditResponseContext.duration` is `now - requestContext.timestamp`, and the two clock reads
+    // happen at different moments, so the value is 5000ms only when nothing elapses between them.
+    // Under CI load it becomes 5001 and the whole-document comparison fails (seen on
+    // integration_es78x). Normalise it on BOTH sides, exactly like @timestamp.
+    private def withEventDurationValue(value: String): JSONObject = {
+      if (jsonObject.has("event") && jsonObject.getJSONObject("event").has("duration")) {
+        jsonObject.getJSONObject("event").put("duration", value)
+      }
+      jsonObject
     }
 
     private def circeJsonE: Either[String, Json] =
