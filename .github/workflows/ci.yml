@@ -154,9 +154,12 @@ jobs:
             echo "::error::ci.yml container tags do not all match TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE — bump them together"
             exit 1
           fi
+          # Authenticate before the build. The Dockerfile pulls five images from Docker Hub in its
+          # FROM lines (four eclipse-temurin JDKs and the docker CLI), and those pulls are anonymous
+          # if the login comes after them.
+          source ci/docker-hub-auth.sh
           echo ">>> Building $TOOLCHAINS_IMAGE"
           docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
-          source ci/docker-hub-auth.sh
           docker push "$TOOLCHAINS_IMAGE"
 
   # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
