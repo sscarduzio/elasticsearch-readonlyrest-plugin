@@ -150,7 +150,7 @@ every push on such a branch, and made five CI jobs depend on a job that almost a
 | `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` | pushing ROR + toolchains images |
 | `ROR_ACTIVATION_KEY` | ROR PRO/Enterprise key the e2e stack boots with |
 | `KBN_REPO_GH_TOKEN` | dispatches the ROR KBN image build and reads its run status |
-| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | authenticated docker pulls (testcontainers rate limit); `ci/docker-hub-auth.sh` is a no-op when unset |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | authenticated docker pulls (testcontainers rate limit); `ci/docker-hub-auth.sh` is a no-op when unset, and **fails the leg** when set but rejected by the registry |
 | `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |
 | `MAVEN_REPO_USER`, `MAVEN_REPO_PASSWORD`, `MAVEN_STAGING_PROFILE_ID`, `GPG_KEY_ID`, `GPG_PASSPHRASE` | Maven Central publishing |
 | `PGP_SECRET_KEY_B64` | base64 of `secret.pgp`; the publish step decodes it to `.travis/secret.pgp`. Create with `base64 -w0 secret.pgp \| gh secret set PGP_SECRET_KEY_B64` |

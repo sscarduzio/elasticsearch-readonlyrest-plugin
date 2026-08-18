@@ -288,7 +288,7 @@ jobs:
           DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
         run: |
-          source ci/docker-hub-auth.sh
+          source ci/docker-hub-auth.sh || exit 1
           ci/run-pipeline.sh
       - name: Publish test results
         if: failure()
@@ -351,7 +351,7 @@ jobs:
           DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
         run: |
-          source ci/docker-hub-auth.sh
+          source ci/docker-hub-auth.sh || exit 1
           ci/run-pipeline.sh
       - name: Publish test results
         # always(): green-run XMLs feed suite-timings.json regeneration (duration-balanced sharding)

@@ -32,7 +32,7 @@ steps:
 
       # Sourced in-process so DOCKER_AUTH_CONFIG reaches the testcontainers JVM when set, and stays
       # UNSET otherwise (an empty/literal Azure var would fail RegistryAuthLocator's JSON-parse).
-      source ci/docker-hub-auth.sh
+      source ci/docker-hub-auth.sh || exit 1
 
       echo "[TEST] executing ROR_TASK = $ROR_TASK"
       ci/run-pipeline.sh
