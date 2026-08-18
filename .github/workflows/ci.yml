@@ -156,7 +156,7 @@ jobs:
           fi
           echo ">>> Building $TOOLCHAINS_IMAGE"
           docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          source ci/docker-hub-auth.sh
           docker push "$TOOLCHAINS_IMAGE"
 
   # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
@@ -287,6 +287,10 @@ jobs:
           ROR_TASK: core_tests
           DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          # A pull request from a fork gets no secrets, and its tests must still run without them.
+          # Everywhere else a missing secret is a mistake, and the job stops. A secret that is
+          # present but does not work stops this job in all cases.
+          DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           source ci/docker-hub-auth.sh
           ci/run-pipeline.sh
@@ -350,6 +354,10 @@ jobs:
           ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
           DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          # A pull request from a fork gets no secrets, and its tests must still run without them.
+          # Everywhere else a missing secret is a mistake, and the job stops. A secret that is
+          # present but does not work stops this job in all cases.
+          DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           source ci/docker-hub-auth.sh
           ci/run-pipeline.sh
@@ -643,8 +651,7 @@ jobs:
           # The fallback runs only on hosts without corepack. Keep it on yarn 1.
           # Yarn 2 removed --frozen-lockfile, and the e2e suite uses that option.
           corepack enable || npm install -g yarn@1.22.22
-          # Authenticate Docker Hub for docker compose (not for testcontainers).
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          source ci/docker-hub-auth.sh
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
           ci/run-pipeline.sh
 
@@ -776,7 +783,7 @@ jobs:
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
         run: |
           set -e
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          source ci/docker-hub-auth.sh
           ci/run-pipeline.sh
 
   # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
@@ -835,7 +842,7 @@ jobs:
           TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -e
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          source ci/docker-hub-auth.sh
           ci/run-pipeline.sh
 
   # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─

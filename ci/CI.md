@@ -147,10 +147,10 @@ every push on such a branch, and made five CI jobs depend on a job that almost a
 | `ROR_LIBS_STORE_ACCESS_KEY_ID` / `..._SECRET` | libs S3 bucket (shared ES jars; read by every build, written by `mirror-es-libs.yml`) |
 | `ROR_ARTIFACTS_STORE_ACCESS_KEY_ID` / `..._SECRET` | artifacts S3 bucket (built plugin binaries) |
 | `ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID` / `..._SECRET` | e2e reports S3 bucket (Cypress artifacts of failed runs). Own key pair on purpose: it must not be able to write to the customer-facing `builds/` tree |
-| `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` | pushing ROR + toolchains images |
+| `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` | pushes the ROR and toolchains images, and authenticates the pulls of the same job |
 | `ROR_ACTIVATION_KEY` | ROR PRO/Enterprise key the e2e stack boots with |
 | `KBN_REPO_GH_TOKEN` | dispatches the ROR KBN image build and reads its run status |
-| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | authenticated docker pulls (testcontainers rate limit); `ci/docker-hub-auth.sh` is a no-op when unset |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | authenticates the pulls of the jobs that only pull. Without them, a fork pull request continues with anonymous pulls, and every other event stops |
 | `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |
 | `MAVEN_REPO_USER`, `MAVEN_REPO_PASSWORD`, `MAVEN_STAGING_PROFILE_ID`, `GPG_KEY_ID`, `GPG_PASSPHRASE` | Maven Central publishing |
 | `PGP_SECRET_KEY_B64` | base64 of `secret.pgp`; the publish step decodes it to `.travis/secret.pgp`. Create with `base64 -w0 secret.pgp \| gh secret set PGP_SECRET_KEY_B64` |
@@ -165,6 +165,35 @@ unset (or empty, which is what an undefined `vars.X` expands to) falls back to t
 Release tags push via the checkout token (`release_ror` has `permissions: contents: write`)
 — no SSH deploy key. Fork PRs get no secrets (GitHub default); `cve_check` and docker auth
 degrade instead of failing.
+
+### Docker authentication
+
+Every job that pulls or pushes a Docker Hub image uses one command, and no other:
+
+```bash
+source ci/docker-hub-auth.sh
+```
+
+The script selects the credentials. It uses `DOCKER_REGISTRY_*` when the step supplies them, and
+`DOCKER_HUB_*` when it does not. It then authenticates both Docker clients with them: the docker
+CLI, with a login, and testcontainers, with `DOCKER_AUTH_CONFIG`. Both halves are necessary. The docker CLI
+does not read `DOCKER_AUTH_CONFIG`. Docker CLI 27, which the toolchains image contains, ignores
+that variable.
+
+Credentials that do not work always stop the job. The script never falls back to anonymous pulls
+in that case, because a bad login must not hide itself. An expired token thus fails in the job
+that owns it, and not as a rate-limit failure somewhere else one hour later.
+
+`DOCKER_AUTH_REQUIRED` covers one case only: the job supplied no credentials at all. The job then
+stops, because that is the default. The two Linux test jobs set the value from the event: `false`
+for a pull request from a fork, which gets no secrets but must still run its tests, and `true`
+everywhere else, where a missing secret is a mistake.
+
+Do not put a `docker login` in a workflow. Two mechanisms with different credentials hide each
+other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
+
+The script cannot authenticate the `container:` image. The runner pulls that image before step 1
+starts. Put `credentials:` on the container, or use a registry that has no pull limit.
 
 ## Coverage: what happened to every Azure stage
 

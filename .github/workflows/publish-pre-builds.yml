@@ -86,10 +86,7 @@ jobs:
         run: |
           set -e
 
-          if ! echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin; then
-            echo "::error::Failed to login to Docker registry"
-            exit 1
-          fi
+          source ci/docker-hub-auth.sh
 
           echo ">>> Publishing pre-build docker images for: $BUILD_ROR_ES_VERSIONS"
           ci/run-pipeline.sh

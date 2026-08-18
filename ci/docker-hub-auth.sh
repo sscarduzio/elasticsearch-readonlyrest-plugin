@@ -1,31 +1,137 @@
 #!/bin/bash
-# Authenticated Docker Hub pulls for jobs that start testcontainers (integration AND unit tests pull
-# images — osixia/openldap, wiremock, toxiproxy, …). Anonymous pulls share one per-IP rate limit
-# across every Azure hosted agent, so a busy CI window hits "toomanyrequests".
+# Authenticates Docker for a CI job. This script is the only place that does it. Every job that
+# pulls or pushes a Docker Hub image uses it.
 #
-# MUST be SOURCED (not executed) so the export lands in the caller's shell that runs the tests:
+# Docker Hub counts anonymous pulls against one limit for each IP address, and all agents share
+# that limit. A busy CI window then fails with "toomanyrequests: You have reached your
+# unauthenticated pull rate limit". The failure also stops jobs that did not cause it.
+#
+# HOW TO USE IT
+# Source the script. Do not run it. The caller shell needs the variables that the script exports.
+#
 #   source ci/docker-hub-auth.sh
 #
-# Reusable across the IT and unit-test legs. Opt-in: a no-op when DOCKER_HUB_USER / DOCKER_HUB_RO_TOKEN
-# aren't both set. Critically, in the no-op case it leaves DOCKER_AUTH_CONFIG UNSET (never empty) —
-# testcontainers' RegistryAuthLocator does `if (getenv != null) ObjectMapper.readTree(...)`, so an
-# empty string would throw a JSON parse error; only a genuinely absent var is skipped cleanly.
+# TWO CLIENTS
+# The script authenticates both Docker clients from the same credentials:
+#   - the docker CLI, with a login (pull, push, manifest inspect, buildx, compose)
+#   - testcontainers, with the DOCKER_AUTH_CONFIG variable
+# Both halves are necessary. The docker CLI does not read DOCKER_AUTH_CONFIG, so a job that only
+# exports that variable makes anonymous pulls from the CLI.
 #
-# Inputs are read from the env (the caller maps the Azure pipeline vars):
-#   DOCKER_HUB_USER, DOCKER_HUB_RO_TOKEN
+# CREDENTIALS
+# The script uses the first pair that the job supplies:
+#   DOCKER_REGISTRY_USER / DOCKER_REGISTRY_PASSWORD   push account, for the publish jobs
+#   DOCKER_HUB_USER      / DOCKER_HUB_RO_TOKEN        read-only token, for the test jobs
+# A job gets the read-only token when it does not supply the push pair. The workflow thus controls
+# the permissions, and this script keeps one code path.
 #
-# An undefined Azure non-secret var expands to its literal "$(NAME)"; reject that form too.
-if [ -n "${DOCKER_HUB_RO_TOKEN:-}" ] && [ "${DOCKER_HUB_RO_TOKEN}" != '$(DOCKER_HUB_RO_TOKEN)' ] \
-   && [ -n "${DOCKER_HUB_USER:-}" ] && [ "${DOCKER_HUB_USER}" != '$(DOCKER_HUB_USER)' ]; then
-  export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf '%s:%s' "$DOCKER_HUB_USER" "$DOCKER_HUB_RO_TOKEN" | base64 -w0)\"}}}"
-  # Redact from logs (the value is base64(user:token)). Each CI has its own log command; emitting
-  # the Azure ##vso line on GitHub Actions would PRINT the secret instead of masking it.
+# FAILURE
+# The script never falls back to anonymous pulls when the job supplied credentials. If it cannot
+# use them, it stops the job. An expired token thus fails at once, in the job that owns it. It
+# does not become a rate-limit failure in a different job one hour later.
+#
+# To stop the job, the script exits the caller shell. It does not depend on `set -e` in the step,
+# because a step without errexit would ignore the status and continue with anonymous pulls.
+#
+# DOCKER_AUTH_REQUIRED applies to one case only: the job supplied no credentials at all.
+#   true (default)   The script stops the job. Any value other than "false" has this effect, so
+#                    an empty value or a typing error also stops the job.
+#   false            The script continues, and its pulls are anonymous. Only the test jobs set
+#                    this value. A pull request from a fork gets no secrets, but its tests must
+#                    still run.
+#
+# TWO LIMITS
+# 1. This script cannot authenticate the job `container:` image. The runner pulls that image
+#    before step 1 starts. Put `credentials:` on the container instead. Do not add code for the
+#    container image here.
+# 2. Docker CLI 27, which the toolchains image contains, ignores DOCKER_AUTH_CONFIG. This is why
+#    the login is necessary. A later CLI reads the variable and gives it priority over the login.
+#    That priority is safe here, because both halves use the same credentials. It is not safe if
+#    you add a second login with different credentials. Use this script instead.
+
+# $1 is a value, and $2 is the name of its variable. An Azure variable with no value expands to
+# the literal text "$(NAME)", so the script rejects that text also.
+_ror_docker_auth_isset() {
+  [ -n "$1" ] && [ "$1" != "\$($2)" ]
+}
+
+# The job supplied no credentials. DOCKER_AUTH_REQUIRED decides if the job continues, and the
+# job stops by default.
+_ror_docker_auth_no_credentials() {
+  echo "[CI] Docker authentication is OFF. Cause: $1"
+  # Compare against "false", not "true", so that an unset variable stops the job. Azure boolean
+  # parameters expand as True or False, so make the case uniform first (as ci/ci-lib.sh does).
+  if [ "$(echo "${DOCKER_AUTH_REQUIRED:-true}" | tr '[:upper:]' '[:lower:]')" != "false" ]; then
+    # ::error:: puts an annotation on the job, as the inline logins did before.
+    [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::Docker authentication failed: $1"
+    echo "[CI] DOCKER_AUTH_REQUIRED is not false, so the job stops here." >&2
+    return 1
+  fi
+  echo "[CI] The job continues. Its pulls are anonymous, and Docker Hub limits their rate."
+  return 0
+}
+
+# The job supplied credentials, but the script cannot use them. The job always stops here.
+# DOCKER_AUTH_REQUIRED does not apply, because an anonymous pull must never hide a broken login.
+_ror_docker_auth_failed() {
+  echo "[CI] Docker authentication FAILED. Cause: $1" >&2
+  [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::Docker authentication failed: $1"
+  return 1
+}
+
+_ror_docker_auth() {
+  local user token role auth
+
+  if _ror_docker_auth_isset "${DOCKER_REGISTRY_USER:-}" DOCKER_REGISTRY_USER \
+     && _ror_docker_auth_isset "${DOCKER_REGISTRY_PASSWORD:-}" DOCKER_REGISTRY_PASSWORD; then
+    user=$DOCKER_REGISTRY_USER; token=$DOCKER_REGISTRY_PASSWORD; role="push"
+  elif _ror_docker_auth_isset "${DOCKER_HUB_USER:-}" DOCKER_HUB_USER \
+     && _ror_docker_auth_isset "${DOCKER_HUB_RO_TOKEN:-}" DOCKER_HUB_RO_TOKEN; then
+    user=$DOCKER_HUB_USER; token=$DOCKER_HUB_RO_TOKEN; role="read-only"
+  else
+    _ror_docker_auth_no_credentials "the job supplied no credentials (DOCKER_REGISTRY_USER and PASSWORD, or DOCKER_HUB_USER and RO_TOKEN)"
+    return $?
+  fi
+
+  # Set DOCKER_AUTH_CONFIG here only. When the script finds no credentials, the variable must stay
+  # unset, and it must not become empty. testcontainers reads the value as JSON if the value is not
+  # null, and an empty value causes a parse error.
+  auth=$(printf '%s:%s' "$user" "$token" | base64 -w0)
+  export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$auth\"}}}"
+
+  # Hide the value from the log, because it contains base64(user:token). Each CI system has its own
+  # command for this. On GitHub Actions, the Azure command prints the secret instead of hiding it.
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    echo "::add-mask::$auth"
     echo "::add-mask::$DOCKER_AUTH_CONFIG"
   else
     echo "##vso[task.setvariable variable=DOCKER_AUTH_CONFIG;isSecret=true]$DOCKER_AUTH_CONFIG"
   fi
-  echo "[TEST] Docker Hub authenticated pulls ENABLED (user '$DOCKER_HUB_USER')"
-else
-  echo "[TEST] Docker Hub authenticated pulls DISABLED (anonymous, rate-limited) — DOCKER_HUB_USER/DOCKER_HUB_RO_TOKEN not both set"
+
+  if ! command -v docker >/dev/null 2>&1; then
+    _ror_docker_auth_failed "the docker CLI is not in the PATH, so the script cannot log it in"
+    return $?
+  fi
+
+  # Discard the standard output. It holds only "Login Succeeded" and a warning about the credential
+  # store. Keep the error output, because it shows the cause of a failure. Neither one holds the
+  # token.
+  if ! printf '%s' "$token" | docker login -u "$user" --password-stdin >/dev/null; then
+    _ror_docker_auth_failed "the docker login failed for the user '$user'"
+    return $?
+  fi
+
+  echo "[CI] Docker authentication is ON. User '$user', $role credentials. The docker CLI and testcontainers use them."
+  return 0
+}
+
+# The script is sourced, so `return` gives the status to the caller shell. That stops the step
+# under `set -e`, which the GitHub Actions bash shell sets. It does not stop a caller without
+# errexit, and the Azure `script:` steps have none: they would go on to pull anonymously. So exit
+# also. An interactive shell is the one exception, where exit would close the terminal.
+if ! _ror_docker_auth; then
+  case $- in
+    *i*) return 1 ;;
+    *)   exit 1 ;;
+  esac
 fi
