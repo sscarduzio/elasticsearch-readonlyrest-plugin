@@ -6,12 +6,6 @@
 # that limit. A busy CI window then fails with "toomanyrequests: You have reached your
 # unauthenticated pull rate limit". The failure also stops jobs that did not cause it.
 #
-# TWO COPIES
-# The two ROR repositories share this file, and the copies must stay identical:
-#   elasticsearch-readonlyrest-plugin   ci/docker-hub-auth.sh
-#   readonlyrest_kbn                    scripts/docker-hub-auth.sh
-# Make each change in both. `diff` between them must print nothing.
-#
 # HOW TO USE IT
 # Source the script. Do not run it. The caller shell needs the variables that the script exports.
 #
