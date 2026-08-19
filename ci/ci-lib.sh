@@ -122,10 +122,9 @@ function tag {
 
 # Upload a file to an S3-compatible store using the SigV4 curl uploader.
 #
-# The store is selected by the 3rd arg (default ARTIFACTS) and resolves the matching
-# ROR_<STORE>_STORE_* env vars, so the same logic serves both the artifacts store
-# (ROR_ARTIFACTS_STORE_*) and the libs store (ROR_LIBS_STORE_*). Each store keeps its
-# own endpoint, credentials, bucket, region and path-prefix.
+# One credential set (ROR_S3_*) serves every store. The 3rd arg (default ARTIFACTS)
+# selects only the key prefix the upload lands under — ROR_S3_PATH_ARTIFACTS or
+# ROR_S3_PATH_LIBS — so the same logic serves both stores.
 function upload_using_aws_s3_uploader {
   local LOCAL_FILE="$1"
   local S3_PATH STORE BUCKET PATH_PREFIX
@@ -137,19 +136,14 @@ function upload_using_aws_s3_uploader {
     exit 1
   fi
 
-  # Indirectly resolve the store-specific env vars (e.g. ROR_LIBS_STORE_BUCKET).
-  local ENDPOINT_VAR="ROR_${STORE}_STORE_ENDPOINT_URL"
-  local AK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_ID"
-  local SK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_SECRET"
-  local BUCKET_VAR="ROR_${STORE}_STORE_BUCKET"
-  local REGION_VAR="ROR_${STORE}_STORE_REGION"
-  local PREFIX_VAR="ROR_${STORE}_STORE_PATH_PREFIX"
+  # Credentials are flat; only the key prefix is resolved through the store name.
+  local PREFIX_VAR="ROR_S3_PATH_${STORE}"
 
-  local ENDPOINT="${!ENDPOINT_VAR-}"
-  local AK="${!AK_VAR-}"
-  local SK="${!SK_VAR-}"
-  local REGION="${!REGION_VAR-}"
-  BUCKET="${!BUCKET_VAR-}"; BUCKET="${BUCKET:-beshu}"
+  local ENDPOINT="${ROR_S3_ENDPOINT_URL-}"
+  local AK="${ROR_S3_ACCESS_KEY_ID-}"
+  local SK="${ROR_S3_SECRET_ACCESS_KEY-}"
+  local REGION="${ROR_S3_REGION-}"
+  BUCKET="${ROR_S3_BUCKET-}"; BUCKET="${BUCKET:-beshu}"
   PATH_PREFIX="${!PREFIX_VAR-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
 

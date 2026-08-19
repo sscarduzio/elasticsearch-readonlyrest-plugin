@@ -134,12 +134,12 @@ def registerLibsStoreUpload = { String taskName, String artifactName, String des
     tasks.register(taskName, Exec) {
         dependsOn getArtifactsFromEsBinaries
         environment 'ROR_S3_TARGET_STORE',              'LIBS'
-        environment 'ROR_LIBS_STORE_ENDPOINT_URL',      System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
-        environment 'ROR_LIBS_STORE_ACCESS_KEY_ID',     System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: ''
-        environment 'ROR_LIBS_STORE_ACCESS_KEY_SECRET', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: ''
-        environment 'ROR_LIBS_STORE_BUCKET',            System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
-        environment 'ROR_LIBS_STORE_REGION',            System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1'
-        environment 'ROR_LIBS_STORE_PATH_PREFIX',       System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs'
+        environment 'ROR_S3_ENDPOINT_URL',      System.getenv('ROR_S3_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
+        environment 'ROR_S3_ACCESS_KEY_ID',     System.getenv('ROR_S3_ACCESS_KEY_ID') ?: ''
+        environment 'ROR_S3_SECRET_ACCESS_KEY', System.getenv('ROR_S3_SECRET_ACCESS_KEY') ?: ''
+        environment 'ROR_S3_BUCKET',            System.getenv('ROR_S3_BUCKET') ?: 'beshu'
+        environment 'ROR_S3_REGION',            System.getenv('ROR_S3_REGION') ?: 'us-east-1'
+        environment 'ROR_S3_PATH_LIBS',       System.getenv('ROR_S3_PATH_LIBS') ?: 'ror/libs'
         commandLine '../ci/upload-files-to-s3.sh',
             "${layout.buildDirectory.get().asFile.path}/${artifactName}",
             destinationPath

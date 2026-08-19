@@ -83,7 +83,7 @@ nexusPublishing {
 
 docker {
     registryCredentials {
-        username = System.getenv('DOCKER_REGISTRY_USER')
-        password = System.getenv('DOCKER_REGISTRY_PASSWORD')
+        username = System.getenv('DOCKER_HUB_USER')
+        password = System.getenv('DOCKER_HUB_RW_TOKEN')
     }
 }
