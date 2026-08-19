@@ -129,15 +129,29 @@ e2e_matrix_json() {
 }
 
 # Pass the dispatched ROR KBN run ID, URL, and wait timeout to the test jobs. They run as separate
-# processes on separate machines, and the run ID is what they wait on. A no-op outside GitHub
-# Actions.
+# processes on separate machines, and the run ID is what they wait on.
+#
+# Outside GitHub Actions there is no job output, so the same three values are printed as export
+# lines. A local run of the `run_e2e_tests` task is a separate shell, and without them it stops at
+# once, because the wait has no run to follow.
 # Usage: export_kbn_prebuild_run_info <version count>
 export_kbn_prebuild_run_info() {
-  [ -n "${GITHUB_OUTPUT:-}" ] || return 0
-
   # The test jobs wait for the run, and one run builds all the versions one after another, so it
   # finishes after N build times. Scale the timeout by the number of versions.
   local WAIT_TIMEOUT=$(( ${1:-1} * ${ROR_KBN_WAIT_TIMEOUT_SECONDS:-1800} ))
+
+  if [ -z "${GITHUB_OUTPUT:-}" ]; then
+    echo ""
+    echo ">>> Not running in GitHub Actions, so there is no job output to write. A test run is a"
+    echo "    separate shell, and its wait needs the run below. Export these first:"
+    echo ""
+    echo "      export ROR_KBN_PREBUILD_RUN_ID='${ROR_KBN_PREBUILD_RUN_ID:-}'"
+    echo "      export ROR_KBN_PREBUILD_RUN_URL='${ROR_KBN_PREBUILD_RUN_URL:-}'"
+    echo "      export ROR_KBN_WAIT_TIMEOUT_SECONDS=$WAIT_TIMEOUT"
+    echo ""
+    return 0
+  fi
+
   {
     echo "kbn_run_id=${ROR_KBN_PREBUILD_RUN_ID:-}"
     echo "kbn_run_url=${ROR_KBN_PREBUILD_RUN_URL:-}"
