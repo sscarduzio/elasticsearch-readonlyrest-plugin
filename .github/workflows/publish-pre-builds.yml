@@ -1,11 +1,5 @@
 name: ROR ES Publish Pre-Builds
 
-# Two repos dispatch this workflow, and a dispatch is told nothing about the run it creates. They
-# find their run by this title, so the tag has to stay in it: the tag holds a run id and an
-# attempt, which makes the title unique. The e2e repo builds the same string in
-# ci/prebuild-images-lib.sh, and the two must match.
-run-name: ROR ES pre-build ${{ inputs.tag }}
-
 # Manual-only: no push/pull_request triggers (Azure's `trigger: none` / `pr: none`).
 on:
   workflow_dispatch:

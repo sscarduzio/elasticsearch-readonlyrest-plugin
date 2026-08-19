@@ -65,7 +65,7 @@ clone_e2e_tests_repo() {
   return 3
 }
 
-# Load the ROR KBN pre-build helpers (dispatch_kbn_prebuild_image and wait_for_kbn_prebuild_images)
+# Load the ROR KBN pre-build helpers (dispatch_kbn_prebuild_image and wait_for_kbn_prebuild_image)
 # from the e2e tests repo clone.
 load_kbn_prebuild_helpers() {
   if [ "$#" -ne 1 ]; then
@@ -76,7 +76,7 @@ load_kbn_prebuild_helpers() {
   local LIB="$1/$E2E_PREBUILD_IMAGES_LIB"
   if [ ! -f "$LIB" ]; then
     echo "ERROR: $E2E_PREBUILD_IMAGES_LIB not found in the e2e tests clone ($1)"
-    echo "       The ROR KBN pre-build dispatch and wait helpers are owned by $E2E_TESTS_REPO."
+    echo "       The ROR KBN pre-build dispatch/poll helpers are owned by $E2E_TESTS_REPO."
     echo "       The checked-out e2e branch predates them — merge/rebase it so the file is present."
     return 2
   fi
@@ -128,15 +128,14 @@ e2e_matrix_json() {
   printf '%s\n' "${ENTRIES[@]}" | jq -cs '{include: .}'
 }
 
-# Pass the dispatched ROR KBN run ID, URL, and wait timeout to the test jobs. They run as separate
-# processes on separate machines, and the run ID is what they wait on. A no-op outside GitHub
-# Actions.
+# Pass the dispatched ROR KBN run ID, URL, and wait timeout to the test jobs. Without the run ID,
+# test jobs cannot stop early if the build fails. A no-op outside GitHub Actions.
 # Usage: export_kbn_prebuild_run_info <version count>
 export_kbn_prebuild_run_info() {
   [ -n "${GITHUB_OUTPUT:-}" ] || return 0
 
-  # The test jobs wait for the run, and one run builds all the versions one after another, so it
-  # finishes after N build times. Scale the timeout by the number of versions.
+  # One build runs all versions sequentially, so the last image takes N times longer. Scale the
+  # timeout by the number of versions.
   local WAIT_TIMEOUT=$(( ${1:-1} * ${ROR_KBN_WAIT_TIMEOUT_SECONDS:-1800} ))
   {
     echo "kbn_run_id=${ROR_KBN_PREBUILD_RUN_ID:-}"
@@ -265,17 +264,12 @@ run_e2e_tests() {
   # Build and publish the ROR ES dev image (Gradle is skipped if the image already exists).
   publish_ror_es_prebuild_plugin "$ELK_VERSION" "$RUN_TAG" || return $?
 
-  # Wait for the ROR KBN image. The wait follows the dispatched run, so the run id is necessary. The
-  # e2e_prepare job dispatches that run on another machine and publishes the id as its `kbn_run_id`
-  # output, so an empty value here means broken wiring. That job also
-  # fails if it cannot identify the run it started, so the id is set whenever it succeeded.
+  # Wait for the ROR KBN image. Without the run ID, the wait cannot stop early if the build fails.
   if [ -z "${ROR_KBN_PREBUILD_RUN_ID:-}" ]; then
-    echo "ERROR: ROR_KBN_PREBUILD_RUN_ID is empty, so there is no ROR KBN run to wait for."
-    echo "       The e2e_prepare job publishes the id as its 'kbn_run_id' output, and ci.yml passes"
-    echo "       that output to this job. Check both."
-    return 3
+    echo ">>> ROR_KBN_PREBUILD_RUN_ID is not set: the wait cannot stop early if the ROR KBN"
+    echo "    pre-build fails, and will use its full timeout."
   fi
-  wait_for_kbn_prebuild_images "$ELK_VERSION" "$RUN_TAG" || return $?
+  wait_for_kbn_prebuild_image "$ELK_VERSION" "$RUN_TAG" || return $?
 
   # Both images are now available; run the test suite.
   run_e2e_against_dev_images "$E2E_DIR" "$ELK_VERSION" "$RUN_TAG"
