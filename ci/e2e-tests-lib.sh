@@ -250,6 +250,18 @@ run_e2e_tests() {
     return 2
   fi
 
+  # The wait below follows the ROR KBN pre-build run, so the run id is necessary. It comes from the
+  # job environment and nothing here sets it, so check it before the clone and the Gradle build: a
+  # job that cannot wait must not spend minutes to say so. The e2e_prepare job dispatches the run on
+  # another machine and publishes the id as its `kbn_run_id` output. That job also fails if it
+  # cannot identify the run it started, so the id is set whenever it succeeded.
+  if [ -z "${ROR_KBN_PREBUILD_RUN_ID:-}" ]; then
+    echo "ERROR: ROR_KBN_PREBUILD_RUN_ID is empty, so there is no ROR KBN run to wait for."
+    echo "       The e2e_prepare job publishes the id as its 'kbn_run_id' output, and ci.yml passes"
+    echo "       that output to this job. Check both."
+    return 3
+  fi
+
   echo ">>> Running e2e tests: ELK $ELK_VERSION, run tag: $RUN_TAG"
 
   # Clone the e2e repo (needed for both the wait helper and the test runner).
@@ -265,16 +277,8 @@ run_e2e_tests() {
   # Build and publish the ROR ES dev image (Gradle is skipped if the image already exists).
   publish_ror_es_prebuild_plugin "$ELK_VERSION" "$RUN_TAG" || return $?
 
-  # Wait for the ROR KBN image. The wait follows the dispatched run, so the run id is necessary. The
-  # e2e_prepare job dispatches that run on another machine and publishes the id as its `kbn_run_id`
-  # output, so an empty value here means broken wiring. That job also
-  # fails if it cannot identify the run it started, so the id is set whenever it succeeded.
-  if [ -z "${ROR_KBN_PREBUILD_RUN_ID:-}" ]; then
-    echo "ERROR: ROR_KBN_PREBUILD_RUN_ID is empty, so there is no ROR KBN run to wait for."
-    echo "       The e2e_prepare job publishes the id as its 'kbn_run_id' output, and ci.yml passes"
-    echo "       that output to this job. Check both."
-    return 3
-  fi
+  # Wait for the ROR KBN image. The run id was checked at the top of this function, because the wait
+  # follows that run and the id arrives with the job environment.
   wait_for_kbn_prebuild_images "$ELK_VERSION" "$RUN_TAG" || return $?
 
   # Both images are now available; run the test suite.
