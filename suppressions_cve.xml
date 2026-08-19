@@ -208,4 +208,18 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <packageUrl regex="true">^pkg:maven/org\.scala-lang\.modules/scala-parallel-collections_3@1\.2\.0$</packageUrl>
         <cve>CVE-2017-1000034</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bc-fips / bcpkix-fips / bctls-fips / bcutil-fips
+   False positive: CVE-2026-12185 ("BKS/UBER keystore allocates from untrusted lengths before
+   integrity check") affects the NON-FIPS BouncyCastle distribution only — bcprov before 1.85, and
+   bcprov-lts8on 2.73.0 to 2.73.12. ROR ships neither: the runtime classpath carries the FIPS
+   artifacts alone, which are a separate code line with their own versioning (2.1.x) and do not
+   implement the BKS/UBER keystore types. The CPE matcher maps them to the non-FIPS CPE
+   bouncycastle:bouncy_castle_for_java and reports the CVE against them.
+   Scoped to this one CVE, so any real advisory against the FIPS artifacts still fails the build.
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bc(pkix|tls|util)?-fips@.*$</packageUrl>
+        <cve>CVE-2026-12185</cve>
+    </suppress>
 </suppressions>

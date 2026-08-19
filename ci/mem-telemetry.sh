@@ -37,20 +37,36 @@ case "${1:-}" in
   start)
     LOG=${2:?usage: mem-telemetry.sh start <logfile>}
     mkdir -p "$(dirname "$LOG")"
-    (
-      # Sub-shell sampler, disowned: survives the caller, never survives MAX_LIFETIME_S.
-      end=$((SECONDS + MAX_LIFETIME_S))
-      while [ "$SECONDS" -lt "$end" ]; do
-        sample_once
-        sleep "$INTERVAL_S"
-      done
-    ) >>"$LOG" 2>&1 &
+    # setsid: the collector below is a second process, so `stop` signals the whole group.
+    setsid "$0" _collect "$LOG" >>"$LOG" 2>&1 &
     disown
     echo $!
     ;;
 
+  _collect)
+    LOG=${2:?internal}
+    # A container's death has to be recorded WHILE it is visible: by the time the report step runs,
+    # Ryuk has reaped everything, so `docker ps -a` finds nothing and an OOM kill leaves no trace.
+    # `docker events` streams die/oom as they happen, and costs nothing between events.
+    docker events --filter event=die --filter event=oom \
+      --format 'X {{.Action}} name={{index .Actor.Attributes "name"}} exit={{index .Actor.Attributes "exitCode"}}' \
+      >>"$LOG" 2>/dev/null &
+    # The collector must not outlive this loop: `stop` kills the process group, but the lifetime cap
+    # below returns normally, and a background child survives its parent's exit. The PID is captured
+    # in a variable, not read as $! from inside the trap, where it would expand at trap time.
+    events_pid=$!
+    trap 'kill "$events_pid" 2>/dev/null' EXIT
+    end=$((SECONDS + MAX_LIFETIME_S))
+    while [ "$SECONDS" -lt "$end" ]; do
+      sample_once
+      sleep "$INTERVAL_S"
+    done
+    ;;
+
   stop)
-    kill "${2:?usage: mem-telemetry.sh stop <pid>}" 2>/dev/null || true
+    PID=${2:?usage: mem-telemetry.sh stop <pid>}
+    # Negative PID = the whole group, so the docker-events collector dies with the sampler.
+    kill -TERM -- "-$PID" 2>/dev/null || kill "$PID" 2>/dev/null || true
     ;;
 
   report)
@@ -79,15 +95,27 @@ case "${1:-}" in
     # Capture first: `| tail` exits 0 even on empty input, so `|| echo` alone can never fire.
     OOM_LINES=$(dmesg 2>/dev/null | grep -iE "out of memory|oom[-_]kill|killed process" | tail -20)
     if [ -n "$OOM_LINES" ]; then echo "$OOM_LINES"; else echo "no OOM events visible (or dmesg restricted)"; fi
-    echo "##### Containers of this CI job: OOMKilled / exit codes #####"
+    echo "##### Container deaths recorded during the run (docker events) #####"
+    DEATHS=$(grep '^X ' "$LOG" | sort | uniq -c | sort -rn)
+    if [ -n "$DEATHS" ]; then echo "$DEATHS"; else echo "no container died during the run"; fi
+    echo "##### Containers still present at report time: OOMKilled / exit codes #####"
     if [ -n "${ROR_CI_JOB_ID:-}" ]; then
       docker ps -a --filter "label=ror.ci-job=$ROR_CI_JOB_ID" --format '{{.ID}} {{.Names}}' 2>/dev/null \
         | while read -r id name; do
-            docker inspect -f "{{.Name}} oomkilled={{.State.OOMKilled}} exit={{.State.ExitCode}} status={{.State.Status}}" "$id" 2>/dev/null
+            if out=$(docker inspect -f "{{.Name}} oomkilled={{.State.OOMKilled}} exit={{.State.ExitCode}} status={{.State.Status}}" "$id" 2>&1); then
+              echo "$out"
+            elif printf '%s' "$out" | grep -qiE "no such (object|container)"; then
+              echo "$name ($id) is gone - reaped before it could be inspected"
+            else
+              echo "$name ($id) could not be inspected: $out"
+            fi
           done
     else
       echo "ROR_CI_JOB_ID not set - skipping container inspection"
     fi
+    # This report is diagnostics. The workflow step runs it under `bash -e`, so any non-zero exit
+    # here fails a leg whose tests all passed.
+    exit 0
     ;;
 
   *)

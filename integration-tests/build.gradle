@@ -62,7 +62,7 @@ test {
     }
     // Build the singleton ES image once up-front so parallel workers never build concurrently.
     // Redundant K+1 boots are cache hits; kept so a bare local `:test` (no run-pipeline) still works.
-    dependsOn 'prebuildEsImage'
+    dependsOn 'warmDockerImageCache'
     systemProperty "esModule", module
     def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
     if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
@@ -161,21 +161,19 @@ dependencies {
     testImplementation  group: 'org.scalatest',                 name: 'scalatest_3',                version: '3.2.19'
 }
 
-// Builds + stably tags the singleton ES image ONCE before parallel workers; without it concurrent
-// identical builds fail intermittently at shardCount>=3. Pre-building gives every worker a cache hit.
-tasks.register('prebuildEsImage', JavaExec) {
+tasks.register('warmDockerImageCache', JavaExec) {
     // Mirror test's gate: dependsOn targets run even when the dependent is onlyIf-skipped, so this
     // must skip in bare aggregate builds too (else every `./gradlew build` boots a Docker ES image).
     def explicitlyRequested = gradle.startParameter.taskNames.any {
         it.endsWith('integration-tests:test') || it == 'integration-tests:test' ||
-            it.endsWith('prebuildEsImage') || it.endsWith('shardedTest')
+            it.endsWith('warmDockerImageCache') || it.endsWith('shardedTest')
     }
     onlyIf { explicitlyRequested }
     systemProperty 'project.dir', rootProject.projectDir
     systemProperty 'esModule', (project.findProperty('esModule') ?: defaultEsModule)
     def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
     if (explicitEsVersion != null) { systemProperty 'esVersion', explicitEsVersion }
-    mainClass.set('tech.beshu.ror.utils.containers.PrebuildSingletonEsImage')
+    mainClass.set('tech.beshu.ror.utils.containers.WarmDockerImageCache')
     classpath = sourceSets.test.runtimeClasspath
 }
 
@@ -219,7 +217,7 @@ tasks.register('regenerateSuiteTimings') {
 // Sharded-IT orchestrator: runs K parallel `./gradlew integration-tests:test -PshardIndex=i`
 // JVMs (one ES container each). Usage: ./gradlew integration-tests:shardedTest -PshardCount=2 -PesModule=es94x
 tasks.register('shardedTest', tech.beshu.ror.buildbase.ShardedGradlewTest) {
-    dependsOn 'prebuildEsImage', 'testClasses'
+    dependsOn 'warmDockerImageCache', 'testClasses'
     // Always run — spawns external gradle processes whose state Gradle can't track.
     outputs.upToDateWhen { false }
     getShardCount().set((project.findProperty('shardCount') ?: '1') as int)
