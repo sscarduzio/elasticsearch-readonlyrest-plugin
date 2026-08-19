@@ -163,19 +163,15 @@ function _upload_to_s3_target {
     return 1
   fi
 
-  # Indirectly resolve the store-specific env vars (e.g. ROR_LIBS_STORE_BUCKET).
-  local ENDPOINT_VAR="ROR_${STORE}_STORE_ENDPOINT_URL"
-  local AK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_ID"
-  local SK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_SECRET"
-  local BUCKET_VAR="ROR_${STORE}_STORE_BUCKET"
-  local REGION_VAR="ROR_${STORE}_STORE_REGION"
-  local PREFIX_VAR="ROR_${STORE}_STORE_PATH_PREFIX"
+  # One credential set serves every store; only the key prefix differs, so the store name
+  # selects a path (ROR_S3_PATH_ARTIFACTS / _LIBS / _E2E_REPORTS) and nothing else.
+  local PREFIX_VAR="ROR_S3_PATH_${STORE}"
 
-  local ENDPOINT="${!ENDPOINT_VAR-}"
-  local AK="${!AK_VAR-}"
-  local SK="${!SK_VAR-}"
-  local REGION="${!REGION_VAR-}"
-  BUCKET="${!BUCKET_VAR-}"; BUCKET="${BUCKET:-beshu}"
+  local ENDPOINT="${ROR_S3_ENDPOINT_URL-}"
+  local AK="${ROR_S3_ACCESS_KEY_ID-}"
+  local SK="${ROR_S3_SECRET_ACCESS_KEY-}"
+  local REGION="${ROR_S3_REGION-}"
+  BUCKET="${ROR_S3_BUCKET-}"; BUCKET="${BUCKET:-beshu}"
   PATH_PREFIX="${!PREFIX_VAR-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
 
