@@ -28,7 +28,7 @@ The variables and properties below are optional.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `ROR_ES_SLIM_MODULES` | `true` | Strip the ES modules no suite uses from the test images. Set `false` to run against a stock ES image, e.g. when adding a suite for a feature whose module the slim image drops. |
+| `ROR_ES_SLIM_MODULES` | `true` | Strip the ES modules no suite uses from the test image. This applies to the official Elasticsearch Docker image only — the Ubuntu image with ES from apt, and the native Windows process, keep every module. Set `false` to run against a stock ES image, e.g. when adding a suite for a feature whose module the slim image drops. |
 | `ROR_ES_JDWP` | `true` | Add a JDWP agent to every ES test container, so a debugger can attach on port 8000. |
 | `ROR_ES_CONTAINER_MEMORY_MB` | `2048` | Hard memory limit per ES container. |
 | `ROR_HEAVY_SUITE_PERMITS` | unset (no limit) | Cap on multi-container ("heavy") suites running at once, enforced across shard JVMs via file locks. |
