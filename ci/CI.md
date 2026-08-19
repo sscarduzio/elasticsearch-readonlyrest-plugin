@@ -102,10 +102,12 @@ Read it there, not here. Four obligations fall on this repo:
   `actions:read`. A refused read ends the wait with code 8 in seconds, and names the right it
   needs. Reading it is how the leg follows the run, so there is no way round it.
 - **Keep the title on our own pre-build run.** `publish-pre-builds.yml` carries
-  `run-name: ROR ES pre-build ${{ inputs.tag }}`. Every repo that dispatches it — the e2e repo and
-  the ROR KBN repo — finds its run by that title, because a dispatch is told nothing about the run it
-  creates. Remove the line and every dispatch of this workflow fails, because no run can be
-  recognised.
+  `run-name: ROR ES pre-build ${{ inputs.tag || inputs.es_versions }}`. Every repo that dispatches it
+  — the e2e repo and the ROR KBN repo — finds its run by that title, because a dispatch is told
+  nothing about the run it creates. A dispatch always sends a tag. So a run that a job waits for
+  always shows `ROR ES pre-build <tag>`. The fallback applies only to a dispatch that sends no tag,
+  and no search looks for such a title. Remove the line and every dispatch of this workflow fails,
+  because no run can be recognised.
 
 One consequence shapes this side: the wait ends when the ROR KBN run ends, not when one image
 appears, so all three legs reach their suite at about the same time. The Gradle build of the ROR ES
