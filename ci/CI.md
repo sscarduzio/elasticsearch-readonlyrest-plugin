@@ -150,8 +150,8 @@ every push on such a branch, and made five CI jobs depend on a job that almost a
 | Secret | Purpose |
 |---|---|
 | `ROR_S3_ACCESS_KEY_ID` / `ROR_S3_SECRET_ACCESS_KEY` | the one S3 key pair; writes `builds/`, `libs/` and `e2e_reports/` |
-| `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | pushing ROR + toolchains images |
-| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | authenticated docker pulls (testcontainers rate limit); `ci/docker-hub-auth.sh` is a no-op when unset. The RO token cannot push — it is refused push scope |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `docker-hub-auth.sh` reads |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. It pulls the `container:` image, and each job that only pulls maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` as well. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
 | `ROR_ENT_ACTIVATION_TOKEN` | ROR PRO/Enterprise key the e2e stack boots with. **The secret is renamed; the env var handed to the container stays `ROR_ACTIVATION_KEY`, which is the customer-facing name** |
 | `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, pushes docs |
 | `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |
@@ -169,6 +169,39 @@ unset (or empty, which is what an undefined `vars.X` expands to) falls back to t
 Release tags push via the checkout token (`release_ror` has `permissions: contents: write`)
 — no SSH deploy key. Fork PRs get no secrets (GitHub default); `cve_check` and docker auth
 degrade instead of failing.
+
+### Docker authentication
+
+Every job that pulls or pushes a Docker Hub image uses one command, and no other:
+
+```bash
+source ci/docker-hub-auth.sh
+```
+
+The script reads one pair of variables, `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, and
+the job supplies it: a job that pushes maps `DOCKER_HUB_RW_TOKEN` into it, a job that only pulls
+maps `DOCKER_HUB_RO_TOKEN`. The script then authenticates both Docker clients with that pair: the
+docker CLI, with a login, and testcontainers, with `DOCKER_AUTH_CONFIG`. Both halves are necessary. The docker CLI
+does not read `DOCKER_AUTH_CONFIG`. Docker CLI 27, which the toolchains image contains, ignores
+that variable.
+
+Credentials that do not work always stop the job. The script never falls back to anonymous pulls
+in that case, because a bad login must not hide itself. An expired token thus fails in the job
+that owns it, and not as a rate-limit failure somewhere else one hour later.
+
+`DOCKER_AUTH_REQUIRED` covers one case only: the job supplied no credentials at all. The job then
+stops, because that is the default. The two Linux test jobs set the value from the event: `false`
+for a pull request from a fork, which gets no secrets but must still run its tests, and `true`
+everywhere else, where a missing secret is a mistake.
+
+Do not put a `docker login` in a workflow. Two mechanisms with different credentials hide each
+other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
+
+The script cannot authenticate the `container:` image, because the runner pulls that image before
+step 1 starts. Each of the ten `container:` blocks carries a `credentials:` block for that pull.
+They share one anchor, `&toolchains_container`, so the credentials have one definition. A pull
+request from a fork supplies empty secrets, and the runner then skips the login and pulls
+anonymously.
 
 ## Coverage: what happened to every Azure stage
 

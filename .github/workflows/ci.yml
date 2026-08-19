@@ -154,9 +154,12 @@ jobs:
             echo "::error::ci.yml container tags do not all match TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE — bump them together"
             exit 1
           fi
+          # Authenticate before the build. The Dockerfile pulls five images from Docker Hub in its
+          # FROM lines (four eclipse-temurin JDKs and the docker CLI), and those pulls are anonymous
+          # if the login comes after them.
+          source ci/docker-hub-auth.sh
           echo ">>> Building $TOOLCHAINS_IMAGE"
           docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
-          echo "$DOCKER_HUB_RW_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
           docker push "$TOOLCHAINS_IMAGE"
 
   # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
@@ -178,7 +181,14 @@ jobs:
     needs: setup
     if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    # The runner pulls this image before step 1 runs, so ci/docker-hub-auth.sh cannot authenticate
+    # it. These credentials can. A fork supplies empty secrets, and the runner then skips the login
+    # and pulls anonymously. A read-only token is enough here, because a job only pulls this image.
+    container: &toolchains_container
+      image: *toolchains
+      credentials:
+        username: ${{ secrets.DOCKER_HUB_USER }}
+        password: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -201,7 +211,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    container: *toolchains_container
     continue-on-error: true
     name: ${{ matrix.ROR_TASK }}
     strategy:
@@ -248,7 +258,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    container: *toolchains_container
     name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
@@ -277,7 +287,7 @@ jobs:
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -285,8 +295,9 @@ jobs:
       - name: core_tests
         env:
           ROR_TASK: core_tests
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           source ci/docker-hub-auth.sh
           ci/run-pipeline.sh
@@ -310,7 +321,7 @@ jobs:
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 120
     # "it_linux_es94x", not the truncated "it_linux (es94x)" composite, in the graph view. Same
     # <leg>_<module> shape as it_win_* and e2e_*, so the three test families sort together.
@@ -350,6 +361,7 @@ jobs:
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           source ci/docker-hub-auth.sh
           ci/run-pipeline.sh
@@ -566,7 +578,7 @@ jobs:
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 30
     outputs:
       matrix: ${{ steps.prepare.outputs.matrix }}
@@ -638,11 +650,9 @@ jobs:
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
           set -e
-          # The e2e repo pins yarn in "packageManager". Corepack reads and uses that.
-          # No fallback needed — trust corepack to manage the version per the e2e repo's package.json.
+           # The e2e repo pins yarn in "packageManager". Corepack reads and uses that.
           corepack enable
-          # Authenticate Docker Hub for docker compose (not for testcontainers).
-          echo "$DOCKER_HUB_RW_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+          source ci/docker-hub-auth.sh
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
           ci/run-pipeline.sh
 
@@ -684,7 +694,7 @@ jobs:
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
       (needs.e2e_tests.result == 'success' || needs.setup.outputs.e2e_modules == '[]')
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 180
     name: ${{ matrix.ROR_TASK }}
     strategy:
@@ -745,7 +755,7 @@ jobs:
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 600
     strategy:
       fail-fast: false
@@ -768,7 +778,7 @@ jobs:
           DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
-          echo "$DOCKER_HUB_RW_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+          source ci/docker-hub-auth.sh
           ci/run-pipeline.sh
 
   # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
@@ -797,7 +807,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 180
     strategy:
       fail-fast: false
@@ -822,7 +832,7 @@ jobs:
           TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -e
-          echo "$DOCKER_HUB_RW_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+          source ci/docker-hub-auth.sh
           ci/run-pipeline.sh
 
   # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
@@ -849,7 +859,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }

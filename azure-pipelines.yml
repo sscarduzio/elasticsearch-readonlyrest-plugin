@@ -335,6 +335,7 @@ stages:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
               DOCKER_HUB_USER: $(DOCKER_HUB_USER)
               DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
+              DOCKER_AUTH_REQUIRED: "false"
           - task: PublishTestResults@2
             condition: failed()
             inputs:
