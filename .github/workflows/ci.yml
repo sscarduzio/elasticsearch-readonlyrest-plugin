@@ -182,9 +182,8 @@ jobs:
     if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     # The runner pulls this image before step 1 runs, so ci/docker-hub-auth.sh cannot authenticate
-    # it. These credentials can. Ten jobs pull it, and the pulls were anonymous. A pull request from
-    # a fork supplies empty secrets, and the runner then skips the login and pulls anonymously, as
-    # it does today. The read-only token is enough, because a job only pulls this image.
+    # it. These credentials can. A fork supplies empty secrets, and the runner then skips the login
+    # and pulls anonymously. A read-only token is enough here, because a job only pulls this image.
     container: &toolchains_container
       image: *toolchains
       credentials:
@@ -296,11 +295,8 @@ jobs:
       - name: core_tests
         env:
           ROR_TASK: core_tests
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
-          # A pull request from a fork gets no secrets, and its tests must still run without them.
-          # Everywhere else a missing secret is a mistake, and the job stops. A secret that is
-          # present but does not work stops this job in all cases.
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
           DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           source ci/docker-hub-auth.sh
@@ -363,11 +359,8 @@ jobs:
           ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
           ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
           ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
-          # A pull request from a fork gets no secrets, and its tests must still run without them.
-          # Everywhere else a missing secret is a mistake, and the job stops. A secret that is
-          # present but does not work stops this job in all cases.
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
           DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           source ci/docker-hub-auth.sh

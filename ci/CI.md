@@ -165,10 +165,10 @@ every push on such a branch, and made five CI jobs depend on a job that almost a
 | `ROR_LIBS_STORE_ACCESS_KEY_ID` / `..._SECRET` | libs S3 bucket (shared ES jars; read by every build, written by `mirror-es-libs.yml`) |
 | `ROR_ARTIFACTS_STORE_ACCESS_KEY_ID` / `..._SECRET` | artifacts S3 bucket (built plugin binaries) |
 | `ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID` / `..._SECRET` | e2e reports S3 bucket (Cypress artifacts of failed runs). Own key pair on purpose: it must not be able to write to the customer-facing `builds/` tree |
-| `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` | pushes the ROR and toolchains images, and authenticates the pulls of the same job |
+| `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. The variables of the same name are also what `docker-hub-auth.sh` reads, so a job that only pulls puts the read-only token in them instead |
 | `ROR_ACTIVATION_KEY` | ROR PRO/Enterprise key the e2e stack boots with |
 | `KBN_REPO_GH_TOKEN` | dispatches the ROR KBN image build and reads its run status |
-| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | authenticates the pulls of the jobs that only pull. Without them, a fork pull request continues with anonymous pulls, and every other event stops |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token. It pulls the `container:` image, and each job that only pulls maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `docker-hub-auth.sh` reads. Without it, a fork pull request continues with anonymous pulls, and every other event stops |
 | `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |
 | `MAVEN_REPO_USER`, `MAVEN_REPO_PASSWORD`, `MAVEN_STAGING_PROFILE_ID`, `GPG_KEY_ID`, `GPG_PASSPHRASE` | Maven Central publishing |
 | `PGP_SECRET_KEY_B64` | base64 of `secret.pgp`; the publish step decodes it to `.travis/secret.pgp`. Create with `base64 -w0 secret.pgp \| gh secret set PGP_SECRET_KEY_B64` |

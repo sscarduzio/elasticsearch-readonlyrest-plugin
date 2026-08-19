@@ -19,11 +19,8 @@
 # exports that variable makes anonymous pulls from the CLI.
 #
 # CREDENTIALS
-# The script uses the first pair that the job supplies:
-#   DOCKER_REGISTRY_USER / DOCKER_REGISTRY_PASSWORD   push account
-#   DOCKER_HUB_USER      / DOCKER_HUB_RO_TOKEN        read-only token
-# A job gets the read-only token when it does not supply the push pair. The workflow thus controls
-# the permissions, and this script keeps one code path.
+# The script reads one pair, and the job supplies it:
+#   DOCKER_REGISTRY_USER / DOCKER_REGISTRY_PASSWORD
 #
 # FAILURE
 # The script never falls back to anonymous pulls when the job supplied credentials. If it cannot
@@ -36,9 +33,8 @@
 # DOCKER_AUTH_REQUIRED applies to one case only: the job supplied no credentials at all.
 #   true (default)   The script stops the job. Any value other than "false" has this effect, so
 #                    an empty value or a typing error also stops the job.
-#   false            The script continues, and its pulls are anonymous. Only the test jobs set
-#                    this value. A pull request from a fork gets no secrets, but its tests must
-#                    still run.
+#   false            The script continues, and its pulls are anonymous. A job sets this when it
+#                    must run without secrets, as a pull request from a fork must.
 #
 # TWO LIMITS
 # 1. This script cannot authenticate the job `container:` image. The runner pulls that image
@@ -80,18 +76,15 @@ _ror_docker_auth_failed() {
 }
 
 _ror_docker_auth() {
-  local user token role auth
+  local user token auth
 
-  if _ror_docker_auth_isset "${DOCKER_REGISTRY_USER:-}" \
-     && _ror_docker_auth_isset "${DOCKER_REGISTRY_PASSWORD:-}"; then
-    user=$DOCKER_REGISTRY_USER; token=$DOCKER_REGISTRY_PASSWORD; role="push"
-  elif _ror_docker_auth_isset "${DOCKER_HUB_USER:-}" \
-     && _ror_docker_auth_isset "${DOCKER_HUB_RO_TOKEN:-}"; then
-    user=$DOCKER_HUB_USER; token=$DOCKER_HUB_RO_TOKEN; role="read-only"
-  else
-    _ror_docker_auth_no_credentials "the job supplied no credentials (DOCKER_REGISTRY_USER and DOCKER_REGISTRY_PASSWORD, or DOCKER_HUB_USER and DOCKER_HUB_RO_TOKEN)"
+  if ! _ror_docker_auth_isset "${DOCKER_REGISTRY_USER:-}" ||
+     ! _ror_docker_auth_isset "${DOCKER_REGISTRY_PASSWORD:-}"; then
+    _ror_docker_auth_no_credentials "the job supplied no credentials (DOCKER_REGISTRY_USER and DOCKER_REGISTRY_PASSWORD)"
     return $?
   fi
+  user=$DOCKER_REGISTRY_USER
+  token=$DOCKER_REGISTRY_PASSWORD
 
   # Set DOCKER_AUTH_CONFIG here only. When the script finds no credentials, the variable must stay
   # unset, and it must not become empty. testcontainers reads the value as JSON if the value is not
@@ -132,15 +125,14 @@ _ror_docker_auth() {
   #
   # This comes after the login on purpose. The script stops the caller shell when the login fails,
   # but a step with `continue-on-error: true` lets the job go on, and GITHUB_ENV outlives the step.
-  # Writing before the login would hand the later steps credentials that are known bad. No job here
-  # sets that option today. With this order, "the variable is set" means "the login succeeded".
+  # With this order, a variable that is set means a login that succeeded.
   #
   # The value holds no newline, because `tr` removed them, so the NAME=value form is enough here.
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
     echo "DOCKER_AUTH_CONFIG=$DOCKER_AUTH_CONFIG" >> "$GITHUB_ENV"
   fi
 
-  echo "[CI] Docker authentication is ON. User '$user', $role credentials. The docker CLI and testcontainers use them."
+  echo "[CI] Docker authentication is ON. User '$user'. The docker CLI and testcontainers use them."
   return 0
 }
 

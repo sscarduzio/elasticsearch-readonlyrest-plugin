@@ -267,7 +267,7 @@ run_e2e_tests() {
 
   # Wait for the ROR KBN image. The wait follows the dispatched run, so the run id is necessary. The
   # e2e_prepare job dispatches that run on another machine and publishes the id as its `kbn_run_id`
-  # output, so an empty value here is broken wiring, and not something to work around. That job also
+  # output, so an empty value here means broken wiring. That job also
   # fails if it cannot identify the run it started, so the id is set whenever it succeeded.
   if [ -z "${ROR_KBN_PREBUILD_RUN_ID:-}" ]; then
     echo "ERROR: ROR_KBN_PREBUILD_RUN_ID is empty, so there is no ROR KBN run to wait for."
