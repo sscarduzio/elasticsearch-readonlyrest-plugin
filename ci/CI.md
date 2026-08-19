@@ -91,12 +91,17 @@ Two jobs, because the two plugin images are built in different places:
 
 The wait is not a poll of the registry: a leg waits on the dispatched ROR KBN **run**. What the wait
 guarantees, and what this repo has to supply for it, is the contract at the top of the shared lib.
-Read it there, not here. Two obligations fall on this repo:
+Read it there, not here. Three obligations fall on this repo:
 
 - **Pass the run down.** `e2e_prepare` fails if it cannot identify the run it started, and publishes
   it as the `kbn_run_id` and `kbn_run_url` outputs. `ci.yml` hands both to every `e2e_tests` leg,
   together with `KBN_REPO_GH_TOKEN`. A leg with an empty run id reports broken wiring and stops.
 - **Log in first.** Each leg sources `ci/docker-hub-auth.sh` before the wait.
+- **Keep the title on our own pre-build run.** `publish-pre-builds.yml` carries
+  `run-name: ROR ES pre-build ${{ inputs.tag }}`. Every repo that dispatches it — the e2e repo and
+  the ROR KBN repo — finds its run by that title, because a dispatch is told nothing about the run it
+  creates. Remove the line and every dispatch of this workflow fails, because no run can be
+  recognised.
 
 One consequence shapes this side: the wait ends when the ROR KBN run ends, not when one image
 appears, so all three legs reach their suite at about the same time. The Gradle build of the ROR ES

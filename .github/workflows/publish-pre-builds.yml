@@ -1,5 +1,14 @@
 name: ROR ES Publish Pre-Builds
 
+# The e2e repo dispatches this workflow and must then find the run it created. GitHub tells a dispatch
+# nothing about its run, so the search matches this title. The tag holds a run id and an attempt, so
+# the title belongs to one dispatch only.
+#
+# Without this line every dispatched run carries the workflow name, two dispatches a few seconds apart
+# cannot be told apart, and a job can follow a run that is not its own. Keep the text equal to the
+# title that ci/prebuild-images-lib.sh builds in the e2e repo.
+run-name: ROR ES pre-build ${{ inputs.tag }}
+
 # Manual-only: no push/pull_request triggers (Azure's `trigger: none` / `pr: none`).
 on:
   workflow_dispatch:
