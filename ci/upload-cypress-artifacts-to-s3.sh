@@ -12,7 +12,7 @@
 #
 # Uploads to the E2E_REPORTS store — the bucket's `e2e_reports/` tree, a sibling of the `builds/`
 # (ARTIFACTS) and `libs/` (LIBS) trees. Same env-var family as those, per ci-lib.sh's
-# ROR_<STORE>_STORE_* convention: ROR_E2E_REPORTS_STORE_{ACCESS_KEY_ID,ACCESS_KEY_SECRET,BUCKET,
+# one credential set: ROR_S3_{ACCESS_KEY_ID,SECRET_ACCESS_KEY,BUCKET,
 # REGION,ENDPOINT_URL,PATH_PREFIX}. It gets its own credentials because the gateway authorizes each
 # prefix separately — the publishing creds are 403ed here, and these must not be able to write to
 # the customer-facing builds/ tree.
@@ -25,15 +25,15 @@ set -uo pipefail
 CI_DIR="$(cd "$(dirname "$0")" && pwd)"
 STORE=E2E_REPORTS
 
-# Resolve this store's env vars indirectly, exactly as ci-lib.sh's upload_using_aws_s3_uploader does
+# Credentials are flat; only the key prefix is resolved through the store name, as in ci-lib.sh
 # (that helper takes one file with a guessed mime type; this one walks a tree and passes an explicit
 # mime, so it drives ci/s3-uploader.sh itself rather than going through it).
-AK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_ID"
-SK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_SECRET"
-BUCKET_VAR="ROR_${STORE}_STORE_BUCKET"
-REGION_VAR="ROR_${STORE}_STORE_REGION"
-ENDPOINT_VAR="ROR_${STORE}_STORE_ENDPOINT_URL"
-PREFIX_VAR="ROR_${STORE}_STORE_PATH_PREFIX"
+AK_VAR="ROR_S3_ACCESS_KEY_ID"
+SK_VAR="ROR_S3_SECRET_ACCESS_KEY"
+BUCKET_VAR="ROR_S3_BUCKET"
+REGION_VAR="ROR_S3_REGION"
+ENDPOINT_VAR="ROR_S3_ENDPOINT_URL"
+PREFIX_VAR="ROR_S3_PATH_${STORE}"
 
 require_env() {
   if [ -z "${!1:-}" ]; then

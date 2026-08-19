@@ -60,12 +60,12 @@ public record LibsStore(
   /** {@link #fromEnv()} over an arbitrary environment, so the resolution is testable. */
   public static LibsStore from(Function<String, String> env) {
     return new LibsStore(
-        valueOrDefault(env, "ROR_LIBS_STORE_ENDPOINT_URL", DEFAULT_ENDPOINT_URL),
-        valueOrDefault(env, "ROR_LIBS_STORE_BUCKET", DEFAULT_BUCKET),
-        valueOrDefault(env, "ROR_LIBS_STORE_REGION", DEFAULT_REGION),
-        trimSlashes(valueOrDefault(env, "ROR_LIBS_STORE_PATH_PREFIX", DEFAULT_PATH_PREFIX)),
-        valueOrDefault(env, "ROR_LIBS_STORE_ACCESS_KEY_ID", ""),
-        valueOrDefault(env, "ROR_LIBS_STORE_ACCESS_KEY_SECRET", ""));
+        valueOrDefault(env, "ROR_S3_ENDPOINT_URL", DEFAULT_ENDPOINT_URL),
+        valueOrDefault(env, "ROR_S3_BUCKET", DEFAULT_BUCKET),
+        valueOrDefault(env, "ROR_S3_REGION", DEFAULT_REGION),
+        trimSlashes(valueOrDefault(env, "ROR_S3_PATH_LIBS", DEFAULT_PATH_PREFIX)),
+        valueOrDefault(env, "ROR_S3_ACCESS_KEY_ID", ""),
+        valueOrDefault(env, "ROR_S3_SECRET_ACCESS_KEY", ""));
   }
 
   /** The URL a Gradle {@code maven {}} repository resolves the mirrored jars and POMs from. */
@@ -74,19 +74,19 @@ public record LibsStore(
   }
 
   /**
-   * The store as {@code ci/upload-files-to-s3.sh} expects to find it in the environment. {@code
-   * ROR_S3_TARGET_STORE} is what makes that script resolve the {@code ROR_LIBS_STORE_*} family rather than the
-   * artifacts one.
+   * The store as {@code ci/upload-files-to-s3.sh} expects to find it in the environment. One
+   * credential set serves every store, so {@code ROR_S3_TARGET_STORE} selects only which key
+   * prefix the upload lands under — {@code ROR_S3_PATH_LIBS} rather than the artifacts one.
    */
   public Map<String, String> uploadEnvironment() {
     var environment = new LinkedHashMap<String, String>();
     environment.put("ROR_S3_TARGET_STORE", "LIBS");
-    environment.put("ROR_LIBS_STORE_ENDPOINT_URL", endpointUrl);
-    environment.put("ROR_LIBS_STORE_ACCESS_KEY_ID", accessKeyId);
-    environment.put("ROR_LIBS_STORE_ACCESS_KEY_SECRET", accessKeySecret);
-    environment.put("ROR_LIBS_STORE_BUCKET", bucket);
-    environment.put("ROR_LIBS_STORE_REGION", region);
-    environment.put("ROR_LIBS_STORE_PATH_PREFIX", pathPrefix);
+    environment.put("ROR_S3_ENDPOINT_URL", endpointUrl);
+    environment.put("ROR_S3_ACCESS_KEY_ID", accessKeyId);
+    environment.put("ROR_S3_SECRET_ACCESS_KEY", accessKeySecret);
+    environment.put("ROR_S3_BUCKET", bucket);
+    environment.put("ROR_S3_REGION", region);
+    environment.put("ROR_S3_PATH_LIBS", pathPrefix);
     return environment;
   }
 

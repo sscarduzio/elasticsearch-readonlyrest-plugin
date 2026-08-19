@@ -30,12 +30,12 @@ class LibsStoreTest {
     var store =
         LibsStore.from(
             Map.of(
-                    "ROR_LIBS_STORE_ENDPOINT_URL", "https://store.example.com",
-                    "ROR_LIBS_STORE_BUCKET", "a-bucket",
-                    "ROR_LIBS_STORE_REGION", "eu-central-1",
-                    "ROR_LIBS_STORE_PATH_PREFIX", "a/prefix",
-                    "ROR_LIBS_STORE_ACCESS_KEY_ID", "an-id",
-                    "ROR_LIBS_STORE_ACCESS_KEY_SECRET", "a-secret")
+                    "ROR_S3_ENDPOINT_URL", "https://store.example.com",
+                    "ROR_S3_BUCKET", "a-bucket",
+                    "ROR_S3_REGION", "eu-central-1",
+                    "ROR_S3_PATH_LIBS", "a/prefix",
+                    "ROR_S3_ACCESS_KEY_ID", "an-id",
+                    "ROR_S3_SECRET_ACCESS_KEY", "a-secret")
                 ::get);
 
     assertEquals("https://store.example.com", store.endpointUrl());
@@ -63,9 +63,9 @@ class LibsStoreTest {
     var store =
         LibsStore.from(
             Map.of(
-                    "ROR_LIBS_STORE_ENDPOINT_URL", "",
-                    "ROR_LIBS_STORE_BUCKET", "  ",
-                    "ROR_LIBS_STORE_PATH_PREFIX", "")
+                    "ROR_S3_ENDPOINT_URL", "",
+                    "ROR_S3_BUCKET", "  ",
+                    "ROR_S3_PATH_LIBS", "")
                 ::get);
 
     assertEquals("https://dgp.serve.beshu.tech", store.endpointUrl());
@@ -96,8 +96,8 @@ class LibsStoreTest {
     var store =
         LibsStore.from(
             Map.of(
-                    "ROR_LIBS_STORE_ENDPOINT_URL", "https://store.example.com//",
-                    "ROR_LIBS_STORE_PATH_PREFIX", "/a/prefix/")
+                    "ROR_S3_ENDPOINT_URL", "https://store.example.com//",
+                    "ROR_S3_PATH_LIBS", "/a/prefix/")
                 ::get);
 
     assertEquals("a/prefix", store.pathPrefix());
@@ -106,17 +106,17 @@ class LibsStoreTest {
 
   @Test
   void handsTheWriteSideTheSameStoreTheReadSideResolves() {
-    var store = LibsStore.from(Map.of("ROR_LIBS_STORE_BUCKET", "a-bucket")::get);
+    var store = LibsStore.from(Map.of("ROR_S3_BUCKET", "a-bucket")::get);
 
     assertEquals(
         Map.of(
             "ROR_S3_TARGET_STORE", "LIBS",
-            "ROR_LIBS_STORE_ENDPOINT_URL", "https://dgp.serve.beshu.tech",
-            "ROR_LIBS_STORE_ACCESS_KEY_ID", "",
-            "ROR_LIBS_STORE_ACCESS_KEY_SECRET", "",
-            "ROR_LIBS_STORE_BUCKET", "a-bucket",
-            "ROR_LIBS_STORE_REGION", "us-east-1",
-            "ROR_LIBS_STORE_PATH_PREFIX", "ror/libs"),
+            "ROR_S3_ENDPOINT_URL", "https://dgp.serve.beshu.tech",
+            "ROR_S3_ACCESS_KEY_ID", "",
+            "ROR_S3_SECRET_ACCESS_KEY", "",
+            "ROR_S3_BUCKET", "a-bucket",
+            "ROR_S3_REGION", "us-east-1",
+            "ROR_S3_PATH_LIBS", "ror/libs"),
         store.uploadEnvironment());
   }
 }

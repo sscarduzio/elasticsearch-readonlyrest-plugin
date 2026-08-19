@@ -95,9 +95,9 @@ Read it there, not here. Four obligations fall on this repo:
 
 - **Pass the run down.** `e2e_prepare` fails if it cannot identify the run it started, and publishes
   it as the `kbn_run_id` and `kbn_run_url` outputs. `ci.yml` hands both to every `e2e_tests` leg,
-  together with `KBN_REPO_GH_TOKEN`. A leg with an empty run id reports broken wiring and stops.
+  together with `ROR_GH_TOKEN`. A leg with an empty run id reports broken wiring and stops.
 - **Log in first.** Each leg sources `ci/docker-hub-auth.sh` before the wait.
-- **Give the leg a token that can read the runs of the ROR KBN repo.** `KBN_REPO_GH_TOKEN` needs
+- **Give the leg a token that can read the runs of the ROR KBN repo.** `ROR_GH_TOKEN` needs
   `actions:read`. A refused read ends the wait with code 8 in seconds, and names the right it
   needs. Reading it is how the leg follows the run, so there is no way round it.
 - **Keep the title on our own pre-build run.** `publish-pre-builds.yml` carries
@@ -130,17 +130,21 @@ On failure the job uploads the Cypress videos and screenshots to the E2E_REPORTS
 (`ci/upload-cypress-artifacts-to-s3.sh`), under `<prefix>/<date>/build_<run id>/<module>_<elk>/`.
 S3, not GitHub artifacts: those count against the metered Actions-storage quota.
 
-Needs `ROR_ACTIVATION_KEY` (the suite refuses to start without it) and `KBN_REPO_GH_TOKEN` (to
+Needs `ROR_ENT_ACTIVATION_TOKEN` (the suite refuses to start without it) and `ROR_GH_TOKEN` (to
 dispatch the ROR KBN build and read its status).
 
 ## S3 stores
 
 ROR uploads to S3-compatible stores through one path: `ci/s3-uploader.sh` (curl + SigV4) under
 `ci-lib.sh`'s `upload_using_aws_s3_uploader` / `..._to_key`, driven by `ci/upload-files-to-s3.sh`.
-A store is named, and its name selects a family of env vars — `ROR_<STORE>_STORE_{ENDPOINT_URL,
-ACCESS_KEY_ID,ACCESS_KEY_SECRET,BUCKET,REGION,PATH_PREFIX}`. Resolve that family in one place
-(`ci-lib.sh`) and nowhere else; each store has its own credentials, because the gateway authorizes
-each prefix separately.
+One credential set — `ROR_S3_{ENDPOINT_URL,BUCKET,REGION,ACCESS_KEY_ID,SECRET_ACCESS_KEY}` —
+serves every store. A store is named, and its name selects only the key prefix it writes under:
+`ROR_S3_PATH_{ARTIFACTS,LIBS,E2E_REPORTS}`. Resolve that in one place (`ci-lib.sh`) and nowhere
+else.
+
+An earlier revision claimed each store had its own credentials "because the gateway authorizes
+each prefix separately". That was never true: the artifacts key writes `builds/`, `libs/` and
+`e2e_reports/` alike.
 
 | Store | Holds | Written by |
 |---|---|---|
@@ -161,25 +165,25 @@ every push on such a branch, and made five CI jobs depend on a job that almost a
 
 ## Secrets & variables
 
-**21 repository secrets + 12 variables**:
+**16 repository secrets + 8 variables**, all managed in the Doppler project `ror_ci` (config
+`prd`) and synced to this repo. Change them in Doppler, never in GitHub — the sync overwrites.
 
 | Secret | Purpose |
 |---|---|
-| `ROR_LIBS_STORE_ACCESS_KEY_ID` / `..._SECRET` | libs S3 bucket (shared ES jars; read by every build, written by `mirror-es-libs.yml`) |
-| `ROR_ARTIFACTS_STORE_ACCESS_KEY_ID` / `..._SECRET` | artifacts S3 bucket (built plugin binaries) |
-| `ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID` / `..._SECRET` | e2e reports S3 bucket (Cypress artifacts of failed runs). Own key pair on purpose: it must not be able to write to the customer-facing `builds/` tree |
-| `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. The variables of the same name are also what `docker-hub-auth.sh` reads, so a job that only pulls puts the read-only token in them instead |
-| `ROR_ACTIVATION_KEY` | ROR PRO/Enterprise key the e2e stack boots with |
-| `KBN_REPO_GH_TOKEN` | dispatches the ROR KBN image build and reads its run status |
-| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token. It pulls the `container:` image, and each job that only pulls maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `docker-hub-auth.sh` reads. Without it, a fork pull request continues with anonymous pulls, and every other event stops |
+| `ROR_S3_ACCESS_KEY_ID` / `ROR_S3_SECRET_ACCESS_KEY` | the one S3 key pair; writes `builds/`, `libs/` and `e2e_reports/` |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `docker-hub-auth.sh` reads |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. It pulls the `container:` image, and each job that only pulls maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` as well. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
+| `ROR_ENT_ACTIVATION_TOKEN` | ROR PRO/Enterprise key the e2e stack boots with. **The secret is renamed; the env var handed to the container stays `ROR_ACTIVATION_KEY`, which is the customer-facing name** |
+| `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, pushes docs |
 | `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |
 | `MAVEN_REPO_USER`, `MAVEN_REPO_PASSWORD`, `MAVEN_STAGING_PROFILE_ID`, `GPG_KEY_ID`, `GPG_PASSPHRASE` | Maven Central publishing |
 | `PGP_SECRET_KEY_B64` | base64 of `secret.pgp`; the publish step decodes it to `.travis/secret.pgp`. Create with `base64 -w0 secret.pgp \| gh secret set PGP_SECRET_KEY_B64` |
 
-Variables (`vars.NAME`, non-sensitive): `ROR_LIBS_STORE_{ENDPOINT_URL,REGION,BUCKET,PATH_PREFIX}`,
-`ROR_ARTIFACTS_STORE_{...}` and `ROR_E2E_REPORTS_STORE_{...}`. Only the key pairs are secrets. The
-E2E_REPORTS non-key values may be set as variables or as secrets — the workflow reads `vars` first
-and falls back to `secrets`. The LIBS values are optional —
+Variables (`vars.NAME`, non-sensitive): `ROR_S3_{ENDPOINT_URL,REGION,BUCKET}` and
+`ROR_S3_PATH_{ARTIFACTS,LIBS,E2E_REPORTS}`. Only the key pair is secret. Keeping these as
+variables is deliberate: a non-secret stored as a secret makes GitHub redact every substring
+match of it, and a bucket named `beshu` turns `beshultd/...` into `***ltd` in every log line.
+The `ROR_S3_PATH_LIBS` value is optional —
 unset (or empty, which is what an undefined `vars.X` expands to) falls back to the defaults in
 `LibsStore`, which is also what a local build resolves against.
 
@@ -195,9 +199,10 @@ Every job that pulls or pushes a Docker Hub image uses one command, and no other
 source ci/docker-hub-auth.sh
 ```
 
-The script selects the credentials. It uses `DOCKER_REGISTRY_*` when the step supplies them, and
-`DOCKER_HUB_*` when it does not. It then authenticates both Docker clients with them: the docker
-CLI, with a login, and testcontainers, with `DOCKER_AUTH_CONFIG`. Both halves are necessary. The docker CLI
+The script reads one pair of variables, `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, and
+the job supplies it: a job that pushes maps `DOCKER_HUB_RW_TOKEN` into it, a job that only pulls
+maps `DOCKER_HUB_RO_TOKEN`. The script then authenticates both Docker clients with that pair: the
+docker CLI, with a login, and testcontainers, with `DOCKER_AUTH_CONFIG`. Both halves are necessary. The docker CLI
 does not read `DOCKER_AUTH_CONFIG`. Docker CLI 27, which the toolchains image contains, ignores
 that variable.
 
