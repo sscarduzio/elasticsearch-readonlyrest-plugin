@@ -9,7 +9,7 @@
 # HOW TO USE IT
 # Source the script. Do not run it. The caller shell needs the variables that the script exports.
 #
-#   source ci/docker-hub-auth.sh
+#   source docker-hub-auth.sh
 #
 # TWO CLIENTS
 # The script authenticates both Docker clients from the same credentials:
@@ -49,19 +49,19 @@
 #    That priority is safe here, because both halves use the same credentials. It is not safe if
 #    you add a second login with different credentials. Use this script instead.
 
-# $1 is a value, and $2 is the name of its variable. An Azure variable with no value expands to
-# the literal text "$(NAME)", so the script rejects that text also.
+# A secret that the workflow does not define expands to the empty string, so an empty value means
+# the job supplied nothing.
 _ror_docker_auth_isset() {
-  [ -n "$1" ] && [ "$1" != "\$($2)" ]
+  [ -n "$1" ]
 }
 
 # The job supplied no credentials. DOCKER_AUTH_REQUIRED decides if the job continues, and the
 # job stops by default.
 _ror_docker_auth_no_credentials() {
   echo "[CI] Docker authentication is OFF. Cause: $1"
-  # Compare against "false", not "true", so that an unset variable stops the job. Azure boolean
-  # parameters expand as True or False, so make the case uniform first (as ci/ci-lib.sh does).
-  if [ "$(echo "${DOCKER_AUTH_REQUIRED:-true}" | tr '[:upper:]' '[:lower:]')" != "false" ]; then
+  # Compare against "false", not "true", so that an unset variable stops the job. Every other value,
+  # "False" and a typing error alike, also stops it: the safe direction is to stop.
+  if [ "${DOCKER_AUTH_REQUIRED:-true}" != "false" ]; then
     # ::error:: puts an annotation on the job, as the inline logins did before.
     [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::Docker authentication failed: $1"
     echo "[CI] DOCKER_AUTH_REQUIRED is not false, so the job stops here." >&2
@@ -89,7 +89,7 @@ _ror_docker_auth() {
      && _ror_docker_auth_isset "${DOCKER_HUB_RO_TOKEN:-}" DOCKER_HUB_RO_TOKEN; then
     user=$DOCKER_HUB_USER; token=$DOCKER_HUB_RO_TOKEN; role="read-only"
   else
-    _ror_docker_auth_no_credentials "the job supplied no credentials (DOCKER_REGISTRY_USER and PASSWORD, or DOCKER_HUB_USER and RO_TOKEN)"
+    _ror_docker_auth_no_credentials "the job supplied no credentials (DOCKER_REGISTRY_USER and DOCKER_REGISTRY_PASSWORD, or DOCKER_HUB_USER and DOCKER_HUB_RO_TOKEN)"
     return $?
   fi
 
@@ -99,13 +99,19 @@ _ror_docker_auth() {
   auth=$(printf '%s:%s' "$user" "$token" | base64 -w0)
   export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$auth\"}}}"
 
-  # Hide the value from the log, because it contains base64(user:token). Each CI system has its own
-  # command for this. On GitHub Actions, the Azure command prints the secret instead of hiding it.
+  # Hide the value from the log, because it contains base64(user:token), and give it to the later
+  # steps of the job. These are two commands, not one. ::add-mask:: only hides: a step is its own
+  # process, so the export above dies with the step that sourced this file. A job that sources the
+  # file in a step of its own therefore needs the write to GITHUB_ENV, or testcontainers in a later
+  # step reads no value and pulls anonymously while the log says authentication is ON. The value
+  # holds no newline, because base64 -w0 emits one line, so the NAME=value form is enough here.
+  #
+  # Outside GitHub Actions (a developer running this by hand) both commands are skipped. The export
+  # still stands, so the shell that sourced the file is authenticated.
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
     echo "::add-mask::$auth"
     echo "::add-mask::$DOCKER_AUTH_CONFIG"
-  else
-    echo "##vso[task.setvariable variable=DOCKER_AUTH_CONFIG;isSecret=true]$DOCKER_AUTH_CONFIG"
+    echo "DOCKER_AUTH_CONFIG=$DOCKER_AUTH_CONFIG" >> "$GITHUB_ENV"
   fi
 
   if ! command -v docker >/dev/null 2>&1; then
@@ -127,8 +133,8 @@ _ror_docker_auth() {
 
 # The script is sourced, so `return` gives the status to the caller shell. That stops the step
 # under `set -e`, which the GitHub Actions bash shell sets. It does not stop a caller without
-# errexit, and the Azure `script:` steps have none: they would go on to pull anonymously. So exit
-# also. An interactive shell is the one exception, where exit would close the terminal.
+# errexit, which would go on to pull anonymously, so exit also. An interactive shell is the one
+# exception, where exit would close the terminal.
 
 # Stop the trace of commands while this file runs. Some callers set the xtrace option. The trace of
 # the login command would then put the token in the log.
