@@ -144,8 +144,8 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: false }
       - name: docker build & push
         env:
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
           # Drift guard: every ror-ci-toolchains tag in this workflow (env + all container: lines)
@@ -359,8 +359,8 @@ jobs:
           ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
           ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
           DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           source ci/docker-hub-auth.sh
@@ -644,8 +644,8 @@ jobs:
           ROR_KBN_WAIT_TIMEOUT_SECONDS: ${{ needs.e2e_prepare.outputs.kbn_wait_timeout_seconds }}
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
           # Do not let corepack ask before it downloads yarn. CI has no operator.
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
@@ -774,8 +774,8 @@ jobs:
           ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           ROR_TASK: ${{ matrix.ROR_TASK }}
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
           source ci/docker-hub-auth.sh
@@ -826,8 +826,8 @@ jobs:
           ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           ROR_TASK: ${{ matrix.ROR_TASK }}
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
           # ci-lib.sh interpolates this into the tag message (was the Azure/Travis build number)
           TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
         run: |

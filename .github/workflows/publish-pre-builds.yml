@@ -81,8 +81,8 @@ jobs:
           BUILD_ROR_ES_VERSIONS: ${{ inputs.es_versions }}
           IMAGE_TAG: ${{ inputs.tag }}
           FORCE_REBUILD: ${{ inputs.force_rebuild }}
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
 
