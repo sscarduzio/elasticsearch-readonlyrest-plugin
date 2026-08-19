@@ -144,8 +144,8 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: false }
       - name: docker build & push
         env:
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
           # Drift guard: every ror-ci-toolchains tag in this workflow (env + all container: lines)
@@ -156,7 +156,7 @@ jobs:
           fi
           echo ">>> Building $TOOLCHAINS_IMAGE"
           docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          echo "$DOCKER_HUB_RW_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
           docker push "$TOOLCHAINS_IMAGE"
 
   # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
@@ -260,12 +260,12 @@ jobs:
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
         run: ci/run-pipeline.sh
 
   # ── TEST: unit (Linux) ────────────────────────────────────────────────────
@@ -342,12 +342,12 @@ jobs:
           ROR_HEAVY_SUITE_PERMITS: '2'
           # the JDWP agent costs ~90MB RSS per ES container and nothing attaches to it in CI
           ROR_ES_JDWP: 'false'
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
         run: |
@@ -467,12 +467,12 @@ jobs:
       - name: ${{ matrix.ES_MODULE }}
         shell: pwsh
         env:
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           ES_MODULE: ${{ matrix.ES_MODULE }}
           # level packing (the random split gave 15/29/23 suites) + memory gate for native-ES spikes
           ROR_BALANCED_SHARDS: 'true'
@@ -585,7 +585,7 @@ jobs:
           ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
           E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-          KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
         run: ci/run-pipeline.sh
 
   # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
@@ -630,10 +630,10 @@ jobs:
           ROR_KBN_PREBUILD_RUN_ID: ${{ needs.e2e_prepare.outputs.kbn_run_id }}
           ROR_KBN_PREBUILD_RUN_URL: ${{ needs.e2e_prepare.outputs.kbn_run_url }}
           ROR_KBN_WAIT_TIMEOUT_SECONDS: ${{ needs.e2e_prepare.outputs.kbn_wait_timeout_seconds }}
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ACTIVATION_KEY }}
-          KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
           # Do not let corepack ask before it downloads yarn. CI has no operator.
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
@@ -642,7 +642,7 @@ jobs:
           # No fallback needed — trust corepack to manage the version per the e2e repo's package.json.
           corepack enable
           # Authenticate Docker Hub for docker compose (not for testcontainers).
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          echo "$DOCKER_HUB_RW_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
           ci/run-pipeline.sh
 
@@ -651,21 +651,20 @@ jobs:
       - name: Upload Cypress artifacts to S3 on failure
         if: failure()
         continue-on-error: true
-        # Separate credentials limit access to e2e_reports/ only (not to builds/ or libs/).
-        # Store the key pair as a secret; other values may use vars or secrets.
+        # One S3 credential set serves every store; only the path prefix differs per store.
         env:
-          ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID }}
-          ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET }}
-          ROR_E2E_REPORTS_STORE_BUCKET: ${{ vars.ROR_E2E_REPORTS_STORE_BUCKET || secrets.ROR_E2E_REPORTS_STORE_BUCKET }}
-          ROR_E2E_REPORTS_STORE_REGION: ${{ vars.ROR_E2E_REPORTS_STORE_REGION || secrets.ROR_E2E_REPORTS_STORE_REGION }}
-          ROR_E2E_REPORTS_STORE_ENDPOINT_URL: ${{ vars.ROR_E2E_REPORTS_STORE_ENDPOINT_URL || secrets.ROR_E2E_REPORTS_STORE_ENDPOINT_URL }}
-          E2E_REPORTS_PATH_PREFIX: ${{ vars.ROR_E2E_REPORTS_STORE_PATH_PREFIX || secrets.ROR_E2E_REPORTS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_E2E_REPORTS: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
         run: |
           set -e
           # Path layout: <PATH_PREFIX>/YYYY-MM-DD/build_<run id>/<module>_<elk>/<videos|screenshots>
           # Do not hardcode PATH_PREFIX — it is already set. The date sorts reports chronologically.
-          BASE="${E2E_REPORTS_PATH_PREFIX:+${E2E_REPORTS_PATH_PREFIX%/}/}"
-          export ROR_E2E_REPORTS_STORE_PATH_PREFIX="${BASE}$(date -u +%Y-%m-%d)/build_${{ github.run_id }}"
+          BASE="${ROR_S3_PATH_E2E_REPORTS:+${ROR_S3_PATH_E2E_REPORTS%/}/}"
+          export ROR_S3_PATH_E2E_REPORTS="${BASE}$(date -u +%Y-%m-%d)/build_${{ github.run_id }}"
           ci/upload-cypress-artifacts-to-s3.sh \
             "${E2E_TESTS_DIR:?run_e2e_tests did not publish the e2e clone path}/results" \
             "${{ matrix.module }}_${{ matrix.elk }}"
@@ -757,24 +756,19 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: false }
       - name: ${{ matrix.ROR_TASK }}
         env:
-          ROR_ARTIFACTS_STORE_ENDPOINT_URL: ${{ vars.ROR_ARTIFACTS_STORE_ENDPOINT_URL }}
-          ROR_ARTIFACTS_STORE_REGION: ${{ vars.ROR_ARTIFACTS_STORE_REGION }}
-          ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_ID }}
-          ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET }}
-          ROR_ARTIFACTS_STORE_BUCKET: ${{ vars.ROR_ARTIFACTS_STORE_BUCKET }}
-          ROR_ARTIFACTS_STORE_PATH_PREFIX: ${{ vars.ROR_ARTIFACTS_STORE_PATH_PREFIX }}
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           ROR_TASK: ${{ matrix.ROR_TASK }}
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          echo "$DOCKER_HUB_RW_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
           ci/run-pipeline.sh
 
   # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
@@ -814,26 +808,21 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: true }
       - name: ${{ matrix.ROR_TASK }}
         env:
-          ROR_ARTIFACTS_STORE_ENDPOINT_URL: ${{ vars.ROR_ARTIFACTS_STORE_ENDPOINT_URL }}
-          ROR_ARTIFACTS_STORE_REGION: ${{ vars.ROR_ARTIFACTS_STORE_REGION }}
-          ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_ID }}
-          ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET }}
-          ROR_ARTIFACTS_STORE_BUCKET: ${{ vars.ROR_ARTIFACTS_STORE_BUCKET }}
-          ROR_ARTIFACTS_STORE_PATH_PREFIX: ${{ vars.ROR_ARTIFACTS_STORE_PATH_PREFIX }}
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           ROR_TASK: ${{ matrix.ROR_TASK }}
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
           # ci-lib.sh interpolates this into the tag message (was the Azure/Travis build number)
           TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -e
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          echo "$DOCKER_HUB_RW_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
           ci/run-pipeline.sh
 
   # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
