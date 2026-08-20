@@ -246,12 +246,18 @@ a push. Three clients pull images, and the script sets all three from one variab
 |---|---|---|
 | docker daemon | `registry-mirrors` in `/etc/docker/daemon.json` | `moby/buildkit`, and any `docker build` on the host |
 | buildx and BuildKit | `ROR_DOCKER_HUB_MIRROR`, which gradle turns into `--config build-base/buildkitd.toml` | the `FROM` lines in `es*x/Dockerfile` |
-| testcontainers | `TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX` | the test images, and `DockerHubMirror` for a `FROM` in an `ImageFromDockerfile` |
+| the test suite | `ROR_DOCKER_HUB_MIRROR_PREFIX`, which `DockerHubMirror` reads | the images each call site names |
 
 BuildKit does not read `daemon.json`, which is why the first two are separate. Only a job **without**
 `container:` gets the daemon half: a job whose steps run inside the toolchains image reaches the host
 daemon through the mounted socket and cannot restart it. The script detects that and skips it. The
 other two halves work everywhere.
+
+The test suite names every image it mirrors, one call site at a time. Do not set
+`TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX` instead: testcontainers applies that prefix to every name
+without a registry host, and a locally built name looks the same as a Docker Hub name. It rewrote our
+own `ror-it-es:<hash>` image and then tried to pull it, which failed every `it_linux` leg with
+"manifest unknown". Ryuk still comes from Docker Hub for the same reason.
 
 `ROR_DOCKER_HUB_MIRROR=false` switches the mirror off. `e2e_tests` is the only job that sets it: it
 pulls images that two other runs pushed a moment before, and a cache can answer stale.

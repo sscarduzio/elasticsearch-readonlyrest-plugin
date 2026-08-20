@@ -23,18 +23,17 @@ package tech.beshu.ror.utils.containers
   * account quota, and this test suite is its heaviest user. A cache answers from a different host. See
   * build-base/buildkitd.toml.
   *
-  * testcontainers already rewrites image names from TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX, but only for an image it
-  * pulls itself. It does not rewrite a FROM inside an ImageFromDockerfile build, because that Dockerfile goes to the
-  * Docker daemon as text. Three call sites build an image that way and use this object: WireMockContainer (from Java),
-  * Elasticsearch and DnsServerContainer.
+  * Every image this mirrors is named at its call site, on purpose. testcontainers can prefix names by itself, from
+  * TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX, but it prefixes EVERY name without a registry host. A locally built name looks
+  * the same as a Docker Hub name, so it rewrote our own `ror-it-es:<hash>` image and then tried to pull it from the
+  * mirror. We therefore keep our own variable, and each call site says what it wants mirrored.
   *
-  * It reads the same variable testcontainers reads, so one setting controls the whole suite. ci/configure-docker.sh
-  * sets it. The prefix needs a trailing slash: "mirror.gcr.io/".
+  * ci/configure-docker.sh sets ROR_DOCKER_HUB_MIRROR_PREFIX. The prefix needs a trailing slash: "mirror.gcr.io/".
   */
 object DockerHubMirror {
 
-  private val envName = "TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX"
-  private val propertyName = "hub.image.name.prefix"
+  private val envName = "ROR_DOCKER_HUB_MIRROR_PREFIX"
+  private val propertyName = "ror.docker.hub.mirror.prefix"
 
   /** The image name to pull. It is unchanged when no mirror is configured, and when the name already carries a registry
     * host. The mirror serves docker.io only, so `docker.elastic.co/elasticsearch/elasticsearch` and

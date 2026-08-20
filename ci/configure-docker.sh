@@ -24,7 +24,12 @@
 #   - the docker daemon    registry-mirrors in /etc/docker/daemon.json
 #   - buildx and BuildKit  ROR_DOCKER_HUB_MIRROR, which the gradle build turns into a --config flag
 #                          that points at build-base/buildkitd.toml
-#   - testcontainers       TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX
+#   - the test suite       ROR_DOCKER_HUB_MIRROR_PREFIX, which DockerHubMirror reads
+#
+# Do NOT set TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX here. testcontainers applies that prefix to every
+# name without a registry host, and a locally built name looks the same as a Docker Hub name. It
+# rewrote our own ror-it-es:<hash> image and then tried to pull it from the mirror, which fails with
+# "manifest unknown". The test suite therefore names the images it mirrors, one by one.
 #
 # ROR_DOCKER_HUB_MIRROR=false switches the mirror off. The e2e job does that, because it pulls an
 # image that the publish job pushed a moment before, and a cache can hold a stale answer.
@@ -105,15 +110,15 @@ _ror_docker_mirror() {
     return 0
   fi
 
-  # The gradle build reads the first variable, testcontainers reads the second.
+  # The gradle build reads the first variable, the test suite reads the second.
   export ROR_DOCKER_HUB_MIRROR="true"
-  export TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX="${ROR_DOCKER_HUB_MIRROR_HOST}/"
+  export ROR_DOCKER_HUB_MIRROR_PREFIX="${ROR_DOCKER_HUB_MIRROR_HOST}/"
 
   # A step is its own process, so give both values to the later steps of the job as well.
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
     {
       echo "ROR_DOCKER_HUB_MIRROR=true"
-      echo "TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX=${ROR_DOCKER_HUB_MIRROR_HOST}/"
+      echo "ROR_DOCKER_HUB_MIRROR_PREFIX=${ROR_DOCKER_HUB_MIRROR_HOST}/"
     } >> "$GITHUB_ENV"
   fi
 
