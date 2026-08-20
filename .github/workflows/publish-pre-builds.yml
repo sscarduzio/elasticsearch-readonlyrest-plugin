@@ -1,5 +1,12 @@
 name: ROR ES Publish Pre-Builds
 
+# Two repos dispatch this workflow, and a dispatch is told nothing about the run it creates. They
+# find their run by this title, so the tag has to stay in it: the tag holds a run id and an
+# attempt, which makes the title unique. The e2e repo builds the same string in
+# ci/prebuild-images-lib.sh, and the two must match. The tag is optional. If a dispatch sends no
+# tag, the title shows the versions. Then no title stops after the word "pre-build".
+run-name: ROR ES pre-build ${{ inputs.tag || inputs.es_versions }}
+
 # Manual-only: no push/pull_request triggers (Azure's `trigger: none` / `pr: none`).
 on:
   workflow_dispatch:
@@ -81,8 +88,8 @@ jobs:
           BUILD_ROR_ES_VERSIONS: ${{ inputs.es_versions }}
           IMAGE_TAG: ${{ inputs.tag }}
           FORCE_REBUILD: ${{ inputs.force_rebuild }}
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RW_TOKEN: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
 

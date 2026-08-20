@@ -79,7 +79,7 @@ Three repos take part, so no single one owns the whole thing: this repo builds t
 `readonlyrest_kbn` builds the ROR KBN image, and the e2e repo owns the suite, the runner, and the
 contract between all three —
 [`ci/prebuild-images-lib.sh`](https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/develop/ci/prebuild-images-lib.sh)
-(image names, tag shape, workflow inputs, wait/poll behaviour). Change the contract there, not here.
+(image names, tag shape, workflow inputs, wait behaviour). Change the contract there, not here.
 
 Two jobs, because the two plugin images are built in different places:
 
@@ -88,6 +88,30 @@ Two jobs, because the two plugin images are built in different places:
   KBN image build for all those versions. Non-blocking: it does not wait for the build.
 - `e2e_tests` runs once per version, in parallel. It builds and pushes the ROR ES dev image from
   **this** commit, waits for the ROR KBN image, then runs the suite against both.
+
+The wait is not a poll of the registry: a leg waits on the dispatched ROR KBN **run**. What the wait
+guarantees, and what this repo has to supply for it, is the contract at the top of the shared lib.
+Read it there, not here. Four obligations fall on this repo:
+
+- **Pass the run down.** `e2e_prepare` fails if it cannot identify the run it started, and publishes
+  it as the `kbn_run_id` and `kbn_run_url` outputs. `ci.yml` hands both to every `e2e_tests` leg,
+  together with `ROR_GH_TOKEN`. A leg with an empty run id reports broken wiring and stops.
+- **Log in first.** Each leg authenticates Docker before the wait, so the registry check the wait
+  makes at the end counts against the ROR account and not against the runner address.
+- **Give the leg a token that can read the runs of the ROR KBN repo.** `ROR_GH_TOKEN` needs
+  `actions:read`. A refused read ends the wait with code 8 in seconds, and names the right it
+  needs. Reading it is how the leg follows the run, so there is no way round it.
+- **Keep the title on our own pre-build run.** `publish-pre-builds.yml` carries
+  `run-name: ROR ES pre-build ${{ inputs.tag || inputs.es_versions }}`. Every repo that dispatches it
+  — the e2e repo and the ROR KBN repo — finds its run by that title, because a dispatch is told
+  nothing about the run it creates. A dispatcher must send a tag, and the shared lib refuses a
+  dispatch that sends none. So a run that a job waits for always shows `ROR ES pre-build <tag>`.
+  The fallback applies only to a dispatch that sends no tag, and no search looks for such a title.
+  Remove the line and every dispatch of this workflow fails, because no run can be recognised.
+
+One consequence shapes this side: the wait ends when the ROR KBN run ends, not when one image
+appears, so all three legs reach their suite at about the same time. The Gradle build of the ROR ES
+image runs before the wait and absorbs most of that time.
 
 Both sides address the images by a per-run tag (`run-<build id>`), and the build id is created by
 `e2e_prepare` and passed down as a job output. A test job must never re-derive it: a partial re-run
