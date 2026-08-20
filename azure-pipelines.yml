@@ -327,7 +327,7 @@ stages:
             persistCredentials: true
           - script: |
               # core_tests starts testcontainers too (LDAP/WireMock) — same Docker Hub rate limit as IT.
-              source ci/docker-hub-auth.sh
+              source ci/configure-docker.sh
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:

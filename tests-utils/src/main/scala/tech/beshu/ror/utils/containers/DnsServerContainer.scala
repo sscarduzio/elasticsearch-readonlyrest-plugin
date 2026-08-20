@@ -27,6 +27,9 @@ import scala.jdk.CollectionConverters.*
 class DnsServerContainer(srvServiceHost: String, srvServicePort: Int)
     extends GenericContainer(
       dockerImage = new ImageFromDockerfile()
+        // testcontainers never rewrites a FROM, so the Dockerfile takes the mirror as a build arg.
+        // That keeps the image version pinned in the Dockerfile. An empty value pulls from Docker Hub.
+        .withBuildArg("DOCKER_HUB_MIRROR", DockerHubMirror.configuredPrefix)
         .withFileFromClasspath("Dockerfile", "coredns-image/Dockerfile")
         .withFileFromClasspath("Corefile", "coredns-image/Corefile")
         .withFileFromString(

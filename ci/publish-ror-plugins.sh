@@ -120,7 +120,10 @@ release_ror_docker_image() {
   local es_version=$1 module=$2
 
   if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${es_version}" >/dev/null 2>&1; then
-    if ! ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
+    # Retried for the same reason as the pre-build push in ci-lib.sh: this build pulls base images,
+    # and a registry answers 429 when the runner address is over its limit. retry_with_backoff comes
+    # from ci-lib.sh, which run-pipeline.sh sources before this file.
+    if ! retry_with_backoff ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
       echo "Failed to publish plugin Docker image for ES $es_version"
       return 4
     fi

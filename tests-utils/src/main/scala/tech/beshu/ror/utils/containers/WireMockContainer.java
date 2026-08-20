@@ -37,7 +37,9 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   private static final Logger logger = LogManager.getLogger(WireMockContainer.class);
 
   public static int WIRE_MOCK_PORT = 8080;
-  public static final String BASE_IMAGE = "rodolpheche/wiremock:2.5.1";
+  // This name goes into a Dockerfile FROM below, which testcontainers passes to the daemon as text
+  // and never rewrites. DockerHubMirror applies the mirror here instead.
+  public static final String BASE_IMAGE = DockerHubMirror.applyTo("rodolpheche/wiremock:2.5.1");
   private static final Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
 
   private WireMockContainer(ImageFromDockerfile imageFromDockerfile) {
