@@ -85,8 +85,7 @@ dependencies {
     api group: 'eu.timepit',                        name: 'refined_3',                           version: '0.11.3'
     api group: 'org.mozilla',                       name: 'rhino',                               version: '1.8.1'
     api group: 'com.github.ben-manes.caffeine',     name: 'caffeine',                            version: '3.2.3'
-    // Direct dependency: ~16 production files import com.google.common. It used to arrive as a
-    // transitive of org.reflections; 32.0.1-jre is the floor that fixed CVE-2023-2976.
+    // 32.0.1-jre is the CVE-2023-2976 floor — do not go below it.
     api group: 'com.google.guava',                  name: 'guava',                               version: '32.0.1-jre'
     api group: 'com.github.tototoshi',              name: 'scala-csv_3',                         version: '2.0.0'
     api group: 'com.indoorvivants',                 name: 'scala-uri_3',                         version: '4.2.0'
