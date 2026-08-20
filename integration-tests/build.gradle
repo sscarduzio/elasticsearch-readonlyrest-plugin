@@ -48,14 +48,14 @@ def newestEsVersion = tech.beshu.ror.gradle.utils.EsModuleFinder
 def defaultEsModule = tech.beshu.ror.gradle.utils.EsModuleFinder
         .findEsModuleFor(rootProject, newestEsVersion).orElseThrow().name
 
-def partitionBySingletonUsage = { org.gradle.api.tasks.testing.Test task, List<String> suiteNames ->
+def partitionBySharedEsUsage = { org.gradle.api.tasks.testing.Test task, List<String> suiteNames ->
     def dirs = task.testClassesDirs.files.collect { it.toPath() }
-    def singleton = tech.beshu.ror.buildbase.SuiteClassGraph.subtypesOf(
+    def sharedEsSuites = tech.beshu.ror.buildbase.SuiteClassGraph.subtypesOf(
         'tech.beshu.ror.integration.utils.SingletonPluginTestSupport', dirs, suiteNames)
-    [suiteNames.findAll { singleton.contains(it) }, suiteNames.findAll { !singleton.contains(it) }]
+    [suiteNames.findAll { sharedEsSuites.contains(it) }, suiteNames.findAll { !sharedEsSuites.contains(it) }]
 }
 
-def configureIntegrationTest = { Test task, boolean singletonPhase ->
+def configureIntegrationTest = { Test task, boolean sharedEsPhase ->
     // The java plugin wires these into `test` only; a registered Test task starts without them.
     task.testClassesDirs = sourceSets.test.output.classesDirs
     task.classpath = sourceSets.test.runtimeClasspath
@@ -86,7 +86,7 @@ def configureIntegrationTest = { Test task, boolean singletonPhase ->
     def shardCount = (project.findProperty('shardCount') ?: '1').toInteger()
     def shardIndex = (project.findProperty('shardIndex') ?: '0').toInteger()
     def sharded = shardCount > 1 && project.hasProperty('shardIndex')
-    if (singletonPhase && !sharded) {
+    if (sharedEsPhase && !sharded) {
         // Disable, do not just leave the filter empty: an enabled Test task with no filter runs EVERY suite.
         task.enabled = false
         return
@@ -98,7 +98,7 @@ def configureIntegrationTest = { Test task, boolean singletonPhase ->
         // Windows native-ES runs key ports and install dirs off this (see WindowsEsPortProvider /
         // WindowsEsDirectoryManager); harmless on Linux where docker isolates everything.
         task.systemProperty 'ror.shard.index', shardIndex
-        def phaseSuffix = singletonPhase ? '-singleton' : ''
+        def phaseSuffix = sharedEsPhase ? '-shared-es' : ''
         task.reports.junitXml.outputLocation = layout.buildDirectory.dir("test-results/shard-${shardIndex}${phaseSuffix}")
         task.reports.html.outputLocation = layout.buildDirectory.dir("reports/tests/shard-${shardIndex}${phaseSuffix}")
         task.binaryResultsDirectory.set(layout.buildDirectory.dir("test-results/shard-${shardIndex}${phaseSuffix}-bin"))
@@ -126,8 +126,8 @@ def configureIntegrationTest = { Test task, boolean singletonPhase ->
             if (shardSuites.isEmpty()) {
                 throw new GradleException("Shard ${shardIndex}/${shardCount} matched 0 suites — check shardCount/shardIndex.")
             }
-            def (singletonSuites, clusterSuites) = partitionBySingletonUsage(task, shardSuites)
-            def phaseSuites = singletonPhase ? singletonSuites : clusterSuites
+            def (sharedEsSuites, ownClusterSuites) = partitionBySharedEsUsage(task, shardSuites)
+            def phaseSuites = sharedEsPhase ? sharedEsSuites : ownClusterSuites
             if (phaseSuites.isEmpty()) {
                 // Same trap as above: an empty filter would run every suite.
                 task.enabled = false
@@ -136,7 +136,7 @@ def configureIntegrationTest = { Test task, boolean singletonPhase ->
             }
             logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount} ${task.name}: " +
                 "${phaseSuites.size()} of ${shardSuites.size()} suites " +
-                "(${singletonSuites.size()} singleton / ${clusterSuites.size()} own-cluster; ${balanced ? 'balanced' : 'hash'} packing)")
+                "(${sharedEsSuites.size()} shared-ES / ${ownClusterSuites.size()} own-cluster; ${balanced ? 'balanced' : 'hash'} packing)")
         } else {
             includeTestsMatching 'tech.beshu.ror.integration.suites.*'
         }

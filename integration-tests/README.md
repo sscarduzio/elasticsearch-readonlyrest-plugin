@@ -20,16 +20,17 @@ Omit `-PesModule` to run against the module that publishes the newest supported 
 Suites run serially inside a worker JVM, because they share one mutable singleton ES. Parallelism
 comes from sharding: K independent invocations over a disjoint partition of the suites.
 
-Each shard runs its share in two steps, so it frees the shared ES as soon as the suites that need
-it are done, instead of holding it idle until the shard ends:
+Each shard runs its share in up to two steps, so it frees the shared ES as soon as the suites that
+need it are done, instead of holding it idle until the shard ends:
 
 1. `integration-tests:sharedEsSuitesTest` — the suites that use the shared ES. The ES stops when
    this task's JVM exits.
 2. `integration-tests:test` — the remaining suites, in a fresh JVM. Each one starts its own
    cluster, and this JVM never starts a shared ES.
 
-`shardedTest` starts both steps for every shard, in that order. Without sharding, `test` alone
-still runs every suite.
+A shard whose partition holds no suite for one of the steps disables that step, so a shard runs one
+task or two. `shardedTest` starts both steps for every shard, in that order. Without sharding,
+`test` alone still runs every suite.
 
 ## Knobs
 

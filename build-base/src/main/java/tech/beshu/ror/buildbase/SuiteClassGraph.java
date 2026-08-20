@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -50,9 +49,8 @@ public final class SuiteClassGraph {
 
   /** The subset of {@code candidates} (binary names) that are subtypes of {@code supertype}. */
   public static Set<String> subtypesOf(
-      String supertype, Collection<Path> classDirs, Collection<String> candidates)
-      throws IOException {
-    Set<String> allSubtypes = allSubtypesOf(supertype, subtypesBySupertypeIn(classDirs));
+      String supertype, Collection<Path> classDirs, Collection<String> candidates) {
+    Set<String> allSubtypes = allSubtypesOf(supertype, directSubtypesBySupertypeIn(classDirs));
     return candidates.stream().filter(allSubtypes::contains).collect(Collectors.toSet());
   }
 
@@ -70,29 +68,31 @@ public final class SuiteClassGraph {
     return reached;
   }
 
-  /** The hierarchy inverted: each type mapped to the types that declare it as a supertype. */
-  private static Map<String, List<String>> subtypesBySupertypeIn(Collection<Path> classDirs)
-      throws IOException {
-    Map<String, List<String>> subtypes = new HashMap<>();
-    for (Path dir : classDirs) {
-      if (!Files.isDirectory(dir)) {
-        continue;
-      }
-      try (Stream<Path> files = Files.walk(dir)) {
-        files
-            .filter(file -> file.getFileName().toString().endsWith(".class"))
-            .map(SuiteClassGraph::read)
-            .forEach(
-                node ->
-                    declaredSupertypesOf(node)
-                        .forEach(
-                            declared ->
-                                subtypes
-                                    .computeIfAbsent(declared, key -> new java.util.ArrayList<>())
-                                    .add(binaryName(node.name))));
-      }
+  /**
+   * The hierarchy inverted: each type mapped to the types that declare it as a DIRECT supertype.
+   * Transitive subtypes come from sweeping this map, not from the map itself.
+   */
+  private static Map<String, List<String>> directSubtypesBySupertypeIn(Collection<Path> classDirs) {
+    return classDirs.stream()
+        .filter(Files::isDirectory)
+        .flatMap(SuiteClassGraph::classFilesIn)
+        .map(SuiteClassGraph::read)
+        .flatMap(
+            node ->
+                declaredSupertypesOf(node).stream()
+                    .map(declared -> Map.entry(declared, binaryName(node.name))))
+        .collect(
+            Collectors.groupingBy(
+                Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
+  }
+
+  private static Stream<Path> classFilesIn(Path dir) {
+    try {
+      // flatMap closes each mapped stream once its contents are consumed, so the walk is released.
+      return Files.walk(dir).filter(file -> file.getFileName().toString().endsWith(".class"));
+    } catch (IOException e) {
+      throw new UncheckedIOException("cannot walk " + dir, e);
     }
-    return subtypes;
   }
 
   private static ClassNode read(Path file) {

@@ -62,8 +62,7 @@ class SuiteClassGraphTest {
   }
 
   @Test
-  void candidateAbsentFromTheScannedTreeIsNotASubtype()
-      throws IOException, URISyntaxException {
+  void candidateAbsentFromTheScannedTreeIsNotASubtype() throws IOException, URISyntaxException {
     Set<String> found =
         SuiteClassGraph.subtypesOf(
             MARKER, List.of(ownClassesDir()), List.of("com.example.DoesNotExist"));
