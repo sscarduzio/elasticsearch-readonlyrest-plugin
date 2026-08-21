@@ -110,6 +110,14 @@ _ror_docker_mirror_daemon() {
       echo "[CI] /etc/docker/daemon.json is not readable JSON, so the daemon keeps its own settings."
       return 0
     }
+    # jq prints nothing and exits 0 when its input is empty, so a blank file passes the test above
+    # and gives back nothing. Writing that would leave the daemon with no settings at all, and the
+    # log below would still say the mirror is on. A blank file holds nothing to keep, so use the
+    # plain mirror config instead. The same test also rejects any other output that is not JSON.
+    if ! printf '%s' "$merged" | jq -e . >/dev/null 2>&1; then
+      merged="{\"registry-mirrors\":[\"${mirror}\"]}"
+    fi
+
     # Keep the file as it is now, to put it back if the daemon refuses the new one.
     backup=$(mktemp) && sudo -n cat "$config" > "$backup" || { rm -f "$backup"; return 0; }
   else
