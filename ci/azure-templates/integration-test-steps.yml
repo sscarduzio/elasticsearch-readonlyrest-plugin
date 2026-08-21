@@ -21,14 +21,11 @@ steps:
     fetchDepth: 1
     clean: false
     persistCredentials: true
+  # No ROR_S3_* here: these tests only READ the ES libs, and Gradle's default public store
+  # (readonlyrest.plugin-common-conventions.gradle) already serves them. Passing the vars in is a
+  # hazard - Azure leaves `$(NAME)` literal when the pipeline variable is undefined, and Gradle then
+  # builds a nonsense repository URL that fails to resolve.
   - script: |
-      export ROR_S3_ENDPOINT_URL=$VAR_ROR_S3_ENDPOINT_URL
-      export ROR_S3_REGION=$VAR_ROR_S3_REGION
-      export ROR_S3_BUCKET=$VAR_ROR_S3_BUCKET
-      export ROR_S3_ACCESS_KEY_ID=$VAR_ROR_S3_ACCESS_KEY_ID
-      export ROR_S3_SECRET_ACCESS_KEY=$VAR_ROR_S3_SECRET_ACCESS_KEY
-      export ROR_S3_PATH_LIBS=$VAR_ROR_S3_PATH_LIBS
-
       # Sourced in-process so DOCKER_AUTH_CONFIG (when set) reaches the testcontainers JVM, and
       # stays UNSET otherwise (a cross-step Azure var can't express "absent", only ""/literal — both
       # of which testcontainers' RegistryAuthLocator would fail to JSON-parse).
@@ -38,12 +35,6 @@ steps:
       ci/run-pipeline.sh
     env:
       GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-      VAR_ROR_S3_ENDPOINT_URL: $(ROR_S3_ENDPOINT_URL)
-      VAR_ROR_S3_REGION: $(ROR_S3_REGION)
-      VAR_ROR_S3_BUCKET: $(ROR_S3_BUCKET)
-      VAR_ROR_S3_ACCESS_KEY_ID: $(ROR_S3_ACCESS_KEY_ID)
-      VAR_ROR_S3_SECRET_ACCESS_KEY: $(ROR_S3_SECRET_ACCESS_KEY)
-      VAR_ROR_S3_PATH_LIBS: $(ROR_S3_PATH_LIBS)
       DOCKER_HUB_USER: $(DOCKER_HUB_USER)
       DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
 
