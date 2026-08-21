@@ -10,9 +10,12 @@ CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 #
 # An absent key fails. An empty value would name a wrong image or a wrong version, and nothing later
 # would show the cause. Every reader of the file goes through here: a second parser drifts.
+#
+# The value is everything after the first `=`, because a value such as `-Dkey=value` holds one too.
+# A key that the file states twice keeps the last line, which is the value gradle itself reads.
 gradle_property() {
   local key=$1 file=$CI_DIR/../gradle.properties value
-  value=$(awk -F= -v k="$key" '$1==k {print $2}' "$file")
+  value=$(awk -F= -v k="$key" '$1==k {line=$0} END {sub(/^[^=]*=/, "", line); print line}' "$file")
   if [ -z "$value" ]; then
     echo "$file has no $key" >&2
     return 1
