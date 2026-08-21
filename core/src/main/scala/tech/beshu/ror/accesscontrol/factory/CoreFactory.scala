@@ -73,38 +73,24 @@ trait CoreFactory {
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
       mocksProvider: MocksProvider,
-      auditCapabilities: EsAuditCapabilities
+      auditCapabilities: EsAuditCapabilities.Supported
   ): Task[Either[NonEmptyList[CoreCreationError], CoreCreationResult]]
 
 }
 
 object CoreFactory {
 
-  final class CoreCreationResult(val core: Core, val auditSetup: AuditSetup)
+  final class CoreCreationResult(val core: Core, val auditSetup: AuditSetup.Supported)
 
   object CoreCreationResult {
-    sealed trait AuditSetup
+
+    final class AuditSetup[O <: AuditOutput](
+        val capability: EsAuditCapabilities[O],
+        val settings: AuditingConfig[O]
+    )
 
     object AuditSetup {
-
-      final class Index(
-          val capability: EsAuditCapabilities.IndexOnly,
-          val settings: AuditingConfig.IndexOnly
-      ) extends AuditSetup
-
-      final class IndexWithDataStream(
-          val capability: EsAuditCapabilities.IndexOrDataStream,
-          val settings: AuditingConfig.IndexOrDataStream
-      ) extends AuditSetup
-
-    }
-
-    extension (audit: AuditSetup) {
-
-      def settings: AuditingConfig.AnyOutput = audit match {
-        case index: AuditSetup.Index                => index.settings
-        case stream: AuditSetup.IndexWithDataStream => stream.settings
-      }
+      type Supported = AuditSetup[? <: AuditOutput]
 
     }
 
@@ -123,7 +109,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
       mocksProvider: MocksProvider,
-      auditCapabilities: EsAuditCapabilities
+      auditCapabilities: EsAuditCapabilities.Supported
   ): Task[Either[NonEmptyList[CoreCreationError], CoreCreationResult]] = {
     rorSettings.settingsJson \\ Attributes.rorSectionName match {
       case Nil =>
@@ -154,7 +140,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
       mocksProvider: MocksProvider,
-      auditCapabilities: EsAuditCapabilities
+      auditCapabilities: EsAuditCapabilities.Supported
   ) = {
     val resolver = new JsonStaticVariablesResolver(
       systemContext.envVarsProvider,
@@ -191,7 +177,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
       mocksProvider: MocksProvider,
-      auditCapabilities: EsAuditCapabilities
+      auditCapabilities: EsAuditCapabilities.Supported
   ) = {
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
@@ -199,23 +185,14 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
         if (!enabled) {
           AsyncDecoderCreator.from(
             Decoder.const({
-              val auditingConfig = AuditingConfig(
-                outputsConfig = AuditOutputsConfig.Disabled,
-                defaultAclLog = true,
-                esNodeSettings = esEnv.esNodeSettings
-              )
+              val auditSetup = disabledAuditSetup(auditCapabilities)
               new CoreCreationResult(
                 core = Core(
                   accessControl = DisabledAccessControlList,
                   dependencies = RorDependencies.noOp,
-                  auditingConfig = auditingConfig,
+                  auditingConfig = auditSetup.settings,
                 ),
-                auditSetup = auditCapabilities match {
-                  case index: EsAuditCapabilities.IndexOnly =>
-                    AuditSetup.Index(index, auditingConfig)
-                  case stream: EsAuditCapabilities.IndexOrDataStream =>
-                    AuditSetup.IndexWithDataStream(stream, auditingConfig)
-                }
+                auditSetup = auditSetup
               )
             })
           )
@@ -537,17 +514,26 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
     }
   }
 
-  private def auditSettingsDecoder(
-      auditCapabilities: EsAuditCapabilities
-  )(esEnv: EsEnv): Decoder[AuditSetup] = auditCapabilities match {
+  private def disabledAuditSetup[O <: AuditOutput](auditCapabilities: EsAuditCapabilities[O]): AuditSetup[O] = {
+    val auditingConfig: AuditingConfig[O] = AuditingConfig(
+      outputsConfig = AuditOutputsConfig.Disabled,
+      defaultAclLog = true,
+      esNodeSettings = esEnv.esNodeSettings
+    )
+    new AuditSetup(auditCapabilities, auditingConfig)
+  }
+
+  private def auditSettingsDecoder[O <: AuditOutput](
+      auditCapabilities: EsAuditCapabilities[O]
+  )(esEnv: EsEnv): Decoder[AuditSetup[O]] = auditCapabilities match {
     case cap: EsAuditCapabilities.IndexOnly =>
       AuditingSettingsDecoder
         .indexOnly(esEnv)
-        .map(settings => new AuditSetup.Index(cap, settings))
+        .map(settings => new AuditSetup(cap, settings))
     case cap: EsAuditCapabilities.IndexOrDataStream =>
       AuditingSettingsDecoder
         .indexOrDataStream(esEnv)
-        .map(settings => new AuditSetup.IndexWithDataStream(cap, settings))
+        .map(settings => new AuditSetup(cap, settings))
   }
 
   private def coreDecoder(
@@ -555,7 +541,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
       globalSettings: GlobalSettings,
       mocksProvider: MocksProvider,
-      auditCapabilities: EsAuditCapabilities
+      auditCapabilities: EsAuditCapabilities.Supported
   ): AsyncDecoder[CoreCreationResult] = {
     AsyncDecoderCreator.instance[CoreCreationResult] { c =>
       val decoder = for {

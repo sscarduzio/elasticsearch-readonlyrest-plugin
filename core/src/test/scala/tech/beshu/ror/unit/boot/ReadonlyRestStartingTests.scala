@@ -295,7 +295,7 @@ class ReadonlyRestStartingTests
                     )
                   new CoreCreationResult(
                     Core(mockEnabledAccessControl, RorDependencies.noOp, auditingConfig),
-                    new CoreCreationResult.AuditSetup.IndexWithDataStream(
+                    new CoreCreationResult.AuditSetup(
                       new IndexOrDataStream(
                         MockIndexBasedAuditSinkServiceCreator,
                         MockDataStreamBasedAuditSinkServiceCreator
@@ -1657,7 +1657,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup.IndexWithDataStream(
+            new CoreCreationResult.AuditSetup(
               capability,
               AuditingConfig(
                 AuditOutputsConfig.Configured(
@@ -1711,7 +1711,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup.IndexWithDataStream(
+            new CoreCreationResult.AuditSetup(
               new IndexOrDataStream(
                 mock[IndexBasedAuditSinkServiceCreator],
                 mock[DataStreamBasedAuditSinkServiceCreator]
@@ -1759,7 +1759,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup.IndexWithDataStream(
+            new CoreCreationResult.AuditSetup(
               new IndexOrDataStream(
                 mock[IndexBasedAuditSinkServiceCreator],
                 mock[DataStreamBasedAuditSinkServiceCreator]
@@ -1806,7 +1806,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup.IndexWithDataStream(
+            new CoreCreationResult.AuditSetup(
               new IndexOrDataStream(
                 mock[IndexBasedAuditSinkServiceCreator],
                 mock[DataStreamBasedAuditSinkServiceCreator]
@@ -1861,7 +1861,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup.IndexWithDataStream(
+            new CoreCreationResult.AuditSetup(
               new IndexOrDataStream(
                 indexCreator,
                 mock[DataStreamBasedAuditSinkServiceCreator]
@@ -1910,7 +1910,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup.IndexWithDataStream(
+            new CoreCreationResult.AuditSetup(
               new IndexOrDataStream(
                 indexCreator,
                 mock[DataStreamBasedAuditSinkServiceCreator]
@@ -2013,7 +2013,7 @@ class ReadonlyRestStartingTests
             Right(
               new CoreCreationResult(
                 Core(accessControl, RorDependencies.noOp, auditingConfig),
-                new CoreCreationResult.AuditSetup.IndexWithDataStream(
+                new CoreCreationResult.AuditSetup(
                   new IndexOrDataStream(
                     MockIndexBasedAuditSinkServiceCreator,
                     MockDataStreamBasedAuditSinkServiceCreator
@@ -2107,7 +2107,7 @@ class ReadonlyRestStartingTests
       loadedMainSettingsResourceFileName: String,
       accessControlMock: AccessControlList = mockEnabledAccessControl,
       dependencies: RorDependencies = RorDependencies.noOp,
-      auditSetup: Option[CoreCreationResult.AuditSetup] = None
+      auditSetup: Option[CoreCreationResult.AuditSetup.Supported] = None
   ): CoreFactory = {
     mockCoreFactory(
       mockedCoreFactory,
@@ -2123,7 +2123,7 @@ class ReadonlyRestStartingTests
       loadedMainSettings: RawRorSettings,
       accessControlMock: AccessControlList,
       dependencies: RorDependencies,
-      auditSetup: Option[CoreCreationResult.AuditSetup]
+      auditSetup: Option[CoreCreationResult.AuditSetup.Supported]
   ): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where { (settings: RawRorSettings, _, _, _, _, _) =>
@@ -2132,7 +2132,7 @@ class ReadonlyRestStartingTests
       .once()
       .returns(Task.now(Right {
         val resolvedAuditSetup = auditSetup.getOrElse(
-          new CoreCreationResult.AuditSetup.IndexWithDataStream(
+          new CoreCreationResult.AuditSetup(
             new IndexOrDataStream(MockIndexBasedAuditSinkServiceCreator, MockDataStreamBasedAuditSinkServiceCreator),
             AuditingTool.AuditingConfig(
               AuditOutputsConfig.Disabled,

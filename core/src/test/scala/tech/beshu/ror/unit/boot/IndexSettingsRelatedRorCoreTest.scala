@@ -233,7 +233,7 @@ class IndexSettingsRelatedRorCoreTest
             )
             new CoreCreationResult(
               Core(mockAccessControl, RorDependencies.noOp, auditingConfig),
-              new CoreCreationResult.AuditSetup.IndexWithDataStream(
+              new CoreCreationResult.AuditSetup(
                 new EsAuditCapabilities.IndexOrDataStream(
                   MockIndexBasedAuditSinkServiceCreator,
                   MockDataStreamBasedAuditSinkServiceCreator

@@ -16,19 +16,23 @@
  */
 package tech.beshu.ror.accesscontrol.audit
 
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput.WithoutDataStream
 import tech.beshu.ror.accesscontrol.audit.sink.{
   DataStreamBasedAuditSinkServiceCreator,
   IndexBasedAuditSinkServiceCreator
 }
 
-sealed trait EsAuditCapabilities
+sealed trait EsAuditCapabilities[O <: AuditOutput]
 
 object EsAuditCapabilities {
-  final class IndexOnly(val creator: IndexBasedAuditSinkServiceCreator) extends EsAuditCapabilities
+  type Supported = EsAuditCapabilities[? <: AuditOutput]
+
+  final class IndexOnly(val creator: IndexBasedAuditSinkServiceCreator) extends EsAuditCapabilities[WithoutDataStream]
 
   final class IndexOrDataStream(
       val indexCreator: IndexBasedAuditSinkServiceCreator,
       val dataStreamCreator: DataStreamBasedAuditSinkServiceCreator
-  ) extends EsAuditCapabilities
+  ) extends EsAuditCapabilities[AuditOutput]
 
 }
