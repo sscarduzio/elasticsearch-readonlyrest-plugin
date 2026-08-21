@@ -126,7 +126,9 @@ class RorInstance private (
     theTestSettingsEngine.saveServicesMocks(mocks)
   }
 
-  def auditSettings: Option[AuditingTool.AuditOutputsConfig[AuditingTool.Mode]] = {
+  def auditSettings: Option[
+    AuditingTool.AuditOutputsConfig[AuditingTool.AuditOutputsConfig.AuditOutput]
+  ] = {
     theMainSettingsEngine.engine.map(_.core.auditingConfig.outputsConfig)
   }
 

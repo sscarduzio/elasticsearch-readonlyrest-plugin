@@ -215,30 +215,23 @@ final class AuditingTool private (private[ror] val sinks: List[AuditSink])(
 
 object AuditingTool extends RequestIdAwareLogging {
 
-  sealed trait Mode
-
-  object Mode {
-    sealed trait Standard extends Mode
-    sealed trait Legacy extends Mode
-    type Both = Standard & Legacy
-  }
-
-  sealed trait AuditOutputsConfig[+M <: Mode]
+  sealed trait AuditOutputsConfig[+O <: AuditOutput]
 
   object AuditOutputsConfig {
     case object Disabled extends AuditOutputsConfig[Nothing]
     case object Defaults extends AuditOutputsConfig[Nothing]
-    final case class Configured[+M <: Mode](outputs: NonEmptyList[AuditOutput[M]]) extends AuditOutputsConfig[M]
+    final case class Configured[+O <: AuditOutput](outputs: NonEmptyList[O]) extends AuditOutputsConfig[O]
 
-    sealed trait AuditOutput[+M <: Mode]
+    sealed trait AuditOutput
 
     object AuditOutput {
-      final case class EsIndexBased(name: SinkName, config: EsIndexBasedSink) extends AuditOutput[Mode.Both]
-      final case class EsDataStreamBased(name: SinkName, config: EsDataStreamBasedSink)
-          extends AuditOutput[Mode.Standard]
-      final case class LogBased(name: SinkName, config: LogBasedSink) extends AuditOutput[Mode.Both]
-      final case class RollingFileBased(name: SinkName, config: RollingFileBasedSink) extends AuditOutput[Mode.Both]
-      case object Disabled extends AuditOutput[Nothing]
+      sealed trait WithoutDataStream extends AuditOutput
+
+      final case class EsIndexBased(name: SinkName, config: EsIndexBasedSink) extends WithoutDataStream
+      final case class EsDataStreamBased(name: SinkName, config: EsDataStreamBasedSink) extends AuditOutput
+      final case class LogBased(name: SinkName, config: LogBasedSink) extends WithoutDataStream
+      final case class RollingFileBased(name: SinkName, config: RollingFileBasedSink) extends WithoutDataStream
+      case object Disabled extends WithoutDataStream
 
       final case class EsIndexBasedSink(
           serializer: JsonAuditSerializer,
@@ -297,29 +290,29 @@ object AuditingTool extends RequestIdAwareLogging {
 
   }
 
-  final case class AuditingConfig[+M <: Mode](
-      outputsConfig: AuditOutputsConfig[M],
+  final case class AuditingConfig[+O <: AuditOutput](
+      outputsConfig: AuditOutputsConfig[O],
       defaultAclLog: Boolean,
       esNodeSettings: EsNodeSettings
   )
 
   object AuditingConfig {
-    type Standard = AuditingConfig[Mode.Standard]
-    type Legacy = AuditingConfig[Mode.Legacy]
-    type AnyMode = AuditingConfig[Mode]
+    type IndexOnly = AuditingConfig[AuditOutput.WithoutDataStream]
+    type IndexOrDataStream = AuditingConfig[AuditOutput]
+    type AnyOutput = AuditingConfig[AuditOutput]
   }
 
   final case class CreationError(message: String) extends AnyVal
 
   def create(
-      config: AuditingConfig.Legacy,
+      config: AuditingConfig.IndexOnly,
       creator: IndexBasedAuditSinkServiceCreator,
       httpClientsFactory: HttpClientsFactory
   )(
       using Clock,
       LoggingContext
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
-    val effectiveOutputs: List[AuditOutput[Mode.Legacy]] =
+    val effectiveOutputs: List[AuditOutput.WithoutDataStream] =
       applyDefaults(config.outputsConfig, config.defaultAclLog)
     val sinkTasks = effectiveOutputs.flatMap {
       case s: EsIndexBased     => Some(createIndexSink(s, creator, httpClientsFactory))
@@ -331,7 +324,7 @@ object AuditingTool extends RequestIdAwareLogging {
   }
 
   def create(
-      config: AuditingConfig.Standard,
+      config: AuditingConfig.IndexOrDataStream,
       indexCreator: IndexBasedAuditSinkServiceCreator,
       dataStreamCreator: DataStreamBasedAuditSinkServiceCreator,
       httpClientsFactory: HttpClientsFactory
@@ -339,7 +332,7 @@ object AuditingTool extends RequestIdAwareLogging {
       using Clock,
       LoggingContext
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
-    val effectiveOutputs: List[AuditOutput[Mode.Standard]] =
+    val effectiveOutputs: List[AuditOutput] =
       applyDefaults(config.outputsConfig, config.defaultAclLog)
     val sinkTasks = effectiveOutputs.flatMap {
       case s: EsIndexBased      => Some(createIndexSink(s, indexCreator, httpClientsFactory))
@@ -351,11 +344,11 @@ object AuditingTool extends RequestIdAwareLogging {
     createAuditingTool(config.esNodeSettings, sinkTasks)
   }
 
-  private def applyDefaults[M >: Mode.Both <: Mode](
-      settings: AuditOutputsConfig[M],
+  private def applyDefaults[O >: AuditOutput.WithoutDataStream <: AuditOutput](
+      settings: AuditOutputsConfig[O],
       defaultAclLog: Boolean
-  ): List[AuditOutput[M]] = {
-    val outputs: List[AuditOutput[M]] = settings match {
+  ): List[O] = {
+    val outputs: List[O] = settings match {
       case AuditOutputsConfig.Disabled            => List.empty
       case AuditOutputsConfig.Defaults            => List(defaultIndexStorageSink)
       case AuditOutputsConfig.Configured(outputs) => outputs.toList
@@ -484,7 +477,7 @@ object AuditingTool extends RequestIdAwareLogging {
 
   private given Show[List[SupportedAuditSink]] = sinks => sinks.map(_.show).mkString(", ")
 
-  extension [M <: Mode](output: AuditOutput[M]) {
+  extension (output: AuditOutput) {
 
     def sinkName: Option[SinkName] = output match {
       case s: EsIndexBased      => Some(s.name)

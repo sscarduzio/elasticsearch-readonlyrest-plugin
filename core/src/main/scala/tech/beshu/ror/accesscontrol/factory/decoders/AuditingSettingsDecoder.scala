@@ -26,7 +26,6 @@ import io.lemonlabs.uri.Uri
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput.*
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Mode
 import tech.beshu.ror.accesscontrol.audit.configurable.AuditFieldValueDescriptorParser
 import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, JsonAuditSerializer}
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
@@ -64,18 +63,18 @@ import scala.util.{Failure, Success, Try}
 
 object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
-  def standard(esEnv: EsEnv): Decoder[AuditingConfig.Standard] =
-    makeDecoder(esEnv, decodeStandardAuditSettings)
+  def indexOrDataStream(esEnv: EsEnv): Decoder[AuditingConfig.IndexOrDataStream] =
+    makeDecoder(esEnv, decodeIndexOrDataStreamAuditSettings)
 
-  def legacy(esEnv: EsEnv): Decoder[AuditingConfig.Legacy] =
-    makeDecoder(esEnv, decodeLegacyAuditSettings)
+  def indexOnly(esEnv: EsEnv): Decoder[AuditingConfig.IndexOnly] =
+    makeDecoder(esEnv, decodeIndexOnlyAuditSettings)
 
-  private def makeDecoder[M >: Mode.Both <: Mode](
+  private def makeDecoder[O >: AuditOutput.WithoutDataStream <: AuditOutput](
       esEnv: EsEnv,
-      specificDecoder: Decoder[AuditOutputsConfig[M]],
-  ): Decoder[AuditingConfig[M]] =
+      specificDecoder: Decoder[AuditOutputsConfig[O]],
+  ): Decoder[AuditingConfig[O]] =
     for {
-      auditSettings <- auditSettingsDecoder[M](specificDecoder)
+      auditSettings <- auditSettingsDecoder[O](specificDecoder)
       deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance
       defaultAclLog <- defaultAclLogDecoder
     } yield AuditingConfig(
@@ -107,9 +106,9 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     }
   }
 
-  private def auditSettingsDecoder[M <: Mode](
-      decoder: Decoder[AuditOutputsConfig[M]]
-  ): Decoder[AuditOutputsConfig[M]] =
+  private def auditSettingsDecoder[O <: AuditOutput](
+      decoder: Decoder[AuditOutputsConfig[O]]
+  ): Decoder[AuditOutputsConfig[O]] =
     Decoder.instance(c =>
       readAuditEnabled(c).flatMap {
         case Some(true) => decoder(c)
@@ -137,14 +136,14 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     }
   }
 
-  private def decodeStandardAuditSettings: Decoder[AuditOutputsConfig[Mode.Standard]] = {
-    decodeAuditSettingsWithFallback[Mode.Standard](
-      simpleDecoder = auditOutputSimpleDecoder[AuditOutputType.Standard, Mode.Standard] {
+  private def decodeIndexOrDataStreamAuditSettings: Decoder[AuditOutputsConfig[AuditOutput]] = {
+    decodeAuditSettingsWithFallback[AuditOutput](
+      simpleDecoder = auditOutputSimpleDecoder[AuditOutputType, AuditOutput] {
         case (AuditOutputType.DataStream, name) => EsDataStreamBased(name, EsDataStreamBasedSink.default)
         case (AuditOutputType.Index, name)      => EsIndexBased(name, EsIndexBasedSink.default)
         case (AuditOutputType.Log, name)        => LogBased(name, LogBasedSink.default)
       },
-      extendedDecoder = auditOutputExtendedDecoder[AuditOutputType.Standard, Mode.Standard] {
+      extendedDecoder = auditOutputExtendedDecoder[AuditOutputType, AuditOutput] {
         case (c, AuditOutputType.DataStream, name) =>
           c.as[EsDataStreamBasedSink].map(cfg => EsDataStreamBased(name, cfg))
         case (c, AuditOutputType.Index, name) => c.as[EsIndexBasedSink].map(cfg => EsIndexBased(name, cfg))
@@ -153,13 +152,16 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     )
   }
 
-  private def decodeLegacyAuditSettings: Decoder[AuditOutputsConfig[Mode.Legacy]] = {
-    decodeAuditSettingsWithFallback[Mode.Legacy](
-      simpleDecoder = auditOutputSimpleDecoder[AuditOutputType.Legacy, Mode.Legacy] {
+  private def decodeIndexOnlyAuditSettings: Decoder[AuditOutputsConfig[AuditOutput.WithoutDataStream]] = {
+    decodeAuditSettingsWithFallback[AuditOutput.WithoutDataStream](
+      simpleDecoder = auditOutputSimpleDecoder[AuditOutputType.WithoutDataStream, AuditOutput.WithoutDataStream] {
         case (AuditOutputType.Index, name) => EsIndexBased(name, EsIndexBasedSink.default)
         case (AuditOutputType.Log, name)   => LogBased(name, LogBasedSink.default)
       },
-      extendedDecoder = auditOutputExtendedDecoder[AuditOutputType.Legacy, Mode.Legacy] {
+      extendedDecoder = auditOutputExtendedDecoder[
+        AuditOutputType.WithoutDataStream,
+        AuditOutput.WithoutDataStream
+      ] {
         case (c, AuditOutputType.Index, name) => c.as[EsIndexBasedSink].map(cfg => EsIndexBased(name, cfg))
         case (c, AuditOutputType.Log, name)   => decodeLogOutput(name)(c)
       }
@@ -173,10 +175,10 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     }
   }
 
-  private def decodeAuditSettingsWithFallback[M <: Mode](
-      simpleDecoder: Decoder[AuditOutput[M]],
-      extendedDecoder: Decoder[AuditOutput[M]]
-  ): Decoder[AuditOutputsConfig[M]] = {
+  private def decodeAuditSettingsWithFallback[O >: AuditOutput.WithoutDataStream <: AuditOutput](
+      simpleDecoder: Decoder[O],
+      extendedDecoder: Decoder[O]
+  ): Decoder[AuditOutputsConfig[O]] = {
     decodeAuditSettingsWith(
       using simpleDecoder
     )
@@ -192,17 +194,17 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       }
   }
 
-  private def decodeAuditSettingsWith[M <: Mode](
-      using Decoder[AuditOutput[M]]
-  ): Decoder[AuditOutputsConfig[M]] =
+  private def decodeAuditSettingsWith[O >: AuditOutput.WithoutDataStream <: AuditOutput](
+      using Decoder[O]
+  ): Decoder[AuditOutputsConfig[O]] =
     SyncDecoderCreator
       .instance {
-        _.downField("audit").downField("outputs").as[Option[List[AuditOutput[M]]]]
+        _.downField("audit").downField("outputs").as[Option[List[O]]]
       }
       .emapE {
         case Some(outputs) =>
           NonEmptyList
-            .fromList[AuditOutput[M]](outputs.distinct)
+            .fromList[O](outputs.distinct)
             .map(AuditOutputsConfig.Configured(_))
             .toRight(auditSettingsError(s"The audit 'outputs' array cannot be empty"))
         case None =>
@@ -210,18 +212,21 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       }
       .decoder
 
-  private def auditOutputSimpleDecoder[OUTPUT_TYPE <: AuditOutputType, M <: Mode](
-      f: (OUTPUT_TYPE, SinkName) => AuditOutput[M]
+  private def auditOutputSimpleDecoder[OUTPUT_TYPE <: AuditOutputType, O <: AuditOutput](
+      f: (OUTPUT_TYPE, SinkName) => O
   )(
       using Decoder[OUTPUT_TYPE]
-  ): Decoder[AuditOutput[M]] =
+  ): Decoder[O] =
     Decoder[OUTPUT_TYPE].map(st => f(st, SinkName.random()))
 
-  private def auditOutputExtendedDecoder[OUTPUT_TYPE <: AuditOutputType, M <: Mode](
-      f: (HCursor, OUTPUT_TYPE, SinkName) => Decoder.Result[AuditOutput[M]]
+  private def auditOutputExtendedDecoder[
+      OUTPUT_TYPE <: AuditOutputType,
+      O >: AuditOutput.WithoutDataStream <: AuditOutput
+  ](
+      f: (HCursor, OUTPUT_TYPE, SinkName) => Decoder.Result[O]
   )(
       using Decoder[OUTPUT_TYPE]
-  ): Decoder[AuditOutput[M]] =
+  ): Decoder[O] =
     Decoder.instance { c =>
       for {
         outputType <- c.downFieldAs[OUTPUT_TYPE]("type")
@@ -237,20 +242,18 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
   private sealed trait AuditOutputType
 
   private object AuditOutputType {
-    sealed trait Standard extends AuditOutputType
+    sealed trait WithoutDataStream extends AuditOutputType
 
-    sealed trait Legacy extends AuditOutputType
+    case object Index extends WithoutDataStream
 
-    case object Index extends Standard with Legacy
+    case object Log extends WithoutDataStream
 
-    case object Log extends Standard with Legacy
+    case object DataStream extends AuditOutputType
 
-    case object DataStream extends Standard
-
-    given Decoder[Legacy] =
+    given Decoder[WithoutDataStream] =
       SyncDecoderCreator
         .from(Decoder.decodeString)
-        .emapE[Legacy] {
+        .emapE[WithoutDataStream] {
           case "index"       => Right(Index)
           case "log"         => Right(Log)
           case "data_stream" =>
@@ -265,10 +268,10 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         }
         .decoder
 
-    given Decoder[Standard] =
+    given Decoder[AuditOutputType] =
       SyncDecoderCreator
         .from(Decoder.decodeString)
-        .emapE[Standard] {
+        .emapE[AuditOutputType] {
           case "index"       => Right(Index)
           case "log"         => Right(Log)
           case "data_stream" => Right(DataStream)
@@ -813,7 +816,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   private object DeprecatedAuditSettingsDecoder {
 
-    def instance: Decoder[AuditOutputsConfig[Mode.Both]] = Decoder.instance { c =>
+    def instance: Decoder[AuditOutputsConfig[AuditOutput.WithoutDataStream]] = Decoder.instance { c =>
       whenEnabled(c) {
         for {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)(
@@ -846,7 +849,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       }
     }
 
-    private def whenEnabled[M <: Mode](cursor: HCursor)(decoding: => Decoder.Result[AuditOutputsConfig[M]]) = {
+    private def whenEnabled[O <: AuditOutput](cursor: HCursor)(decoding: => Decoder.Result[AuditOutputsConfig[O]]) = {
       for {
         isEnabled <- decodeOptionalSetting[Boolean](cursor)("collector", fallbackKey = "audit_collector")
         result <- if (isEnabled.getOrElse(false)) decoding else Right(AuditOutputsConfig.Disabled)

@@ -23,6 +23,7 @@ import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditSinks
@@ -61,7 +62,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 final case class Core(
     accessControl: AccessControlList,
     dependencies: RorDependencies,
-    auditingConfig: AuditingTool.AuditingConfig.AnyMode
+    auditingConfig: AuditingTool.AuditingConfig.AnyOutput
 )
 
 trait CoreFactory {
@@ -88,19 +89,19 @@ object CoreFactory {
 
       final class Index(
           val capability: EsAuditCapabilities.IndexOnly,
-          val settings: AuditingConfig.Legacy
+          val settings: AuditingConfig.IndexOnly
       ) extends AuditSetup
 
       final class IndexWithDataStream(
           val capability: EsAuditCapabilities.IndexOrDataStream,
-          val settings: AuditingConfig.Standard
+          val settings: AuditingConfig.IndexOrDataStream
       ) extends AuditSetup
 
     }
 
     extension (audit: AuditSetup) {
 
-      def settings: AuditingConfig.AnyMode = audit match {
+      def settings: AuditingConfig.AnyOutput = audit match {
         case index: AuditSetup.Index                => index.settings
         case stream: AuditSetup.IndexWithDataStream => stream.settings
       }
@@ -440,7 +441,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
 
   private def auditSinkNamesDecoder(
       blocksNel: NonEmptyList[BlockDecodingResult],
-      auditingConfig: AuditingConfig[AuditingTool.Mode]
+      auditingConfig: AuditingConfig[AuditOutput]
   ): AsyncDecoder[Unit] =
     AsyncDecoderCreator.instance[Unit] { _ =>
       Task.now {
@@ -541,11 +542,11 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
   )(esEnv: EsEnv): Decoder[AuditSetup] = auditCapabilities match {
     case cap: EsAuditCapabilities.IndexOnly =>
       AuditingSettingsDecoder
-        .legacy(esEnv)
+        .indexOnly(esEnv)
         .map(settings => new AuditSetup.Index(cap, settings))
     case cap: EsAuditCapabilities.IndexOrDataStream =>
       AuditingSettingsDecoder
-        .standard(esEnv)
+        .indexOrDataStream(esEnv)
         .map(settings => new AuditSetup.IndexWithDataStream(cap, settings))
   }
 

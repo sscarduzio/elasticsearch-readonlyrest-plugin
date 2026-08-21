@@ -603,7 +603,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       }
     }
 
-    "legacy (index-only) audit settings" should {
+    "index-only audit settings" should {
       "submit audit entry to index sink" in {
         val requestId = RequestId("mock-1")
         val indexAuditSink = mock[IndexBasedAuditSinkService]
@@ -614,7 +614,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         @nowarn("cat=deprecation")
         val auditingTool = AuditingTool
           .create(
-            config = legacyAuditSettings(new DefaultAuditLogSerializer),
+            config = indexOnlyAuditSettings(new DefaultAuditLogSerializer),
             creator = (_: AuditCluster) => indexAuditSink,
             httpClientsFactory = MockHttpClientsFactory
           )
@@ -695,7 +695,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
   }
 
-  private def legacyAuditSettings(serializer: AuditLogSerializer): AuditingConfig.Legacy = AuditingConfig(
+  private def indexOnlyAuditSettings(serializer: AuditLogSerializer): AuditingConfig.IndexOnly = AuditingConfig(
     outputsConfig = AuditOutputsConfig.Configured(
       NonEmptyList.of(
         EsIndexBased(

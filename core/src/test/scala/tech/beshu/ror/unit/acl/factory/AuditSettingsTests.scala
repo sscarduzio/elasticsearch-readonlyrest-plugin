@@ -2513,7 +2513,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertSettings(settings: RawRorSettings, expectedAuditSinks: NonEmptyList[AuditOutput[?]]): Unit = {
+  private def assertSettings(settings: RawRorSettings, expectedAuditSinks: NonEmptyList[AuditOutput]): Unit = {
     val core = factory()
       .createCoreFrom(
         settings,
