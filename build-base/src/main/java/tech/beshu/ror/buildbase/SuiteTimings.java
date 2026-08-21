@@ -16,16 +16,21 @@
  */
 package tech.beshu.ror.buildbase;
 
-import java.util.ArrayList;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
+import java.util.stream.IntStream;
 
 /**
- * Drift detection between committed suite timings (integration-tests/suite-timings.json) and
- * freshly measured ones. Pure function of its inputs — the Gradle `regenerateSuiteTimings` task
- * does the XML/JSON I/O and hands the maps here — so the warning thresholds are unit-tested
- * (same split as {@link SuiteSharder}).
+ * Wall-time measurement and drift detection for suite timings
+ * (integration-tests/suite-timings.json). Pure functions of their inputs — the Gradle
+ * `regenerateSuiteTimings` task does the XML/JSON I/O and hands the parsed runs/maps here — so
+ * the estimation logic and warning thresholds are unit-tested (same split as {@link SuiteSharder}).
  */
 public final class SuiteTimings {
 
@@ -38,7 +43,59 @@ public final class SuiteTimings {
 
   static final double DRIFT_REL = 0.5;
 
+  /** Boot estimate for a shard with a single suite, where no start-to-start gap is observable. */
+  static final double DEFAULT_BOOT_SECONDS = 30.0;
+
   private SuiteTimings() {}
+
+  /** One suite execution parsed from a junit XML: fully-qualified name, start, and exec time. */
+  public record SuiteRun(String name, Instant start, double execSeconds) {}
+
+  /**
+   * Estimates WALL seconds per suite (container boot + test execution), not just the junit
+   * `time` attribute: `time` is execution only, while shard-packing weights must include
+   * container boots (often the dominant part). Suites run serially within a shard, so
+   * start(i+1) - start(i) = exec(i) + boot(i+1), hence wall(i) = boot(i) + exec(i). The first
+   * suite's boot is unobservable — the shard's median boot stands in. A suite seen in several
+   * shards (or reruns) keeps its largest estimate; every value is clamped to at least 1s so no
+   * suite packs with zero weight.
+   */
+  public static Map<String, Long> wallTimes(Collection<List<SuiteRun>> shards) {
+    Map<String, Long> times = new TreeMap<>();
+    shards.forEach(
+        shard -> {
+          List<SuiteRun> suites =
+              shard.stream().sorted(Comparator.comparing(SuiteRun::start)).toList();
+          List<Double> boots =
+              IntStream.range(1, suites.size())
+                  .mapToObj(
+                      i -> {
+                        double gap =
+                            Duration.between(suites.get(i - 1).start(), suites.get(i).start())
+                                    .toMillis()
+                                / 1000.0;
+                        return Math.max(0.0, gap - suites.get(i - 1).execSeconds());
+                      })
+                  .toList();
+          double medianBoot = boots.isEmpty() ? DEFAULT_BOOT_SECONDS : median(boots);
+          IntStream.range(0, suites.size())
+              .forEach(
+                  i -> {
+                    SuiteRun s = suites.get(i);
+                    double boot = i > 0 ? boots.get(i - 1) : medianBoot;
+                    long wall = Math.max(1L, Math.round(boot + s.execSeconds()));
+                    times.merge(s.name(), wall, Math::max);
+                  });
+        });
+    return times;
+  }
+
+  /** True median: the middle value, or the mean of the two middle values for even-sized input. */
+  private static double median(List<Double> values) {
+    List<Double> sorted = values.stream().sorted().toList();
+    int n = sorted.size();
+    return n % 2 == 1 ? sorted.get(n / 2) : (sorted.get(n / 2 - 1) + sorted.get(n / 2)) / 2.0;
+  }
 
   /**
    * Returns one human-readable line per drifted or new suite, sorted by suite name.
@@ -46,18 +103,19 @@ public final class SuiteTimings {
    * entries are harmless to the sharder and get dropped on the next re-baseline.
    */
   public static List<String> driftReport(Map<String, Long> committed, Map<String, Long> measured) {
-    List<String> drifts = new ArrayList<>();
-    new TreeMap<>(measured)
-        .forEach(
-            (suite, seconds) -> {
-              Long old = committed.get(suite);
-              if (old == null) {
-                drifts.add("NEW " + suite + ": " + seconds + "s (missing from suite-timings.json)");
-              } else if (Math.abs(seconds - old) > DRIFT_ABS_SECONDS
-                  && Math.abs(seconds - old) > DRIFT_REL * old) {
-                drifts.add("DRIFT " + suite + ": " + old + "s -> " + seconds + "s");
-              }
-            });
-    return drifts;
+    return measured.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .flatMap(e -> driftLine(committed.get(e.getKey()), e.getKey(), e.getValue()).stream())
+        .toList();
+  }
+
+  private static Optional<String> driftLine(Long old, String suite, long seconds) {
+    if (old == null) {
+      return Optional.of("NEW " + suite + ": " + seconds + "s (missing from suite-timings.json)");
+    }
+    if (Math.abs(seconds - old) > DRIFT_ABS_SECONDS && Math.abs(seconds - old) > DRIFT_REL * old) {
+      return Optional.of("DRIFT " + suite + ": " + old + "s -> " + seconds + "s");
+    }
+    return Optional.empty();
   }
 }

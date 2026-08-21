@@ -64,6 +64,8 @@ trait BaseXpackApiSuite
   private lazy val dev4XpackApiManager = new XpackApiManager(basicAuthClient("dev4", "test"), esVersionUsed)
   private lazy val dev5XpackApiManager = new XpackApiManager(basicAuthClient("dev5", "test"), esVersionUsed)
   private lazy val dev6XpackApiManager = new XpackApiManager(basicAuthClient("dev6", "test"), esVersionUsed)
+  private lazy val dev8XpackApiManager = new XpackApiManager(basicAuthClient("dev8", "test"), esVersionUsed)
+  private lazy val dev9XpackApiManager = new XpackApiManager(basicAuthClient("dev9", "test"), esVersionUsed)
 
   private lazy val adminSqlManager = new SqlApiManager(basicAuthClient("sqladmin", "pass"), esVersionUsed)
   private lazy val dev1SqlManager = new SqlApiManager(basicAuthClient("dev1sql", "test"), esVersionUsed)
@@ -1291,9 +1293,31 @@ trait BaseXpackApiSuite
 
       result should have statusCode 404
     }
-    // todo: uncomment when RORDEV-1636 is done
-    "support filter and fields rule" excludeES (allEs6x, allEs7xBelowEs714x) ignore {
+    "be forbidden for dev2 and test2_index because of the filter rule" excludeES (allEs6x, allEs7xBelowEs714x) in {
       val result = dev2XpackApiManager.getTerms("test2_index", "age.keyword")
+
+      result should have statusCode 403
+    }
+    "return terms for a field allowed by the fields whitelist" excludeES (allEs6x, allEs7xBelowEs714x) in {
+      val result = dev8XpackApiManager.getTerms("test2_index", "name.keyword")
+
+      result should have statusCode 200
+      result.terms should be(Set("bill", "john"))
+    }
+    "return empty result for a field not covered by the fields whitelist" excludeES (allEs6x, allEs7xBelowEs714x) in {
+      val result = dev8XpackApiManager.getTerms("test2_index", "age.keyword")
+
+      result should have statusCode 200
+      result.terms should be(Set.empty)
+    }
+    "return terms for a field not covered by the fields blacklist" excludeES (allEs6x, allEs7xBelowEs714x) in {
+      val result = dev9XpackApiManager.getTerms("test2_index", "name.keyword")
+
+      result should have statusCode 200
+      result.terms should be(Set("bill", "john"))
+    }
+    "return empty result for a field excluded by the fields blacklist" excludeES (allEs6x, allEs7xBelowEs714x) in {
+      val result = dev9XpackApiManager.getTerms("test2_index", "age.keyword")
 
       result should have statusCode 200
       result.terms should be(Set.empty)

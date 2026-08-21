@@ -1,0 +1,252 @@
+# ReadonlyREST CI
+
+CI runs on GitHub Actions: `.github/workflows/ci.yml`. Linux jobs run on **Ubicloud**
+runners (`ubicloud-standard-4` = 4 vCPU / 16 GB) inside the `beshultd/ror-ci-toolchains`
+image; Windows jobs run on GitHub-hosted `windows-2025`.
+
+Every Linux job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this
+directory contain the build logic; the workflow only orchestrates.
+
+## Jobs
+
+| Job | What it does | When |
+|---|---|---|
+| `setup` | computes branch flags + the IT matrices | always |
+| `toolchains_verify` | sanity-checks the toolchains image | always (fail-fast gate for tests) |
+| `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
+| `unit_tests_linux` | `core:test` and friends | pushes + PRs |
+| `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
+| `it_linux` | integration tests, one job per ES version | 10-version subset on PRs, full 34 on develop/master/epic and manual |
+| `it_windows` | integration tests on native-Windows ES | 3 on PRs, 7 on branches, full 33 on manual |
+| `unit_tests_windows` | `core:test` on Windows | manual `run_all_tests_on_windows` |
+| `e2e_prepare` | resolves the e2e matrix + starts the ROR KBN image build | pushes + PRs (not drafts) |
+| `e2e_tests` | Cypress e2e suite, one job per ES version | pushes + PRs (not drafts) |
+| `build_ror` | builds all plugin zips + bytecode-reuse guard | PRs |
+| `build_toolchains_image` | rebuilds the toolchains image | weekly cron + manual |
+| `determine_ci_type` → `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
+| `disk_probe` | host-disk recon | manual `run_disk_probe` |
+
+Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
+`run_all_tests_on_windows`, `run_e2e_tests`, `build_toolchains_image`,
+`release_without_testing`, `run_disk_probe`.
+
+Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
+above: `mirror-es-libs.yml` (mirrors ES jars into the libs store — see [S3 stores](#s3-stores)),
+`pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml` (regenerates the ES
+action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand ROR+ES dev images).
+
+Two orchestration rules worth knowing before editing conditions:
+
+- `concurrency` auto-cancels superseded **PR** runs only; branch pushes queue, so a push
+  during a release run can never kill the release.
+- GitHub skips a job whose `needs` contains a skipped job. The release jobs therefore use
+  `!cancelled()` + explicit `needs.<job>.result` checks — that is what makes the manual
+  `release_without_testing` path (tests intentionally skipped) work. Keep that pattern.
+
+## Integration-test parallelism
+
+Each IT leg runs **4 sharded test JVMs** on its VM (Windows: 3), orchestrated by
+`integration-tests:shardedTest` (`IT_PARALLELISM` → `-PshardCount`). Suites are
+partitioned by `SuiteSharder` (build-base; unit-tested), packed by measured duration
+(`integration-tests/suite-timings.json`, `ROR_BALANCED_SHARDS`) so no shard becomes the
+long pole. Two things make this fit a 16 GB box:
+
+- **Heavy-suite gate** (`ROR_HEAVY_SUITE_PERMITS`, currently 2): a machine-wide
+  `FileLockSemaphore` capping how many multi-node-cluster suites boot containers
+  concurrently across the shard JVMs. Without it, level packing OOMs the host. Crash-safe:
+  a killed worker's lock dies with its process.
+- On Windows (native ES processes, no docker), every shard gets its own port window and
+  install dirs (`RorShard`).
+
+Suite timing drift is auto-detected: the es90x leg (first ES 9 module — a stable reference) runs
+`integration-tests:regenerateSuiteTimings` after the tests, warns on drift, and uploads a
+regenerated `suite-timings.json` as the `suite-timings-regenerated` artifact — to update,
+download it and commit. Measured tuning limits (don't re-learn them the hard way): 5 shard
+JVMs or 3 gate permits exceed either 16 GB or the 4-vCPU boot-time budget.
+
+Shard stdout is written to `shard-<i>.log` files (live interleaving would be unreadable),
+printed to the job console afterwards as collapsible groups, and uploaded as the
+`sharded-logs-*` artifact. Per-shard JUnit XML uploads as `*-results`.
+
+## E2E tests
+
+The Cypress suite runs the whole stack: Elasticsearch and Kibana, with both ROR plugins, in
+docker. The logic is in `ci/e2e-tests-lib.sh`; the suite itself lives in the
+[`readonlyrest-e2e-tests`](https://github.com/beshu-tech/readonlyrest-e2e-tests) repo and is cloned
+at run time.
+
+Three repos take part, so no single one owns the whole thing: this repo builds the ROR ES image,
+`readonlyrest_kbn` builds the ROR KBN image, and the e2e repo owns the suite, the runner, and the
+contract between all three —
+[`ci/prebuild-images-lib.sh`](https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/develop/ci/prebuild-images-lib.sh)
+(image names, tag shape, workflow inputs, wait behaviour). Change the contract there, not here.
+
+Two jobs, because the two plugin images are built in different places:
+
+- `e2e_prepare` runs once. It resolves the newest ES version of every module in the matrix
+  (`:esXXXx:printNewestEsVersionForModule`), publishes that matrix, and dispatches **one** ROR
+  KBN image build for all those versions. Non-blocking: it does not wait for the build.
+- `e2e_tests` runs once per version, in parallel. It builds and pushes the ROR ES dev image from
+  **this** commit, waits for the ROR KBN image, then runs the suite against both.
+
+The wait is not a poll of the registry: a leg waits on the dispatched ROR KBN **run**. What the wait
+guarantees, and what this repo has to supply for it, is the contract at the top of the shared lib.
+Read it there, not here. Four obligations fall on this repo:
+
+- **Pass the run down.** `e2e_prepare` fails if it cannot identify the run it started, and publishes
+  it as the `kbn_run_id` and `kbn_run_url` outputs. `ci.yml` hands both to every `e2e_tests` leg,
+  together with `ROR_GH_TOKEN`. A leg with an empty run id reports broken wiring and stops.
+- **Log in first.** Each leg authenticates Docker before the wait, so the registry check the wait
+  makes at the end counts against the ROR account and not against the runner address.
+- **Give the leg a token that can read the runs of the ROR KBN repo.** `ROR_GH_TOKEN` needs
+  `actions:read`. A refused read ends the wait with code 8 in seconds, and names the right it
+  needs. Reading it is how the leg follows the run, so there is no way round it.
+- **Keep the title on our own pre-build run.** `publish-pre-builds.yml` carries
+  `run-name: ROR ES pre-build ${{ inputs.tag || inputs.es_versions }}`. Every repo that dispatches it
+  — the e2e repo and the ROR KBN repo — finds its run by that title, because a dispatch is told
+  nothing about the run it creates. A dispatcher must send a tag, and the shared lib refuses a
+  dispatch that sends none. So a run that a job waits for always shows `ROR ES pre-build <tag>`.
+  The fallback applies only to a dispatch that sends no tag, and no search looks for such a title.
+  Remove the line and every dispatch of this workflow fails, because no run can be recognised.
+
+One consequence shapes this side: the wait ends when the ROR KBN run ends, not when one image
+appears, so all three legs reach their suite at about the same time. The Gradle build of the ROR ES
+image runs before the wait and absorbs most of that time.
+
+Both sides address the images by a per-run tag (`run-<build id>`), and the build id is created by
+`e2e_prepare` and passed down as a job output. A test job must never re-derive it: a partial re-run
+bumps the run attempt without re-running `e2e_prepare`, and the two sides would then name different
+images.
+
+Branch resolution — both other repos are asked for the branch of this PR first. The e2e clone then
+tries the base branch, `develop`, `master`; the base branch matters, because a change based on
+`develop` must use the `develop` suite, not `master`. The ROR KBN branch name is passed through as
+it is: if the KBN repo has no such branch, its pre-build workflow falls back to `develop` on its
+own side.
+
+The matrix is three modules (newest 9.x, 8.x, 7.x), empty for draft PRs. Job names are built from
+the module, not the ES version, so branch-protection checks survive a version bump. The same
+`<leg>_<module>` shape is used by all three test families: `it_linux_es94x`, `it_win_es94x`,
+`e2e_es94x`.
+
+On failure the job uploads the Cypress videos and screenshots to the E2E_REPORTS store
+(`ci/upload-cypress-artifacts-to-s3.sh`), under `<prefix>/<date>/build_<run id>/<module>_<elk>/`.
+S3, not GitHub artifacts: those count against the metered Actions-storage quota.
+
+Needs `ROR_ENT_ACTIVATION_TOKEN` (the suite refuses to start without it) and `ROR_GH_TOKEN` (to
+dispatch the ROR KBN build and read its status).
+
+## S3 stores
+
+ROR uploads to S3-compatible stores through one path: `ci/s3-uploader.sh` (curl + SigV4) under
+`ci-lib.sh`'s `upload_using_aws_s3_uploader` / `..._to_key`, driven by `ci/upload-files-to-s3.sh`.
+One credential set — `ROR_S3_{ENDPOINT_URL,BUCKET,REGION,ACCESS_KEY_ID,SECRET_ACCESS_KEY}` —
+serves every store. A store is named, and its name selects only the key prefix it writes under:
+`ROR_S3_PATH_{ARTIFACTS,LIBS,E2E_REPORTS}`. Resolve that in one place (`ci-lib.sh`) and nowhere
+else.
+
+An earlier revision claimed each store had its own credentials "because the gateway authorizes
+each prefix separately". That was never true: the artifacts key writes `builds/`, `libs/` and
+`e2e_reports/` alike.
+
+| Store | Holds | Written by |
+|---|---|---|
+| `ARTIFACTS` | the plugin zips customers download (`builds/`) | `upload_pre_ror` / `release_ror` |
+| `LIBS` | ES jars + POMs mirrored for versions not yet on Maven Central (`libs/`) | the `mirror-es-libs.yml` workflow |
+| `E2E_REPORTS` | Cypress videos + screenshots of failed e2e runs (`e2e_reports/`) | `e2e_tests`, on failure only |
+
+The LIBS store is the one with two sides: every plugin build **reads** it as a Maven repository,
+and `mirror-es-libs.yml` **writes** it. Both take its address from `LibsStore` (build-base) so
+they cannot name different locations — when they did, the symptom was an unresolvable
+`org.elasticsearch:elasticsearch:X.Y.Z` at compile time, nowhere near the cause.
+
+Mirroring is manual and one-off per ES version: run **Mirror ES Libs** with `es_versions` set
+(e.g. `9.5.1 9.4.5`), and run it **before** the branch adding that version goes through CI — the
+build cannot compile against jars that are not in the store yet. It used to be a CI job
+(`es_s3_up`) fired by pushing a `newes/*` branch; that coupled a few-times-a-year manual act to
+every push on such a branch, and made five CI jobs depend on a job that almost always did nothing.
+
+## Secrets & variables
+
+**16 repository secrets + 8 variables**, all managed in the Doppler project `ror_ci` (config
+`prd`) and synced to this repo. Change them in Doppler, never in GitHub — the sync overwrites.
+
+| Secret | Purpose |
+|---|---|
+| `ROR_S3_ACCESS_KEY_ID` / `ROR_S3_SECRET_ACCESS_KEY` | the one S3 key pair; writes `builds/`, `libs/` and `e2e_reports/` |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `docker-hub-auth.sh` reads |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. It pulls the `container:` image, and each job that only pulls maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` as well. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
+| `ROR_ENT_ACTIVATION_TOKEN` | ROR PRO/Enterprise key the e2e stack boots with. **The secret is renamed; the env var handed to the container stays `ROR_ACTIVATION_KEY`, which is the customer-facing name** |
+| `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, pushes docs |
+| `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |
+| `MAVEN_REPO_USER`, `MAVEN_REPO_PASSWORD`, `MAVEN_STAGING_PROFILE_ID`, `GPG_KEY_ID`, `GPG_PASSPHRASE` | Maven Central publishing |
+| `PGP_SECRET_KEY_B64` | base64 of `secret.pgp`; the publish step decodes it to `.travis/secret.pgp`. Create with `base64 -w0 secret.pgp \| gh secret set PGP_SECRET_KEY_B64` |
+
+Variables (`vars.NAME`, non-sensitive): `ROR_S3_{ENDPOINT_URL,REGION,BUCKET}` and
+`ROR_S3_PATH_{ARTIFACTS,LIBS,E2E_REPORTS}`. Only the key pair is secret. Keeping these as
+variables is deliberate: a non-secret stored as a secret makes GitHub redact every substring
+match of it, and a bucket named `beshu` turns `beshultd/...` into `***ltd` in every log line.
+The `ROR_S3_PATH_LIBS` value is optional —
+unset (or empty, which is what an undefined `vars.X` expands to) falls back to the defaults in
+`LibsStore`, which is also what a local build resolves against.
+
+Release tags push via the checkout token (`release_ror` has `permissions: contents: write`)
+— no SSH deploy key. Fork PRs get no secrets (GitHub default); `cve_check` and docker auth
+degrade instead of failing.
+
+### Docker authentication
+
+Every job that pulls or pushes a Docker Hub image uses one command, and no other:
+
+```bash
+source ci/docker-hub-auth.sh
+```
+
+The script reads one pair of variables, `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, and
+the job supplies it: a job that pushes maps `DOCKER_HUB_RW_TOKEN` into it, a job that only pulls
+maps `DOCKER_HUB_RO_TOKEN`. The script then authenticates both Docker clients with that pair: the
+docker CLI, with a login, and testcontainers, with `DOCKER_AUTH_CONFIG`. Both halves are necessary. The docker CLI
+does not read `DOCKER_AUTH_CONFIG`. Docker CLI 27, which the toolchains image contains, ignores
+that variable.
+
+Credentials that do not work always stop the job. The script never falls back to anonymous pulls
+in that case, because a bad login must not hide itself. An expired token thus fails in the job
+that owns it, and not as a rate-limit failure somewhere else one hour later.
+
+`DOCKER_AUTH_REQUIRED` covers one case only: the job supplied no credentials at all. The job then
+stops, because that is the default. The two Linux test jobs set the value from the event: `false`
+for a pull request from a fork, which gets no secrets but must still run its tests, and `true`
+everywhere else, where a missing secret is a mistake.
+
+Do not put a `docker login` in a workflow. Two mechanisms with different credentials hide each
+other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
+
+The script cannot authenticate the `container:` image, because the runner pulls that image before
+step 1 starts. Each of the ten `container:` blocks carries a `credentials:` block for that pull.
+They share one anchor, `&toolchains_container`, so the credentials have one definition. A pull
+request from a fork supplies empty secrets, and the runner then skips the login and pulls
+anonymously.
+
+## Coverage: what happened to every Azure stage
+
+Everything the Azure pipeline did is ported — nothing was dropped. The mapping:
+
+| Azure stage | GitHub Actions equivalent |
+|---|---|
+| `SUPERSEDE_GUARD` | native `concurrency:` block (auto-cancel stale PR runs; branch pushes queue) |
+| `DETERMINE_CI_TYPE` | `setup` (branch flags, matrices) + `determine_ci_type` (release-type decision) |
+| `DISK_PROBE` | `disk_probe` (manual `run_disk_probe`) |
+| `BUILD_TOOLCHAINS_IMAGE` | `build_toolchains_image` (weekly cron + manual) |
+| `TOOLCHAINS_VERIFY` | `toolchains_verify` |
+| `ES_S3_UP` | the standalone `mirror-es-libs.yml` workflow (manual; was a `newes/*` push trigger) |
+| `REQUIRED_CHECKS` | `required_checks` (same 4-task matrix) |
+| `OPTIONAL_CHECKS` | `optional_checks` (matrix; `continue-on-error` = "warn but pass") |
+| `TEST` (unit + IT + WIN legs) | `unit_tests_linux`, `it_linux`, `it_windows`, `unit_tests_windows` |
+| `BUILD_ROR` | `build_ror` |
+| `UPLOAD_PRE_ROR` | `upload_pre_ror` |
+| `RELEASE_ROR` / `RELEASE_ROR_WITHOUT_TESTING` | `release_ror` (the `release_without_testing` dispatch input selects the no-test path) |
+| `PUBLISH_MVN_ARTIFACTS` / `..._WITHOUT_TESTING` | `publish_mvn` (same dispatch input) |
+| Azure "secure file" `secret.pgp` | `PGP_SECRET_KEY_B64` repo secret, decoded in-step |
+
+`azure-pipelines.yml` is kept with `trigger: none` / `pr: none` as a manually-runnable
+fallback for one release cycle after the switch, then it gets deleted.

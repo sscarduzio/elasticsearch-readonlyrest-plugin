@@ -2,6 +2,7 @@
 
 source "$(dirname "$0")/ci-lib.sh"
 source "$(dirname "$0")/publish-ror-plugins.sh"
+source "$(dirname "$0")/e2e-tests-lib.sh"
 
 # On cancel/timeout (SIGTERM) kill the gradle process group + reap this CI job's containers, else they
 # orphan (scoped by ror.ci-job=$ROR_CI_JOB_ID so a sibling CI job on the shared daemon is untouched).
@@ -20,7 +21,7 @@ terminate() {
 }
 trap terminate SIGTERM SIGINT
 
-echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task? $ROR_TASK"
+echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task: $ROR_TASK"
 
 # Log file friendly Gradle output
 export TERM=dumb
@@ -72,6 +73,8 @@ run_integration_tests() {
   ES_MODULE=$1
   # IT_PARALLELISM (the user-facing knob) = the gradle -PshardCount it feeds: K parallel shards.
   local parallelism="${IT_PARALLELISM:-1}"
+  # Overridable so a bigger runner can raise it; see run_one for the memory budget.
+  local IT_ORCHESTRATOR_JVMARGS="${IT_ORCHESTRATOR_JVMARGS:--Xmx2048m -XX:MaxMetaspaceSize=512m}"
   local esArgs=("-PesModule=$ES_MODULE")
   [ -n "$ES_VERSION" ] && esArgs+=("-PesVersion=$ES_VERSION")
 
@@ -81,7 +84,15 @@ run_integration_tests() {
   # appends the leader PID to GRADLE_PIDS (never pruned) and sets LAST_PID for the caller.
   LAST_PID=""
   run_one() {  # args: <gradle args...>
-    setsid ./gradlew --no-daemon "$@" &
+    # Cap the ORCHESTRATOR heap. These invocations only spawn the shard processes and build the ES
+    # image; without this they inherit gradle.properties' -Xmx6144m, which the compile jobs need and
+    # this one does not. The leg already holds, on a 16GB runner:
+    #   K shard JVMs        K x (1024m heap + 512m metaspace)   (capped in ShardedGradlewTest)
+    #   K test workers      K x 512m heap                       (itTestHeap)
+    #   >= K ES containers  512m heap each, ~1.1GB RSS each
+    # At K=4 that is already ~15GB, so a 6GB orchestrator ceiling on top is what tips the host into
+    # OOM. A crashed daemon in integration_es80x reported daemonOpts=-Xmx6144m (RORDEV-2156).
+    setsid ./gradlew --no-daemon -Dorg.gradle.jvmargs="$IT_ORCHESTRATOR_JVMARGS" "$@" &
     LAST_PID=$!; GRADLE_PIDS+=("$LAST_PID")
   }
 
@@ -97,140 +108,11 @@ run_integration_tests() {
   if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 }
 
-if [[ $ROR_TASK == "integration_es94x" ]]; then
-  run_integration_tests "es94x"
-fi
-
-if [[ $ROR_TASK == "integration_es92x" ]]; then
-  run_integration_tests "es92x"
-fi
-
-if [[ $ROR_TASK == "integration_es91x" ]]; then
-  run_integration_tests "es91x"
-fi
-
-if [[ $ROR_TASK == "integration_es90x" ]]; then
-  run_integration_tests "es90x"
-fi
-
-if [[ $ROR_TASK == "integration_es818x" ]]; then
-  run_integration_tests "es818x"
-fi
-
-if [[ $ROR_TASK == "integration_es816x" ]]; then
-  run_integration_tests "es816x"
-fi
-
-if [[ $ROR_TASK == "integration_es815x" ]]; then
-  run_integration_tests "es815x"
-fi
-
-if [[ $ROR_TASK == "integration_es814x" ]]; then
-  run_integration_tests "es814x"
-fi
-
-if [[ $ROR_TASK == "integration_es813x" ]]; then
-  run_integration_tests "es813x"
-fi
-
-if [[ $ROR_TASK == "integration_es812x" ]]; then
-  run_integration_tests "es812x"
-fi
-
-if [[ $ROR_TASK == "integration_es811x" ]]; then
-  run_integration_tests "es811x"
-fi
-
-if [[ $ROR_TASK == "integration_es810x" ]]; then
-  run_integration_tests "es810x"
-fi
-
-if [[ $ROR_TASK == "integration_es89x" ]]; then
-  run_integration_tests "es89x"
-fi
-
-if [[ $ROR_TASK == "integration_es88x" ]]; then
-  run_integration_tests "es88x"
-fi
-
-if [[ $ROR_TASK == "integration_es87x" ]]; then
-  run_integration_tests "es87x"
-fi
-
-if [[ $ROR_TASK == "integration_es85x" ]]; then
-  run_integration_tests "es85x"
-fi
-
-if [[ $ROR_TASK == "integration_es84x" ]]; then
-  run_integration_tests "es84x"
-fi
-
-if [[ $ROR_TASK == "integration_es83x" ]]; then
-  run_integration_tests "es83x"
-fi
-
-if [[ $ROR_TASK == "integration_es82x" ]]; then
-  run_integration_tests "es82x"
-fi
-
-if [[ $ROR_TASK == "integration_es81x" ]]; then
-  run_integration_tests "es81x"
-fi
-
-if [[ $ROR_TASK == "integration_es80x" ]]; then
-  run_integration_tests "es80x"
-fi
-
-if [[ $ROR_TASK == "integration_es717x" ]]; then
-  run_integration_tests "es717x"
-fi
-
-if [[ $ROR_TASK == "integration_es716x" ]]; then
-  run_integration_tests "es716x"
-fi
-
-if [[ $ROR_TASK == "integration_es714x" ]]; then
-  run_integration_tests "es714x"
-fi
-
-if [[ $ROR_TASK == "integration_es711x" ]]; then
-  run_integration_tests "es711x"
-fi
-
-if [[ $ROR_TASK == "integration_es710x" ]]; then
-  run_integration_tests "es710x"
-fi
-
-if [[ $ROR_TASK == "integration_es79x" ]]; then
-  run_integration_tests "es79x"
-fi
-
-if [[ $ROR_TASK == "integration_es78x" ]]; then
-  run_integration_tests "es78x"
-fi
-
-if [[ $ROR_TASK == "integration_es77x" ]]; then
-  run_integration_tests "es77x"
-fi
-
-if [[ $ROR_TASK == "integration_es74x" ]]; then
-  run_integration_tests "es74x"
-fi
-
-if [[ $ROR_TASK == "integration_es73x" ]]; then
-  run_integration_tests "es73x"
-fi
-
-if [[ $ROR_TASK == "integration_es72x" ]]; then
-  run_integration_tests "es72x"
-fi
-
-if [[ $ROR_TASK == "integration_es70x" ]]; then
-  run_integration_tests "es70x"
-fi
-
-if [[ $ROR_TASK == "integration_es67x" ]]; then
-  run_integration_tests "es67x"
+# One dispatch for every es*x module: the task name is integration_<module>, and the module is the
+# only thing that varies. Adding an ES module therefore needs no edit here — only in the workflow
+# matrix, which is where the list of modules to run actually lives.
+if [[ $ROR_TASK =~ ^integration_(es[0-9]+x)$ ]]; then
+  run_integration_tests "${BASH_REMATCH[1]}"
 fi
 
 build_ror_plugins() {
@@ -254,52 +136,16 @@ build_ror_plugins() {
   done <<< "$modules"
 }
 
-if [[ $ROR_TASK == "build_es9xx" ]]; then
-  build_ror_plugins "9"
-fi
-
-if [[ $ROR_TASK == "build_es8xx" ]]; then
-  build_ror_plugins "8"
-fi
-
-if [[ $ROR_TASK == "build_es7xx" ]]; then
-  build_ror_plugins "7"
-fi
-
-if [[ $ROR_TASK == "build_es6xx" ]]; then
-  build_ror_plugins "6"
-fi
-
-if [[ $ROR_TASK == "upload_pre_es9xx" ]]; then
-  publish_ror_plugins "9" "upload_pre"
-fi
-
-if [[ $ROR_TASK == "upload_pre_es8xx" ]]; then
-  publish_ror_plugins "8" "upload_pre"
-fi
-
-if [[ $ROR_TASK == "upload_pre_es7xx" ]]; then
-  publish_ror_plugins "7" "upload_pre"
-fi
-
-if [[ $ROR_TASK == "upload_pre_es6xx" ]]; then
-  publish_ror_plugins "6" "upload_pre"
-fi
-
-if [[ $ROR_TASK == "release_es9xx" ]]; then
-  publish_ror_plugins "9" "release"
-fi
-
-if [[ $ROR_TASK == "release_es8xx" ]]; then
-  publish_ror_plugins "8" "release"
-fi
-
-if [[ $ROR_TASK == "release_es7xx" ]]; then
-  publish_ror_plugins "7" "release"
-fi
-
-if [[ $ROR_TASK == "release_es6xx" ]]; then
-  publish_ror_plugins "6" "release"
+# build_es<major>xx / upload_pre_es<major>xx / release_es<major>xx: three families over the same four
+# ES generations, differing only in which function the generation is handed to.
+if [[ $ROR_TASK =~ ^(build|upload_pre|release)_es([6-9])xx$ ]]; then
+  ROR_TASK_FAMILY="${BASH_REMATCH[1]}"
+  ES_MAJOR="${BASH_REMATCH[2]}"
+  case "$ROR_TASK_FAMILY" in
+    build)      build_ror_plugins "$ES_MAJOR" ;;
+    upload_pre) publish_ror_plugins "$ES_MAJOR" "upload_pre" ;;
+    release)    publish_ror_plugins "$ES_MAJOR" "release" ;;
+  esac
 fi
 
 check_maven_artifacts_exist() {
@@ -354,9 +200,36 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
   IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
   for VERSION in "${VERSIONS[@]}"; do
     if [ -n "$VERSION" ]; then
-      publish_ror_prebuild_plugin "$VERSION" "$IMAGE_TAG"
+      publish_ror_es_prebuild_plugin "$VERSION" "$IMAGE_TAG"
       docker system prune -fa
     fi
   done
 
+fi
+
+# Runs once per pipeline: resolves each module's ELK version, publishes the test matrix, and
+# dispatches one ROR KBN pre-build for all versions.
+# Branches: ROR_KBN_TARGET_BRANCH and ROR_KBN_FALLBACK_BRANCH apply to the ROR KBN repo (not e2e).
+# FALLBACK defaults to empty on purpose: outside CI there is no base branch, and the fallback chain
+# in the e2e clone function already includes `develop` and `master`.
+if [[ $ROR_TASK == "prepare_e2e_kbn_images" ]]; then
+  prepare_e2e_kbn_images \
+    "${E2E_ES_MODULES:?E2E_ES_MODULES is not set}" \
+    "${ROR_KBN_TARGET_BRANCH:?ROR_KBN_TARGET_BRANCH is not set}" \
+    "${ROR_KBN_FALLBACK_BRANCH:-}" \
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set}"
+fi
+
+# Runs once per ELK version, after prepare_e2e_kbn_images. Branches (E2E_TARGET_BRANCH and
+# E2E_FALLBACK_BRANCH) apply to the e2e repo. E2E_ELK_VERSION comes from the published matrix; if
+# missing, it is resolved from E2E_ES_MODULE as a fallback.
+if [[ $ROR_TASK == "run_e2e_tests" ]]; then
+  if [ -z "${E2E_ELK_VERSION:-}" ]; then
+    E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
+  fi
+  run_e2e_tests \
+    "$E2E_ELK_VERSION" \
+    "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
+    "${E2E_FALLBACK_BRANCH:-}" \
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the build_id output of e2e_prepare}"
 fi

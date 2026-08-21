@@ -20,4 +20,5 @@ grant {
   permission org.bouncycastle.crypto.CryptoServicesPermission "exportSecretKey";
   permission org.bouncycastle.crypto.CryptoServicesPermission "exportPrivateKey";
   permission org.bouncycastle.crypto.CryptoServicesPermission "defaultRandomConfig";
+  permission org.elasticsearch.secure_sm.ThreadPermission "modifyArbitraryThread";
 };

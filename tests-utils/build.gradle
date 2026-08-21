@@ -7,7 +7,6 @@ plugins {
 
 repositories {
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
-    maven { url 'https://jitpack.io' }
 }
 
 java {
@@ -16,22 +15,8 @@ java {
     }
 }
 
-configurations {
-    scalaCompilerPlugin {
-        transitive = false
-    }
-}
-
 tasks.withType(ScalaCompile).configureEach {
-    // Use artifactView to safely access configuration files in Gradle 9.x
-    def pluginFiles = configurations.scalaCompilerPlugin.incoming.artifactView {
-        attributes { }
-    }.files
-    // Map plugin jars to -Xplugin parameter
-    List<String> parameters = pluginFiles.collect { '-Xplugin:' + it.absolutePath }
-
-    // Add whatever flags you typically add
-    parameters += [
+    List<String> parameters = [
             "-feature",
             "-Xfatal-warnings",
             "-Wunused:implicits",
@@ -73,6 +58,7 @@ dependencies {
     api group: 'org.scala-lang.modules'  ,       name: 'scala-parallel-collections_3',      version: '1.2.0'
     api group: 'com.typesafe.scala-logging',     name: 'scala-logging_3',                   version: '3.9.5'
     api group: 'org.scalatest',                  name: 'scalatest_3',                       version: '3.2.19'
+    api group: 'org.typelevel',                  name: 'squants_3',                         version: '1.8.3'
     api group: 'com.dimafeng',                   name: 'testcontainers-scala-scalatest_3',  version: '0.44.0'
     api group: 'org.testcontainers',             name: 'testcontainers',                    version: "2.0.3"
     api group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                    version: "2.1.11"

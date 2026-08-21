@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient.Method
 import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient.Config
 import tech.beshu.ror.accesscontrol.utils.AsyncOps.deferFuture
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.concurrent.{Future, Promise}
@@ -108,7 +109,7 @@ private class ApacheBasedSimpleHttpClientCreator[F[_]: Async: ContextShift]
       val connectionConfig =
         ConnectionConfig
           .custom()
-          .setConnectTimeout(Timeout.ofMilliseconds(config.connectionTimeout.value.toMillis))
+          .setConnectTimeout(timeoutOf(config.connectionTimeout))
           // Compensates for the TCP keep-alive tuning we can't use below (see ioReactorConfig comment):
           // a pooled connection idle longer than this is checked (cheap liveness probe) before reuse,
           // so a peer that died while idle gets evicted instead of failing the next real request.
@@ -139,10 +140,13 @@ private class ApacheBasedSimpleHttpClientCreator[F[_]: Async: ContextShift]
 
       val requestConfig = RequestConfig
         .custom()
-        .setConnectionRequestTimeout(
-          Timeout.ONE_MILLISECOND
-        ) // fail fast when pool is exhausted (1ms, because 0ms means infinite wait)
-        .setResponseTimeout(Timeout.ofMilliseconds(config.requestTimeout.value.toMillis))
+        // Waiting for a pooled connection is bounded by the configured connection timeout. It used to
+        // be 1ms, to fail fast on an exhausted pool, but 1ms is under the JVM noise floor: a young GC
+        // pause makes even an idle pool answer too late, and the failed lease is reported to the caller
+        // as a failed external auth/authz call — so the user is denied. An exhausted pool now queues
+        // instead, which is what a caller wants, and still cannot wait forever.
+        .setConnectionRequestTimeout(timeoutOf(config.connectionTimeout))
+        .setResponseTimeout(timeoutOf(config.requestTimeout))
         .build()
 
       // httpcore5 only calls the permission-gated jdk.net.ExtendedSocketOptions.TCP_KEEPIDLE/
@@ -178,6 +182,11 @@ private class ApacheBasedSimpleHttpClientCreator[F[_]: Async: ContextShift]
         throw ex
     }
   }
+
+  // Never rounds down to zero: Apache reads a zero timeout as "no timeout at all" (Timeout.isDisabled),
+  // so a sub-millisecond setting would turn a bound into an unbounded wait.
+  private def timeoutOf(duration: PositiveFiniteDuration): Timeout =
+    Timeout.ofMilliseconds(Math.max(1L, duration.value.toMillis))
 
   private def checkJdkNetAvailability(): Unit = {
     catching(classOf[ClassNotFoundException], classOf[NoClassDefFoundError])

@@ -27,3 +27,13 @@ readonlyrest:
       auth_key: "user4:pass"
       filter: '{"bool":{"must_not":[{"term":{"allowedField":"allowed:2"}}]}}'
       fields: ["~notAllowedField"]
+
+    - name: user5
+      auth_key: "user5:pass"
+      indices: ["terms-index"]
+      fields: ["_source", "allowedTerm.keyword"]
+
+    - name: user6
+      auth_key: "user6:pass"
+      indices: ["terms-index"]
+      fields: ["~notAllowedTerm.keyword"]

@@ -15,6 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 import tech.beshu.ror.gradle.utils.EsVersions
+import tech.beshu.ror.gradle.utils.LibsStore
 import tech.beshu.ror.gradle.utils.PluginArtifact
 
 plugins {
@@ -35,9 +36,6 @@ project.ext {
     // bytecode guard: it forces a recompile at a boundary version to prove that version's bytecode matches
     // the base before trusting the repackage.
     baselineEsVersion = EsVersions.baseline(project)
-    s3BucketName = System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
-    s3StoreAddress = System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
-    s3LibsPathPrefix = (System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs').replaceAll('^/+', '').replaceAll('/+$', '')
 }
 
 group = 'org.elasticsearch.plugin'
@@ -68,10 +66,17 @@ ext.assemblePluginZip = { File contentsDir, esVer, File outputDir = distribution
     return zip
 }
 
+// The libs store: ES versions Elastic has released but not yet published to Maven Central resolve from here.
+// It is declared after mavenCentral(), so Central still answers for every version it has. mavenPom() reads
+// the POMs ror-tools publishes next to the jars; artifact() covers the jars stored without one.
+//
+// The address comes from LibsStore, which the WRITE side (ror-tools:uploadArtifactsFromEsBinaries) reads too —
+// the two must name the same location, and did not when each carried its own copy of the defaults.
 repositories {
     maven {
-        url = uri("${project.ext.s3StoreAddress.replaceAll('/+$', '')}/${project.ext.s3BucketName}/${project.ext.s3LibsPathPrefix}")
+        url = uri(LibsStore.fromEnv().repositoryUrl())
         metadataSources {
+            mavenPom()
             artifact()
         }
     }
@@ -91,7 +96,6 @@ java {
 }
 
 configurations {
-    wagon
     distJars {
         extendsFrom runtimeClasspath
         exclude group: 'org.elasticsearch'
@@ -365,6 +369,18 @@ tasks.register('printEsVersionsForModule') {
         def esVersions = EsVersions.of(project)
         println esVersions.oldest
         println esVersions.all.join(' ')
+    }
+}
+
+// Prints a single line to stdout: the newest supported ES version for this module.
+// Invoke with --quiet to suppress Gradle noise so the output is the bare version string.
+// Usage: ./gradlew :es94x:printNewestEsVersionForModule --quiet
+tasks.register('printNewestEsVersionForModule') {
+    group = 'help'
+    description = "Prints the newest supported ES version for ${project.name} to stdout"
+    outputs.upToDateWhen { false }
+    doLast {
+        println EsVersions.of(project).newest
     }
 }
 

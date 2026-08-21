@@ -23,6 +23,7 @@ import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.images.builder.ImageFromDockerfile
+import squants.information.{Information, Mebibytes}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
 import tech.beshu.ror.utils.containers.EsContainer.{Credentials, EsContainerImplementation}
@@ -53,6 +54,22 @@ abstract class EsContainer(
     with StrictLogging {
 
   private val esClient = Coeval(adminClient)
+
+  // Each ES container gets a memory budget. Without one the container is unbounded, so when a leg runs
+  // out of memory the HOST OOM killer chooses the victim -- which is why those failures surfaced as an
+  // unrelated Gradle daemon or test worker dying while the container that took the memory kept running.
+  // With a limit, Docker kills the container that went over and the failure names itself.
+  //
+  // Measured on ES 8.18 with the 512m heap every Docker profile pins: ~1.09 GiB resident idle and ~1.10 GiB
+  // under indexing and search load (heap 319/512 MiB, non-heap 197 MiB). 2 GiB leaves room for a full heap
+  // plus the ROR plugin -- a node boots and serves at ~54% of it -- while still catching a runaway node.
+  // Override with ROR_ES_CONTAINER_MEMORY_MB when a suite genuinely needs more.
+  private val esContainerMemoryLimit: Information =
+    Option(System.getenv("ROR_ES_CONTAINER_MEMORY_MB"))
+      .flatMap(_.toLongOption)
+      .filter(_ > 0)
+      .map(Mebibytes(_))
+      .getOrElse(Mebibytes(2048))
 
   private val containerImplementation: EsContainerImplementation = {
     OsUtils.currentOs match {
@@ -93,7 +110,9 @@ abstract class EsContainer(
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
         // Share host's cgroup namespace to avoid JDK cgroup v2 NPE in nested Docker containers on CI
         container.withCreateContainerCmdModifier { cmd =>
-          cmd.getHostConfig.withCgroupnsMode("host")
+          cmd.getHostConfig
+            .withCgroupnsMode("host")
+            .withMemory(esContainerMemoryLimit.toBytes.toLong)
         }
         // Stamp this CI job's id so cleanup reaps ONLY this CI job's containers, never a sibling's on the
         // shared self-hosted Docker daemon. Absent off-CI -> no label, no-op.

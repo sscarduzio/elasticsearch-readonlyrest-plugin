@@ -15,6 +15,8 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
+import tech.beshu.ror.gradle.utils.EsDistribution
+
 buildscript {
     ext {
         pluginVersion = rootProject.properties['pluginVersion']
@@ -67,6 +69,9 @@ tasks.register('downloadEsBinaries', GradleBuild) {
     tasks = [':ror-tools:downloadEsBinaries']
 }
 
+// Where :ror-tools:downloadEsBinaries leaves the unpacked distribution.
+def esDistributionDir = EsDistribution.distributionDirIn(file("../ror-tools/build").toPath(), esVersion.toString())
+
 tasks.register('copyRorJars', Copy) {
     dependsOn buildRor
     def zipFile = file("../" + esModule + "/build/distributions/readonlyrest-" + pluginVersion + "_es" + esVersion + ".zip")
@@ -77,17 +82,15 @@ tasks.register('copyRorJars', Copy) {
 
 tasks.register('copyTransportNetty4Module', Copy) {
     dependsOn downloadEsBinaries
-    def moduleDir = file("../ror-tools/build/es-" + esVersion + "/elasticsearch-" + esVersion + "/modules/transport-netty4")
 
-    from moduleDir
+    from esDistributionDir.resolve("modules/transport-netty4").toFile()
     into "$buildDir/modules/transport-netty4"
 }
 
 tasks.register('copyAnsiConsoleTools', Copy) {
     dependsOn downloadEsBinaries
-    def toolsDir = file("../ror-tools/build/es-" + esVersion + "/elasticsearch-" + esVersion + "/lib/tools/ansi-console")
 
-    from toolsDir
+    from esDistributionDir.resolve("lib/tools/ansi-console").toFile()
     into "$buildDir/lib/tools/ansi-console"
 }
 

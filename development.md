@@ -61,6 +61,8 @@ Currently eshome support debugging only es8x modules.
 * unit tests: `./gradlew core:test`
 * integration tests for specific module (at the moment we have two modules with integration tests): 
   * `./gradlew integration-tests:test -PesModule=es70x`
+* e2e (Cypress) tests: they live in the `readonlyrest-e2e-tests` repo and drive Kibana with both
+  ROR plugins. CI runs them on every non-draft PR — see [ci/README.md](ci/README.md#e2e-tests).
 ## Adding license headers to newly created files:
 * `./gradlew licenseFormatMain`
 * `./gradlew licenseFormatTest`

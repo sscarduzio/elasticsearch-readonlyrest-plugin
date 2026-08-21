@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager, XpackApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
@@ -46,6 +46,9 @@ trait FieldRuleEngineSuite
 
   protected lazy val user3DocumentManager = new DocumentManager(basicAuthClient("user3", "pass"), esVersionUsed)
   protected lazy val user4DocumentManager = new DocumentManager(basicAuthClient("user4", "pass"), esVersionUsed)
+
+  protected lazy val user5XpackApiManager = new XpackApiManager(basicAuthClient("user5", "pass"), esVersionUsed)
+  protected lazy val user6XpackApiManager = new XpackApiManager(basicAuthClient("user6", "pass"), esVersionUsed)
 
   "Search request with field rule defined" when {
     "specific FLS engine is used" should {
@@ -157,6 +160,33 @@ trait FieldRuleEngineSuite
     }
   }
 
+  "Terms enum request" should {
+    "return terms for a field allowed by the fields whitelist" excludeES (allEs6x, allEs7xBelowEs714x) in {
+      val result = user5XpackApiManager.getTerms("terms-index", "allowedTerm.keyword")
+
+      result should have statusCode 200
+      result.terms should be(Set("allowed:1", "allowed:2", "allowed:3", "allowed:4", "allowed:5"))
+    }
+    "return empty result for a field not covered by the fields whitelist" excludeES (allEs6x, allEs7xBelowEs714x) in {
+      val result = user5XpackApiManager.getTerms("terms-index", "notAllowedTerm.keyword")
+
+      result should have statusCode 200
+      result.terms should be(Set.empty)
+    }
+    "return terms for a field not covered by the fields blacklist" excludeES (allEs6x, allEs7xBelowEs714x) in {
+      val result = user6XpackApiManager.getTerms("terms-index", "allowedTerm.keyword")
+
+      result should have statusCode 200
+      result.terms should be(Set("allowed:1", "allowed:2", "allowed:3", "allowed:4", "allowed:5"))
+    }
+    "return empty result for a field excluded by the fields blacklist" excludeES (allEs6x, allEs7xBelowEs714x) in {
+      val result = user6XpackApiManager.getTerms("terms-index", "notAllowedTerm.keyword")
+
+      result should have statusCode 200
+      result.terms should be(Set.empty)
+    }
+  }
+
   protected def unmodifiableQueryAssertion(searchResult: SearchManager#SearchResult): Unit
 
   protected def scrollSearchShouldProperlyHandleAllowedFields(searchResult: SearchManager#SearchResult): Unit = {
@@ -224,6 +254,18 @@ object FieldRuleEngineSuite {
 
     (1 to 5).foreach { idx =>
       documentManager.createDoc("test-index", idx, createDocument(idx)).force()
+    }
+
+    def createTermsDocument(id: Int) = ujson.read {
+      s"""
+         |{
+         | "allowedTerm": "allowed:$id",
+         | "notAllowedTerm": "not-allowed:$id"
+         |}""".stripMargin
+    }
+
+    (1 to 5).foreach { idx =>
+      documentManager.createDoc("terms-index", idx, createTermsDocument(idx)).force()
     }
   }
 

@@ -46,7 +46,7 @@ USAGE
 
 guessmime()
 {
-    mime=`file -b --mime-type $1`
+    mime=`file -b --mime-type "$1"`
     if [ "$mime" = "text/plain" ] || [ "$mime" = "application/octet-stream" ]; then
         case $1 in
             *.zip)           mime=application/zip;;
@@ -59,7 +59,7 @@ guessmime()
             *.woff)          mime=application/font-woff;;
             *.woff2)         mime=font/woff2;;
             *rss*.xml|*.rss) mime=application/rss+xml;;
-            *)               if head $1 | grep '<html.*>' >/dev/null; then mime=text/html; fi;;
+            *)               if head "$1" | grep '<html.*>' >/dev/null; then mime=text/html; fi;;
         esac
     fi
     printf "$mime"
@@ -73,7 +73,7 @@ aws_sk="$2"                                     # secret key
 bucket=`printf $3 | awk 'BEGIN{FS="@"}{print $1}'`                       # bucket name
 region=`printf $3 | awk 'BEGIN{FS="@"}{print ($2==""?"us-east-1":$2)}'`  # region name
 srcfile="$4"                                                             # source file
-targfile=`echo -n "$5" | sed "s/\/$/\/$(basename $srcfile)/"`            # target file
+targfile=`echo -n "$5" | sed "s/\/$/\/$(basename "$srcfile")/"`            # target file
 mime=${6:-"`guessmime "$srcfile"`"}                                      # mime type
 
 
@@ -141,10 +141,13 @@ if [ -n "${S3_UPLOADER_DEBUG:-}" ]; then
 else
     CURL_FLAGS="-f"
 fi
+# The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';', so a spec
+# name that holds either would send a truncated file. $key_and_sig_args stays unquoted on purpose —
+# it is several arguments, and must split.
 curl                            \
-    -# -k $CURL_FLAGS           \
+    -# $CURL_FLAGS              \
     -F "key=$targfile"          \
     $key_and_sig_args           \
     -F "Content-Type=$mime"     \
-    -F "file=@$srcfile"         \
+    -F "file=@\"$srcfile\""         \
     "$upload_url"

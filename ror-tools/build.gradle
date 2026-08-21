@@ -29,7 +29,6 @@ plugins {
 
 repositories {
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
-    maven { url 'https://jitpack.io' }
 }
 
 sourceSets {
@@ -45,7 +44,7 @@ sourceSets {
 test {
     // Run tests with Java 21 (required by Gradle Tooling API used in tests, matches CI environment)
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
-    
+
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')
     if (enabled) {
@@ -83,21 +82,6 @@ java {
     }
 }
 
-compileScala {
-    options.compilerArgs.addAll(
-            "-feature",
-            "-Xfatal-warnings",
-            "-Wunused:implicits",
-            "-Wunused:imports",
-            "-Wunused:explicits",
-            "-Wunused:strict-no-implicit-warn",
-            "-Wunused:locals",
-            "-Wunused:params",
-            "-Wunused:privates",
-            "-Wunused:nowarn",
-    )
-}
-
 tasks.withType(ScalaCompile).configureEach {
     scalaCompileOptions.additionalParameters = ["-feature", "-Xfatal-warnings"]
 }
@@ -123,75 +107,101 @@ tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
 }
+import javax.inject.Inject
+import org.gradle.process.ExecOperations
+import tech.beshu.ror.gradle.utils.EsDistribution
+import tech.beshu.ror.gradle.utils.ArtifactGroups
+import tech.beshu.ror.gradle.utils.EsLibsMirror
+import tech.beshu.ror.gradle.utils.LibsStore
+import tech.beshu.ror.gradle.utils.MavenPoms
 
-def netty4TransportArtifactName = "transport-netty4-${esVersion}.jar"
-def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/${esVersion}/"
+// Publishes the ES jars and their POMs to the libs store, for ES versions Elastic has released but not yet
+// published to Maven Central. The es*x modules resolve those versions from the store until Central catches up
+// (see the repository in readonlyrest.plugin-common-conventions).
+//
+// EsLibsMirror decides what to publish and what the POMs declare; the tasks below do the I/O around it: copying
+// jars out of the unpacked distribution, writing the generated POMs and uploading both.
 
-def elasticsearchArtifactName = "elasticsearch-${esVersion}.jar"
-def elasticsearchArtifactDestinationPath = "org/elasticsearch/elasticsearch/${esVersion}/"
+// Same store the es*x modules RESOLVE from (see the repository in readonlyrest.plugin-common-conventions):
+// LibsStore is where its coordinates and their defaults are defined, once, for both sides.
+def libsStoreEnvironment = LibsStore.fromEnv().uploadEnvironment()
 
-def registerLibsStoreUpload = { String taskName, String artifactName, String destinationPath ->
-    tasks.register(taskName, Exec) {
-        dependsOn getArtifactsFromEsBinaries
-        environment 'ROR_S3_TARGET_STORE',              'LIBS'
-        environment 'ROR_LIBS_STORE_ENDPOINT_URL',      System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
-        environment 'ROR_LIBS_STORE_ACCESS_KEY_ID',     System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: ''
-        environment 'ROR_LIBS_STORE_ACCESS_KEY_SECRET', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: ''
-        environment 'ROR_LIBS_STORE_BUCKET',            System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
-        environment 'ROR_LIBS_STORE_REGION',            System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1'
-        environment 'ROR_LIBS_STORE_PATH_PREFIX',       System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs'
-        commandLine '../ci/upload-files-to-s3.sh',
-            "${layout.buildDirectory.get().asFile.path}/${artifactName}",
-            destinationPath
+def targetEsVersion = esVersion.toString()
+def buildDirPath = { layout.buildDirectory.get().asFile.toPath() }
+def fileInBuildDir = { String name -> buildDirPath().resolve(name).toFile() }
+
+def mirrorPlanCache = [:]
+
+def mirrorPlan = {
+    mirrorPlanCache.computeIfAbsent('plan') {
+        def distribution = EsDistribution.scan(EsDistribution.distributionDirIn(buildDirPath(), targetEsVersion))
+        def plan = EsLibsMirror.planFor(distribution, ArtifactGroups.ofEsRelease(targetEsVersion))
+        project.logger.lifecycle("Publishing ${plan.jars().size()} jars and ${plan.poms().size()} POMs, read from the ES ${targetEsVersion} distribution")
+        plan
     }
 }
 
-registerLibsStoreUpload('uploadNetty4TransportFromEsBinaries', netty4TransportArtifactName, netty4TransportArtifactDestinationPath)
-registerLibsStoreUpload('uploadElasticsearchFromEsBinaries', elasticsearchArtifactName, elasticsearchArtifactDestinationPath)
-
 tasks.register('uploadArtifactsFromEsBinaries') {
-    dependsOn 'uploadNetty4TransportFromEsBinaries', 'uploadElasticsearchFromEsBinaries'
+    dependsOn generatePomsFromEsBinaries
+    def execOperations = project.objects.newInstance(InjectedExecOps).execOperations
+    doLast {
+        def plan = mirrorPlan()
+        // A coordinate's jar and POM share a directory, and upload-files-to-s3.sh takes several files for one
+        // destination, so they go up in a single call.
+        plan.jars().each { jar ->
+            def pom = plan.pomFor(jar).orElse(null)
+            def filesToUpload = [fileInBuildDir(jar.fileName()).path]
+            if (pom != null) {
+                filesToUpload += fileInBuildDir(pom.fileName()).path
+            }
+            def destination = jar.coordinate().repositoryPath(jar.version())
+            execOperations.exec {
+                environment libsStoreEnvironment
+                commandLine(["${rootDir}/ci/upload-files-to-s3.sh".toString()] + filesToUpload + [destination])
+            }
+        }
+    }
+}
+
+tasks.register('generatePomsFromEsBinaries') {
+    dependsOn getArtifactsFromEsBinaries
+    doLast {
+        mirrorPlan().poms().each { pom ->
+            def pomFile = fileInBuildDir(pom.fileName())
+            pomFile.text = MavenPoms.render(pom.coordinate(), pom.version(), pom.dependencies())
+            project.logger.info("Generated ${pomFile.path}")
+        }
+    }
 }
 
 tasks.register('getArtifactsFromEsBinaries') {
     dependsOn downloadEsBinaries
     doLast {
-        def esExtractedDir = new File(layout.buildDirectory.asFile.get(), "es-${esVersion}").path + "/elasticsearch-${esVersion}"
         def destPath = layout.buildDirectory
-
-        def netty4TransportArtifactPath = "${esExtractedDir}/modules/transport-netty4/${netty4TransportArtifactName}"
-        project.logger.info("Copying ${netty4TransportArtifactPath} to ${destPath.get().asFile.path} ...")
-        copy {
-            from netty4TransportArtifactPath
-            into destPath
-        }
-
-        def esArtifactPath = "${esExtractedDir}/lib/${elasticsearchArtifactName}"
-        project.logger.info("Copying ${esArtifactPath} to ${destPath.get().asFile.path} ...")
-        copy {
-            from esArtifactPath
-            into destPath
+        mirrorPlan().jars().each { jar ->
+            project.logger.info("Copying ${jar.file()} to ${destPath.get().asFile.path} ...")
+            copy {
+                from jar.file().toFile()
+                into destPath
+            }
         }
     }
 }
 
 tasks.register('downloadEsBinaries') {
     doLast {
-        def esTar = new File(layout.buildDirectory.asFile.get(), "es-${esVersion}.tar.gz")
-        if (!esTar.exists()) {
-            if (!layout.buildDirectory.asFile.get().exists()) {
-                project.mkdir(layout.buildDirectory.asFile.get())
-            }
-            def esLinuxBinaries = "elasticsearch-${esVersion}-linux-x86_64.tar.gz"
-            project.logger.info("Downloading ${esLinuxBinaries} ...")
-            new URL("https://artifacts.elastic.co/downloads/elasticsearch/${esLinuxBinaries}")
-                    .withInputStream { i -> esTar.withOutputStream { it << i } }
-        }
-        def esDir = new File(layout.buildDirectory.asFile.get(), "es-${esVersion}")
+        def esTar = EsDistribution.downloadArchiveTo(buildDirPath(), targetEsVersion).toFile()
+        def esDir = EsDistribution.unpackDirIn(buildDirPath(), targetEsVersion).toFile()
         project.logger.info("Extracting ${esTar.path} to ${esDir.path} ...")
         copy {
             from tarTree(esTar)
             into esDir
         }
     }
+}
+
+// ExecOperations is injected into constructors, and a task declared in a script has none of ours. This
+// interface carries the injection, so the upload runs exec() without reaching for Project at execution time.
+interface InjectedExecOps {
+    @Inject ExecOperations getExecOperations()
 }

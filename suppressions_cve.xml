@@ -68,6 +68,12 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2026-49090</cve>
         <cve>CVE-2026-56148</cve>
         <cve>CVE-2026-56149</cve>
+        <cve>CVE-2026-63144</cve>
+        <cve>CVE-2026-56144</cve>
+        <cve>CVE-2026-56145</cve>
+        <cve>CVE-2026-63136</cve>
+        <cve>CVE-2026-63140</cve>
+        <cve>CVE-2026-63263</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
@@ -132,13 +138,19 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     </suppress>
     <suppress>
         <notes><![CDATA[
-   False positive: CVE-2026-42582 affects only netty-codec-http3 (HTTP/3 QPACK decoder) in Netty 4.2.x.
-   The project uses Netty 4.1.x, which does not include netty-codec-http3 at all — the module does not exist in the 4.1.x line.
+   False positives: both CVEs affect only netty-codec-http3, a module that exists solely in the Netty 4.2.x line
+   (first published as 4.2.2.Final). The project uses Netty 4.1.x, which does not ship netty-codec-http3 at all.
+    - CVE-2026-42582 (GHSA-2c5c-chwr-9hqw): HTTP/3 QPACK literal unbounded allocation.
+    - CVE-2026-56816 (GHSA-hpcc-26xq-25fv): Http3FrameCodec buffers reserved-frame payloads without a limit.
+      GHSA scopes it to io.netty:netty-codec-http3 < 4.2.16.Final, but the NVD CPE match criteria
+      (cpe:2.3:a:netty:netty:*, versionEndExcluding 4.2.16) has no lower bound, so it also matches
+      every 4.1.x artifact.
    The flagged netty artifacts (netty-buffer, netty-codec, netty-codec-http, netty-codec-http2, netty-common,
    netty-handler, netty-resolver, netty-transport, netty-transport-native-unix-common) are unaffected.
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/io\.netty/(netty-buffer|netty-codec|netty-codec-http|netty-codec-http2|netty-common|netty-handler|netty-resolver|netty-transport|netty-transport-native-unix-common)@.*$</packageUrl>
         <cve>CVE-2026-42582</cve>
+        <cve>CVE-2026-56816</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
@@ -195,5 +207,19 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.scala-lang\.modules/scala-parallel-collections_3@1\.2\.0$</packageUrl>
         <cve>CVE-2017-1000034</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bc-fips / bcpkix-fips / bctls-fips / bcutil-fips
+   False positive: CVE-2026-12185 ("BKS/UBER keystore allocates from untrusted lengths before
+   integrity check") affects the NON-FIPS BouncyCastle distribution only — bcprov before 1.85, and
+   bcprov-lts8on 2.73.0 to 2.73.12. ROR ships neither: the runtime classpath carries the FIPS
+   artifacts alone, which are a separate code line with their own versioning (2.1.x) and do not
+   implement the BKS/UBER keystore types. The CPE matcher maps them to the non-FIPS CPE
+   bouncycastle:bouncy_castle_for_java and reports the CVE against them.
+   Scoped to this one CVE, so any real advisory against the FIPS artifacts still fails the build.
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bc(pkix|tls|util)?-fips@.*$</packageUrl>
+        <cve>CVE-2026-12185</cve>
     </suppress>
 </suppressions>

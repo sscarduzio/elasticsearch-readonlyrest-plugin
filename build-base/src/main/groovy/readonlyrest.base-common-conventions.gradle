@@ -102,17 +102,21 @@ dependencyCheck {
     }
 }
 
-githook {
-    hooks {
-        "pre-commit" {
-            shell = """
-                ./gradlew license --rerun-tasks || exit 1
-                STAGED=\$(git diff --cached --name-only --diff-filter=ACMR -- '*.scala' '*.java' | tr '\\n' ',' | sed 's/,\$//')
-                if [ -n "\$STAGED" ]; then
-                    ./gradlew spotlessApply -PspotlessStagedFiles="\$STAGED" || exit 1
-                    echo "\$STAGED" | tr ',' '\\n' | xargs git add --
-                fi
-            """
+// Dev-only: parallel CI shard builds race on .git/hooks/pre-commit writes
+// ("No such file or directory" during project evaluation), so skip hooks in CI.
+if (!System.getenv('CI')) {
+    githook {
+        hooks {
+            "pre-commit" {
+                shell = """
+                    ./gradlew license --rerun-tasks || exit 1
+                    STAGED=\$(git diff --cached --name-only --diff-filter=ACMR -- '*.scala' '*.java' | tr '\\n' ',' | sed 's/,\$//')
+                    if [ -n "\$STAGED" ]; then
+                        ./gradlew spotlessApply -PspotlessStagedFiles="\$STAGED" || exit 1
+                        echo "\$STAGED" | tr ',' '\\n' | xargs git add --
+                    fi
+                """
+            }
         }
     }
 }

@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -184,12 +185,29 @@ public final class EsVersions {
     return result;
   }
 
+  /** An ES version: {@code major.minor.patch}, optionally with a pre-release qualifier such as -alpha1. */
+  private static final Pattern VERSION_PATTERN =
+      Pattern.compile("\\d+\\.\\d+\\.\\d+(-[a-zA-Z]+\\d+)?");
+
   /** Parses a required comma-separated version property into a trimmed, non-empty list. */
   private static List<String> parseVersionCsv(Project project, String property) {
-    return Arrays.stream(String.valueOf(project.property(property)).split(","))
-        .map(String::trim)
-        .filter(s -> !s.isEmpty())
-        .toList();
+    List<String> versions =
+        Arrays.stream(String.valueOf(project.property(property)).split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .toList();
+    for (String version : versions) {
+      if (!VERSION_PATTERN.matcher(version).matches()) {
+        throw new GradleException(
+            property
+                + " in "
+                + project.getName()
+                + " contains '"
+                + version
+                + "', which is not an ES version (expected major.minor.patch, optionally -alpha1)");
+      }
+    }
+    return versions;
   }
 
   /** Throws if {@code versions} is not already in oldest-first (semver-aware) order. */
@@ -228,19 +246,28 @@ public final class EsVersions {
     }
 
     private static int compareBaseVersion(String a, String b) {
-      String[] aParts = a.split("\\.", 3);
-      String[] bParts = b.split("\\.", 3);
-      for (int i = 0; i < 3; i++) {
-        try {
-          int ai = i < aParts.length ? Integer.parseInt(aParts[i]) : 0;
-          int bi = i < bParts.length ? Integer.parseInt(bParts[i]) : 0;
-          if (ai != bi) return Integer.compare(ai, bi);
-        } catch (NumberFormatException e) {
-          throw new GradleException(
-              "Cannot parse ES version segment in '" + a + "' or '" + b + "': " + e.getMessage());
-        }
+      String[] aParts = a.split("\\.");
+      String[] bParts = b.split("\\.");
+      for (int i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+        String aPart = i < aParts.length ? aParts[i] : "0";
+        String bPart = i < bParts.length ? bParts[i] : "0";
+        OptionalInt aNumber = asNumber(aPart);
+        OptionalInt bNumber = asNumber(bPart);
+        int comparison =
+            aNumber.isPresent() && bNumber.isPresent()
+                ? Integer.compare(aNumber.getAsInt(), bNumber.getAsInt())
+                : aPart.compareTo(bPart);
+        if (comparison != 0) return comparison;
       }
       return 0;
+    }
+
+    private static OptionalInt asNumber(String segment) {
+      try {
+        return OptionalInt.of(Integer.parseInt(segment));
+      } catch (NumberFormatException e) {
+        return OptionalInt.empty();
+      }
     }
 
     private static int compareQualifier(String a, String b) {

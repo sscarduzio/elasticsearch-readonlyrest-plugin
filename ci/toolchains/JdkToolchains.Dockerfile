@@ -42,8 +42,22 @@ FROM eclipse-temurin:17-jdk AS base
 
 # apt tools the pipeline needs (was: `apt-get install -y git curl` on every run).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git curl ca-certificates unzip file \
+ && apt-get install -y --no-install-recommends git curl ca-certificates unzip file jq \
  && rm -rf /var/lib/apt/lists/*
+
+# GitHub CLI: pipeline steps that dispatch workflows in other ROR repos and poll their runs.
+# Installed from the pinned release tarball rather than GitHub's apt repo — same reason as the
+# docker CLI above: no extra apt repo/keyring, and the version is fixed here.
+ARG GH_CLI_VERSION=2.97.0
+# TARGETARCH (amd64 on CI) is set by BuildKit and matches gh's release naming, so the image also
+# builds natively on an arm64 laptop.
+ARG TARGETARCH
+RUN GH_DIR="gh_${GH_CLI_VERSION}_linux_${TARGETARCH}" \
+ && curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/${GH_DIR}.tar.gz" -o /tmp/gh.tar.gz \
+ && tar -xzf /tmp/gh.tar.gz -C /tmp "${GH_DIR}/bin/gh" \
+ && mv "/tmp/${GH_DIR}/bin/gh" /usr/local/bin/gh \
+ && rm -rf /tmp/gh.tar.gz "/tmp/${GH_DIR}" \
+ && gh --version
 
 # Docker CLIENT only: UPLOAD_PRE_ROR/RELEASE_ROR run `docker login` / `publishEsRorDockerImage`
 # from inside this container and talk to the agent host's Docker daemon over the bind-mounted

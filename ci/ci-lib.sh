@@ -1,8 +1,11 @@
 #!/bin/bash -e
 
-CI_DIR=$(dirname "$0")
+# This file's OWN directory — used to locate the sibling scripts it shells out to (s3-uploader.sh).
+# BASH_SOURCE, not $0: $0 is the script that INVOKED us, which is a different directory whenever this
+# lib is sourced rather than run (`source ci/ci-lib.sh && reap_ci_job_containers` resolved it to ".").
+CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-function docker_image_exists {
+docker_image_exists() {
   docker manifest inspect "$1" >/dev/null 2>&1
 }
 
@@ -10,7 +13,7 @@ function docker_image_exists {
 # never touch a sibling CI job sharing the self-hosted Docker daemon. Single source of truth for "kill
 # this CI job's containers" — used by run-pipeline.sh's SIGTERM trap, the pipeline's always() cleanup
 # step, and the standalone orphan reaper. No-op if ROR_CI_JOB_ID is unset or nothing matches.
-function reap_ci_job_containers {
+reap_ci_job_containers() {
   [ -n "${ROR_CI_JOB_ID:-}" ] || return 0
   local ids
   ids=$(docker ps -aq --filter "label=ror.ci-job=$ROR_CI_JOB_ID" 2>/dev/null)
@@ -22,7 +25,7 @@ function reap_ci_job_containers {
 ES_DEV_IMAGE_REPO="beshultd/elasticsearch-readonlyrest-dev"
 
 # Copies a registry image manifest to a new tag without pulling/rebuilding (multi-platform safe).
-function retag_dev_image {
+retag_dev_image() {
   if [ "$#" -ne 2 ]; then
     echo "Usage: retag_dev_image <source tag> <target tag>"
     return 1
@@ -47,9 +50,9 @@ function retag_dev_image {
 #   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
 #   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
 #   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
-function publish_ror_prebuild_plugin {
+publish_ror_es_prebuild_plugin() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    echo "Usage: publish_ror_prebuild_plugin <ES version> [image tag]"
+    echo "Usage: publish_ror_es_prebuild_plugin <ES version> [image tag]"
     return 1
   fi
 
@@ -105,7 +108,7 @@ function publish_ror_prebuild_plugin {
   fi
 }
 
-function checkTagNotExist {
+checkTagNotExist() {
   GIT_TAG="$1"
 
   # Check only the remote to avoid false positives from stale local tags left by a
@@ -116,7 +119,7 @@ function checkTagNotExist {
   fi
 }
 
-function tag {
+tag() {
   GIT_TAG="$1"
 
   checkTagNotExist "$GIT_TAG" || return 0
@@ -134,43 +137,66 @@ function tag {
 # Upload a file to an S3-compatible store using the SigV4 curl uploader.
 #
 # The store is selected by the 3rd arg (default ARTIFACTS) and resolves the matching
-# ROR_<STORE>_STORE_* env vars, so the same logic serves both the artifacts store
-# (ROR_ARTIFACTS_STORE_*) and the libs store (ROR_LIBS_STORE_*). Each store keeps its
-# own endpoint, credentials, bucket, region and path-prefix.
-function upload_using_aws_s3_uploader {
+# ROR_<STORE>_STORE_* env vars, so the same logic serves any store: each one keeps its own
+# endpoint, credentials, bucket, region and path-prefix under its own name.
+#
+# This is the ONE place that turns a store name into a set of values. Anything uploading to a
+# ROR store goes through it rather than resolving ROR_<STORE>_STORE_* itself — a second copy of
+# this resolution is how the two sides of the libs store drifted apart before (see LibsStore).
+#
+# For the libs store the caller (ror-tools, via LibsStore) always passes explicit values, so the
+# fallbacks below never apply to it; they only cover a store whose vars are partly unset.
+#
+# Two entry points, differing only in what the destination MEANS:
+#   upload_using_aws_s3_uploader        <file> <dir>  [store] [mime]  — key is <dir>/<basename>
+#   upload_using_aws_s3_uploader_to_key <file> <key>  [store] [mime]  — key is exactly <key>
+# The mime type is optional; without it the uploader guesses (which needs `file` on the runner).
+function _upload_to_s3_target {
   local LOCAL_FILE="$1"
-  local S3_PATH STORE BUCKET PATH_PREFIX
-  S3_PATH=$(echo "$2" | sed 's:/*$::')
-  STORE="${3:-ARTIFACTS}"
+  local S3_TARGET="$2"
+  local STORE="${3:-ARTIFACTS}"
+  local MIME="${4:-}"
+  local BUCKET PATH_PREFIX
 
   if [[ ! -f "$LOCAL_FILE" ]]; then
     echo "ERROR: artifact to upload not found (or not a regular file): $LOCAL_FILE"
-    exit 1
+    return 1
   fi
 
-  # Indirectly resolve the store-specific env vars (e.g. ROR_LIBS_STORE_BUCKET).
-  local ENDPOINT_VAR="ROR_${STORE}_STORE_ENDPOINT_URL"
-  local AK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_ID"
-  local SK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_SECRET"
-  local BUCKET_VAR="ROR_${STORE}_STORE_BUCKET"
-  local REGION_VAR="ROR_${STORE}_STORE_REGION"
-  local PREFIX_VAR="ROR_${STORE}_STORE_PATH_PREFIX"
+  # One credential set serves every store; only the key prefix differs, so the store name
+  # selects a path (ROR_S3_PATH_ARTIFACTS / _LIBS / _E2E_REPORTS) and nothing else.
+  local PREFIX_VAR="ROR_S3_PATH_${STORE}"
 
-  local ENDPOINT="${!ENDPOINT_VAR-}"
-  local AK="${!AK_VAR-}"
-  local SK="${!SK_VAR-}"
-  local REGION="${!REGION_VAR-}"
-  BUCKET="${!BUCKET_VAR-}"; BUCKET="${BUCKET:-beshu}"
+  local ENDPOINT="${ROR_S3_ENDPOINT_URL-}"
+  local AK="${ROR_S3_ACCESS_KEY_ID-}"
+  local SK="${ROR_S3_SECRET_ACCESS_KEY-}"
+  local REGION="${ROR_S3_REGION-}"
+  BUCKET="${ROR_S3_BUCKET-}"; BUCKET="${BUCKET:-beshu}"
   PATH_PREFIX="${!PREFIX_VAR-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
 
   S3_ENDPOINT_URL="$ENDPOINT" \
     "$CI_DIR"/s3-uploader.sh \
       "$AK" "$SK" \
-      "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
+      "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_TARGET}" ${MIME:+"$MIME"}
 }
 
-function log_disk_usage {
+# Upload into a directory: the uploader appends the file's basename to it.
+function upload_using_aws_s3_uploader {
+  local S3_DIR
+  S3_DIR=$(echo "$2" | sed 's:/*$::')
+  _upload_to_s3_target "$1" "${S3_DIR}/" "${3:-ARTIFACTS}" "${4:-}"
+}
+
+# Upload to an exact key. For callers that mirror a directory tree, where the key is the file's
+# path within that tree and not its basename. Its caller is the e2e Cypress report uploader
+# (RORDEV-1229, change/RORDEV-1229_run_e2e_tests), which today resolves ROR_<STORE>_STORE_* with its
+# own inline copy — the duplication this file exists to remove. Unused until that branch lands.
+function upload_using_aws_s3_uploader_to_key {
+  _upload_to_s3_target "$1" "$2" "${3:-ARTIFACTS}" "${4:-}"
+}
+
+log_disk_usage() {
   local label="${1:-}"
   echo "=== Disk usage ($label) ==="
   df -h / || true

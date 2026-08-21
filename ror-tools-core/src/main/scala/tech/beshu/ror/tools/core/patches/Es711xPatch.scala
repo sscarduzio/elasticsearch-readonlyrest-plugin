@@ -39,7 +39,10 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.service
   ModifySnapshotsServiceClass
 }
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
-import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
+import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.{
+  getPropertySecurityPermission,
+  modifyArbitraryThreadPermission
+}
 
 import scala.language.postfixOps
 
@@ -51,7 +54,8 @@ private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVer
         ModifyPolicyUtilClass(
           esVersion,
           NonEmptyList.of(
-            getPropertySecurityPermission
+            getPropertySecurityPermission,
+            modifyArbitraryThreadPermission
           )
         ),
         ModifyRepositoriesServiceClass(esVersion),
@@ -60,7 +64,8 @@ private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       RorSecurityPolicyPatchCreator(
         AddAdditionalPermissions(
           NonEmptyList.of(
-            getPropertySecurityPermission
+            getPropertySecurityPermission,
+            modifyArbitraryThreadPermission
           )
         ),
       ),

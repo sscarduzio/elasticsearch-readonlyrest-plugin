@@ -37,6 +37,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   private static final Logger logger = LogManager.getLogger(WireMockContainer.class);
 
   public static int WIRE_MOCK_PORT = 8080;
+  public static final String BASE_IMAGE = "rodolpheche/wiremock:2.5.1";
   private static final Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
 
   private WireMockContainer(ImageFromDockerfile imageFromDockerfile) {
@@ -56,9 +57,17 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         new WireMockContainer(
             dockerfile.withDockerfileFromBuilder(
                 builder -> {
-                  DockerfileBuilder b = builder.from("rodolpheche/wiremock:2.5.1");
+                  DockerfileBuilder b = builder.from(BASE_IMAGE);
                   mappingFiles.forEach(
                       mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
+                  // the image's own CMD plus -Xmx: its JDK 8 is not cgroup-aware and defaults to
+                  // 1/4 of host RAM
+                  b.cmd(
+                      "java",
+                      "-Xmx256m",
+                      "-cp",
+                      "/var/wiremock/lib/*:/var/wiremock/extensions/*",
+                      "com.github.tomakehurst.wiremock.standalone.WireMockServerRunner");
                   b.build();
                 }));
     WireMockContainer cont =

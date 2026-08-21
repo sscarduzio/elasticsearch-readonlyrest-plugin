@@ -1,0 +1,68 @@
+name: Mirror ES Libs
+
+# Mirrors an ES version's jars (and generated POMs) into the ROR libs store, for versions Elastic has
+# released but not yet published to Maven Central. Every plugin build resolves ES dependencies from that
+# store — see the repository declared in readonlyrest.plugin-common-conventions, and LibsStore, which is
+# where this workflow's write side and that read side both take the store's address from.
+#
+# Manual-only, and a one-off per ES version: run it BEFORE the branch adding that version goes through CI,
+# or that branch's build cannot resolve org.elasticsearch:elasticsearch:<version>. Step 2 of "supporting a
+# new ES version" — see the ror-release skill.
+on:
+  workflow_dispatch:
+    inputs:
+      es_versions:
+        description: 'Space or comma-separated ES versions to mirror (e.g. "9.5.1" or "9.5.1 9.4.5")'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  mirror:
+    name: Mirroring
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 120
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
+      GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
+      AGENT_ISSELFHOSTED: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { persist-credentials: false }
+
+      - name: Free host disk (no-op on self-hosted)
+        run: ci/free-host-disk.sh
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with: { distribution: temurin, java-version: '17' }
+
+      - name: Restore Gradle cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ github.workspace }}/.gradle-home
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties', '**/settings.gradle*', '**/build.gradle*', '**/gradle.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: upload_es_artifacts
+        env:
+          ES_VERSIONS_TO_UPLOAD: ${{ inputs.es_versions }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
+        run: |
+          set -e
+          if [ -z "$(echo "$ES_VERSIONS_TO_UPLOAD" | tr -d '[:space:],')" ]; then
+            echo "::error::es_versions is empty — nothing to mirror"
+            exit 1
+          fi
+          ci/upload-es-artifacts.sh

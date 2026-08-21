@@ -28,6 +28,59 @@ import tech.beshu.ror.utils.misc.{JDK, Version}
 
 object Elasticsearch {
 
+  private[images] def slimModulesEnabled: Boolean =
+    Option(System.getenv("ROR_ES_SLIM_MODULES")).forall(_.equalsIgnoreCase("true"))
+
+  // See integration-tests/README.md (ROR_ES_SLIM_MODULES) for what is kept and why.
+  private[images] val modulesToRemoveInSlimMode: List[String] = List(
+    "blob-cache",
+    "counted-keyword",
+    "frozen-indices",
+    "ingest-attachment",
+    "ingest-geoip",
+    "legacy-geo",
+    "logsdb",
+    "ml-package-loader",
+    "old-lucene-versions",
+    "rank-rrf",
+    "rank-vectors",
+    "repositories-metering-api",
+    "repository-azure",
+    "repository-gcs",
+    "repository-s3",
+    "repository-url",
+    "search-business-rules",
+    "searchable-snapshots",
+    "snapshot-based-recoveries",
+    "snapshot-repo-test-kit",
+    "spatial",
+    "transform",
+    "vector-tile",
+    "x-pack-apm-data",
+    "x-pack-ccr",
+    "x-pack-deprecation",
+    "x-pack-downsample",
+    "x-pack-enrich",
+    "x-pack-ent-search",
+    "x-pack-eql",
+    "x-pack-fleet",
+    "x-pack-geoip-enterprise-downloader",
+    "x-pack-graph",
+    "x-pack-identity-provider",
+    "x-pack-inference",
+    "x-pack-kql",
+    "x-pack-logstash",
+    "x-pack-migrate",
+    "x-pack-monitoring",
+    "x-pack-otel-data",
+    "x-pack-profiling",
+    "x-pack-redact",
+    "x-pack-text-structure",
+    "x-pack-voting-only-node",
+    "x-pack-watcher",
+    "x-pack-write-load-forecaster"
+  )
+
   final case class Config(
       clusterName: String,
       nodeName: String,
@@ -47,6 +100,15 @@ object Elasticsearch {
       case EsInstallationType.NativeWindowsProcess =>
         WindowsEsDirectoryManager.configPath(config.clusterName, config.nodeName)
     }
+
+    // Only the official-image build runs `enableSlimModules`; the apt/Ubuntu image and the native
+    // Windows process keep every module, so their config must still disable those subsystems.
+    def modulesAreStripped: Boolean =
+      Elasticsearch.slimModulesEnabled && (config.esInstallationType match {
+        case EsInstallationType.EsDockerImage                  => true
+        case EsInstallationType.UbuntuDockerImageWithEsFromApt => false
+        case EsInstallationType.NativeWindowsProcess           => false
+      })
 
     def esDir: Path = config.esInstallationType match {
       case EsInstallationType.EsDockerImage =>
@@ -183,6 +245,7 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
+      .enableSlimModules(config.esDir, when = config.modulesAreStripped)
       .when(hasBuggyBundledJdk, replaceBundledJdk)
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
@@ -299,9 +362,8 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
         entry = s"cluster.initial_master_nodes: ${config.masterNodes.toList.mkString(",")}",
         orElseEntry = "node.master: true"
       )
-      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0), entry = "ingest.geoip.downloader.enabled: false")
+      .disableSubsystemsOfStrippedModules(esVersion, whenModulesArePresent = !config.modulesAreStripped)
       .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0), entry = "action.destructive_requires_name: false")
-      .addWhen(Version.lowerThan(esVersion, 8, 0, 0), entry = "xpack.monitoring.enabled: false")
       // ML is never exercised by any suite; disabling it drops the ML native processes (~200-400MB
       // RSS per container) and speeds startup. Unlike xpack.monitoring.enabled (removed in 8.0), the
       // xpack.ml.enabled key is supported across the whole matrix (6.3 -> 9.x), so no version guard.
@@ -316,13 +378,6 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // suites always create the templates they need themselves. Key exists since 7.8, but the
       // win is 8.x-only, so guard at 8.0 and stay clear of the 7.x boundary.
       .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0), entry = "stack.templates.enabled: false")
-      // The apm-data plugin (not covered by stack.templates.enabled) installs the logs-apm.*/
-      // metrics-apm.* template zoo seen in 8.18 boot logs. The plugin exists since 8.13 and is
-      // enabled by default since 8.15 (APM Server relies on it from there); no suite touches APM.
-      .addWhen(Version.greaterOrEqualThan(esVersion, 8, 15, 0), entry = "xpack.apm_data.enabled: false")
-      // No suite reads deprecation logs via the .logs-deprecation data stream (MiscSuite uses
-      // response headers); skips its templates + indexing pipeline. Setting added in 7.16.
-      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 16, 0), entry = "cluster.deprecation_indexing.enabled: false")
       // SLM is never exercised; skips the .slm-history index machinery. Setting added with SLM in 7.5.
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 5, 0), entry = "slm.history_index_enabled: false")
       .add(
@@ -372,12 +427,16 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .add("-Xms512m")
       .add("-Xmx512m")
       .add("-Djava.security.egd=file:/dev/./urandoms")
-      .add(
+      .addWhen(
+        jdwpEnabled,
         "-Xdebug",
         s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${xDebugAddressBasedOn(esVersion)}"
       )
       .addWhen(needsCorretto19, "--add-modules=jdk.net")
   }
+
+  private def jdwpEnabled: Boolean =
+    Option(System.getenv("ROR_ES_JDWP")).forall(_.equalsIgnoreCase("true"))
 
   private def xDebugAddressBasedOn(esVersion: String) = {
     if (Version.greaterOrEqualThan(esVersion, 6, 3, 0)) "*:8000" else "8000"
@@ -419,8 +478,8 @@ final case class EsJavaOptsBuilder(options: Seq[String]) {
     this.copy(options = this.options ++ option.toSeq)
   }
 
-  def addWhen(condition: Boolean, option: => String): EsJavaOptsBuilder = {
-    if (condition) add(option) else this
+  def addWhen(condition: Boolean, option: => String, more: String*): EsJavaOptsBuilder = {
+    if (condition) add(option +: more.toSeq*) else this
   }
 
 }
@@ -428,3 +487,28 @@ final case class EsJavaOptsBuilder(options: Seq[String]) {
 object EsJavaOptsBuilder {
   def empty: EsJavaOptsBuilder = EsJavaOptsBuilder(Seq.empty)
 }
+
+// Everything the slim-modules mode does, in one place. The image drops the module directories; the
+// config then must NOT disable those subsystems, because a setting whose module is gone is an
+// unknown setting and ES refuses to boot. Stripping supersedes disabling.
+extension (image: DockerImageDescription)
+
+  private[images] def enableSlimModules(esDir: Path, when: Boolean): DockerImageDescription =
+    image.runWhen(
+      when,
+      s"cd ${esDir.toString()}/modules && rm -rf ${Elasticsearch.modulesToRemoveInSlimMode.mkString(" ")}"
+    )
+
+extension (config: EsConfigBuilder)
+
+  private[images] def disableSubsystemsOfStrippedModules(
+      esVersion: String,
+      whenModulesArePresent: Boolean
+  ): EsConfigBuilder =
+    if (!whenModulesArePresent) config
+    else
+      config
+        .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0), entry = "ingest.geoip.downloader.enabled: false")
+        .addWhen(Version.lowerThan(esVersion, 8, 0, 0), entry = "xpack.monitoring.enabled: false")
+        .addWhen(Version.greaterOrEqualThan(esVersion, 8, 15, 0), entry = "xpack.apm_data.enabled: false")
+        .addWhen(Version.greaterOrEqualThan(esVersion, 7, 16, 0), entry = "cluster.deprecation_indexing.enabled: false")

@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites.audit
 import cats.data.NonEmptyList
 import org.scalatest.time.{Millis, Span}
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
-import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.suites.base.support.{BaseSingleNodeEsClusterTest, HeavySuiteGated}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.ContainerOps.*
@@ -38,7 +38,8 @@ import scala.concurrent.duration.*
 class RemoteClusterAuditingToolsSuite
     extends BaseAuditingToolsSuite
     with BaseSingleNodeEsClusterTest
-    with SingletonPluginTestSupport {
+    with SingletonPluginTestSupport
+    with HeavySuiteGated {
 
   private val isDataStreamSupported = Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)
 
