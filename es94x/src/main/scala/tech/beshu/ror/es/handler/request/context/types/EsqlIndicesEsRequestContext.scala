@@ -87,7 +87,7 @@ class EsqlIndicesEsRequestContext private (
       case Right(r @ EsqlRequestClassification.IndicesRelated(tables)) =>
         val filteredIndicesStrings = filteredIndices.stringify.toCovariantSet
         if (filteredIndicesStrings != r.indices) {
-          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndicesStrings)
+          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndices)
         } else {
           request
         }

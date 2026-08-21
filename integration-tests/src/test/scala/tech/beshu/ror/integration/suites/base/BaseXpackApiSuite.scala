@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import tech.beshu.ror.utils.misc.Version
 
 trait BaseXpackApiSuite
     extends AnyWordSpecLike
@@ -76,6 +77,10 @@ trait BaseXpackApiSuite
   private lazy val dev1EsqlManager = new EsqlApiManager(basicAuthClient("dev1sql", "test"), esVersionUsed)
   private lazy val dev2EsqlManager = new EsqlApiManager(basicAuthClient("dev2sql", "test"), esVersionUsed)
   private lazy val dev3EsqlManager = new EsqlApiManager(basicAuthClient("dev3sql", "test"), esVersionUsed)
+  private lazy val dev4EsqlManager = new EsqlApiManager(basicAuthClient("dev4sql", "test"), esVersionUsed)
+  private lazy val dev5EsqlManager = new EsqlApiManager(basicAuthClient("dev5sql", "test"), esVersionUsed)
+  private lazy val dev6EsqlManager = new EsqlApiManager(basicAuthClient("dev6sql", "test"), esVersionUsed)
+  private lazy val dev7EsqlManager = new EsqlApiManager(basicAuthClient("dev7sql", "test"), esVersionUsed)
 
   "Async search" should {
     "be allowed for dev1 and test1_index_a" excludeES (allEs6x, allEs7xBelowEs77x) in {
@@ -1279,6 +1284,59 @@ trait BaseXpackApiSuite
         }
       }
     }
+    "LOOKUP JOIN is used" should {
+      "be allowed" when {
+        "the LOOKUP JOIN target is authorized" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+          val result = dev7EsqlManager.execute(
+            """FROM book_catalog | LOOKUP JOIN book_prices ON book_id | SORT book_id | LIMIT 100"""
+          )
+          result should have statusCode 200
+          result.columnNames should contain only ("book_id", "title", "discount_price")
+          result.column("discount_price").toList should contain only (Num(90), Num(180))
+        }
+        "FROM is wildcard-narrowed and the LOOKUP JOIN target shares its name prefix with the FROM " +
+          "pattern (the wildcard genuinely matches the LOOKUP JOIN target too, so FROM legitimately " +
+          "includes its rows, same as an equivalent-permission admin running the same query would see)" excludeES (
+            allEs6x,
+            allEs7x,
+            allEs8xBelowEs818x
+          ) in {
+            val result = dev5EsqlManager.execute(
+              """FROM book_* | LOOKUP JOIN book_prices ON book_id | SORT book_id | LIMIT 100"""
+            )
+            result should have statusCode 200
+            result.columnNames should contain only ("book_id", "title", "discount_price")
+            result.column("title").toList should contain only (Str("Leviathan Wakes"), Str("Hyperion"), Null)
+            result.rows.size should be(4)
+          }
+      }
+      "deny the whole request with a generic 'Unknown index' error (masking, not a data/existence leak)" when {
+        "the LOOKUP JOIN target is not authorized, even though FROM's own target is fine on its own" excludeES (
+          allEs6x,
+          allEs7x,
+          allEs8xBelowEs818x
+        ) in {
+          val result = dev4EsqlManager.execute(
+            """FROM book_catalog | LOOKUP JOIN book_prices ON book_id | LIMIT 100"""
+          )
+          result should have statusCode 400
+          val reason = result.responseJson("error").obj("reason").str
+          reason should include("Unknown index")
+          reason should not include "book_prices"
+        }
+        "FROM's own target is not authorized, even though the LOOKUP JOIN target is fine on its own " +
+          "(masking FROM to a concrete nonexistent name 400s independently of the join - no behavior " +
+          "change from today, see spec section 4)" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+            val result = dev6EsqlManager.execute(
+              """FROM book_catalog | LOOKUP JOIN book_prices ON book_id | LIMIT 100"""
+            )
+            result should have statusCode 400
+            val reason = result.responseJson("error").obj("reason").str
+            reason should include("Unknown index")
+            reason should not include "book_catalog"
+          }
+      }
+    }
   }
 
   "Get terms request" should {
@@ -1336,6 +1394,9 @@ object BaseXpackApiSuite {
     storeScriptTemplate(adminRestClient, esVersion)
     configureBookstore(documentManager, indexManager)
     configureLibrary(documentManager)
+    if (Version.greaterOrEqualThan(esVersion, 8, 18, 0)) {
+      configureBookPrices(documentManager, indexManager)
+    }
 
     indexManager.closeIndex("test3_index_c").force()
   }
@@ -1448,6 +1509,40 @@ object BaseXpackApiSuite {
       )
     )
     indexManager.createAliasOf("bookstore", "bookshop").force()
+  }
+
+  private def configureBookPrices(documentManager: DocumentManager, indexManager: IndexManager): Unit = {
+    documentManager.createDocAndAssert(
+      index = "book_catalog",
+      `type` = "_doc",
+      id = 1,
+      content = ujson.read("""{"book_id": 1, "title": "Leviathan Wakes"}""")
+    )
+    documentManager.createDocAndAssert(
+      index = "book_catalog",
+      `type` = "_doc",
+      id = 2,
+      content = ujson.read("""{"book_id": 2, "title": "Hyperion"}""")
+    )
+
+    indexManager
+      .createIndex(
+        "book_prices",
+        settings = Some(ujson.read("""{"settings": {"index": {"mode": "lookup"}}}"""))
+      )
+      .force()
+    documentManager.createDocAndAssert(
+      index = "book_prices",
+      `type` = "_doc",
+      id = 1,
+      content = ujson.read("""{"book_id": 1, "discount_price": 90}""")
+    )
+    documentManager.createDocAndAssert(
+      index = "book_prices",
+      `type` = "_doc",
+      id = 2,
+      content = ujson.read("""{"book_id": 2, "discount_price": 180}""")
+    )
   }
 
   private def configureLibrary(documentManager: DocumentManager): Unit = {
