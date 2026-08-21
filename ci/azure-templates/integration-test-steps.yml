@@ -32,6 +32,8 @@ steps:
 
       # Sourced in-process so DOCKER_AUTH_CONFIG reaches the testcontainers JVM when set, and stays
       # UNSET otherwise (an empty/literal Azure var would fail RegistryAuthLocator's JSON-parse).
+      # The first file maps the Azure variables onto the names the second one reads.
+      source ci/azure-templates/docker-credentials.sh
       source ci/configure-docker.sh
 
       echo "[TEST] executing ROR_TASK = $ROR_TASK"
@@ -48,8 +50,8 @@ steps:
       VAR_ROR_S3_ACCESS_KEY_ID: $(ROR_S3_ACCESS_KEY_ID)
       VAR_ROR_S3_SECRET_ACCESS_KEY: $(ROR_S3_SECRET_ACCESS_KEY)
       VAR_ROR_S3_PATH_LIBS: $(ROR_S3_PATH_LIBS)
-      DOCKER_REGISTRY_USER: $(DOCKER_HUB_USER)
-      DOCKER_REGISTRY_PASSWORD: $(DOCKER_HUB_RO_TOKEN)
+      VAR_DOCKER_HUB_USER: $(DOCKER_HUB_USER)
+      VAR_DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
       DOCKER_AUTH_REQUIRED: "false"
 
   - task: PublishTestResults@2
