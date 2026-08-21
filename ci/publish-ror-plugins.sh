@@ -176,7 +176,7 @@ publish_ror_plugins() {
   fi
   local es_major=$1 mode=$2
   local ror_version
-  ror_version=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
+  ror_version=$(gradle_property pluginVersion) || return 1
 
   export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || echo 1704067200)}"
 

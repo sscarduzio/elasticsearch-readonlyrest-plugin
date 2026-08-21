@@ -59,10 +59,13 @@
 # because a step without errexit would ignore the status and continue with anonymous pulls.
 #
 # DOCKER_AUTH_REQUIRED applies to one case only: the job supplied no credentials at all.
-#   true (default)   The script stops the job. Any value other than "false" has this effect, so
-#                    an empty value or a typing error also stops the job.
-#   false            The script continues, and its pulls are anonymous. A job sets this when it
-#                    must run without secrets, as a pull request from a fork must.
+#   unset (default)  The script reads the event. A pull request from a fork continues, and its
+#                    pulls are anonymous. GitHub gives such a run no secrets. Every other run stops.
+#   false            The job continues. Its pulls are anonymous.
+#   any other value  The job stops. "True", an empty value and a typing error all stop it.
+#
+# The workflow computed the fork case before. Two jobs held the same expression, and a new job had
+# to copy it. The script reads the event instead.
 #
 # A mirror failure never stops the job. Only an authentication failure does.
 #
@@ -138,7 +141,6 @@ _ror_docker_mirror_daemon() {
 
 # Always returns 0. A mirror is an optimisation, and it must never stop a job.
 _ror_docker_mirror() {
-  # The value may come from a workflow file or from a shell, so read it without regard to case.
   if [ "$(echo "${ROR_DOCKER_HUB_MIRROR:-true}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" = "false" ]; then
     echo "[CI] Docker Hub mirror is OFF. Every pull goes to Docker Hub."
     return 0
@@ -167,16 +169,45 @@ _ror_docker_auth_isset() {
   [ -n "$1" ]
 }
 
+# True when a pull request comes from a fork. GitHub gives such a run no secrets. The run cannot
+# authenticate, and a stop would block every contribution from outside.
+#
+# The answer is false when the script cannot tell: a different event, no payload, no jq, or a file
+# it cannot read. The job then needs credentials. That is the safe direction.
+_ror_docker_auth_fork_pull_request() {
+  local head_repo
+
+  [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ] || return 1
+  [ -n "${GITHUB_EVENT_PATH:-}" ] && [ -r "${GITHUB_EVENT_PATH}" ] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  head_repo=$(jq -r '.pull_request.head.repo.full_name // empty' "$GITHUB_EVENT_PATH" 2>/dev/null)
+  [ -n "$head_repo" ] || return 1
+  [ "$head_repo" != "${GITHUB_REPOSITORY:-}" ]
+}
+
 # The job supplied no credentials. DOCKER_AUTH_REQUIRED decides if the job continues, and the
 # job stops by default.
 _ror_docker_auth_no_credentials() {
+  local required=${DOCKER_AUTH_REQUIRED:-}
+
   echo "[CI] Docker authentication is OFF. Cause: $1"
-  # Compare against "false", not "true", so that an unset variable stops the job. Every other value,
-  # "False" and a typing error alike, also stops it: the safe direction is to stop.
-  if [ "${DOCKER_AUTH_REQUIRED:-true}" != "false" ]; then
+
+  if [ -z "$required" ]; then
+    if _ror_docker_auth_fork_pull_request; then
+      echo "[CI] This is a pull request from a fork, and GitHub gives it no secrets."
+      required=false
+    else
+      required=true
+    fi
+  fi
+
+  # Compare against "false", not "true". Every other value stops the job, "False" and a typing
+  # error included. The safe direction is to stop.
+  if [ "$required" != "false" ]; then
     # ::error:: puts an annotation on the job, as the inline logins did before.
     [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::Docker authentication failed: $1"
-    echo "[CI] DOCKER_AUTH_REQUIRED is not false, so the job stops here." >&2
+    echo "[CI] The job needs credentials, so it stops here." >&2
     return 1
   fi
   echo "[CI] The job continues. Its pulls are anonymous, and Docker Hub limits their rate."

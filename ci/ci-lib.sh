@@ -5,6 +5,21 @@
 # lib is sourced rather than run (`source ci/ci-lib.sh && reap_ci_job_containers` resolved it to ".").
 CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+# Reads one key from gradle.properties, which holds the build's own values. The file sits beside this
+# one, so the caller's working directory does not matter.
+#
+# An absent key fails. An empty value would name a wrong image or a wrong version, and nothing later
+# would show the cause. Every reader of the file goes through here: a second parser drifts.
+gradle_property() {
+  local key=$1 file=$CI_DIR/../gradle.properties value
+  value=$(awk -F= -v k="$key" '$1==k {print $2}' "$file")
+  if [ -z "$value" ]; then
+    echo "$file has no $key" >&2
+    return 1
+  fi
+  printf '%s\n' "$value"
+}
+
 docker_image_exists() {
   # This answer decides whether we skip an expensive rebuild, so it must come from Docker Hub and
   # never from a cache: a cache can hold a stale answer for a tag we pushed a moment ago. `docker
@@ -65,9 +80,7 @@ reap_ci_job_containers() {
   [ -n "$ids" ] && docker rm -f $ids 2>/dev/null || true
 }
 
-# Repo of the ROR ES pre-build dev image. Must match each module's `preBuildDockerImageVersion` repo in
-# es<ver>x/build.gradle (that is where Gradle actually pushes the canonical <esVersion>-ror-<pluginVersion>).
-ES_DEV_IMAGE_REPO="beshultd/elasticsearch-readonlyrest-dev"
+ES_DEV_IMAGE_REPO="$(gradle_property dockerImageNamespace)/elasticsearch-readonlyrest-dev" || exit 1
 
 # Copies a registry image manifest to a new tag without pulling/rebuilding (multi-platform safe).
 retag_dev_image() {
@@ -115,7 +128,7 @@ publish_ror_es_prebuild_plugin() {
   fi
 
   local ROR_VERSION GIT_SHA
-  ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
+  ROR_VERSION=$(gradle_property pluginVersion) || return 1
   GIT_SHA=$(git rev-parse --short HEAD)
 
   local CANONICAL_TAG="${ES_VERSION}-ror-${ROR_VERSION}"

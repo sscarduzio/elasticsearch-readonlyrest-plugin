@@ -297,7 +297,6 @@ jobs:
           ROR_TASK: core_tests
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
-          DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           source ci/configure-docker.sh
           ci/run-pipeline.sh
@@ -361,7 +360,6 @@ jobs:
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
-          DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           source ci/configure-docker.sh
           ci/run-pipeline.sh

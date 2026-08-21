@@ -213,10 +213,13 @@ Credentials that do not work always stop the job. The script never falls back to
 in that case, because a bad login must not hide itself. An expired token thus fails in the job
 that owns it, and not as a rate-limit failure somewhere else one hour later.
 
-`DOCKER_AUTH_REQUIRED` covers one case only: the job supplied no credentials at all. The job then
-stops, because that is the default. The two Linux test jobs set the value from the event: `false`
-for a pull request from a fork, which gets no secrets but must still run its tests, and `true`
-everywhere else, where a missing secret is a mistake.
+`DOCKER_AUTH_REQUIRED` covers one case only: the job supplied no credentials at all. The script
+reads the event and decides. A pull request from a fork continues, and its pulls are anonymous:
+GitHub gives it no secrets, and its tests must still run. Every other run stops, because a missing
+secret there is a mistake. A job that sets the variable overrides the decision, and only the literal
+`false` lets the job continue.
+
+No workflow states this. Two jobs held the same expression before, and a new job had to copy it.
 
 Do not put a `docker login` in a workflow. Two mechanisms with different credentials hide each
 other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
@@ -261,6 +264,11 @@ own `ror-it-es:<hash>` image and then tried to pull it, which failed every `it_l
 
 `ROR_DOCKER_HUB_MIRROR=false` switches the mirror off. `e2e_tests` is the only job that sets it: it
 pulls images that two other runs pushed a moment before, and a cache can answer stale.
+
+The flag answers one question: may this job read a cached answer? It does not follow from what the
+job pushes. `e2e_tests` holds a write token. The two jobs that push most, `publish-pre-builds` and
+`build_toolchains_image`, need the mirror most, because a 429 hits their base-image pulls. A mirror
+rewrites pulls only. A push names `beshultd/...` and goes to Docker Hub whatever the mirror says.
 
 Two more things stay off the mirror by themselves, and both must remain so:
 
