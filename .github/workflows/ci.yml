@@ -154,12 +154,16 @@ jobs:
             echo "::error::ci.yml container tags do not all match TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE — bump them together"
             exit 1
           fi
-          # Authenticate before the build. The Dockerfile pulls five images from Docker Hub in its
-          # FROM lines (four eclipse-temurin JDKs and the docker CLI), and those pulls are anonymous
-          # if the login comes after them.
+          # Source before the build. It logs in and it sets ROR_DOCKER_HUB_MIRROR_PREFIX, which the
+          # FROM lines need. The Dockerfile pulls five images from Docker Hub in its FROM lines (four
+          # eclipse-temurin JDKs and the docker CLI), and those pulls are anonymous if the login
+          # comes after them.
           source ci/configure-docker.sh
           echo ">>> Building $TOOLCHAINS_IMAGE"
-          docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
+          # MIRROR puts the pull-through cache in front of those five names. It is empty when the
+          # mirror is off, and the pulls then go to Docker Hub.
+          docker build --build-arg MIRROR="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}" \
+            -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
           docker push "$TOOLCHAINS_IMAGE"
 
   # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────

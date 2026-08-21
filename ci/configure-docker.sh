@@ -20,12 +20,13 @@
 # mirror.gcr.io answers from a different host, which removes both pressures. It serves docker.io
 # only. It cannot serve docker.elastic.co, and it cannot accept a push.
 #
-# Three clients pull images, and each needs its own setting. This script sets all three:
-#   - the docker daemon    registry-mirrors in /etc/docker/daemon.json
+# Three clients pull images, and each needs its own setting. The script exports what each needs:
 #   - buildx and BuildKit  ROR_DOCKER_HUB_MIRROR, which the gradle build turns into a --config flag
 #                          that points at build-base/buildkitd.toml
 #   - the test suite       ROR_DOCKER_HUB_MIRROR_PREFIX, which DockerHubMirror reads. This rewrites
 #                          the registry name directly, so these pulls cannot fall back to Docker Hub.
+#   - the toolchains build the same variable, which the build_toolchains_image job passes as the
+#                          MIRROR build argument of ci/toolchains/JdkToolchains.Dockerfile.
 #
 # Do NOT set TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX here. testcontainers applies that prefix to every
 # name without a registry host, and a locally built name looks the same as a Docker Hub name. It
@@ -34,6 +35,10 @@
 #
 # ROR_DOCKER_HUB_MIRROR=false switches the mirror off. The e2e job does that, because it pulls an
 # image that the publish job pushed a moment before, and a cache can hold a stale answer.
+#
+# A mirror never stops the job by itself. BuildKit keeps the docker.io image identity, so it falls
+# back to Docker Hub. The two settings that rewrite the name, the test suite and the toolchains
+# build, have no such fallback and can fail the job.
 #
 # ---------------------------------------------------------------------------------------------
 # PART 2: AUTHENTICATION
@@ -68,9 +73,6 @@
 # The workflow computed the fork case before. Two jobs held the same expression, and a new job had
 # to copy it. The script reads the event instead.
 #
-# Failure to configure the daemon mirror never stops the job, and BuildKit falls back to Docker Hub.
-# A test-suite image rewritten to the mirror has no such fallback and can fail the job.
-#
 # ---------------------------------------------------------------------------------------------
 # TWO LIMITS
 # 1. This script cannot configure the job `container:` image. The runner pulls that image before
@@ -82,72 +84,6 @@
 #    you add a second login with different credentials. Use this script instead.
 
 ROR_DOCKER_HUB_MIRROR_HOST="mirror.gcr.io"
-
-# The daemon runs on the host. A container job reaches it through the mounted socket and cannot
-# restart it, so this is best effort: it stops at the first thing it cannot do. The daemon also
-# falls back to Docker Hub by itself, so a job without a daemon mirror still works.
-_ror_docker_mirror_daemon() {
-  command -v sudo >/dev/null 2>&1 || return 0
-  sudo -n true 2>/dev/null || return 0
-  # No systemd means no host daemon to restart. This is how a container job leaves early.
-  sudo -n systemctl is-active --quiet docker 2>/dev/null || return 0
-
-  local config=/etc/docker/daemon.json
-  local mirror="https://${ROR_DOCKER_HUB_MIRROR_HOST}"
-  local backup="" merged
-
-  if sudo -n test -f "$config"; then
-    # The runner may keep its own settings here, so add the mirror to the file instead of replacing
-    # the file. jq does the merge, and without jq the script leaves the file alone.
-    if ! command -v jq >/dev/null 2>&1; then
-      echo "[CI] /etc/docker/daemon.json exists and jq is missing, so the daemon keeps its own settings."
-      return 0
-    fi
-    merged=$(sudo -n cat "$config" |
-      jq -c --arg m "$mirror" '.["registry-mirrors"] = (
-         (.["registry-mirrors"] // []) as $ms |
-         if ($ms | index($m)) then $ms else $ms + [$m] end)') || {
-      echo "[CI] /etc/docker/daemon.json is not readable JSON, so the daemon keeps its own settings."
-      return 0
-    }
-    # jq prints nothing and exits 0 when its input is empty, so a blank file passes the test above
-    # and gives back nothing. Writing that would leave the daemon with no settings at all, and the
-    # log below would still say the mirror is on. A blank file holds nothing to keep, so use the
-    # plain mirror config instead. The same test also rejects any other output that is not JSON.
-    if ! printf '%s' "$merged" | jq -e . >/dev/null 2>&1; then
-      merged="{\"registry-mirrors\":[\"${mirror}\"]}"
-    fi
-
-    # Keep the file as it is now, to put it back if the daemon refuses the new one.
-    backup=$(mktemp) && sudo -n cat "$config" > "$backup" || { rm -f "$backup"; return 0; }
-  else
-    merged="{\"registry-mirrors\":[\"${mirror}\"]}"
-    sudo -n mkdir -p /etc/docker || return 0
-  fi
-
-  printf '%s\n' "$merged" | sudo -n tee "$config" >/dev/null || {
-    rm -f "$backup"
-    return 0
-  }
-
-  if sudo -n systemctl restart docker &&
-     timeout 60 bash -c 'until docker info >/dev/null 2>&1; do sleep 2; done'; then
-    echo "[CI] The docker daemon now mirrors Docker Hub."
-    rm -f "$backup"
-    return 0
-  fi
-
-  echo "[CI] The docker daemon refused the mirror, so its own pulls go to Docker Hub."
-  # Put back what was there before. A file we did not create is removed instead.
-  if [ -n "$backup" ]; then
-    sudo -n cp "$backup" "$config"
-    rm -f "$backup"
-  else
-    sudo -n rm -f "$config"
-  fi
-  sudo -n systemctl restart docker || true
-  return 0
-}
 
 # Always returns 0. A mirror is an optimisation, and it must never stop a job.
 _ror_docker_mirror() {
@@ -162,7 +98,7 @@ _ror_docker_mirror() {
       } >> "$GITHUB_ENV"
     fi
 
-    echo "[CI] Docker Hub mirror is OFF for BuildKit and the test suite."
+    echo "[CI] Docker Hub mirror is OFF."
     return 0
   fi
 
@@ -178,7 +114,6 @@ _ror_docker_mirror() {
     } >> "$GITHUB_ENV"
   fi
 
-  _ror_docker_mirror_daemon
   echo "[CI] Docker Hub mirror is ON: ${ROR_DOCKER_HUB_MIRROR_HOST}."
   return 0
 }

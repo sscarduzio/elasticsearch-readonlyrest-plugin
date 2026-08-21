@@ -247,22 +247,20 @@ a push. Three clients pull images, and the script sets all three from one variab
 
 | Client | Setting | Reaches |
 |---|---|---|
-| docker daemon | `registry-mirrors` in `/etc/docker/daemon.json` | `moby/buildkit`, and any `docker build` on the host |
 | buildx and BuildKit | `ROR_DOCKER_HUB_MIRROR`, which gradle turns into `--config build-base/buildkitd.toml` | the `FROM` lines in `es*x/Dockerfile` |
 | the test suite | `ROR_DOCKER_HUB_MIRROR_PREFIX`, which `DockerHubMirror` reads | the images each call site names |
+| the toolchains build | the same variable, passed as `--build-arg MIRROR` | the five `FROM` lines in `ci/toolchains/JdkToolchains.Dockerfile` |
 
-BuildKit does not read `daemon.json`, which is why the first two are separate. Only a job **without**
-`container:` gets the daemon half: a job whose steps run inside the toolchains image reaches the host
-daemon through the mounted socket and cannot restart it. The script detects that and skips it. The
-other two halves work everywhere.
+No client reads another client's setting, which is why there are three. All three work in a
+`container:` job and on a bare runner, and none of them needs a privilege.
 
-The daemon and BuildKit settings retain the original `docker.io` image identity, so both clients fall
-back to Docker Hub when the mirror cannot serve an image. `DockerHubMirror` is different: it rewrites
-the image name itself, for example `coredns/coredns:1.13.2` becomes
-`mirror.gcr.io/coredns/coredns:1.13.2`. That explicit mirror reference has no Docker Hub fallback and
-the pull fails if the mirror does not serve the tag. This is an accepted tradeoff for container jobs,
-which cannot configure the host daemon; keep explicit call sites limited to images known to be
-available from the mirror.
+The BuildKit setting keeps the original `docker.io` image identity, so BuildKit falls back to Docker
+Hub when the mirror cannot serve an image. The other two rewrite the image name itself, for example
+`coredns/coredns:1.13.2` becomes `mirror.gcr.io/coredns/coredns:1.13.2`, and `eclipse-temurin:17-jdk`
+becomes `mirror.gcr.io/library/eclipse-temurin:17-jdk`. A rewritten name has no Docker Hub fallback
+and the pull fails if the mirror does not serve the tag. Keep `DockerHubMirror` call sites limited to
+images known to be available from the mirror. For the toolchains build, `ROR_DOCKER_HUB_MIRROR` set
+to `'false'` on the job restores the Docker Hub path.
 
 The test suite names every image it mirrors, one call site at a time. Do not set
 `TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX` instead: testcontainers applies that prefix to every name
@@ -281,7 +279,8 @@ rewrites pulls only. A push names `beshultd/...` and goes to Docker Hub whatever
 Two more things stay off the mirror by themselves, and both must remain so:
 
 - `docker manifest inspect` (`docker_image_exists`) and `docker buildx imagetools create`. They read
-  a tag we pushed seconds ago. Both run in the CLI, which ignores `daemon.json` and `buildkitd.toml`.
+  a tag we pushed seconds ago. Both run in the CLI, which reads neither `buildkitd.toml` nor any of
+  the variables above, so both address Docker Hub by themselves.
 - Every push. A pull-through cache is read-only, so `beshultd/*` images go to Docker Hub.
 
 The `container:` image cannot use a mirror at all, for the same reason it cannot use the login: the

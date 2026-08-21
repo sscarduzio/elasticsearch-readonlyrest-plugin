@@ -26,8 +26,8 @@ gradle_property() {
 docker_image_exists() {
   # This answer decides whether we skip an expensive rebuild, so it must come from Docker Hub and
   # never from a cache: a cache can hold a stale answer for a tag we pushed a moment ago. `docker
-  # manifest inspect` runs in the CLI, which ignores the daemon mirror, so it stays direct by
-  # itself. Keep it that way.
+  # manifest inspect` reads the name it is given, and this one carries no mirror, so the answer
+  # comes from Docker Hub. Keep it that way.
   docker manifest inspect "$1" >/dev/null 2>&1
 }
 
