@@ -29,11 +29,45 @@ docker_image_exists() {
 }
 
 # Runs a command again after a failure. The delay doubles each time.
+#
+#   retry_with_backoff [--retry-if <function>] <command> [arg ...]
+#
+# Without --retry-if it repeats every failure. With it, the function decides. The function gets two
+# arguments: a file that holds the output of the command, and the status of the command. A status
+# of 0 from the function means "repeat this".
+#
+#   retry_with_backoff --retry-if is_docker_registry_error ./gradlew pushRorDockerImage
+#
+# --retry-if also captures the output, so the command then runs in a pipeline, thus in a subshell,
+# and its standard error joins its standard output. Give it an external command. A shell function
+# that sets a variable would lose the value.
 retry_with_backoff() {
   local attempts=${ROR_RETRY_ATTEMPTS:-3}
   local delay=${ROR_RETRY_DELAY_SECONDS:-15}
   local attempt=1
+  local retry_if=""
+  local status log
 
+  while [ "$#" -gt 0 ]; do
+    case $1 in
+      --retry-if)
+        retry_if=$2
+        shift 2
+        ;;
+      --)
+        shift
+        break
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
+  if [ "$#" -eq 0 ]; then
+    echo "[CI] retry_with_backoff needs a command."
+    return 2
+  fi
   if ! [[ $attempts =~ ^[0-9]+$ ]] || [ "$attempts" -lt 1 ]; then
     echo "[CI] ROR_RETRY_ATTEMPTS must be a positive integer, got '$attempts'."
     return 2
@@ -42,20 +76,56 @@ retry_with_backoff() {
     echo "[CI] ROR_RETRY_DELAY_SECONDS must be a non-negative integer, got '$delay'."
     return 2
   fi
+  if [ -n "$retry_if" ] && ! declare -F "$retry_if" >/dev/null; then
+    echo "[CI] --retry-if needs the name of a function, got '$retry_if'."
+    return 2
+  fi
+
+  log=""
+  if [ -n "$retry_if" ]; then
+    log=$(mktemp) || return 2
+  fi
 
   while true; do
-    if "$@"; then
+    if [ -n "$log" ]; then
+      # tee keeps the output on the console. PIPESTATUS holds the status of the command itself, not
+      # the status of tee.
+      "$@" 2>&1 | tee "$log"
+      status=${PIPESTATUS[0]}
+    else
+      "$@"
+      status=$?
+    fi
+
+    if [ "$status" -eq 0 ]; then
+      [ -n "$log" ] && rm -f "$log"
       return 0
+    fi
+    if [ -n "$retry_if" ] && ! "$retry_if" "$log" "$status"; then
+      echo "[CI] '$1' failed, and this failure is not one to repeat."
+      rm -f "$log"
+      return "$status"
     fi
     if [ "$attempt" -ge "$attempts" ]; then
       echo "[CI] '$1' failed on all $attempts attempts."
-      return 1
+      [ -n "$log" ] && rm -f "$log"
+      return "$status"
     fi
     echo "[CI] '$1' failed (attempt $attempt of $attempts). Next attempt in ${delay}s."
     sleep "$delay"
     attempt=$((attempt + 1))
     delay=$((delay * 2))
   done
+}
+
+# A --retry-if function for a command that pushes or pulls a Docker image. True when the output
+# holds a registry error, which another attempt can clear. A compile error, a wrong -PesVersion and
+# a broken Dockerfile give the same result every time, and both commands we retry build a
+# multi-arch image before they push, so a repeat of such a failure costs two more full builds.
+is_docker_registry_error() {
+  grep -Eqi \
+    'toomanyrequests|429 Too Many Requests|received unexpected HTTP status: 4?5[0-9][0-9]|unexpected status: 5[0-9][0-9]|50[0234] (Internal Server Error|Bad Gateway|Service Unavailable|Gateway Time-?out)|TLS handshake timeout|i/o timeout|connection reset by peer|unexpected EOF|net/http: request canceled' \
+    "$1"
 }
 
 # Force-remove every container belonging to THIS CI job, scoped by the ror.ci-job=$ROR_CI_JOB_ID label so we
@@ -133,8 +203,10 @@ publish_ror_es_prebuild_plugin() {
   if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"; then
     echo ">>> Sources unchanged (image for this commit already published), skipping build"
   else
-    # Retried because this build pulls base images, and a registry can answer 429.
-    if ! retry_with_backoff ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+    # This build pulls base images and pushes the result, so a registry can answer 429. Only such
+    # a failure is repeated. A broken build fails at once.
+    if ! retry_with_backoff --retry-if is_docker_registry_error \
+         ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
       echo "Failed to publish plugin prebuild Docker image"
       return 4
     fi

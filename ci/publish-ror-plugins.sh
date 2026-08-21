@@ -120,8 +120,10 @@ release_ror_docker_image() {
   local es_version=$1 module=$2
 
   if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${es_version}" >/dev/null 2>&1; then
-    # Retried because this build pulls base images, and a registry can answer 429.
-    if ! retry_with_backoff ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
+    # This build pulls base images and pushes the result, so a registry can answer 429. Only such
+    # a failure is repeated. A broken build fails at once.
+    if ! retry_with_backoff --retry-if is_docker_registry_error \
+         ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
       echo "Failed to publish plugin Docker image for ES $es_version"
       return 4
     fi
