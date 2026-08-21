@@ -31,7 +31,7 @@ import org.elasticsearch.client.RestClient.FailureListener
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName, RequestId}
-import tech.beshu.ror.es.services.MultiNodeRestClient.ResponseHandler
+import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.security.cert.X509Certificate
@@ -67,10 +67,13 @@ final class RestClientAuditSinkService private (
   ): Unit = {
     if (inFlightRequestSemaphore.tryAcquire()) {
       client
-        .performRequestAsync(
-          createRequest(indexName, documentId, jsonRecord),
-          createResponseHandler(indexName, documentId)
+        .perform(createRequest(indexName, documentId, jsonRecord))
+        .flatMap(response => Task.delay(handleResponse(indexName, documentId, response)))
+        .onErrorHandleWith(ex =>
+          Task.delay(logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex))
         )
+        .doOnFinish(_ => Task.delay(inFlightRequestSemaphore.release()))
+        .runAsyncAndForget(RorSchedulers.mainScheduler)
     } else {
       logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] — too many in-flight requests")
     }
@@ -83,33 +86,18 @@ final class RestClientAuditSinkService private (
     request
   }
 
-  private def createResponseHandler(indexName: String, documentId: String)(
+  private def handleResponse(indexName: String, documentId: String, response: Response)(
       implicit requestId: RequestId
-  ) =
-    new ResponseHandler[Response] {
-      override def onSuccess(response: Response): Unit = {
-        try {
-          response.getStatusLine.getStatusCode / 100 match {
-            case 2 => // 2xx
-              logger.debug(s"Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
-            case _ =>
-              logger.error(
-                s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}"
-              )
-          }
-        } finally {
-          inFlightRequestSemaphore.release()
-        }
-      }
-
-      override def onFailure(ex: Exception): Unit = {
-        try {
-          logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
-        } finally {
-          inFlightRequestSemaphore.release()
-        }
-      }
+  ): Unit = {
+    response.getStatusLine.getStatusCode / 100 match {
+      case 2 => // 2xx
+        logger.debug(s"Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
+      case _ =>
+        logger.error(
+          s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}"
+        )
     }
+  }
 
 }
 

@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
+import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.services.FailoverClient.*
 import tech.beshu.ror.es.services.MultiNodeRestClient.*
@@ -28,23 +29,17 @@ import scala.jdk.CollectionConverters.*
 
 trait MultiNodeRestClient[Req, Resp] {
 
-  def performRequestAsync(request: Req, responseHandler: ResponseHandler[Resp])(
+  def perform(request: Req)(
       using RequestId
-  ): Unit
+  ): Task[Resp]
 
   def close(): Unit
 }
 
 object MultiNodeRestClient {
 
-  trait ResponseHandler[Resp] {
-    def onSuccess(response: Resp): Unit
-
-    def onFailure(exception: Exception): Unit
-  }
-
   trait RequestExecutor[Req, Resp] {
-    def execute(request: Req, responseHandler: ResponseHandler[Resp]): Unit
+    def execute(request: Req): Task[Resp]
 
     def close(): Unit
   }
@@ -61,30 +56,25 @@ object MultiNodeRestClient {
 
 final class RoundRobinClient[Req, Resp](executor: RequestExecutor[Req, Resp]) extends MultiNodeRestClient[Req, Resp] {
 
-  override def performRequestAsync(request: Req, responseHandler: ResponseHandler[Resp])(
+  override def perform(request: Req)(
       using RequestId
-  ): Unit = {
-    executor.execute(request, responseHandler)
-  }
+  ): Task[Resp] = executor.execute(request)
 
   override def close(): Unit = executor.close()
 }
 
 final class FailoverClient[Req, Resp] private (
     nodeClients: NonEmptyList[NodeClient[Req, Resp]],
-    failoverDecision: Exception => FailoverDecision,
+    failoverDecision: Throwable => FailoverDecision,
     clock: Clock
 ) extends MultiNodeRestClient[Req, Resp]
     with RequestIdAwareLogging {
 
   private val openCircuits = new ConcurrentHashMap[NodeId, OpenCircuit]()
 
-  override def performRequestAsync(request: Req, responseHandler: ResponseHandler[Resp])(
+  override def perform(request: Req)(
       using RequestId
-  ): Unit = {
-    val nodes = selectNodes()
-    performWithFailover(nodes, request, responseHandler)
-  }
+  ): Task[Resp] = Task.defer(performWithFailover(selectNodes(), request))
 
   override def close(): Unit = nodeClients.toList.foreach {
     _.executor.close()
@@ -115,46 +105,34 @@ final class FailoverClient[Req, Resp] private (
 
   private def performWithFailover(
       nodes: NonEmptyList[NodeClient[Req, Resp]],
-      request: Req,
-      finalHandler: ResponseHandler[Resp]
+      request: Req
   )(
       using RequestId
-  ): Unit = {
+  ): Task[Resp] = {
     nodes match {
       case NonEmptyList(nodeClient, Nil) =>
-        nodeClient.executor.execute(
-          request,
-          new ResponseHandler[Resp] {
-            override def onSuccess(response: Resp): Unit = {
-              onNodeSuccess(nodeClient.id)
-              finalHandler.onSuccess(response)
-            }
-
-            override def onFailure(exception: Exception): Unit = {
-              onNodeFailure(nodeClient.id, exception)
-              finalHandler.onFailure(exception)
-            }
-          }
-        )
+        perform(nodeClient, request).onErrorHandleWith { exception =>
+          onNodeFailure(nodeClient.id, exception)
+          Task.raiseError(exception)
+        }
       case NonEmptyList(nodeClient, nonEmptyOtherClients) =>
-        nodeClient.executor.execute(
-          request,
-          new ResponseHandler[Resp] {
-            override def onSuccess(response: Resp): Unit = {
-              onNodeSuccess(nodeClient.id)
-              finalHandler.onSuccess(response)
-            }
-
-            override def onFailure(exception: Exception): Unit = {
-              onNodeFailure(nodeClient.id, exception) match {
-                case FailoverDecision.TryNextNode =>
-                  performWithFailover(NonEmptyList.fromListUnsafe(nonEmptyOtherClients), request, finalHandler)
-                case FailoverDecision.Stop =>
-                  finalHandler.onFailure(exception)
-              }
-            }
+        perform(nodeClient, request).onErrorHandleWith { exception =>
+          onNodeFailure(nodeClient.id, exception) match {
+            case FailoverDecision.TryNextNode =>
+              performWithFailover(NonEmptyList.fromListUnsafe(nonEmptyOtherClients), request)
+            case FailoverDecision.Stop =>
+              Task.raiseError(exception)
           }
-        )
+        }
+    }
+  }
+
+  private def perform(nodeClient: NodeClient[Req, Resp], request: Req)(
+      using RequestId
+  ): Task[Resp] = {
+    nodeClient.executor.execute(request).map { response =>
+      onNodeSuccess(nodeClient.id)
+      response
     }
   }
 
@@ -165,7 +143,7 @@ final class FailoverClient[Req, Resp] private (
     openCircuits.remove(nodeId)
   }
 
-  private def onNodeFailure(nodeId: NodeId, exception: Exception)(
+  private def onNodeFailure(nodeId: NodeId, exception: Throwable)(
       using RequestId
   ): FailoverDecision = {
     logger.debug(s"Client with ID ${nodeId.value} failed.", exception)
@@ -194,7 +172,7 @@ object FailoverClient {
 
   def create[Req, Resp](
       nodeExecutors: NonEmptyList[RequestExecutor[Req, Resp]],
-      failoverDecision: Exception => FailoverDecision,
+      failoverDecision: Throwable => FailoverDecision,
       clock: Clock
   ): FailoverClient[Req, Resp] = {
     val nodeClients = nodeExecutors.zipWithIndex.map((executor, idx) => new NodeClient(NodeId(idx), executor))

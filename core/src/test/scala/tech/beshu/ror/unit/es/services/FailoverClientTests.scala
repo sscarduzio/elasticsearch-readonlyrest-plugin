@@ -17,15 +17,16 @@
 package tech.beshu.ror.unit.es.services
 
 import cats.data.NonEmptyList
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.es.services.MultiNodeRestClient.{FailoverDecision, RequestExecutor, ResponseHandler}
+import tech.beshu.ror.es.services.MultiNodeRestClient.{FailoverDecision, RequestExecutor}
 import tech.beshu.ror.es.services.{FailoverClient, MultiNodeRestClient, RoundRobinClient}
 
 import java.io.IOException
 import java.time.{Clock, Instant, ZoneId, ZoneOffset}
-import scala.collection.mutable
 import scala.concurrent.duration.*
 
 class FailoverClientTests extends AnyWordSpec with Matchers {
@@ -38,9 +39,9 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       val node2 = new RecordingExecutor(_ => Right("node2-response"))
       val client = failoverClient(new TestClock, node1, node2)
 
-      val handler = performRequest(client)
+      val result = performRequest(client)
 
-      handler.successes.toList should be(List("node1-response"))
+      result should be(Right("node1-response"))
       node1.receivedRequests should have size 1
       node2.receivedRequests should have size 0
     }
@@ -50,10 +51,9 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       val node2 = new RecordingExecutor(_ => Right("node2-response"))
       val client = failoverClient(new TestClock, node1, node2)
 
-      val handler = performRequest(client)
+      val result = performRequest(client)
 
-      handler.successes.toList should be(List("node2-response"))
-      handler.failures should have size 0
+      result should be(Right("node2-response"))
       node1.receivedRequests should have size 1
       node2.receivedRequests should have size 1
     }
@@ -64,10 +64,9 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       val node2 = new RecordingExecutor(_ => Right("node2-response"))
       val client = failoverClient(new TestClock, node1, node2)
 
-      val handler = performRequest(client)
+      val result = performRequest(client)
 
-      handler.failures.toList should be(List(fatalException))
-      handler.successes should have size 0
+      result should be(Left(fatalException))
       node2.receivedRequests should have size 0
     }
 
@@ -77,10 +76,9 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       val node2 = new RecordingExecutor(_ => Left(lastException))
       val client = failoverClient(new TestClock, node1, node2)
 
-      val handler = performRequest(client)
+      val result = performRequest(client)
 
-      handler.failures.toList should be(List(lastException))
-      handler.successes should have size 0
+      result should be(Left(lastException))
     }
 
     "not open a circuit for a node which failed with a fatal failure" in {
@@ -92,12 +90,12 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       val client = failoverClient(new TestClock, node1, node2)
 
       performRequest(client)
-      val handler = performRequest(client)
+      val result = performRequest(client)
 
       // circuit stays closed - node1 is preferred again on the next request instead of being skipped in favour of node2
       node1.receivedRequests should have size 2
       node2.receivedRequests should have size 0
-      handler.successes.toList should be(List("node1-response"))
+      result should be(Right("node1-response"))
     }
 
     "open a circuit for a node which failed with a retryable failure and skip it while the circuit is open" in {
@@ -106,9 +104,9 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       val client = failoverClient(new TestClock, node1, node2)
 
       performRequest(client)
-      val handler = performRequest(client)
+      val result = performRequest(client)
 
-      handler.successes.toList should be(List("node2-response"))
+      result should be(Right("node2-response"))
       node1.receivedRequests should have size 1
       node2.receivedRequests should have size 2
     }
@@ -128,9 +126,9 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       node1.receivedRequests should have size 1 // circuit still open
 
       clock.advance(1.milli)
-      val handler = performRequest(client)
+      val result = performRequest(client)
       node1.receivedRequests should have size 2 // trial request allowed
-      handler.successes.toList should be(List("node1-response"))
+      result should be(Right("node1-response"))
     }
 
     "close the circuit after a successful trial request" in {
@@ -145,10 +143,10 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       performRequest(client)
       clock.advance(1.second)
       performRequest(client)
-      val handler = performRequest(client) // no clock advance needed - circuit is closed again
+      val result = performRequest(client) // no clock advance needed - circuit is closed again
 
       node1.receivedRequests should have size 3
-      handler.successes.toList should be(List("node1-response"))
+      result should be(Right("node1-response"))
     }
 
     "keep the circuit open longer after each consecutive trial failure" in {
@@ -213,11 +211,11 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       node2.receivedRequests should have size 2
 
       clock.advance(100.millis)
-      val handler = performRequest(client) // all circuits open - node2 allows a trial soonest (2s < 2.5s)
+      val result = performRequest(client) // all circuits open - node2 allows a trial soonest (2s < 2.5s)
 
       node1.receivedRequests should have size 2
       node2.receivedRequests should have size 3
-      handler.successes.toList should be(List("node2-response"))
+      result should be(Right("node2-response"))
     }
 
     "fail the request without trying other nodes when all circuits are open and the soonest-trial node fails" in {
@@ -234,12 +232,11 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       performRequest(client) // trial on node1 fails (circuit open until 2.5s), then node2 fails (circuit open until 2s)
 
       clock.advance(100.millis)
-      val handler = performRequest(client) // all circuits open: only node2 (soonest trial) is tried
+      val result = performRequest(client) // all circuits open: only node2 (soonest trial) is tried
 
       node1.receivedRequests should have size 2 // node1 not tried even though node2 failed
       node2.receivedRequests should have size 3
-      handler.successes should have size 0
-      handler.failures should have size 1
+      result.isLeft should be(true)
     }
 
     "close all node clients on close" in {
@@ -259,9 +256,9 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       val executor = new RecordingExecutor(_ => Right("response"))
       val client = new RoundRobinClient(executor)
 
-      val handler = performRequest(client)
+      val result = performRequest(client)
 
-      handler.successes.toList should be(List("response"))
+      result should be(Right("response"))
       executor.receivedRequests.toList should be(List("request"))
     }
 
@@ -283,40 +280,29 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
     )
   }
 
-  private val failoverDecision: Exception => FailoverDecision = {
+  private val failoverDecision: Throwable => FailoverDecision = {
     case _: IOException => FailoverDecision.TryNextNode
     case _              => FailoverDecision.Stop
   }
 
   private def performRequest(client: MultiNodeRestClient[String, String]) = {
-    val handler = new CollectingHandler
-    client.performRequestAsync("request", handler)
-    handler
+    client.perform("request").attempt.runSyncUnsafe()
   }
 
   // responds based on the number of requests received so far (1-based)
   private class RecordingExecutor(respond: Int => Either[Exception, String]) extends RequestExecutor[String, String] {
-    val receivedRequests: mutable.ListBuffer[String] = mutable.ListBuffer.empty
+    val receivedRequests: scala.collection.mutable.ListBuffer[String] = scala.collection.mutable.ListBuffer.empty
     var closed: Boolean = false
 
-    override def execute(request: String, responseHandler: ResponseHandler[String]): Unit = {
+    override def execute(request: String): Task[String] = Task.defer {
       receivedRequests += request
       respond(receivedRequests.size) match {
-        case Right(response) => responseHandler.onSuccess(response)
-        case Left(exception) => responseHandler.onFailure(exception)
+        case Right(response) => Task.now(response)
+        case Left(exception) => Task.raiseError(exception)
       }
     }
 
     override def close(): Unit = closed = true
-  }
-
-  private final class CollectingHandler extends ResponseHandler[String] {
-    val successes: mutable.ListBuffer[String] = mutable.ListBuffer.empty
-    val failures: mutable.ListBuffer[Exception] = mutable.ListBuffer.empty
-
-    override def onSuccess(response: String): Unit = successes += response
-
-    override def onFailure(exception: Exception): Unit = failures += exception
   }
 
   private final class TestClock extends Clock {
