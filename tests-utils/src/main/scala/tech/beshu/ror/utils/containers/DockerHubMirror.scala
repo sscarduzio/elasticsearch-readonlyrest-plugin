@@ -27,13 +27,10 @@ package tech.beshu.ror.utils.containers
   * TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX, but it prefixes EVERY name without a registry host. A locally built name looks
   * the same as a Docker Hub name, so it rewrote our own `ror-it-es:<hash>` image and then tried to pull it from the
   * mirror. We therefore keep our own variable, and each call site says what it wants mirrored.
-  *
-  * ci/configure-docker.sh sets ROR_DOCKER_HUB_MIRROR_PREFIX. The prefix needs a trailing slash: "mirror.gcr.io/".
   */
 object DockerHubMirror {
 
   private val envName = "ROR_DOCKER_HUB_MIRROR_PREFIX"
-  private val propertyName = "ror.docker.hub.mirror.prefix"
 
   /** The image name to pull. It is unchanged when no mirror is configured, and when the name already carries a registry
     * host. The mirror serves docker.io only, so `docker.elastic.co/elasticsearch/elasticsearch` and
@@ -46,9 +43,8 @@ object DockerHubMirror {
   }
 
   /** The configured prefix, or an empty string when there is none. It always ends with a slash. */
-  def configuredPrefix: String = {
-    Option(System.getProperty(propertyName))
-      .orElse(Option(System.getenv(envName)))
+  private def configuredPrefix: String = {
+    Option(System.getenv(envName))
       .map(_.trim)
       .filter(_.nonEmpty) match {
       case Some(prefix) if prefix.endsWith("/") => prefix

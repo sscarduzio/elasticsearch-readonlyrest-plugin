@@ -30,21 +30,13 @@ docker_image_exists() {
 
 # Runs a command again after a failure. The delay doubles each time.
 #
-# Two failures look the same from outside, and both pass:
-#   1. Docker Hub answers a bare 429. It limits pulls per IP address and ignores the account, so a
-#      login does not prevent it, and waiting is the only answer.
-#   2. The mirror is unavailable. BuildKit falls back to Docker Hub for most mirror failures, but
-#      not for all of them (moby/buildkit#1972). See build-base/buildkitd.toml.
-#
 # The first delay is 30s. That is short against the minutes an abuse limit lasts, but three attempts
 # cover a short one and add nothing to a run that succeeds at once.
 retry_with_backoff() {
   local attempts=${ROR_RETRY_ATTEMPTS:-3}
-  local delay=${ROR_RETRY_DELAY_SECONDS:-30}
+  local delay=${ROR_RETRY_DELAY_SECONDS:-15}
   local attempt=1
 
-  # Both values are compared and multiplied below. A value that is not a positive number makes the
-  # loop misbehave instead of failing, so refuse it here and run nothing.
   if ! [[ $attempts =~ ^[0-9]+$ ]] || [ "$attempts" -lt 1 ]; then
     echo "[CI] ROR_RETRY_ATTEMPTS must be a positive integer, got '$attempts'."
     return 2
@@ -144,8 +136,7 @@ publish_ror_es_prebuild_plugin() {
   if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"; then
     echo ">>> Sources unchanged (image for this commit already published), skipping build"
   else
-    # Retried because this build pulls base images, and a registry can answer 429. A repeat costs
-    # little: buildx keeps the layers it holds, so it redoes the resolution and not the build.
+    # Retried because this build pulls base images, and a registry can answer 429.
     if ! retry_with_backoff ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
       echo "Failed to publish plugin prebuild Docker image"
       return 4

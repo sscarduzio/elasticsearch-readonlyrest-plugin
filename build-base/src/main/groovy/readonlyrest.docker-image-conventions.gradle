@@ -52,14 +52,15 @@ def buildxPushArgs = { List<String> tags ->
     cmd + ['--output', 'type=image,push=true,rewrite-timestamp=true', '.']
 }
 
-def useDockerHubMirror = (System.getenv('ROR_DOCKER_HUB_MIRROR') ?: '').trim().toLowerCase() == 'true'
-// The name carries the config. This task only creates a builder that does not exist yet, so one
-// name for both would let an old, unmirrored builder survive and ignore the --config below.
-def multiplatformBuilderName = useDockerHubMirror ? 'ror_kbn_builder_mirrored' : 'ror_kbn_builder'
-def buildkitConfigFile = rootProject.file('build-base/buildkitd.toml')
-
 tasks.register('prepareMultiplatformBuilder') {
     group = 'docker'
+
+    def useDockerHubMirror = (System.getenv('ROR_DOCKER_HUB_MIRROR') ?: '').trim().toLowerCase() == 'true'
+    // The name carries the config. This task only creates a builder that does not exist yet, so one
+    // name for both would let an old, unmirrored builder survive and ignore the --config below.
+    def multiplatformBuilderName = useDockerHubMirror ? 'ror_kbn_builder_mirrored' : 'ror_kbn_builder'
+    def buildkitConfigFile = rootProject.file('build-base/buildkitd.toml')
+
     doLast {
         def execOps = project.services.get(ExecOperations)
 
