@@ -9,14 +9,11 @@ steps:
       versionSpec: '21'
       jdkArchitectureOption: 'x64'
       jdkSourceOption: 'PreInstalled'
+  # No ROR_S3_* here: these tests only READ the ES libs, and Gradle's default public store
+  # (readonlyrest.plugin-common-conventions.gradle) already serves them. Passing the vars in is a
+  # hazard - Azure leaves `$(NAME)` literal when the pipeline variable is undefined, and Gradle then
+  # builds a nonsense repository URL that fails to resolve.
   - powershell: |
-      $env:ROR_S3_ENDPOINT_URL = $env:VAR_ROR_S3_ENDPOINT_URL
-      $env:ROR_S3_REGION = $env:VAR_ROR_S3_REGION
-      $env:ROR_S3_BUCKET = $env:VAR_ROR_S3_BUCKET
-      $env:ROR_S3_ACCESS_KEY_ID = $env:VAR_ROR_S3_ACCESS_KEY_ID
-      $env:ROR_S3_SECRET_ACCESS_KEY = $env:VAR_ROR_S3_SECRET_ACCESS_KEY
-      $env:ROR_S3_PATH_LIBS = $env:VAR_ROR_S3_PATH_LIBS
-
       Write-Host ">>> $env:ES_MODULE"
       # GRADLE_USER_HOME / GRADLE_OPTS are cleared at JOB scope (see azure-pipelines.yml) so the Linux
       # image paths don't leak here. Also override gradle.properties' Linux installations.paths on the
@@ -31,13 +28,6 @@ steps:
         }
         exit 1
       }
-    env:
-      VAR_ROR_S3_ENDPOINT_URL: $(ROR_S3_ENDPOINT_URL)
-      VAR_ROR_S3_REGION: $(ROR_S3_REGION)
-      VAR_ROR_S3_BUCKET: $(ROR_S3_BUCKET)
-      VAR_ROR_S3_ACCESS_KEY_ID: $(ROR_S3_ACCESS_KEY_ID)
-      VAR_ROR_S3_SECRET_ACCESS_KEY: $(ROR_S3_SECRET_ACCESS_KEY)
-      VAR_ROR_S3_PATH_LIBS: $(ROR_S3_PATH_LIBS)
   - task: PublishTestResults@2
     condition: failed()
     inputs:
