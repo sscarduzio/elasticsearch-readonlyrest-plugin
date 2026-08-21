@@ -28,6 +28,17 @@ retry_with_backoff() {
   local delay=${ROR_RETRY_DELAY_SECONDS:-30}
   local attempt=1
 
+  # Both values are compared and multiplied below. A value that is not a positive number makes the
+  # loop misbehave instead of failing, so refuse it here and run nothing.
+  if ! [[ $attempts =~ ^[0-9]+$ ]] || [ "$attempts" -lt 1 ]; then
+    echo "[CI] ROR_RETRY_ATTEMPTS must be a positive integer, got '$attempts'."
+    return 2
+  fi
+  if ! [[ $delay =~ ^[0-9]+$ ]]; then
+    echo "[CI] ROR_RETRY_DELAY_SECONDS must be a non-negative integer, got '$delay'."
+    return 2
+  fi
+
   while true; do
     if "$@"; then
       return 0

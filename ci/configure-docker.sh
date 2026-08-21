@@ -87,18 +87,51 @@ _ror_docker_mirror_daemon() {
   # No systemd means no host daemon to restart. This is how a container job leaves early.
   sudo -n systemctl is-active --quiet docker 2>/dev/null || return 0
 
-  sudo -n mkdir -p /etc/docker || return 0
-  echo "{\"registry-mirrors\":[\"https://${ROR_DOCKER_HUB_MIRROR_HOST}\"]}" |
-    sudo -n tee /etc/docker/daemon.json >/dev/null || return 0
+  local config=/etc/docker/daemon.json
+  local mirror="https://${ROR_DOCKER_HUB_MIRROR_HOST}"
+  local backup="" merged
+
+  if sudo -n test -f "$config"; then
+    # The runner may keep its own settings here, so add the mirror to the file instead of replacing
+    # the file. jq does the merge, and without jq the script leaves the file alone.
+    if ! command -v jq >/dev/null 2>&1; then
+      echo "[CI] /etc/docker/daemon.json exists and jq is missing, so the daemon keeps its own settings."
+      return 0
+    fi
+    merged=$(sudo -n cat "$config" |
+      jq -c --arg m "$mirror" '.["registry-mirrors"] = (
+         (.["registry-mirrors"] // []) as $ms |
+         if ($ms | index($m)) then $ms else $ms + [$m] end)') || {
+      echo "[CI] /etc/docker/daemon.json is not readable JSON, so the daemon keeps its own settings."
+      return 0
+    }
+    # Keep the file as it is now, to put it back if the daemon refuses the new one.
+    backup=$(mktemp) && sudo -n cat "$config" > "$backup" || { rm -f "$backup"; return 0; }
+  else
+    merged="{\"registry-mirrors\":[\"${mirror}\"]}"
+    sudo -n mkdir -p /etc/docker || return 0
+  fi
+
+  printf '%s\n' "$merged" | sudo -n tee "$config" >/dev/null || {
+    rm -f "$backup"
+    return 0
+  }
 
   if sudo -n systemctl restart docker &&
      timeout 60 bash -c 'until docker info >/dev/null 2>&1; do sleep 2; done'; then
     echo "[CI] The docker daemon now mirrors Docker Hub."
+    rm -f "$backup"
     return 0
   fi
 
   echo "[CI] The docker daemon refused the mirror, so its own pulls go to Docker Hub."
-  sudo -n rm -f /etc/docker/daemon.json
+  # Put back what was there before. A file we did not create is removed instead.
+  if [ -n "$backup" ]; then
+    sudo -n cp "$backup" "$config"
+    rm -f "$backup"
+  else
+    sudo -n rm -f "$config"
+  fi
   sudo -n systemctl restart docker || true
   return 0
 }
