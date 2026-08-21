@@ -106,7 +106,7 @@ class IndexLevelActionFilter(
     startRorInstance()
   }
 
-  private def auditCapabilities: EsAuditCapabilities.IndexWithDataStream = {
+  private def auditCapabilities: EsAuditCapabilities.IndexOrDataStream = {
     val creator = new IndexBasedAuditSinkServiceCreator with DataStreamBasedAuditSinkServiceCreator {
       override protected def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = createService(cluster)
 
@@ -125,7 +125,7 @@ class IndexLevelActionFilter(
         }
       }
     }
-    new EsAuditCapabilities.IndexWithDataStream(creator, creator)
+    new EsAuditCapabilities.IndexOrDataStream(creator, creator)
   }
 
   override def order(): Int = 0

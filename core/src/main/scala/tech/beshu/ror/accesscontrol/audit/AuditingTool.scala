@@ -226,8 +226,9 @@ object AuditingTool extends RequestIdAwareLogging {
   sealed trait AuditOutputsConfig[+M <: Mode]
 
   object AuditOutputsConfig {
-    case object NoOutputsConfigured extends AuditOutputsConfig[Nothing]
-    final case class WithOutputs[+M <: Mode](outputs: NonEmptyList[AuditOutput[M]]) extends AuditOutputsConfig[M]
+    case object Disabled extends AuditOutputsConfig[Nothing]
+    case object Defaults extends AuditOutputsConfig[Nothing]
+    final case class Configured[+M <: Mode](outputs: NonEmptyList[AuditOutput[M]]) extends AuditOutputsConfig[M]
 
     sealed trait AuditOutput[+M <: Mode]
 
@@ -297,7 +298,7 @@ object AuditingTool extends RequestIdAwareLogging {
   }
 
   final case class AuditingConfig[+M <: Mode](
-      outputsConfig: Option[AuditOutputsConfig[M]],
+      outputsConfig: AuditOutputsConfig[M],
       defaultAclLog: Boolean,
       esNodeSettings: EsNodeSettings
   )
@@ -351,13 +352,13 @@ object AuditingTool extends RequestIdAwareLogging {
   }
 
   private def applyDefaults[M >: Mode.Both <: Mode](
-      settings: Option[AuditOutputsConfig[M]],
+      settings: AuditOutputsConfig[M],
       defaultAclLog: Boolean
   ): List[AuditOutput[M]] = {
     val outputs: List[AuditOutput[M]] = settings match {
-      case None                                          => List.empty
-      case Some(AuditOutputsConfig.NoOutputsConfigured)  => List(defaultIndexStorageSink)
-      case Some(AuditOutputsConfig.WithOutputs(outputs)) => outputs.toList
+      case AuditOutputsConfig.Disabled            => List.empty
+      case AuditOutputsConfig.Defaults            => List(defaultIndexStorageSink)
+      case AuditOutputsConfig.Configured(outputs) => outputs.toList
     }
     if (defaultAclLog) defaultAclSink :: outputs else outputs
   }

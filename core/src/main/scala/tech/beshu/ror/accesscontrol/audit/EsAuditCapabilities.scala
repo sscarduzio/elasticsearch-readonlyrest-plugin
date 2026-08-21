@@ -24,9 +24,9 @@ import tech.beshu.ror.accesscontrol.audit.sink.{
 sealed trait EsAuditCapabilities
 
 object EsAuditCapabilities {
-  final class Index(val creator: IndexBasedAuditSinkServiceCreator) extends EsAuditCapabilities
+  final class IndexOnly(val creator: IndexBasedAuditSinkServiceCreator) extends EsAuditCapabilities
 
-  final class IndexWithDataStream(
+  final class IndexOrDataStream(
       val indexCreator: IndexBasedAuditSinkServiceCreator,
       val dataStreamCreator: DataStreamBasedAuditSinkServiceCreator
   ) extends EsAuditCapabilities

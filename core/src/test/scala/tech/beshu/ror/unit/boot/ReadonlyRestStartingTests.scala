@@ -41,7 +41,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
-import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities.IndexWithDataStream
+import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities.IndexOrDataStream
 import tech.beshu.ror.accesscontrol.audit.sink.{
   AuditDataStreamCreator,
   DataStreamBasedAuditSinkServiceCreator,
@@ -288,11 +288,15 @@ class ReadonlyRestStartingTests
               .map(_ =>
                 Right {
                   val auditingConfig =
-                    AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+                    AuditingTool.AuditingConfig(
+                      AuditOutputsConfig.Disabled,
+                      defaultAclLog = true,
+                      defaultTestEsNodeSettings
+                    )
                   new CoreCreationResult(
                     Core(mockEnabledAccessControl, RorDependencies.noOp, auditingConfig),
                     new CoreCreationResult.AuditSetup.IndexWithDataStream(
-                      new IndexWithDataStream(
+                      new IndexOrDataStream(
                         MockIndexBasedAuditSinkServiceCreator,
                         MockDataStreamBasedAuditSinkServiceCreator
                       ),
@@ -1645,7 +1649,7 @@ class ReadonlyRestStartingTests
           case c if c == dataStreamSinkConfig2.auditCluster => mockedSinkService2
           case other => throw new IllegalStateException(s"Unexpected cluster: $other")
         }
-        val capability = new IndexWithDataStream(indexCreator, dataStreamCreator)
+        val capability = new IndexOrDataStream(indexCreator, dataStreamCreator)
 
         val coreFactory = mockCoreFactory(
           mockedCoreFactory = mock[CoreFactory],
@@ -1656,12 +1660,10 @@ class ReadonlyRestStartingTests
             new CoreCreationResult.AuditSetup.IndexWithDataStream(
               capability,
               AuditingConfig(
-                Some(
-                  AuditOutputsConfig.WithOutputs(
-                    NonEmptyList.of(
-                      EsDataStreamBased(SinkName.random(), dataStreamSinkConfig1),
-                      EsDataStreamBased(SinkName.random(), dataStreamSinkConfig2)
-                    )
+                AuditOutputsConfig.Configured(
+                  NonEmptyList.of(
+                    EsDataStreamBased(SinkName.random(), dataStreamSinkConfig1),
+                    EsDataStreamBased(SinkName.random(), dataStreamSinkConfig2)
                   )
                 ),
                 defaultAclLog = true,
@@ -1710,15 +1712,13 @@ class ReadonlyRestStartingTests
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
             new CoreCreationResult.AuditSetup.IndexWithDataStream(
-              new IndexWithDataStream(
+              new IndexOrDataStream(
                 mock[IndexBasedAuditSinkServiceCreator],
                 mock[DataStreamBasedAuditSinkServiceCreator]
               ),
               AuditingConfig(
-                Some(
-                  AuditOutputsConfig.WithOutputs(
-                    NonEmptyList.of(EsDataStreamBased(SinkName.random(), dataStreamSinkConfig))
-                  )
+                AuditOutputsConfig.Configured(
+                  NonEmptyList.of(EsDataStreamBased(SinkName.random(), dataStreamSinkConfig))
                 ),
                 defaultAclLog = true,
                 defaultTestEsNodeSettings
@@ -1760,15 +1760,13 @@ class ReadonlyRestStartingTests
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
             new CoreCreationResult.AuditSetup.IndexWithDataStream(
-              new IndexWithDataStream(
+              new IndexOrDataStream(
                 mock[IndexBasedAuditSinkServiceCreator],
                 mock[DataStreamBasedAuditSinkServiceCreator]
               ),
               AuditingConfig(
-                Some(
-                  AuditOutputsConfig.WithOutputs(
-                    NonEmptyList.of(EsDataStreamBased(SinkName.random(), dataStreamSinkConfig))
-                  )
+                AuditOutputsConfig.Configured(
+                  NonEmptyList.of(EsDataStreamBased(SinkName.random(), dataStreamSinkConfig))
                 ),
                 defaultAclLog = true,
                 defaultTestEsNodeSettings
@@ -1809,12 +1807,12 @@ class ReadonlyRestStartingTests
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
             new CoreCreationResult.AuditSetup.IndexWithDataStream(
-              new IndexWithDataStream(
+              new IndexOrDataStream(
                 mock[IndexBasedAuditSinkServiceCreator],
                 mock[DataStreamBasedAuditSinkServiceCreator]
               ),
               AuditingConfig(
-                Some(AuditOutputsConfig.WithOutputs(NonEmptyList.of(EsIndexBased(SinkName.random(), sinkConfig)))),
+                AuditOutputsConfig.Configured(NonEmptyList.of(EsIndexBased(SinkName.random(), sinkConfig))),
                 defaultAclLog = true,
                 defaultTestEsNodeSettings
               )
@@ -1864,12 +1862,12 @@ class ReadonlyRestStartingTests
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
             new CoreCreationResult.AuditSetup.IndexWithDataStream(
-              new IndexWithDataStream(
+              new IndexOrDataStream(
                 indexCreator,
                 mock[DataStreamBasedAuditSinkServiceCreator]
               ),
               AuditingConfig(
-                Some(AuditOutputsConfig.WithOutputs(NonEmptyList.of(EsIndexBased(SinkName.random(), sinkConfig)))),
+                AuditOutputsConfig.Configured(NonEmptyList.of(EsIndexBased(SinkName.random(), sinkConfig))),
                 defaultAclLog = true,
                 defaultTestEsNodeSettings
               )
@@ -1913,12 +1911,12 @@ class ReadonlyRestStartingTests
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
             new CoreCreationResult.AuditSetup.IndexWithDataStream(
-              new IndexWithDataStream(
+              new IndexOrDataStream(
                 indexCreator,
                 mock[DataStreamBasedAuditSinkServiceCreator]
               ),
               AuditingConfig(
-                Some(AuditOutputsConfig.WithOutputs(NonEmptyList.of(EsIndexBased(SinkName.random(), sinkConfig)))),
+                AuditOutputsConfig.Configured(NonEmptyList.of(EsIndexBased(SinkName.random(), sinkConfig))),
                 defaultAclLog = true,
                 defaultTestEsNodeSettings
               )
@@ -2006,13 +2004,17 @@ class ReadonlyRestStartingTests
         if (startedAttempts.getAndIncrement() < failingAttemptsCount) {
           failure
         } else {
-          val auditingConfig = AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+          val auditingConfig = AuditingTool.AuditingConfig(
+            AuditOutputsConfig.Disabled,
+            defaultAclLog = true,
+            defaultTestEsNodeSettings
+          )
           Task.now(
             Right(
               new CoreCreationResult(
                 Core(accessControl, RorDependencies.noOp, auditingConfig),
                 new CoreCreationResult.AuditSetup.IndexWithDataStream(
-                  new IndexWithDataStream(
+                  new IndexOrDataStream(
                     MockIndexBasedAuditSinkServiceCreator,
                     MockDataStreamBasedAuditSinkServiceCreator
                   ),
@@ -2097,7 +2099,7 @@ class ReadonlyRestStartingTests
   )(
       implicit systemContext: SystemContext
   ): ReadonlyRest = {
-    ReadonlyRest.create(factory, indexDocumentManager, new IndexWithDataStream(indexCreator, dataStreamCreator))
+    ReadonlyRest.create(factory, indexDocumentManager, new IndexOrDataStream(indexCreator, dataStreamCreator))
   }
 
   private def mockCoreFactory(
@@ -2131,8 +2133,12 @@ class ReadonlyRestStartingTests
       .returns(Task.now(Right {
         val resolvedAuditSetup = auditSetup.getOrElse(
           new CoreCreationResult.AuditSetup.IndexWithDataStream(
-            new IndexWithDataStream(MockIndexBasedAuditSinkServiceCreator, MockDataStreamBasedAuditSinkServiceCreator),
-            AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+            new IndexOrDataStream(MockIndexBasedAuditSinkServiceCreator, MockDataStreamBasedAuditSinkServiceCreator),
+            AuditingTool.AuditingConfig(
+              AuditOutputsConfig.Disabled,
+              defaultAclLog = true,
+              defaultTestEsNodeSettings
+            )
           )
         )
         new CoreCreationResult(Core(accessControlMock, dependencies, resolvedAuditSetup.settings), resolvedAuditSetup)

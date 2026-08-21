@@ -87,12 +87,12 @@ object CoreFactory {
     object AuditSetup {
 
       final class Index(
-          val capability: EsAuditCapabilities.Index,
+          val capability: EsAuditCapabilities.IndexOnly,
           val settings: AuditingConfig.Legacy
       ) extends AuditSetup
 
       final class IndexWithDataStream(
-          val capability: EsAuditCapabilities.IndexWithDataStream,
+          val capability: EsAuditCapabilities.IndexOrDataStream,
           val settings: AuditingConfig.Standard
       ) extends AuditSetup
 
@@ -198,8 +198,11 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
         if (!enabled) {
           AsyncDecoderCreator.from(
             Decoder.const({
-              val auditingConfig =
-                AuditingConfig(outputsConfig = None, defaultAclLog = true, esNodeSettings = esEnv.esNodeSettings)
+              val auditingConfig = AuditingConfig(
+                outputsConfig = AuditOutputsConfig.Disabled,
+                defaultAclLog = true,
+                esNodeSettings = esEnv.esNodeSettings
+              )
               new CoreCreationResult(
                 core = Core(
                   accessControl = DisabledAccessControlList,
@@ -207,9 +210,9 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
                   auditingConfig = auditingConfig,
                 ),
                 auditSetup = auditCapabilities match {
-                  case index: EsAuditCapabilities.Index =>
+                  case index: EsAuditCapabilities.IndexOnly =>
                     AuditSetup.Index(index, auditingConfig)
-                  case stream: EsAuditCapabilities.IndexWithDataStream =>
+                  case stream: EsAuditCapabilities.IndexOrDataStream =>
                     AuditSetup.IndexWithDataStream(stream, auditingConfig)
                 }
               )
@@ -442,7 +445,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
     AsyncDecoderCreator.instance[Unit] { _ =>
       Task.now {
         val configuredSinkNames: scala.collection.Set[SinkName] = auditingConfig.outputsConfig match {
-          case Some(AuditOutputsConfig.WithOutputs(outputs)) =>
+          case AuditOutputsConfig.Configured(outputs) =>
             outputs.toList.flatMap(_.sinkName).toSet
           case _ => scala.collection.Set.empty
         }
@@ -536,11 +539,11 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
   private def auditSettingsDecoder(
       auditCapabilities: EsAuditCapabilities
   )(esEnv: EsEnv): Decoder[AuditSetup] = auditCapabilities match {
-    case cap: EsAuditCapabilities.Index =>
+    case cap: EsAuditCapabilities.IndexOnly =>
       AuditingSettingsDecoder
         .legacy(esEnv)
         .map(settings => new AuditSetup.Index(cap, settings))
-    case cap: EsAuditCapabilities.IndexWithDataStream =>
+    case cap: EsAuditCapabilities.IndexOrDataStream =>
       AuditingSettingsDecoder
         .standard(esEnv)
         .map(settings => new AuditSetup.IndexWithDataStream(cap, settings))

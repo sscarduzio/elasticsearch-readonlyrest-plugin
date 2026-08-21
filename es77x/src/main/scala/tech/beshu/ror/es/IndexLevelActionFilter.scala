@@ -101,7 +101,7 @@ class IndexLevelActionFilter(
     startRorInstance()
   }
 
-  private def auditCapabilities: EsAuditCapabilities.Index = {
+  private def auditCapabilities: EsAuditCapabilities.IndexOnly = {
     val creator = new IndexBasedAuditSinkServiceCreator {
       override protected def index(cluster: AuditCluster): IndexBasedAuditSinkService = cluster match {
         case AuditCluster.LocalAuditCluster =>
@@ -112,7 +112,7 @@ class IndexLevelActionFilter(
           )
       }
     }
-    new EsAuditCapabilities.Index(creator)
+    new EsAuditCapabilities.IndexOnly(creator)
   }
 
   override def order(): Int = 0

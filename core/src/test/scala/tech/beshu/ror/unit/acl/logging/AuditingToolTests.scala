@@ -74,7 +74,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  Some(auditSettings(new DefaultAuditLogSerializer)),
+                  auditSettings(new DefaultAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -93,7 +93,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  Some(auditSettings(throwingAuditLogSerializer)),
+                  auditSettings(throwingAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -126,7 +126,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  Some(auditSettings(new DefaultAuditLogSerializer)),
+                  auditSettings(new DefaultAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -155,7 +155,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  Some(auditSettings(new DefaultAuditLogSerializer)),
+                  auditSettings(new DefaultAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -209,7 +209,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  Some(auditSettings(new DefaultAuditLogSerializer)),
+                  auditSettings(new DefaultAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -245,7 +245,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  Some(auditSettings(new DefaultAuditLogSerializer)),
+                  auditSettings(new DefaultAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -273,15 +273,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           val auditingTool = AuditingTool
             .create(
               config = AuditingConfig(
-                outputsConfig = Some(
-                  AuditOutputsConfig.WithOutputs(
-                    NonEmptyList.of(
-                      LogBased(
-                        SinkName.random(),
-                        LogBasedSink(
-                          AuditSerializer.Delegating(new DefaultAuditLogSerializer),
-                          RorAuditLoggerName.default
-                        )
+                outputsConfig = AuditOutputsConfig.Configured(
+                  NonEmptyList.of(
+                    LogBased(
+                      SinkName.random(),
+                      LogBasedSink(
+                        AuditSerializer.Delegating(new DefaultAuditLogSerializer),
+                        RorAuditLoggerName.default
                       )
                     )
                   )
@@ -320,19 +318,17 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           val auditingTool = AuditingTool
             .create(
               config = AuditingConfig(
-                outputsConfig = Some(
-                  AuditOutputsConfig.WithOutputs(
-                    NonEmptyList.of(
-                      RollingFileBased(
-                        SinkName.random(),
-                        RollingFileBasedSink(
-                          serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
-                          loggerName = isolatedLoggerName,
-                          fileAppender = RollingFileBasedSink.FileAppenderConfig(
-                            filePath = filePathAuditLog.path,
-                            maxFileSize = Megabytes(100),
-                            maxFiles = positiveInt(7)
-                          )
+                outputsConfig = AuditOutputsConfig.Configured(
+                  NonEmptyList.of(
+                    RollingFileBased(
+                      SinkName.random(),
+                      RollingFileBasedSink(
+                        serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
+                        loggerName = isolatedLoggerName,
+                        fileAppender = RollingFileBasedSink.FileAppenderConfig(
+                          filePath = filePathAuditLog.path,
+                          maxFileSize = Megabytes(100),
+                          maxFiles = positiveInt(7)
                         )
                       )
                     )
@@ -371,19 +367,17 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           val auditingTool = AuditingTool
             .create(
               config = AuditingConfig(
-                outputsConfig = Some(
-                  AuditOutputsConfig.WithOutputs(
-                    NonEmptyList.of(
-                      RollingFileBased(
-                        SinkName.random(),
-                        RollingFileBasedSink(
-                          serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
-                          loggerName = customLoggerName,
-                          fileAppender = RollingFileBasedSink.FileAppenderConfig(
-                            filePath = customLogFile.path,
-                            maxFileSize = Megabytes(100),
-                            maxFiles = positiveInt(7)
-                          )
+                outputsConfig = AuditOutputsConfig.Configured(
+                  NonEmptyList.of(
+                    RollingFileBased(
+                      SinkName.random(),
+                      RollingFileBasedSink(
+                        serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
+                        loggerName = customLoggerName,
+                        fileAppender = RollingFileBasedSink.FileAppenderConfig(
+                          filePath = customLogFile.path,
+                          maxFileSize = Megabytes(100),
+                          maxFiles = positiveInt(7)
                         )
                       )
                     )
@@ -428,7 +422,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val result = AuditingTool
               .create(
                 config = AuditingConfig(
-                  Some(rollingFileSinkSettings(logPath)),
+                  rollingFileSinkSettings(logPath),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -466,7 +460,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val result = AuditingTool
               .create(
                 config = AuditingConfig(
-                  Some(rollingFileSinkSettings(logPath)),
+                  rollingFileSinkSettings(logPath),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -504,7 +498,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val result = AuditingTool
               .create(
                 config = AuditingConfig(
-                  Some(rollingFileSinkSettings(logPath)),
+                  rollingFileSinkSettings(logPath),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -545,16 +539,14 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val auditingTool = AuditingTool
           .create(
             config = AuditingConfig(
-              Some(
-                AuditOutputsConfig.WithOutputs(
-                  NonEmptyList.of(
-                    EsIndexBased(
-                      SinkName.random(),
-                      EsIndexBasedSink(
-                        AuditSerializer.Delegating(new DefaultAuditLogSerializer),
-                        RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
-                        AuditCluster.LocalAuditCluster
-                      )
+              AuditOutputsConfig.Configured(
+                NonEmptyList.of(
+                  EsIndexBased(
+                    SinkName.random(),
+                    EsIndexBasedSink(
+                      AuditSerializer.Delegating(new DefaultAuditLogSerializer),
+                      RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
+                      AuditCluster.LocalAuditCluster
                     )
                   )
                 )
@@ -635,7 +627,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val creationResult = AuditingTool
           .create(
             config = AuditingConfig(
-              Some(AuditOutputsConfig.WithOutputs(NonEmptyList.of(Disabled, Disabled))),
+              AuditOutputsConfig.Configured(NonEmptyList.of(Disabled, Disabled)),
               defaultAclLog = false,
               defaultTestEsNodeSettings
             ),
@@ -646,18 +638,48 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         creationResult.map(_.sinks.isEmpty) should be(Right(true))
       }
     }
+    "output configuration" should {
+      "create a tool with no configured sinks when disabled" in {
+        val creationResult = AuditingTool
+          .create(
+            config = AuditingConfig(
+              AuditOutputsConfig.Disabled,
+              defaultAclLog = false,
+              defaultTestEsNodeSettings
+            ),
+            creator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
+            httpClientsFactory = MockHttpClientsFactory
+          )
+          .runSyncUnsafe()
+
+        creationResult.map(_.sinks.isEmpty) should be(Right(true))
+      }
+      "create the default index sink when defaults are requested" in {
+        val creationResult = AuditingTool
+          .create(
+            config = AuditingConfig(
+              AuditOutputsConfig.Defaults,
+              defaultAclLog = false,
+              defaultTestEsNodeSettings
+            ),
+            creator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
+            httpClientsFactory = MockHttpClientsFactory
+          )
+          .runSyncUnsafe()
+
+        creationResult.map(_.sinks.size) should be(Right(1))
+      }
+    }
     "no enabled outputs in settings" should {
       "create a tool with no active sinks" in {
         val creationResult = AuditingTool
           .create(
             config = AuditingConfig(
-              Some(
-                AuditOutputsConfig.WithOutputs(
-                  NonEmptyList.of(
-                    Disabled,
-                    Disabled,
-                    Disabled
-                  )
+              AuditOutputsConfig.Configured(
+                NonEmptyList.of(
+                  Disabled,
+                  Disabled,
+                  Disabled
                 )
               ),
               defaultAclLog = true,
@@ -674,16 +696,14 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   }
 
   private def legacyAuditSettings(serializer: AuditLogSerializer): AuditingConfig.Legacy = AuditingConfig(
-    outputsConfig = Some(
-      AuditOutputsConfig.WithOutputs(
-        NonEmptyList.of(
-          EsIndexBased(
-            SinkName.random(),
-            EsIndexBasedSink(
-              AuditSerializer.Delegating(serializer),
-              RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
-              AuditCluster.LocalAuditCluster
-            )
+    outputsConfig = AuditOutputsConfig.Configured(
+      NonEmptyList.of(
+        EsIndexBased(
+          SinkName.random(),
+          EsIndexBasedSink(
+            AuditSerializer.Delegating(serializer),
+            RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
+            AuditCluster.LocalAuditCluster
           )
         )
       )
@@ -692,7 +712,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     esNodeSettings = defaultTestEsNodeSettings
   )
 
-  private def auditSettings(serializer: AuditLogSerializer) = AuditOutputsConfig.WithOutputs(
+  private def auditSettings(serializer: AuditLogSerializer) = AuditOutputsConfig.Configured(
     outputs = NonEmptyList.of(
       EsIndexBased(
         SinkName.random(),
@@ -746,7 +766,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   private implicit val fixedClock: Clock = Clock.fixed(someday.toInstant, someday.getZone)
 
   @nowarn("cat=deprecation")
-  private def rollingFileSinkSettings(filePath: java.nio.file.Path) = AuditOutputsConfig.WithOutputs(
+  private def rollingFileSinkSettings(filePath: java.nio.file.Path) = AuditOutputsConfig.Configured(
     NonEmptyList.of(
       RollingFileBased(
         SinkName.random(),

@@ -79,7 +79,10 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance
       defaultAclLog <- defaultAclLogDecoder
     } yield AuditingConfig(
-      outputsConfig = auditSettings.orElse(deprecatedAuditSettings),
+      outputsConfig = auditSettings match {
+        case AuditOutputsConfig.Disabled => deprecatedAuditSettings
+        case enabled                     => enabled
+      },
       defaultAclLog = defaultAclLog,
       esNodeSettings = esEnv.esNodeSettings,
     )
@@ -106,11 +109,11 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   private def auditSettingsDecoder[M <: Mode](
       decoder: Decoder[AuditOutputsConfig[M]]
-  ): Decoder[Option[AuditOutputsConfig[M]]] =
+  ): Decoder[AuditOutputsConfig[M]] =
     Decoder.instance(c =>
       readAuditEnabled(c).flatMap {
-        case Some(true) => decoder(c).map(Some.apply)
-        case _          => Right(None)
+        case Some(true) => decoder(c)
+        case _          => Right(AuditOutputsConfig.Disabled)
       }
     )
 
@@ -200,10 +203,10 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         case Some(outputs) =>
           NonEmptyList
             .fromList[AuditOutput[M]](outputs.distinct)
-            .map(AuditOutputsConfig.WithOutputs(_))
+            .map(AuditOutputsConfig.Configured(_))
             .toRight(auditSettingsError(s"The audit 'outputs' array cannot be empty"))
         case None =>
-          AuditOutputsConfig.NoOutputsConfigured.asRight
+          AuditOutputsConfig.Defaults.asRight
       }
       .decoder
 
@@ -810,7 +813,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   private object DeprecatedAuditSettingsDecoder {
 
-    def instance: Decoder[Option[AuditOutputsConfig[Mode.Both]]] = Decoder.instance { c =>
+    def instance: Decoder[AuditOutputsConfig[Mode.Both]] = Decoder.instance { c =>
       whenEnabled(c) {
         for {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)(
@@ -828,7 +831,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
             "cluster",
             fallbackKey = "audit_cluster"
           )
-        } yield AuditOutputsConfig.WithOutputs(
+        } yield AuditOutputsConfig.Configured(
           outputs = NonEmptyList.one(
             EsIndexBased(
               SinkName.random(),
@@ -846,7 +849,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     private def whenEnabled[M <: Mode](cursor: HCursor)(decoding: => Decoder.Result[AuditOutputsConfig[M]]) = {
       for {
         isEnabled <- decodeOptionalSetting[Boolean](cursor)("collector", fallbackKey = "audit_collector")
-        result <- if (isEnabled.getOrElse(false)) decoding.map(Some.apply) else Right(None)
+        result <- if (isEnabled.getOrElse(false)) decoding else Right(AuditOutputsConfig.Disabled)
       } yield result
     }
 

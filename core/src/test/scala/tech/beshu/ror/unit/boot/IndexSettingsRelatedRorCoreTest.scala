@@ -226,11 +226,15 @@ class IndexSettingsRelatedRorCoreTest
       .returns(
         Task.now(
           Right {
-            val auditingConfig = AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+            val auditingConfig = AuditingTool.AuditingConfig(
+              AuditingTool.AuditOutputsConfig.Disabled,
+              defaultAclLog = true,
+              defaultTestEsNodeSettings
+            )
             new CoreCreationResult(
               Core(mockAccessControl, RorDependencies.noOp, auditingConfig),
               new CoreCreationResult.AuditSetup.IndexWithDataStream(
-                new EsAuditCapabilities.IndexWithDataStream(
+                new EsAuditCapabilities.IndexOrDataStream(
                   MockIndexBasedAuditSinkServiceCreator,
                   MockDataStreamBasedAuditSinkServiceCreator
                 ),

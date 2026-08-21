@@ -187,7 +187,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       dataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService
   ) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-    val settings = AuditOutputsConfig.WithOutputs(
+    val settings = AuditOutputsConfig.Configured(
       NonEmptyList.of(
         EsIndexBased(
           SinkName.random(),
@@ -209,7 +209,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     )
     val auditingTool = AuditingTool
       .create(
-        config = AuditingConfig(Some(settings), defaultAclLog = true, defaultTestEsNodeSettings),
+        config = AuditingConfig(settings, defaultAclLog = true, defaultTestEsNodeSettings),
         indexCreator = (_: AuditCluster) => indexBasedAuditSinkService,
         dataStreamCreator = (_: AuditCluster) => dataStreamBasedAuditSinkService,
         httpClientsFactory = MockHttpClientsFactory,

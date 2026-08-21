@@ -30,10 +30,10 @@ import squants.information.Megabytes
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput.*
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.WithOutputs
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.Configured
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
-import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities.Index
+import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities.IndexOnly
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.{
   AuditEnvironmentContextBasedOnEsNodeSettings,
@@ -89,7 +89,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           """.stripMargin
         )
 
-        assertSettingsNoPresent(settings)
+        assertOutputsDisabled(settings)
       }
       "have defaultAclLog enabled by default" in {
         val settings = rorSettingsFromUnsafe(
@@ -116,7 +116,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           )
           .map(_.map(_.core))
           .runSyncUnsafe()
-        inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, true, _))) => }
+        inside(core) {
+          case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(AuditOutputsConfig.Disabled, true, _))) =>
+        }
       }
     }
     "audit is disabled" should {
@@ -134,7 +136,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             """.stripMargin
           )
 
-          assertSettingsNoPresent(settings)
+          assertOutputsDisabled(settings)
         }
         "multi line audit format" in {
           val settings = rorSettingsWithAuditUnsafe(
@@ -144,14 +146,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             """.stripMargin
           )
 
-          assertSettingsNoPresent(settings)
+          assertOutputsDisabled(settings)
         }
         "flat dot-notation audit.enabled key inside readonlyrest block" in {
           val settings = rorSettingsWithAuditUnsafe(
             "audit.enabled: false"
           )
 
-          assertSettingsNoPresent(settings)
+          assertOutputsDisabled(settings)
         }
       }
     }
@@ -175,7 +177,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     "audit is enabled" should {
       "be able to be loaded from settings" when {
         "no outputs defined" should {
-          "return NoOutputsConfigured from decoder (defaults applied at runtime)" when {
+          "return Defaults from decoder (defaults applied at runtime)" when {
             "one line audit format" in {
               val settings = rorSettingsFromUnsafe(
                 """
@@ -189,7 +191,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |""".stripMargin
               )
 
-              assertNoOutputsConfigured(settings)
+              assertDefaultOutputs(settings)
             }
             "multi line audit format" in {
               val settings = rorSettingsWithAuditUnsafe(
@@ -199,14 +201,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 """.stripMargin
               )
 
-              assertNoOutputsConfigured(settings)
+              assertDefaultOutputs(settings)
             }
             "flat dot-notation audit.enabled key inside readonlyrest block" in {
               val settings = rorSettingsWithAuditUnsafe(
                 "audit.enabled: true"
               )
 
-              assertNoOutputsConfigured(settings)
+              assertDefaultOutputs(settings)
             }
           }
         }
@@ -230,37 +232,36 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             )
             .map(_.map(_.core))
             .runSyncUnsafe()
-          inside(core) {
-            case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
-              auditSinks.size should be(3)
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditSinks), _, _))) =>
+            auditSinks.size should be(3)
 
-              val sink1 = auditSinks.head
-              sink1 shouldBe a[EsIndexBased]
-              val sink1Config = sink1.asInstanceOf[EsIndexBased].config
-              sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(
-                indexName("readonlyrest_audit-2018-12-31")
-              )
-              sink1Config.serializer
-                .asInstanceOf[AuditSerializer.Delegating]
-                .serializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
-              sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
+            val sink1 = auditSinks.head
+            sink1 shouldBe a[EsIndexBased]
+            val sink1Config = sink1.asInstanceOf[EsIndexBased].config
+            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(
+              indexName("readonlyrest_audit-2018-12-31")
+            )
+            sink1Config.serializer
+              .asInstanceOf[AuditSerializer.Delegating]
+              .serializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
+            sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
-              val sink2 = auditSinks.toList(1)
-              sink2 shouldBe a[LogBased]
-              val sink2Config = sink2.asInstanceOf[LogBased].config
-              sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
-              sink2Config.serializer
-                .asInstanceOf[AuditSerializer.Delegating]
-                .serializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
+            val sink2 = auditSinks.toList(1)
+            sink2 shouldBe a[LogBased]
+            val sink2Config = sink2.asInstanceOf[LogBased].config
+            sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
+            sink2Config.serializer
+              .asInstanceOf[AuditSerializer.Delegating]
+              .serializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
 
-              val sink3 = auditSinks.toList(2)
-              sink3 shouldBe a[EsDataStreamBased]
-              val sink3Config = sink3.asInstanceOf[EsDataStreamBased].config
-              sink3Config.rorAuditDataStream.dataStream should be(fullDataStreamName("readonlyrest_audit"))
-              sink3Config.serializer
-                .asInstanceOf[AuditSerializer.Delegating]
-                .serializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
-              sink3Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
+            val sink3 = auditSinks.toList(2)
+            sink3 shouldBe a[EsDataStreamBased]
+            val sink3Config = sink3.asInstanceOf[EsDataStreamBased].config
+            sink3Config.rorAuditDataStream.dataStream should be(fullDataStreamName("readonlyrest_audit"))
+            sink3Config.serializer
+              .asInstanceOf[AuditSerializer.Delegating]
+              .serializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
+            sink3Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
           }
         }
         "'log' output type defined" when {
@@ -1501,37 +1502,36 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             )
             .map(_.map(_.core))
             .runSyncUnsafe()
-          inside(core) {
-            case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
-              auditSinks.size should be(3)
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditSinks), _, _))) =>
+            auditSinks.size should be(3)
 
-              val sink1 = auditSinks.head
-              sink1 shouldBe a[EsIndexBased]
-              val sink1Config = sink1.asInstanceOf[EsIndexBased].config
-              sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(
-                indexName("readonlyrest_audit-2018-12-31")
-              )
-              sink1Config.serializer
-                .asInstanceOf[AuditSerializer.Delegating]
-                .serializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
-              sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
+            val sink1 = auditSinks.head
+            sink1 shouldBe a[EsIndexBased]
+            val sink1Config = sink1.asInstanceOf[EsIndexBased].config
+            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(
+              indexName("readonlyrest_audit-2018-12-31")
+            )
+            sink1Config.serializer
+              .asInstanceOf[AuditSerializer.Delegating]
+              .serializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
+            sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
-              val sink2 = auditSinks.toList(1)
-              sink2 shouldBe a[LogBased]
-              val sink2Config = sink2.asInstanceOf[LogBased].config
-              sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
-              sink2Config.serializer
-                .asInstanceOf[AuditSerializer.Delegating]
-                .serializer shouldBe a[QueryAuditLogSerializer]
+            val sink2 = auditSinks.toList(1)
+            sink2 shouldBe a[LogBased]
+            val sink2Config = sink2.asInstanceOf[LogBased].config
+            sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
+            sink2Config.serializer
+              .asInstanceOf[AuditSerializer.Delegating]
+              .serializer shouldBe a[QueryAuditLogSerializer]
 
-              val sink3 = auditSinks.toList(2)
-              sink3 shouldBe a[EsDataStreamBased]
-              val sink3Config = sink3.asInstanceOf[EsDataStreamBased].config
-              sink3Config.rorAuditDataStream.dataStream should be(fullDataStreamName("readonlyrest_audit"))
-              sink3Config.serializer
-                .asInstanceOf[AuditSerializer.Delegating]
-                .serializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
-              sink3Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
+            val sink3 = auditSinks.toList(2)
+            sink3 shouldBe a[EsDataStreamBased]
+            val sink3Config = sink3.asInstanceOf[EsDataStreamBased].config
+            sink3Config.rorAuditDataStream.dataStream should be(fullDataStreamName("readonlyrest_audit"))
+            sink3Config.serializer
+              .asInstanceOf[AuditSerializer.Delegating]
+              .serializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
+            sink3Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
           }
         }
         "one of outputs is disabled" in {
@@ -1558,20 +1558,19 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             )
             .map(_.map(_.core))
             .runSyncUnsafe()
-          inside(core) {
-            case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
-              auditSinks.size should be(2)
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditSinks), _, _))) =>
+            auditSinks.size should be(2)
 
-              val sink1 = auditSinks.head
-              sink1 should be(Disabled)
+            val sink1 = auditSinks.head
+            sink1 should be(Disabled)
 
-              val sink2 = auditSinks.toList(1)
-              sink2 shouldBe a[LogBased]
-              val sink2Config = sink2.asInstanceOf[LogBased].config
-              sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
-              sink2Config.serializer
-                .asInstanceOf[AuditSerializer.Delegating]
-                .serializer shouldBe a[QueryAuditLogSerializer]
+            val sink2 = auditSinks.toList(1)
+            sink2 shouldBe a[LogBased]
+            val sink2Config = sink2.asInstanceOf[LogBased].config
+            sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
+            sink2Config.serializer
+              .asInstanceOf[AuditSerializer.Delegating]
+              .serializer shouldBe a[QueryAuditLogSerializer]
           }
         }
         "default_acl_log_enabled is true by default" should {
@@ -1597,7 +1596,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               .map(_.map(_.core))
               .runSyncUnsafe()
             inside(core) {
-              case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), true, _))) =>
+              case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditSinks), true, _))) =>
                 auditSinks.size should be(1)
                 auditSinks.head shouldBe a[EsIndexBased]
             }
@@ -1621,7 +1620,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
-            inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, true, _))) => }
+            inside(core) {
+              case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(AuditOutputsConfig.Disabled, true, _))) =>
+            }
           }
         }
         "default_acl_log_enabled is set to false" should {
@@ -1648,7 +1649,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               .map(_.map(_.core))
               .runSyncUnsafe()
             inside(core) {
-              case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), false, _))) =>
+              case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditSinks), false, _))) =>
                 auditSinks.size should be(1)
                 auditSinks.head shouldBe a[EsIndexBased]
             }
@@ -1678,7 +1679,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                     Core(
                       _,
                       RorDependencies(_, _, _),
-                      AuditingConfig(Some(AuditOutputsConfig.NoOutputsConfigured), false, _)
+                      AuditingConfig(AuditOutputsConfig.Defaults, false, _)
                     )
                   ) =>
             }
@@ -1699,7 +1700,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
-            inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, false, _))) => }
+            inside(core) {
+              case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(AuditOutputsConfig.Disabled, false, _))) =>
+            }
           }
           "work regardless of audit enabled flag" in {
             val settings = rorSettingsWithAuditUnsafe(
@@ -1721,7 +1724,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
-            inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, false, _))) => }
+            inside(core) {
+              case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(AuditOutputsConfig.Disabled, false, _))) =>
+            }
           }
           "reject duplicate default_acl_log_enabled key" in {
             val settings = rorSettingsWithAuditUnsafe(
@@ -2032,7 +2037,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   settings,
                   expectedErrorMessage =
                     "Error for field 'type': Data stream audit output is supported from Elasticsearch version 7.9.0. Use 'index' type or upgrade to 7.9.0 or later.",
-                  auditCapabilities = Index(MockIndexBasedAuditSinkServiceCreator)
+                  auditCapabilities = IndexOnly(MockIndexBasedAuditSinkServiceCreator)
                 )
               }
             }
@@ -2164,14 +2169,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 """.stripMargin
               )
 
-              assertSettingsNoPresent(settings)
+              assertOutputsDisabled(settings)
             }
             "'audit' section is not defined" in {
               val settings = rorSettingsWithAuditUnsafe(
                 "audit_collector: false"
               )
 
-              assertSettingsNoPresent(settings)
+              assertOutputsDisabled(settings)
             }
           }
         }
@@ -2492,7 +2497,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     rorSettingsFromUnsafe(rawSettings)
   }
 
-  private def assertSettingsNoPresent(settings: RawRorSettings): Unit = {
+  private def assertOutputsDisabled(settings: RawRorSettings): Unit = {
     val core = factory()
       .createCoreFrom(
         settings,
@@ -2504,7 +2509,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, _, _))) => }
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(AuditOutputsConfig.Disabled, _, _))) =>
+    }
   }
 
   private def assertSettings(settings: RawRorSettings, expectedAuditSinks: NonEmptyList[AuditOutput[?]]): Unit = {
@@ -2519,12 +2525,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditSinks), _, _))) =>
       auditSinks should be(expectedAuditSinks)
     }
   }
 
-  private def assertNoOutputsConfigured(settings: RawRorSettings): Unit = {
+  private def assertDefaultOutputs(settings: RawRorSettings): Unit = {
     val core = factory()
       .createCoreFrom(
         settings,
@@ -2538,7 +2544,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       .runSyncUnsafe()
     inside(core) {
       case Right(
-            Core(_, RorDependencies(_, _, _), AuditingConfig(Some(AuditOutputsConfig.NoOutputsConfigured), _, _))
+            Core(_, RorDependencies(_, _, _), AuditingConfig(AuditOutputsConfig.Defaults, _, _))
           ) =>
     }
   }
@@ -2586,7 +2592,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditSinks), _, _))) =>
       auditSinks.size should be(1)
 
       val headSink = auditSinks.head
@@ -2629,7 +2635,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditSinks), _, _))) =>
       auditSinks.size should be(1)
 
       val headSink = auditSinks.head
@@ -2672,7 +2678,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       .runSyncUnsafe()
 
     core match {
-      case Right(Core(_, _, AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
+      case Right(Core(_, _, AuditingConfig(Configured(auditSinks), _, _))) =>
         val headSink = auditSinks.head
         headSink match {
           case c: EsIndexBased      => c.config.serializer
@@ -2701,7 +2707,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditSinks), _, _))) =>
       auditSinks.size should be(1)
 
       val headSink = auditSinks.head
@@ -2732,7 +2738,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditSinks), _, _))) =>
       auditSinks.size should be(1)
 
       val headSink = auditSinks.head

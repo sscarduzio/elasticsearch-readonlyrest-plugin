@@ -72,9 +72,8 @@ class MainSettingsApi(
 
   private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
     val sinks = rorInstance.auditSettings match {
-      case Some(AuditOutputsConfig.NoOutputsConfigured)  => List.empty
-      case Some(AuditOutputsConfig.WithOutputs(outputs)) => outputs.toList
-      case None                                          => List.empty
+      case Some(AuditOutputsConfig.Configured(outputs)) => outputs.toList
+      case _                                            => List.empty
     }
     val auditOutputs = sinks.flatMap {
       case s: EsIndexBased if s.config.auditCluster == AuditCluster.LocalAuditCluster =>
