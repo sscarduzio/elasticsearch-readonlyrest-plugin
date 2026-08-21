@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+import tech.beshu.ror.gradle.utils.BuildxBuilders
 import tech.beshu.ror.gradle.utils.EsVersions
 import tech.beshu.ror.gradle.utils.PluginArtifact
 
@@ -56,10 +57,12 @@ tasks.register('prepareMultiplatformBuilder') {
     group = 'docker'
 
     def useDockerHubMirror = (System.getenv('ROR_DOCKER_HUB_MIRROR') ?: '').trim().toLowerCase() == 'true'
-    // The name carries the config. This task only creates a builder that does not exist yet, so one
-    // name for both would let an old, unmirrored builder survive and ignore the --config below.
-    def multiplatformBuilderName = useDockerHubMirror ? 'ror_kbn_builder_mirrored' : 'ror_kbn_builder'
     def buildkitConfigFile = rootProject.file('build-base/buildkitd.toml')
+    // The name carries the config: see BuildxBuilders. This task only creates a builder that does
+    // not exist yet, and `--config` counts at that moment only.
+    def multiplatformBuilderName = useDockerHubMirror
+            ? BuildxBuilders.mirroredBuilder(buildkitConfigFile)
+            : BuildxBuilders.UNMIRRORED_BUILDER
 
     doLast {
         def execOps = project.services.get(ExecOperations)
@@ -95,6 +98,32 @@ tasks.register('prepareMultiplatformBuilder') {
                 execOps.exec {
                     executable = 'docker'
                     args = createArgs
+                }
+                // A host that keeps its docker state, such as a self-hosted agent or a laptop, would
+                // otherwise collect one builder per version of the config.
+                if (useDockerHubMirror) {
+                    def builders = new ByteArrayOutputStream()
+                    def listResult = execOps.exec {
+                        executable = 'docker'
+                        // An older buildx does not know this format and fails here. The build then
+                        // goes on without the clean-up.
+                        args = ['buildx', 'ls', '--format', '{{.Builder.Name}}']
+                        standardOutput = builders
+                        errorOutput = new ByteArrayOutputStream()
+                        ignoreExitValue = true
+                    }
+                    if (listResult.exitValue == 0) {
+                        BuildxBuilders
+                                .staleMirroredBuilders(builders.toString(), multiplatformBuilderName)
+                                .each { staleBuilder ->
+                                    execOps.exec {
+                                        executable = 'docker'
+                                        args = ['buildx', 'rm', staleBuilder]
+                                        errorOutput = new ByteArrayOutputStream()
+                                        ignoreExitValue = true
+                                    }
+                                }
+                    }
                 }
             }
 
