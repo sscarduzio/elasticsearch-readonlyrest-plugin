@@ -27,6 +27,10 @@ package tech.beshu.ror.utils.containers
   * TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX, but it prefixes EVERY name without a registry host. A locally built name looks
   * the same as a Docker Hub name, so it rewrote our own `ror-it-es:<hash>` image and then tried to pull it from the
   * mirror. We therefore keep our own variable, and each call site says what it wants mirrored.
+  *
+  * This explicit rewrite changes the image's registry identity, unlike a daemon or BuildKit mirror. Docker therefore
+  * cannot fall back to docker.io if the mirror does not serve the requested tag. Keep the call sites limited to images
+  * known to be available from the configured mirror.
   */
 object DockerHubMirror {
 
@@ -39,7 +43,8 @@ object DockerHubMirror {
   def applyTo(imageName: String): String = {
     val prefix = configuredPrefix
     if (prefix.isEmpty || hasRegistryHost(imageName) || imageName.startsWith(prefix)) imageName
-    else prefix + imageName
+    else if (imageName.contains("/")) prefix + imageName
+    else prefix + "library/" + imageName
   }
 
   /** The configured prefix, or an empty string when there is none. It always ends with a slash. */

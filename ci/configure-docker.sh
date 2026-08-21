@@ -24,7 +24,8 @@
 #   - the docker daemon    registry-mirrors in /etc/docker/daemon.json
 #   - buildx and BuildKit  ROR_DOCKER_HUB_MIRROR, which the gradle build turns into a --config flag
 #                          that points at build-base/buildkitd.toml
-#   - the test suite       ROR_DOCKER_HUB_MIRROR_PREFIX, which DockerHubMirror reads
+#   - the test suite       ROR_DOCKER_HUB_MIRROR_PREFIX, which DockerHubMirror reads. This rewrites
+#                          the registry name directly, so these pulls cannot fall back to Docker Hub.
 #
 # Do NOT set TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX here. testcontainers applies that prefix to every
 # name without a registry host, and a locally built name looks the same as a Docker Hub name. It
@@ -67,7 +68,8 @@
 # The workflow computed the fork case before. Two jobs held the same expression, and a new job had
 # to copy it. The script reads the event instead.
 #
-# A mirror failure never stops the job. Only an authentication failure does.
+# Failure to configure the daemon mirror never stops the job, and BuildKit falls back to Docker Hub.
+# A test-suite image rewritten to the mirror has no such fallback and can fail the job.
 #
 # ---------------------------------------------------------------------------------------------
 # TWO LIMITS
@@ -142,7 +144,17 @@ _ror_docker_mirror_daemon() {
 # Always returns 0. A mirror is an optimisation, and it must never stop a job.
 _ror_docker_mirror() {
   if [ "$(echo "${ROR_DOCKER_HUB_MIRROR:-true}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" = "false" ]; then
-    echo "[CI] Docker Hub mirror is OFF. Every pull goes to Docker Hub."
+    export ROR_DOCKER_HUB_MIRROR="false"
+    unset ROR_DOCKER_HUB_MIRROR_PREFIX
+
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+      {
+        echo "ROR_DOCKER_HUB_MIRROR=false"
+        echo "ROR_DOCKER_HUB_MIRROR_PREFIX="
+      } >> "$GITHUB_ENV"
+    fi
+
+    echo "[CI] Docker Hub mirror is OFF for BuildKit and the test suite."
     return 0
   fi
 

@@ -256,6 +256,14 @@ BuildKit does not read `daemon.json`, which is why the first two are separate. O
 daemon through the mounted socket and cannot restart it. The script detects that and skips it. The
 other two halves work everywhere.
 
+The daemon and BuildKit settings retain the original `docker.io` image identity, so both clients fall
+back to Docker Hub when the mirror cannot serve an image. `DockerHubMirror` is different: it rewrites
+the image name itself, for example `coredns/coredns:1.13.2` becomes
+`mirror.gcr.io/coredns/coredns:1.13.2`. That explicit mirror reference has no Docker Hub fallback and
+the pull fails if the mirror does not serve the tag. This is an accepted tradeoff for container jobs,
+which cannot configure the host daemon; keep explicit call sites limited to images known to be
+available from the mirror.
+
 The test suite names every image it mirrors, one call site at a time. Do not set
 `TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX` instead: testcontainers applies that prefix to every name
 without a registry host, and a locally built name looks the same as a Docker Hub name. It rewrote our

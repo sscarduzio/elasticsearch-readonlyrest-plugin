@@ -29,9 +29,6 @@ docker_image_exists() {
 }
 
 # Runs a command again after a failure. The delay doubles each time.
-#
-# The first delay is 30s. That is short against the minutes an abuse limit lasts, but three attempts
-# cover a short one and add nothing to a run that succeeds at once.
 retry_with_backoff() {
   local attempts=${ROR_RETRY_ATTEMPTS:-3}
   local delay=${ROR_RETRY_DELAY_SECONDS:-15}
