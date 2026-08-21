@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.EsqlIndexTable
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -188,15 +188,17 @@ class EsqlIndexTableTest extends AnyWordSpec {
   }
 
   private def newFromTable(tableStringInQuery: String): EsqlIndexTable.From = {
-    EsqlIndexTable.From(tableStringInQuery, NonEmptyList.one(indexNameFrom(tableStringInQuery)))
+    EsqlIndexTable.From.parse(tableStringInQuery).getOrElse(fail(s"not a valid FROM table: $tableStringInQuery"))
   }
 
   private def lookupJoinTable(tableStringInQuery: String): EsqlIndexTable.LookupJoin = {
-    EsqlIndexTable.LookupJoin(tableStringInQuery, indexNameFrom(tableStringInQuery))
+    EsqlIndexTable.LookupJoin
+      .parse(tableStringInQuery)
+      .getOrElse(fail(s"not a valid LOOKUP JOIN table: $tableStringInQuery"))
   }
 
-  private def indexNameFrom(value: String): IndexName =
-    IndexName.fromString(value).getOrElse(fail(s"not a valid index name: $value"))
+  private def indexNameFrom(value: String): ClusterIndexName =
+    ClusterIndexName.fromString(value).getOrElse(fail(s"not a valid index name: $value"))
 
   private def authorizedIndicesOf(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] = {
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))

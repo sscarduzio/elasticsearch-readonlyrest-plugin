@@ -23,7 +23,7 @@ import org.joor.Reflect.*
 import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.EsqlIndexTable
 import tech.beshu.ror.es.handler.response.FieldsFiltering
@@ -44,8 +44,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       requestTables: NonEmptyList[EsqlIndexTable],
       finalIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): CompositeIndicesRequest = {
-    val replacements = EsqlIndexTable.buildReplacements(requestTables, finalIndices)
-    setQuery(request, EsqlIndexTable.newQueryFrom(getQuery(request), replacements))
+    setQuery(request, EsqlIndexTable.newQueryFrom(getQuery(request), requestTables, finalIndices))
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -126,7 +125,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     private def indicesFromPreAnalysisForEsBelow930(preAnalysis: Any) = {
       val indexPattern = indexPatternFrom(preAnalysis)
       val indexPatternString = indexPatternStringFrom(indexPattern)
-      val fromTables = fromTableFrom(indexPatternString).toList
+      val fromTables = EsqlIndexTable.From.parse(indexPatternString).toList
       fromTables ++ lookupTablesFrom(preAnalysis)
     }
 
@@ -134,7 +133,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       val indexesMap = on(preAnalysis).get[java.util.Map[Any, Any]]("indexes")
       val fromTables = indexesMap.keySet().asScala.toList.flatMap { indexPattern =>
         val indexPatternString = on(indexPattern).call("indexPattern").get[String]()
-        fromTableFrom(indexPatternString)
+        EsqlIndexTable.From.parse(indexPatternString)
       }
       fromTables ++ lookupTablesFrom(preAnalysis)
     }
@@ -144,22 +143,8 @@ class EsqlRequestHelper(esVersion: EsVersion) {
         Try(on(preAnalysis).get[java.util.List[Any]]("lookupIndices").asScala.toList).getOrElse(List.empty)
       lookupIndexPatterns.flatMap { indexPattern =>
         val indexPatternString = on(indexPattern).call("indexPattern").get[String]()
-        lookupJoinTableFrom(indexPatternString)
+        EsqlIndexTable.LookupJoin.parse(indexPatternString)
       }
-    }
-
-    private def fromTableFrom(indexPatternString: String): Option[EsqlIndexTable] = {
-      NonEmptyList.fromList(splitIntoIndices(indexPatternString)).map(EsqlIndexTable.From(indexPatternString, _))
-    }
-
-    private def lookupJoinTableFrom(indexPatternString: String): Option[EsqlIndexTable] = {
-      NonEmptyList
-        .fromList(splitIntoIndices(indexPatternString))
-        .map(indices => EsqlIndexTable.LookupJoin(indexPatternString, indices.head))
-    }
-
-    private def splitIntoIndices(tableString: String): List[IndexName] = {
-      tableString.split(',').asSafeList.filter(_.nonEmpty).flatMap(IndexName.fromString)
     }
 
     private def newPreAnalyzer(
@@ -290,10 +275,7 @@ object EsqlRequestHelper {
 
     final case class IndicesRelated(tables: NonEmptyList[EsqlIndexTable]) extends EsqlRequestClassification {
 
-      lazy val indices: Set[String] = tables.toCovariantSet.flatMap {
-        case t: EsqlIndexTable.From       => t.indices.toIterable.map(_.show)
-        case t: EsqlIndexTable.LookupJoin => List(t.index.show)
-      }
+      lazy val requestedIndices: Set[RequestedIndex[ClusterIndexName]] = EsqlIndexTable.requestedIndicesOf(tables)
 
     }
 

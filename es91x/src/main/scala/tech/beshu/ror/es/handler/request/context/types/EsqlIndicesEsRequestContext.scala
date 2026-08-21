@@ -59,7 +59,7 @@ class EsqlIndicesEsRequestContext private (
   ): Set[RequestedIndex[ClusterIndexName]] = {
     requestClassification match {
       case Right(r @ EsqlRequestClassification.IndicesRelated(_)) =>
-        r.indices.flatMap(RequestedIndex.fromString)
+        r.requestedIndices
       case Right(EsqlRequestClassification.NonIndicesRelated) | Left(ClassificationError.ParsingException(_)) =>
         Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
     }
@@ -85,8 +85,7 @@ class EsqlIndicesEsRequestContext private (
       case Right(EsqlRequestClassification.NonIndicesRelated) =>
         request
       case Right(r @ EsqlRequestClassification.IndicesRelated(tables)) =>
-        val filteredIndicesStrings = filteredIndices.stringify.toCovariantSet
-        if (filteredIndicesStrings != r.indices) {
+        if (filteredIndices.toList.toCovariantSet != r.requestedIndices) {
           EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndices)
         } else {
           request

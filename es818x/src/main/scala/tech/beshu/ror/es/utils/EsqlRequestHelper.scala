@@ -23,7 +23,7 @@ import org.joor.Reflect.*
 import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.EsqlIndexTable
 import tech.beshu.ror.es.handler.response.FieldsFiltering
@@ -45,8 +45,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       requestTables: NonEmptyList[EsqlIndexTable],
       finalIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): CompositeIndicesRequest = {
-    val replacements = EsqlIndexTable.buildReplacements(requestTables, finalIndices)
-    setQuery(request, EsqlIndexTable.newQueryFrom(getQuery(request), replacements))
+    setQuery(request, EsqlIndexTable.newQueryFrom(getQuery(request), requestTables, finalIndices))
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -149,8 +148,8 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
     private def indicesFrom(statement: Any) = {
       val preAnalyze = doPreAnalyze(newPreAnalyzer, statement)
-      tablesFrom(tableInfosFrom(preAnalyze), fromTableFrom) ++
-        tablesFrom(lookupTableInfosFrom(preAnalyze), lookupJoinTableFrom)
+      tablesFrom(tableInfosFrom(preAnalyze), EsqlIndexTable.From.parse) ++
+        tablesFrom(lookupTableInfosFrom(preAnalyze), EsqlIndexTable.LookupJoin.parse)
     }
 
     private def tablesFrom(tableInfos: List[Any], tableFrom: String => Option[EsqlIndexTable]): List[EsqlIndexTable] = {
@@ -158,20 +157,6 @@ class EsqlRequestHelper(esVersion: EsVersion) {
         .map(tableIdentifierFrom)
         .map(indexStringFrom)
         .flatMap(tableFrom)
-    }
-
-    private def fromTableFrom(tableString: String): Option[EsqlIndexTable] = {
-      NonEmptyList.fromList(splitIntoIndices(tableString)).map(EsqlIndexTable.From(tableString, _))
-    }
-
-    private def lookupJoinTableFrom(tableString: String): Option[EsqlIndexTable] = {
-      NonEmptyList
-        .fromList(splitIntoIndices(tableString))
-        .map(indices => EsqlIndexTable.LookupJoin(tableString, indices.head))
-    }
-
-    private def splitIntoIndices(tableString: String): List[IndexName] = {
-      tableString.split(',').asSafeList.filter(_.nonEmpty).flatMap(IndexName.fromString)
     }
 
     private def newPreAnalyzer(
@@ -310,10 +295,7 @@ object EsqlRequestHelper {
 
     final case class IndicesRelated(tables: NonEmptyList[EsqlIndexTable]) extends EsqlRequestClassification {
 
-      lazy val indices: Set[String] = tables.toCovariantSet.flatMap {
-        case t: EsqlIndexTable.From       => t.indices.toIterable.map(_.show)
-        case t: EsqlIndexTable.LookupJoin => List(t.index.show)
-      }
+      lazy val requestedIndices: Set[RequestedIndex[ClusterIndexName]] = EsqlIndexTable.requestedIndicesOf(tables)
 
     }
 
