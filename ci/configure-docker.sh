@@ -138,7 +138,8 @@ _ror_docker_mirror_daemon() {
 
 # Always returns 0. A mirror is an optimisation, and it must never stop a job.
 _ror_docker_mirror() {
-  if [ "${ROR_DOCKER_HUB_MIRROR:-true}" = "false" ]; then
+  # The value may come from a workflow file or from a shell, so read it without regard to case.
+  if [ "$(echo "${ROR_DOCKER_HUB_MIRROR:-true}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" = "false" ]; then
     echo "[CI] Docker Hub mirror is OFF. Every pull goes to Docker Hub."
     return 0
   fi

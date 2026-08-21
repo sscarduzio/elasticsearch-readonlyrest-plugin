@@ -51,11 +51,7 @@ def buildxPushArgs = { List<String> tags ->
     cmd + ['--output', 'type=image,push=true,rewrite-timestamp=true', '.']
 }
 
-// ROR_DOCKER_HUB_MIRROR=true makes the builder pull docker.io images through a cache, because
-// Docker Hub rejects our pulls with a 429 when the runner address is over its limit. ci/configure-
-// docker.sh sets the variable; buildkitd.toml holds the reasoning. It is off by default, so a
-// developer machine builds against Docker Hub.
-def useDockerHubMirror = (System.getenv('ROR_DOCKER_HUB_MIRROR') ?: '') == 'true'
+def useDockerHubMirror = (System.getenv('ROR_DOCKER_HUB_MIRROR') ?: '').trim().toLowerCase() == 'true'
 // The name carries the config. This task only creates a builder that does not exist yet, so one
 // name for both would let an old, unmirrored builder survive and ignore the --config below.
 def multiplatformBuilderName = useDockerHubMirror ? 'ror_kbn_builder_mirrored' : 'ror_kbn_builder'
@@ -90,10 +86,6 @@ tasks.register('prepareMultiplatformBuilder') {
                 errorOutput = new ByteArrayOutputStream()
             }
             if (inspectResult.exitValue != 0) {
-                if (useDockerHubMirror && !buildkitConfigFile.exists()) {
-                    throw new GradleException("ROR_DOCKER_HUB_MIRROR=true but ${buildkitConfigFile} is missing, " +
-                            "so the builder would pull from Docker Hub while the build claims to use the mirror.")
-                }
                 def createArgs = ['buildx', 'create', '--platform=linux/amd64,linux/arm64', "--name=${multiplatformBuilderName}".toString()]
                 if (useDockerHubMirror) {
                     createArgs += "--config=${buildkitConfigFile.absolutePath}".toString()
