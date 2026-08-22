@@ -41,7 +41,7 @@ object EsqlClassificationError {
 
   final case class CannotReadIndexList(failure: EsqlIndexListReadingFailure) extends EsqlClassificationError
 
-  final case class UnreviewedQueryContent(preAnalysisFields: NonEmptyList[String]) extends EsqlClassificationError
+  final case class UnreviewedQueryContent(planLeafTypes: NonEmptyList[String]) extends EsqlClassificationError
 }
 
 sealed trait EsqlIndexListReadingFailure
@@ -82,16 +82,16 @@ object EsqlQueryRejection {
 
   final case class CannotReadIndexList(failure: EsqlIndexListReadingFailure) extends EsqlQueryRejection
 
-  final case class UnreviewedQueryContent(preAnalysisFields: NonEmptyList[String]) extends EsqlQueryRejection
+  final case class UnreviewedQueryContent(planLeafTypes: NonEmptyList[String]) extends EsqlQueryRejection
 
   implicit val show: Show[EsqlQueryRejection] = Show.show {
     case CannotReadIndexList(failure) =>
       s"Cannot replace the ES|QL query's index lists with the ones the ACL allowed - the request is rejected, " +
         s"because passing it through would run it against the originally requested indices; ${failure.show}"
-    case UnreviewedQueryContent(fields) =>
-      s"The ES|QL query is read by ES into [${fields.toList.mkString(", ")}] of its pre-analysis, which this ROR " +
-        "version does not read - the request is rejected, because passing it through would run it against " +
-        "indices the ACL was never given a chance to check"
+    case UnreviewedQueryContent(leafTypes) =>
+      s"The ES|QL query is read by ES into the plan leaves [${leafTypes.toList.mkString(", ")}], whose indices " +
+        "this ROR version does not read - the request is rejected, because passing it through would run it " +
+        "against indices the ACL was never given a chance to check"
   }
 
 }

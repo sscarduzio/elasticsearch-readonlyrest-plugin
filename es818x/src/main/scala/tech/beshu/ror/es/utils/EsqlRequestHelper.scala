@@ -30,12 +30,12 @@ import tech.beshu.ror.es.esql.{
   EsqlIndexListLocator,
   EsqlIndexListReplacing,
   EsqlIndexTable,
-  EsqlPreAnalysisReview,
+  EsqlPlanLeafReview,
   EsqlQuery,
   EsqlReportedRelation,
   EsqlRequestClassification,
   EsqlSourceLocation,
-  PreAnalysisField
+  PlanLeaf
 }
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
@@ -165,34 +165,32 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     ): Either[EsqlClassificationError, List[EsqlIndexTable]] = {
       val plan = statement
       for {
-        _ <- reviewPreAnalysis(plan)
+        _ <- reviewPlanLeaves(plan)
         tables <- EsqlIndexListLocator
           .indexTablesIn(getQuery(request), reportedRelationsIn(plan))
           .leftMap(EsqlClassificationError.CannotReadIndexList.apply)
       } yield tables
     }
 
-    private val reviewedPreAnalysisFields: Map[String, PreAnalysisField] = Map(
-      "indices" -> PreAnalysisField.Handled,
-      "enriches" -> PreAnalysisField.NotAnIndexSource,
-      "inferencePlans" -> PreAnalysisField.NotAnIndexSource,
-      "lookupIndices" -> PreAnalysisField.Handled
+    private val reviewedPlanLeaves: Map[String, PlanLeaf] = Map(
+      "UnresolvedRelation" -> PlanLeaf.Handled,
+      "Row" -> PlanLeaf.NotAnIndexSource,
+      "ShowInfo" -> PlanLeaf.NotAnIndexSource,
+      "LocalRelation" -> PlanLeaf.NotAnIndexSource,
+      "EsRelation" -> PlanLeaf.UnsupportedIndexSource,
+      "StubRelation" -> PlanLeaf.UnsupportedIndexSource,
+      "Explain" -> PlanLeaf.UnsupportedIndexSource
     )
 
-    private def reviewPreAnalysis(plan: Any): Either[EsqlClassificationError, Unit] = {
-      val preAnalysis = on(newPreAnalyzer).call("preAnalyze", plan).get[Any]()
-      EsqlPreAnalysisReview
-        .unreviewedFieldsIn(
-          fieldNames = EsqlPreAnalysisReview.instanceFieldNamesOf(preAnalysis.getClass),
-          reviewed = reviewedPreAnalysisFields,
-          valueOf = name => Try(on(preAnalysis).get[AnyRef](name))
-        )
+    private def reviewPlanLeaves(plan: Any): Either[EsqlClassificationError, Unit] = {
+      EsqlPlanLeafReview
+        .unreviewedLeavesIn(planLeafTypesIn(plan), reviewedPlanLeaves)
         .map(EsqlClassificationError.UnreviewedQueryContent.apply)
         .toLeft(())
     }
 
-    private def newPreAnalyzer = {
-      onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.analysis.PreAnalyzer")).create().get[Any]()
+    private def planLeafTypesIn(plan: Any): List[String] = {
+      on(plan).call("collectLeaves").get[java.util.List[Any]]().asScala.toList.map(_.getClass.getSimpleName)
     }
 
     /**
