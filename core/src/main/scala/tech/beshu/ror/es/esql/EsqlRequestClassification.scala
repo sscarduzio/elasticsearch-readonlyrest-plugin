@@ -50,9 +50,6 @@ object EsqlIndexListReadingFailure {
 
   final case class NotWhereEsReportedIt(reportedIndexList: String) extends EsqlIndexListReadingFailure
 
-  final case class DoesNotMatchEsReport(writtenIndexList: String, reportedIndexList: String)
-      extends EsqlIndexListReadingFailure
-
   final case class SubqueryInSourceCommand(reportedIndexList: String) extends EsqlIndexListReadingFailure
 
   case object PromqlLeaningOnDefaultIndex extends EsqlIndexListReadingFailure
@@ -62,8 +59,6 @@ object EsqlIndexListReadingFailure {
   implicit val show: Show[EsqlIndexListReadingFailure] = Show.show {
     case NotWhereEsReportedIt(indexList) =>
       s"the index list [${indexList.show}] is not written where ES reported it to be"
-    case DoesNotMatchEsReport(written, reported) =>
-      s"the index list found in the query [${written.show}] is not the one ES reported [${reported.show}]"
     case SubqueryInSourceCommand(indexList) =>
       s"the source command reading [${indexList.show}] holds a subquery, which ES reports merged into the " +
         "surrounding index list, leaving no index list of its own to replace"
@@ -84,10 +79,18 @@ object EsqlQueryRejection {
 
   final case class UnreviewedQueryContent(planLeafTypes: NonEmptyList[String]) extends EsqlQueryRejection
 
+  /** Raised after the rewrite, by holding it to what ES reads back out of the query ROR produced. */
+  final case class QueryNotReplacedAsIntended(intendedIndexLists: List[String], readIndexLists: List[String])
+      extends EsqlQueryRejection
+
   implicit val show: Show[EsqlQueryRejection] = Show.show {
     case CannotReadIndexList(failure) =>
       s"Cannot replace the ES|QL query's index lists with the ones the ACL allowed - the request is rejected, " +
         s"because passing it through would run it against the originally requested indices; ${failure.show}"
+    case QueryNotReplacedAsIntended(intended, read) =>
+      s"The ES|QL query ROR rewrote is read by ES as running against [${read.mkString(", ")}] rather than the " +
+        s"[${intended.mkString(", ")}] the ACL allowed - the request is rejected, because ROR cannot tell what " +
+        "the rewritten query would actually read"
     case UnreviewedQueryContent(leafTypes) =>
       s"The ES|QL query is read by ES into the plan leaves [${leafTypes.toList.mkString(", ")}], whose indices " +
         "this ROR version does not read - the request is rejected, because passing it through would run it " +

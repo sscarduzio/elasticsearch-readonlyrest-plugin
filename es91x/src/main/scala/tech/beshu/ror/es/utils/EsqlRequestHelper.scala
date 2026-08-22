@@ -27,10 +27,12 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.{
   EsqlClassificationError,
   EsqlIndexListLocator,
+  EsqlIndexListRead,
   EsqlIndexListReplacing,
   EsqlIndexTable,
   EsqlPlanLeafReview,
   EsqlQuery,
+  EsqlQueryRejection,
   EsqlReportedRelation,
   EsqlRequestClassification,
   EsqlSourceLocation,
@@ -53,8 +55,17 @@ object EsqlRequestHelper {
       request: CompositeIndicesRequest,
       tables: NonEmptyList[EsqlIndexTable],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Unit = {
-    setQuery(request, EsqlIndexListReplacing.queryWithAllowedIndices(getQuery(request), tables, allowedIndices))
+  ): Either[EsqlQueryRejection, Unit] = {
+    val replaced = EsqlIndexListReplacing.queryWithAllowedIndices(getQuery(request), tables, allowedIndices)
+    EsqlIndexListReplacing
+      .verified(replaced, indexListReadsIn(request, replaced.query))
+      .map(setQuery(request, _))
+  }
+
+  /** What ES reads out of the rewritten query, asked of the same parser it will use to run it. */
+  private def indexListReadsIn(request: CompositeIndicesRequest, query: EsqlQuery): List[EsqlIndexListRead] = {
+    implicit val classLoader: ClassLoader = request.getClass.getClassLoader
+    new EsqlParser().indexListReadsIn(query, request)
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -123,7 +134,7 @@ object EsqlRequestHelper {
         .get[Any]()
 
     def createStatementBasedOn(request: CompositeIndicesRequest): Either[EsqlClassificationError, Statement] = {
-      createStatement(request).flatMap { statement =>
+      createStatement(getQuery(request).value, request).flatMap { statement =>
         indexTablesFrom(request, statement).map { tables =>
           NonEmptyList.fromList(tables) match {
             case Some(indexTables) => new IndicesRelatedStatement(statement, indexTables)
@@ -133,8 +144,7 @@ object EsqlRequestHelper {
       }
     }
 
-    private def createStatement(request: CompositeIndicesRequest) = {
-      val query = getQuery(request).value
+    private def createStatement(query: String, request: CompositeIndicesRequest) = {
       val params = getParams(request)
       val configuration = createConfiguration(request)
       Try(on(underlyingObject).call("createStatement", query, params, configuration).get[AnyRef]) match {
@@ -144,11 +154,19 @@ object EsqlRequestHelper {
       }
     }
 
+    def indexListReadsIn(query: EsqlQuery, request: CompositeIndicesRequest): List[EsqlIndexListRead] = {
+      createStatement(query.value, request)
+        .map(statement => reportedRelationsIn(planOf(statement)).map(_.read).filter(_.indexList.nonEmpty))
+        .getOrElse(List.empty)
+    }
+
+    private def planOf(statement: Any): Any = statement
+
     private def indexTablesFrom(
         request: CompositeIndicesRequest,
         statement: Any
     ): Either[EsqlClassificationError, List[EsqlIndexTable]] = {
-      val plan = statement
+      val plan = planOf(statement)
       for {
         _ <- reviewPlanLeaves(plan)
         tables <- EsqlIndexListLocator

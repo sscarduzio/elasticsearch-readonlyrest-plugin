@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.es.esql
 
+import cats.Show
+
 final case class EsqlQuery(value: String) extends AnyVal
 
 final case class QueryTextSpan(start: Int, end: Int)
@@ -35,4 +37,14 @@ final case class EsqlReportedRelation(
     writtenAt: EsqlSourceLocation,
     writtenText: String,
     isLookupJoin: Boolean
-)
+) {
+  def read: EsqlIndexListRead = EsqlIndexListRead(isLookupJoin, indexList)
+}
+
+/** An index list ES reads out of a query, without the place it was written at - all a rewritten query is held to. */
+final case class EsqlIndexListRead(isLookupJoin: Boolean, indexList: String)
+
+object EsqlIndexListRead {
+  implicit val show: Show[EsqlIndexListRead] =
+    Show.show(read => if (read.isLookupJoin) s"LOOKUP JOIN ${read.indexList}" else read.indexList)
+}

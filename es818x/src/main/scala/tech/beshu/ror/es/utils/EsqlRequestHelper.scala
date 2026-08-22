@@ -28,10 +28,12 @@ import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.esql.{
   EsqlClassificationError,
   EsqlIndexListLocator,
+  EsqlIndexListRead,
   EsqlIndexListReplacing,
   EsqlIndexTable,
   EsqlPlanLeafReview,
   EsqlQuery,
+  EsqlQueryRejection,
   EsqlReportedRelation,
   EsqlRequestClassification,
   EsqlSourceLocation,
@@ -54,8 +56,17 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       request: CompositeIndicesRequest,
       tables: NonEmptyList[EsqlIndexTable],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Unit = {
-    setQuery(request, EsqlIndexListReplacing.queryWithAllowedIndices(getQuery(request), tables, allowedIndices))
+  ): Either[EsqlQueryRejection, Unit] = {
+    val replaced = EsqlIndexListReplacing.queryWithAllowedIndices(getQuery(request), tables, allowedIndices)
+    EsqlIndexListReplacing
+      .verified(replaced, indexListReadsIn(request, replaced.query))
+      .map(setQuery(request, _))
+  }
+
+  /** What ES reads out of the rewritten query, asked of the same parser it will use to run it. */
+  private def indexListReadsIn(request: CompositeIndicesRequest, query: EsqlQuery): List[EsqlIndexListRead] = {
+    implicit val classLoader: ClassLoader = request.getClass.getClassLoader
+    new EsqlParser().indexListReadsIn(query, request)
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -124,11 +135,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
         .get[Any]()
 
     def createStatementBasedOn(request: CompositeIndicesRequest): Either[EsqlClassificationError, Statement] = {
-      val statement = esVersion match {
-        case v if v >= EsVersion(8, 19, 0) => createStatementForEsEqualOrAbove8190(request)
-        case v                             => createStatementForEsBelow8190(request)
-      }
-      statement.flatMap { s =>
+      createStatement(getQuery(request).value, request).flatMap { s =>
         indexTablesFrom(request, s).map { tables =>
           NonEmptyList.fromList(tables) match {
             case Some(indexTables) => new IndicesRelatedStatement(s, indexTables)
@@ -138,8 +145,14 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       }
     }
 
-    private def createStatementForEsBelow8190(request: CompositeIndicesRequest) = {
-      val query = getQuery(request).value
+    private def createStatement(query: String, request: CompositeIndicesRequest) = {
+      esVersion match {
+        case v if v >= EsVersion(8, 19, 0) => createStatementForEsEqualOrAbove8190(query, request)
+        case _                             => createStatementForEsBelow8190(query, request)
+      }
+    }
+
+    private def createStatementForEsBelow8190(query: String, request: CompositeIndicesRequest) = {
       val params = getParams(request)
       Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
         case Success(s)                                                                       => Right(s)
@@ -148,8 +161,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       }
     }
 
-    private def createStatementForEsEqualOrAbove8190(request: CompositeIndicesRequest) = {
-      val query = getQuery(request).value
+    private def createStatementForEsEqualOrAbove8190(query: String, request: CompositeIndicesRequest) = {
       val params = getParams(request)
       val configuration = createConfiguration(request)
       Try(on(underlyingObject).call("createStatement", query, params, configuration).get[AnyRef]) match {
@@ -159,11 +171,19 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       }
     }
 
+    def indexListReadsIn(query: EsqlQuery, request: CompositeIndicesRequest): List[EsqlIndexListRead] = {
+      createStatement(query.value, request)
+        .map(statement => reportedRelationsIn(planOf(statement)).map(_.read).filter(_.indexList.nonEmpty))
+        .getOrElse(List.empty)
+    }
+
+    private def planOf(statement: Any): Any = statement
+
     private def indexTablesFrom(
         request: CompositeIndicesRequest,
         statement: Any
     ): Either[EsqlClassificationError, List[EsqlIndexTable]] = {
-      val plan = statement
+      val plan = planOf(statement)
       for {
         _ <- reviewPlanLeaves(plan)
         tables <- EsqlIndexListLocator

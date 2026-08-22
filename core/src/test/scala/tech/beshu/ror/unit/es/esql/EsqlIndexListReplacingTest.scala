@@ -95,20 +95,6 @@ class EsqlIndexListReplacingTest extends AnyWordSpec {
           from("FROM status", "status")
         ) shouldBe """FROM other | EVAL x = "FROM status""""
       }
-      "replace an index list a line comment interrupts" in {
-        rewrite(
-          "FROM a, // and\n b | LIMIT 10",
-          allowed("b"),
-          from("FROM a, // and\n b", "a,b")
-        ) shouldBe "FROM b | LIMIT 10"
-      }
-      "replace an index list a block comment interrupts" in {
-        rewrite(
-          "FROM a, /* and */ b | LIMIT 10",
-          allowed("a"),
-          from("FROM a, /* and */ b", "a,b")
-        ) shouldBe "FROM a | LIMIT 10"
-      }
       "leave a METADATA clause a comment separates from the index list in place" in {
         rewrite(
           "FROM logs-*/* and */METADATA _index",
@@ -332,14 +318,53 @@ class EsqlIndexListReplacingTest extends AnyWordSpec {
         ) shouldBe PromqlLeaningOnDefaultIndex
       }
     }
+    "the rewritten query is held to what ES reads out of it" should {
+      "accept a rewrite ES reads exactly as it was meant" in {
+        verify(
+          "FROM logs-* | LIMIT 10",
+          allowed("logs-1"),
+          esReads = List(EsqlIndexListRead(isLookupJoin = false, "logs-1")),
+          from("FROM logs-*", "logs-*")
+        ) shouldBe Right("FROM logs-1 | LIMIT 10")
+      }
+      "reject a rewrite that left an index the ACL did not allow behind" in {
+        verify(
+          "FROM a, // and\n b | LIMIT 10",
+          allowed("b"),
+          esReads = List(EsqlIndexListRead(isLookupJoin = false, "b,b")),
+          from("FROM a, // and\n b", "a,b")
+        ) shouldBe Left(EsqlQueryRejection.QueryNotReplacedAsIntended(List("b"), List("b,b")))
+      }
+      "reject a rewrite ES cannot parse at all, which it reads nothing out of" in {
+        verify(
+          "FROM logs-* | LIMIT 10",
+          allowed("logs-1"),
+          esReads = List.empty,
+          from("FROM logs-*", "logs-*")
+        ) shouldBe Left(EsqlQueryRejection.QueryNotReplacedAsIntended(List("logs-1"), List.empty))
+      }
+      "hold a LOOKUP JOIN target to being read as one" in {
+        verify(
+          "FROM src | LOOKUP JOIN lookup_idx ON key",
+          allowed("src", "lookup_idx"),
+          esReads = List(
+            EsqlIndexListRead(isLookupJoin = false, "src"),
+            EsqlIndexListRead(isLookupJoin = false, "lookup_idx")
+          ),
+          from("FROM src", "src"),
+          join("lookup_idx", "lookup_idx")
+        ) shouldBe Left(
+          EsqlQueryRejection.QueryNotReplacedAsIntended(
+            List("LOOKUP JOIN lookup_idx", "src"),
+            List("lookup_idx", "src")
+          )
+        )
+      }
+    }
     "the query does not hold the index list ES reported" should {
       "refuse to read a list that is not written where ES reported it" in {
         readingFailureFor("FROM src | LIMIT 10", allowed("src"), at(99, "FROM src", "src")) shouldBe
           NotWhereEsReportedIt("src")
-      }
-      "refuse to read a list whose text does not normalize back to the report" in {
-        readingFailureFor("FROM src | LIMIT 10", allowed("src"), from("FROM src", "other_src")) shouldBe
-          DoesNotMatchEsReport("src", "other_src")
       }
     }
   }
@@ -351,7 +376,7 @@ class EsqlIndexListReplacingTest extends AnyWordSpec {
   ): String = {
     val tables = tablesIn(query, reported)
       .fold(failure => fail(s"index lists were not read: ${failure.toString}"), identity)
-    EsqlIndexListReplacing.queryWithAllowedIndices(EsqlQuery(query), tables, allowed).value
+    EsqlIndexListReplacing.queryWithAllowedIndices(EsqlQuery(query), tables, allowed).query.value
   }
 
   private def readingFailureFor(
@@ -364,9 +389,21 @@ class EsqlIndexListReplacingTest extends AnyWordSpec {
       tables =>
         fail(
           s"index lists were read, although they should not have been: " +
-            s"${EsqlIndexListReplacing.queryWithAllowedIndices(EsqlQuery(query), tables, allowed).value}"
+            s"${EsqlIndexListReplacing.queryWithAllowedIndices(EsqlQuery(query), tables, allowed).query.value}"
         )
     )
+  }
+
+  private def verify(
+      query: String,
+      allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      esReads: List[EsqlIndexListRead],
+      reported: ReportedRelation*
+  ): Either[EsqlQueryRejection, String] = {
+    val tables = tablesIn(query, reported)
+      .fold(failure => fail(s"index lists were not read: ${failure.toString}"), identity)
+    val replaced = EsqlIndexListReplacing.queryWithAllowedIndices(EsqlQuery(query), tables, allowed)
+    EsqlIndexListReplacing.verified(replaced, esReads).map(_.value)
   }
 
   private def tablesIn(

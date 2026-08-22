@@ -91,7 +91,7 @@ class EsqlIndicesEsRequestContext private (
         Right(())
       case Right(classification @ EsqlRequestClassification.IndicesRelated(tables)) =>
         if (filteredIndices.toList.toCovariantSet != classification.requestedIndices) {
-          Right(EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndices))
+          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndices)
         } else {
           Right(())
         }
