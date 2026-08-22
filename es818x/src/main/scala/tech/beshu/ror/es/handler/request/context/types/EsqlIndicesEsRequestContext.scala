@@ -62,9 +62,13 @@ class EsqlIndicesEsRequestContext private (
       case Right(classification @ RequestClassification.IndicesRelated(_)) =>
         classification.requestedIndices
       case Right(RequestClassification.NonIndicesRelated) | Left(_) =>
-        Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
+        allIndices
     }
   }
+
+  /** What a query ROR could not read the index lists of has to be taken to request. */
+  private val allIndices: Set[RequestedIndex[ClusterIndexName]] =
+    Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def update(
       request: ActionRequest with CompositeIndicesRequest,
@@ -91,20 +95,25 @@ class EsqlIndicesEsRequestContext private (
       case Right(RequestClassification.NonIndicesRelated) =>
         Right(())
       case Right(classification @ RequestClassification.IndicesRelated(indexLists)) =>
-        if (filteredIndices.toList.toCovariantSet != classification.requestedIndices) {
-          esqlRequestHelper.modifyIndicesOf(request, indexLists, filteredIndices)
-        } else {
-          Right(())
-        }
+        if (aclLeftIndicesAlone(filteredIndices, classification.requestedIndices)) Right(())
+        else esqlRequestHelper.modifyIndicesOf(request, indexLists, filteredIndices)
       case Left(ClassificationError.NotParsable(cause)) =>
         logger.debug("Cannot parse the ES|QL statement - we can pass it through, because ES will reject it too", cause)
         Right(())
       case Left(ClassificationError.CannotReadIndexList(failure)) =>
-        Left(QueryRejection.CannotReadIndexList(failure))
-      case Left(ClassificationError.UnreviewedQueryContent(fields)) =>
-        Left(QueryRejection.UnreviewedQueryContent(fields))
+        if (aclLeftIndicesAlone(filteredIndices, allIndices)) Right(())
+        else Left(QueryRejection.CannotReadIndexList(failure))
     }
   }
+
+  /**
+   * A query ROR cannot rewrite is only a problem when it would have had to. Left to run against the indices it
+   * already asked for, an ES|QL query ROR cannot read is no worse off than before ROR could read any of them.
+   */
+  private def aclLeftIndicesAlone(
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      requestedIndices: Set[RequestedIndex[ClusterIndexName]]
+  ): Boolean = filteredIndices.toList.toCovariantSet == requestedIndices
 
   private def applyFieldLevelSecurityTo(
       request: ActionRequest with CompositeIndicesRequest,

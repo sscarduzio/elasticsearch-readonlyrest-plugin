@@ -41,6 +41,4 @@ object ClassificationError {
   final case class NotParsable(cause: Throwable) extends ClassificationError
 
   final case class CannotReadIndexList(failure: IndexListReadingFailure) extends ClassificationError
-
-  final case class UnreviewedQueryContent(planLeafTypes: NonEmptyList[String]) extends ClassificationError
 }

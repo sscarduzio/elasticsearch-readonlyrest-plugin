@@ -30,7 +30,6 @@ import tech.beshu.ror.es.esql.{
   IndexListRead,
   IndexListReplacer,
   LocatedIndexList,
-  PlanLeafReview,
   Query,
   QueryRejection,
   ReportedIndexList,
@@ -143,34 +142,9 @@ object EsqlRequestHelper {
         request: CompositeIndicesRequest,
         statement: Any
     ): Either[ClassificationError, List[LocatedIndexList]] = {
-      val plan = planOf(statement)
-      for {
-        _ <- reviewPlanLeaves(plan)
-        indexLists <- IndexListLocator
-          .locatedIn(getQuery(request), reportedIndexListsIn(plan))
-          .leftMap(ClassificationError.CannotReadIndexList.apply)
-      } yield indexLists
-    }
-
-    private val reviewedPlanLeaves: Map[String, PlanLeafReview.Verdict] = Map(
-      "UnresolvedRelation" -> PlanLeafReview.Verdict.Handled,
-      "Row" -> PlanLeafReview.Verdict.NotAnIndexSource,
-      "ShowInfo" -> PlanLeafReview.Verdict.NotAnIndexSource,
-      "LocalRelation" -> PlanLeafReview.Verdict.NotAnIndexSource,
-      "EsRelation" -> PlanLeafReview.Verdict.UnsupportedIndexSource,
-      "StubRelation" -> PlanLeafReview.Verdict.UnsupportedIndexSource,
-      "Explain" -> PlanLeafReview.Verdict.UnsupportedIndexSource
-    )
-
-    private def reviewPlanLeaves(plan: Any): Either[ClassificationError, Unit] = {
-      PlanLeafReview
-        .unreviewedLeavesIn(planLeafTypesIn(plan), reviewedPlanLeaves)
-        .map(ClassificationError.UnreviewedQueryContent.apply)
-        .toLeft(())
-    }
-
-    private def planLeafTypesIn(plan: Any): List[String] = {
-      on(plan).call("collectLeaves").get[java.util.List[Any]]().asScala.toList.map(_.getClass.getSimpleName)
+      IndexListLocator
+        .locatedIn(getQuery(request), reportedIndexListsIn(planOf(statement)))
+        .leftMap(ClassificationError.CannotReadIndexList.apply)
     }
 
     /**

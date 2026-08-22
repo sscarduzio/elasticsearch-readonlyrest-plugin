@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.esql
 
 import cats.Show
-import cats.data.NonEmptyList
 import tech.beshu.ror.implicits.*
 
 /** Why a query cannot be run at all, once ROR knows it cannot hold it to the indices the ACL allowed. */
@@ -26,8 +25,6 @@ sealed trait QueryRejection
 object QueryRejection {
 
   final case class CannotReadIndexList(failure: IndexListReadingFailure) extends QueryRejection
-
-  final case class UnreviewedQueryContent(planLeafTypes: NonEmptyList[String]) extends QueryRejection
 
   /** Raised after the rewrite, by holding it to what ES reads back out of the query ROR produced. */
   final case class QueryNotReplacedAsIntended(intendedIndexLists: List[String], readIndexLists: List[String])
@@ -41,10 +38,6 @@ object QueryRejection {
       s"The ES|QL query ROR rewrote is read by ES as running against [${read.mkString(", ")}] rather than the " +
         s"[${intended.mkString(", ")}] the ACL allowed - the request is rejected, because ROR cannot tell what " +
         "the rewritten query would actually read"
-    case UnreviewedQueryContent(leafTypes) =>
-      s"The ES|QL query is read by ES into the plan leaves [${leafTypes.toList.mkString(", ")}], whose indices " +
-        "this ROR version does not read - the request is rejected, because passing it through would run it " +
-        "against indices the ACL was never given a chance to check"
   }
 
 }
