@@ -16,9 +16,8 @@
  */
 package tech.beshu.ror.es.esql
 
-import cats.Show
 import cats.implicits.*
-import tech.beshu.ror.implicits.*
+import tech.beshu.ror.es.esql.Query.{SourceLocation, TextSpan}
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -123,34 +122,6 @@ object IndexListLocator {
       if (read.isLookupJoin) LocatedIndexList.LookupJoinTarget.parse(span, read)
       else LocatedIndexList.SourceCommandIndices.parse(span, read)
     indexList.toRight(IndexListReadingFailure.UnsupportedIndexList(read.indexList))
-  }
-
-}
-
-/** Why an index list ES reported could not be found in the query text, or read as indices once found. */
-sealed trait IndexListReadingFailure
-
-object IndexListReadingFailure {
-
-  final case class NotWhereEsReportedIt(reportedIndexList: String) extends IndexListReadingFailure
-
-  final case class SubqueryInSourceCommand(reportedIndexList: String) extends IndexListReadingFailure
-
-  case object PromqlLeaningOnDefaultIndex extends IndexListReadingFailure
-
-  final case class UnsupportedIndexList(reportedIndexList: String) extends IndexListReadingFailure
-
-  implicit val show: Show[IndexListReadingFailure] = Show.show {
-    case NotWhereEsReportedIt(indexList) =>
-      s"the index list [${indexList.show}] is not written where ES reported it to be"
-    case SubqueryInSourceCommand(indexList) =>
-      s"the source command reading [${indexList.show}] holds a subquery, which ES reports merged into the " +
-        "surrounding index list, leaving no index list of its own to replace"
-    case PromqlLeaningOnDefaultIndex =>
-      "the PROMQL command names no [index] parameter, so the indices it reads are the ones ES defaults to and " +
-        "the query holds no index list to replace - name them with [index=...] to have the query authorized"
-    case UnsupportedIndexList(indexList) =>
-      s"the index list [${indexList.show}] cannot be read as indices"
   }
 
 }

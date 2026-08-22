@@ -16,19 +16,15 @@
  */
 package tech.beshu.ror.es.esql
 
-import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.syntax.*
+import cats.Show
 
-/** What ROR made of a query: the index lists it names, or nothing it has to hold to the ACL. */
-sealed trait RequestClassification
+/**
+ * An index list ES reads out of a query, normalized the way its parser reports it (`FROM a, b` as `a,b`), and
+ * without the place it was written at. All a rewritten query is held to.
+ */
+final case class IndexListRead(isLookupJoin: Boolean, indexList: String)
 
-object RequestClassification {
-
-  final case class IndicesRelated(indexLists: NonEmptyList[LocatedIndexList]) extends RequestClassification {
-    lazy val requestedIndices: Set[RequestedIndex[ClusterIndexName]] =
-      LocatedIndexList.requestedIndicesOf(indexLists)
-  }
-
-  case object NonIndicesRelated extends RequestClassification
+object IndexListRead {
+  implicit val show: Show[IndexListRead] =
+    Show.show(read => if (read.isLookupJoin) s"LOOKUP JOIN ${read.indexList}" else read.indexList)
 }

@@ -22,6 +22,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.*
 import tech.beshu.ror.es.esql.IndexListReadingFailure.*
+import tech.beshu.ror.es.esql.Query.SourceLocation
 
 /**
  * Covers reading the index lists ES reported out of the query text and replacing them in one go, because that is

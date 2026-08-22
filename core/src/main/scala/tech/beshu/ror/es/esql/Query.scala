@@ -18,7 +18,11 @@ package tech.beshu.ror.es.esql
 
 final case class Query(value: String) extends AnyVal
 
-final case class TextSpan(start: Int, end: Int)
+object Query {
 
-/** ES reports a line as 1-based and a column as 0-based, the way ANTLR hands them to it. */
-final case class SourceLocation(line: Int, column: Int)
+  /** Where in a query's text something sits, as a half-open range of characters. */
+  final case class TextSpan(start: Int, end: Int)
+
+  /** Where in a query's text something sits, the way ES reports it: a 1-based line and a 0-based column. */
+  final case class SourceLocation(line: Int, column: Int)
+}

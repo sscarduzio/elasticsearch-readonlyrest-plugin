@@ -19,29 +19,8 @@ package tech.beshu.ror.es.esql
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
-import tech.beshu.ror.implicits.*
+import tech.beshu.ror.es.esql.Query.TextSpan
 import tech.beshu.ror.syntax.*
-
-/** A rewritten query, together with what ES has to read out of it for the rewrite to have done its job. */
-final case class ReplacedQuery(query: Query, intendedReads: List[IndexListRead]) {
-
-  /**
-   * The rewrite is held to what ES reads back out of it, rather than to what ROR read out of the query it was
-   * given. Only the second says the index lists ES will run the query against are the ones the ACL allowed - a
-   * span read a character short, or a name that needed quoting, shows up here and nowhere else.
-   */
-  def checkedAgainst(esReads: List[IndexListRead]): Either[QueryRejection, Query] = {
-    val intended = rendered(intendedReads)
-    val read = rendered(esReads)
-    Either.cond(
-      test = intended == read,
-      right = query,
-      left = QueryRejection.QueryNotReplacedAsIntended(intended, read)
-    )
-  }
-
-  private def rendered(reads: List[IndexListRead]): List[String] = reads.map(_.show).sorted
-}
 
 object IndexListReplacer {
 

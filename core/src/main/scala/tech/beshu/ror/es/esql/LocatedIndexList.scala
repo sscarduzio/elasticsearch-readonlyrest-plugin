@@ -16,32 +16,12 @@
  */
 package tech.beshu.ror.es.esql
 
-import cats.Show
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.es.esql.Query.TextSpan
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
-
-/**
- * An index list ES reads out of a query, normalized the way its parser reports it (`FROM a, b` as `a,b`), and
- * without the place it was written at. All a rewritten query is held to.
- */
-final case class IndexListRead(isLookupJoin: Boolean, indexList: String)
-
-object IndexListRead {
-  implicit val show: Show[IndexListRead] =
-    Show.show(read => if (read.isLookupJoin) s"LOOKUP JOIN ${read.indexList}" else read.indexList)
-}
-
-/**
- * What ES's parser says about one index-reading node of the query: the list it read, and the raw text it read it
- * from, at the place that text sits.
- *
- * The written text is what makes the index list replaceable - the normalized list cannot be searched for, because
- * it is not what the user wrote.
- */
-final case class ReportedIndexList(read: IndexListRead, writtenAt: SourceLocation, writtenText: String)
 
 /** An index list found in the query text, so the indices it names can be replaced with the ones the ACL allowed. */
 sealed trait LocatedIndexList {

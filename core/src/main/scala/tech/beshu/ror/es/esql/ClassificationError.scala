@@ -16,19 +16,13 @@
  */
 package tech.beshu.ror.es.esql
 
-import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.syntax.*
+/** Why ROR could not read a query into the index lists it names. */
+sealed trait ClassificationError
 
-/** What ROR made of a query: the index lists it names, or nothing it has to hold to the ACL. */
-sealed trait RequestClassification
+object ClassificationError {
 
-object RequestClassification {
+  /** ES rejects such a query on its own, so ROR can let it through rather than answer for a syntax error. */
+  final case class NotParsable(cause: Throwable) extends ClassificationError
 
-  final case class IndicesRelated(indexLists: NonEmptyList[LocatedIndexList]) extends RequestClassification {
-    lazy val requestedIndices: Set[RequestedIndex[ClusterIndexName]] =
-      LocatedIndexList.requestedIndicesOf(indexLists)
-  }
-
-  case object NonIndicesRelated extends RequestClassification
+  final case class CannotReadIndexList(failure: IndexListReadingFailure) extends ClassificationError
 }

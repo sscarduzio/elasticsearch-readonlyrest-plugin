@@ -16,19 +16,13 @@
  */
 package tech.beshu.ror.es.esql
 
-import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.syntax.*
+import tech.beshu.ror.es.esql.Query.SourceLocation
 
-/** What ROR made of a query: the index lists it names, or nothing it has to hold to the ACL. */
-sealed trait RequestClassification
-
-object RequestClassification {
-
-  final case class IndicesRelated(indexLists: NonEmptyList[LocatedIndexList]) extends RequestClassification {
-    lazy val requestedIndices: Set[RequestedIndex[ClusterIndexName]] =
-      LocatedIndexList.requestedIndicesOf(indexLists)
-  }
-
-  case object NonIndicesRelated extends RequestClassification
-}
+/**
+ * What ES's parser says about one index-reading node of the query: the list it read, and the raw text it read it
+ * from, at the place that text sits.
+ *
+ * The written text is what makes the index list replaceable - the normalized list cannot be searched for, because
+ * it is not what the user wrote.
+ */
+final case class ReportedIndexList(read: IndexListRead, writtenAt: SourceLocation, writtenText: String)

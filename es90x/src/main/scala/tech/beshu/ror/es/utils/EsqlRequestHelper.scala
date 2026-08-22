@@ -24,6 +24,7 @@ import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.es.esql.Query.SourceLocation
 import tech.beshu.ror.es.esql.{
   ClassificationError,
   IndexListLocator,
@@ -33,8 +34,7 @@ import tech.beshu.ror.es.esql.{
   Query,
   QueryRejection,
   ReportedIndexList,
-  RequestClassification,
-  SourceLocation
+  RequestClassification
 }
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
