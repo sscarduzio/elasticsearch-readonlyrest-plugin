@@ -100,6 +100,8 @@ class EsqlIndicesEsRequestContext private (
         Right(())
       case Left(EsqlClassificationError.CannotReadIndexList(failure)) =>
         Left(EsqlQueryRejection.CannotReadIndexList(failure))
+      case Left(EsqlClassificationError.UnreviewedQueryContent(fields)) =>
+        Left(EsqlQueryRejection.UnreviewedQueryContent(fields))
     }
   }
 

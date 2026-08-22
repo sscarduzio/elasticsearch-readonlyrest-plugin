@@ -40,6 +40,8 @@ object EsqlClassificationError {
   final case class NotParsable(cause: Throwable) extends EsqlClassificationError
 
   final case class CannotReadIndexList(failure: EsqlIndexListReadingFailure) extends EsqlClassificationError
+
+  final case class UnreviewedQueryContent(preAnalysisFields: NonEmptyList[String]) extends EsqlClassificationError
 }
 
 sealed trait EsqlIndexListReadingFailure
@@ -80,9 +82,16 @@ object EsqlQueryRejection {
 
   final case class CannotReadIndexList(failure: EsqlIndexListReadingFailure) extends EsqlQueryRejection
 
-  implicit val show: Show[EsqlQueryRejection] = Show.show { case CannotReadIndexList(failure) =>
-    s"Cannot narrow the ES|QL query down to the indices the ACL allowed - the request is rejected, because " +
-      s"passing it through would run it against the originally requested indices; ${failure.show}"
+  final case class UnreviewedQueryContent(preAnalysisFields: NonEmptyList[String]) extends EsqlQueryRejection
+
+  implicit val show: Show[EsqlQueryRejection] = Show.show {
+    case CannotReadIndexList(failure) =>
+      s"Cannot narrow the ES|QL query down to the indices the ACL allowed - the request is rejected, because " +
+        s"passing it through would run it against the originally requested indices; ${failure.show}"
+    case UnreviewedQueryContent(fields) =>
+      s"The ES|QL query is read by ES into [${fields.toList.mkString(", ")}] of its pre-analysis, which this ROR " +
+        "version does not read - the request is rejected, because passing it through would run it against " +
+        "indices the ACL was never given a chance to check"
   }
 
 }

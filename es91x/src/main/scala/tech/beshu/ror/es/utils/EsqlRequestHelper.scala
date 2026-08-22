@@ -28,11 +28,13 @@ import tech.beshu.ror.es.esql.{
   EsqlClassificationError,
   EsqlIndexListLocator,
   EsqlIndexTable,
+  EsqlPreAnalysisReview,
   EsqlQuery,
   EsqlQueryNarrowing,
   EsqlReportedRelation,
   EsqlRequestClassification,
-  EsqlSourceLocation
+  EsqlSourceLocation,
+  PreAnalysisField
 }
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
@@ -147,9 +149,36 @@ object EsqlRequestHelper {
         statement: Any
     ): Either[EsqlClassificationError, List[EsqlIndexTable]] = {
       val plan = statement
-      EsqlIndexListLocator
-        .indexTablesIn(getQuery(request), reportedRelationsIn(plan))
-        .leftMap(EsqlClassificationError.CannotReadIndexList.apply)
+      for {
+        _ <- reviewPreAnalysis(plan)
+        tables <- EsqlIndexListLocator
+          .indexTablesIn(getQuery(request), reportedRelationsIn(plan))
+          .leftMap(EsqlClassificationError.CannotReadIndexList.apply)
+      } yield tables
+    }
+
+    private val reviewedPreAnalysisFields: Map[String, PreAnalysisField] = Map(
+      "indexMode" -> PreAnalysisField.NotAnIndexSource,
+      "indices" -> PreAnalysisField.Handled,
+      "enriches" -> PreAnalysisField.NotAnIndexSource,
+      "inferencePlans" -> PreAnalysisField.NotAnIndexSource,
+      "lookupIndices" -> PreAnalysisField.Handled
+    )
+
+    private def reviewPreAnalysis(plan: Any): Either[EsqlClassificationError, Unit] = {
+      val preAnalysis = on(newPreAnalyzer).call("preAnalyze", plan).get[Any]()
+      EsqlPreAnalysisReview
+        .unreviewedFieldsIn(
+          fieldNames = EsqlPreAnalysisReview.instanceFieldNamesOf(preAnalysis.getClass),
+          reviewed = reviewedPreAnalysisFields,
+          valueOf = name => Try(on(preAnalysis).get[AnyRef](name))
+        )
+        .map(EsqlClassificationError.UnreviewedQueryContent.apply)
+        .toLeft(())
+    }
+
+    private def newPreAnalyzer = {
+      onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.analysis.PreAnalyzer")).create().get[Any]()
     }
 
     /**
