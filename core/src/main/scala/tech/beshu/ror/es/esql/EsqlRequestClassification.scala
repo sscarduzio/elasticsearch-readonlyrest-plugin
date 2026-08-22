@@ -39,32 +39,50 @@ object EsqlClassificationError {
 
   final case class NotParsable(cause: Throwable) extends EsqlClassificationError
 
-  final case class UnsupportedIndexList(text: NormalizedIndexList) extends EsqlClassificationError
+  final case class CannotReadIndexList(failure: EsqlIndexListReadingFailure) extends EsqlClassificationError
+}
 
-  final case class UnreviewedQueryContent(preAnalysisFields: NonEmptyList[String]) extends EsqlClassificationError
+sealed trait EsqlIndexListReadingFailure
+
+object EsqlIndexListReadingFailure {
+
+  final case class NotWhereEsReportedIt(reportedIndexList: String) extends EsqlIndexListReadingFailure
+
+  final case class DoesNotMatchEsReport(writtenIndexList: String, reportedIndexList: String)
+      extends EsqlIndexListReadingFailure
+
+  final case class SubqueryInSourceCommand(reportedIndexList: String) extends EsqlIndexListReadingFailure
+
+  case object PromqlLeaningOnDefaultIndex extends EsqlIndexListReadingFailure
+
+  final case class UnsupportedIndexList(reportedIndexList: String) extends EsqlIndexListReadingFailure
+
+  implicit val show: Show[EsqlIndexListReadingFailure] = Show.show {
+    case NotWhereEsReportedIt(indexList) =>
+      s"the index list [${indexList.show}] is not written where ES reported it to be"
+    case DoesNotMatchEsReport(written, reported) =>
+      s"the index list found in the query [${written.show}] is not the one ES reported [${reported.show}]"
+    case SubqueryInSourceCommand(indexList) =>
+      s"the source command reading [${indexList.show}] holds a subquery, which ES reports merged into the " +
+        "surrounding index list, leaving no index list of its own to narrow"
+    case PromqlLeaningOnDefaultIndex =>
+      "the PROMQL command names no [index] parameter, so the indices it reads are the ones ES defaults to and " +
+        "the query holds no index list to narrow - name them with [index=...] to have the query authorized"
+    case UnsupportedIndexList(indexList) =>
+      s"the index list [${indexList.show}] cannot be read as indices"
+  }
+
 }
 
 sealed trait EsqlQueryRejection
 
 object EsqlQueryRejection {
 
-  final case class UnsupportedIndexList(text: NormalizedIndexList) extends EsqlQueryRejection
+  final case class CannotReadIndexList(failure: EsqlIndexListReadingFailure) extends EsqlQueryRejection
 
-  final case class CannotNarrowQuery(cause: EsqlNarrowingFailure) extends EsqlQueryRejection
-
-  final case class UnreviewedQueryContent(preAnalysisFields: NonEmptyList[String]) extends EsqlQueryRejection
-
-  implicit val show: Show[EsqlQueryRejection] = Show.show {
-    case UnsupportedIndexList(text) =>
-      s"Cannot read the index list [${text.show}] of the ES|QL query as indices - the request is rejected, because " +
-        "passing it through would run it against indices the ACL was never given a chance to check"
-    case UnreviewedQueryContent(fields) =>
-      s"The ES|QL query is read by ES into [${fields.toList.mkString(", ")}] of its pre-analysis, which this ROR " +
-        "version does not read - the request is rejected, because passing it through would run it against " +
-        "indices the ACL was never given a chance to check"
-    case CannotNarrowQuery(cause) =>
-      "Cannot narrow the ES|QL query down to the indices the ACL allowed - the request is rejected, because " +
-        s"passing it through would run it against the originally requested indices; ${cause.show}"
+  implicit val show: Show[EsqlQueryRejection] = Show.show { case CannotReadIndexList(failure) =>
+    s"Cannot narrow the ES|QL query down to the indices the ACL allowed - the request is rejected, because " +
+      s"passing it through would run it against the originally requested indices; ${failure.show}"
   }
 
 }

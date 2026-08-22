@@ -164,7 +164,7 @@ class EsqlLookupJoinSuite
       }
     }
     "narrow an index list whose written form differs from the one ES's parser reports" when {
-      "it is written with spaces after the commas" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
+      "it is written with spaces after the commas" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
         val result = catalogOnlyEsqlManager.execute("""FROM book_catalog, book_prices | LIMIT 100""")
 
         result should have statusCode 200
@@ -174,7 +174,7 @@ class EsqlLookupJoinSuite
       "it carries the bracketed METADATA clause ES 8.x still accepts" excludeES (
         allEs6x,
         allEs7x,
-        allEs8xBelowEs811x,
+        allEs8xBelowEs818x,
         allEs9x
       ) in {
         val result = catalogOnlyEsqlManager.execute("""FROM book_catalog, book_prices [METADATA _index] | LIMIT 100""")
@@ -183,7 +183,7 @@ class EsqlLookupJoinSuite
         result.columnNames should contain only ("book_id", "title", "title.keyword", "_index")
         result.rows.size should be(2)
       }
-      "its entries are quoted" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
+      "its entries are quoted" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
         val result = catalogOnlyEsqlManager.execute("""FROM \"book_catalog\",\"book_prices\" | LIMIT 100""")
 
         result should have statusCode 200

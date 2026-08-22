@@ -27,14 +27,13 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.esql.{
   EsqlClassificationError,
+  EsqlIndexListLocator,
   EsqlIndexTable,
-  EsqlPreAnalysisReview,
   EsqlQuery,
   EsqlQueryNarrowing,
-  EsqlQueryRejection,
+  EsqlReportedRelation,
   EsqlRequestClassification,
-  NormalizedIndexList,
-  PreAnalysisField
+  EsqlSourceLocation
 }
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
@@ -42,6 +41,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.List as JList
+import java.util.function.Predicate as JPredicate
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
@@ -51,11 +51,8 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       request: CompositeIndicesRequest,
       tables: NonEmptyList[EsqlIndexTable],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Either[EsqlQueryRejection, Unit] = {
-    EsqlQueryNarrowing.narrowedQuery(getQuery(request), tables, allowedIndices) match {
-      case Right(narrowedQuery) => Right(setQuery(request, narrowedQuery))
-      case Left(mismatch)       => Left(EsqlQueryRejection.CannotNarrowQuery(mismatch))
-    }
+  ): Unit = {
+    setQuery(request, EsqlQueryNarrowing.narrowedQuery(getQuery(request), tables, allowedIndices))
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -105,7 +102,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
     def createStatementBasedOn(request: CompositeIndicesRequest): Either[EsqlClassificationError, Statement] = {
       createStatement(request).flatMap { statement =>
-        indexTablesFrom(statement).map { tables =>
+        indexTablesFrom(request, statement).map { tables =>
           NonEmptyList.fromList(tables) match {
             case Some(indexTables) => new IndicesRelatedStatement(statement, indexTables)
             case None              => OtherCommand(statement)
@@ -124,91 +121,52 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       }
     }
 
-    private def indexTablesFrom(statement: Any): Either[EsqlClassificationError, List[EsqlIndexTable]] = {
+    private def indexTablesFrom(
+        request: CompositeIndicesRequest,
+        statement: Any
+    ): Either[EsqlClassificationError, List[EsqlIndexTable]] = {
       val plan = esVersion match {
         case v if v >= EsVersion(9, 3, 0) => on(statement).call("plan").get[Any]()
         case _                            => statement
       }
-      val preAnalysis = doPreAnalyze(newPreAnalyzer, plan)
-      val fromIndexPatternStrings = esVersion match {
-        case v if v >= EsVersion(9, 3, 0) => fromIndexPatternStringsForEsEqualOrAbove930(preAnalysis)
-        case _                            => fromIndexPatternStringsForEsBelow930(preAnalysis)
-      }
-      for {
-        _ <- reviewPreAnalysis(preAnalysis)
-        sourceCommands <- tablesFrom(fromIndexPatternStrings, EsqlIndexTable.SourceCommand.parse)
-        lookupJoins <- tablesFrom(lookupJoinIndexLists(preAnalysis), EsqlIndexTable.LookupJoin.parse)
-      } yield sourceCommands ::: lookupJoins
+      EsqlIndexListLocator
+        .indexTablesIn(getQuery(request), reportedRelationsIn(plan))
+        .leftMap(EsqlClassificationError.CannotReadIndexList.apply)
     }
 
-    private def fromIndexPatternStringsForEsBelow930(preAnalysis: Any): List[String] = {
-      List(indexPatternStringFrom(indexPatternFrom(preAnalysis)))
-    }
-
-    private def fromIndexPatternStringsForEsEqualOrAbove930(preAnalysis: Any): List[String] = {
-      on(preAnalysis)
-        .get[java.util.Map[Any, Any]]("indexes")
-        .keySet()
+    /**
+     * The very nodes ES reads the query's indices from when it pre-analyzes the plan - except the pre-analysis
+     * deduplicates them by pattern text and keeps one source location per pattern, which is one span too few to
+     * narrow a query naming the same pattern twice.
+     */
+    private def reportedRelationsIn(plan: Any): List[EsqlReportedRelation] = {
+      val isUnresolvedRelation: JPredicate[Any] = node => node.getClass.getSimpleName == "UnresolvedRelation"
+      on(plan)
+        .call("collect", isUnresolvedRelation)
+        .get[java.util.List[Any]]()
         .asScala
         .toList
-        .map(indexPattern => on(indexPattern).call("indexPattern").get[String]())
+        .map(reportedRelationOf)
     }
 
-    private def lookupJoinIndexLists(preAnalysis: Any): List[String] = {
-      on(preAnalysis)
-        .get[java.util.List[Any]]("lookupIndices")
-        .asScala
-        .toList
-        .map(indexPattern => on(indexPattern).call("indexPattern").get[String]())
+    private def reportedRelationOf(relation: Any): EsqlReportedRelation = {
+      val indexPattern = on(relation).call("indexPattern").get[Any]()
+      val source = on(indexPattern).call("source").get[Any]()
+      val location = on(source).call("source").get[Any]()
+      EsqlReportedRelation(
+        indexList = on(indexPattern).call("indexPattern").get[String](),
+        writtenAt = EsqlSourceLocation(
+          line = on(location).call("getLineNumber").get[Int](),
+          column = on(location).call("getColumnNumber").get[Int]() - 1
+        ),
+        writtenText = on(source).call("text").get[String](),
+        isLookupJoin = isLookupJoinRelation(relation)
+      )
     }
 
-    private val reviewedPreAnalysisFields: Map[String, PreAnalysisField] = Map(
-      "indexMode" -> PreAnalysisField.NotAnIndexSource,
-      "indexPattern" -> PreAnalysisField.Handled,
-      "indexes" -> PreAnalysisField.Handled,
-      "enriches" -> PreAnalysisField.NotAnIndexSource,
-      "lookupIndices" -> PreAnalysisField.Handled,
-      "useAggregateMetricDoubleWhenNotSupported" -> PreAnalysisField.NotAnIndexSource,
-      "useDenseVectorWhenNotSupported" -> PreAnalysisField.NotAnIndexSource,
-      "hasTimeSeriesAggregation" -> PreAnalysisField.NotAnIndexSource
-    )
-
-    private def reviewPreAnalysis(preAnalysis: Any): Either[EsqlClassificationError, Unit] = {
-      EsqlPreAnalysisReview
-        .unreviewedFieldsIn(
-          fieldNames = EsqlPreAnalysisReview.instanceFieldNamesOf(preAnalysis.getClass),
-          reviewed = reviewedPreAnalysisFields,
-          valueOf = name => Try(on(preAnalysis).get[AnyRef](name))
-        )
-        .map(EsqlClassificationError.UnreviewedQueryContent.apply)
-        .toLeft(())
-    }
-
-    private def tablesFrom(
-        reportedIndexLists: List[String],
-        tableFrom: NormalizedIndexList => Option[EsqlIndexTable]
-    ): Either[EsqlClassificationError, List[EsqlIndexTable]] = {
-      reportedIndexLists
-        .flatMap(NormalizedIndexList.fromEsReport)
-        .traverse(text => tableFrom(text).toRight(EsqlClassificationError.UnsupportedIndexList(text)))
-    }
-
-    private def newPreAnalyzer(
-        implicit classLoader: ClassLoader
-    ) = {
-      onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.analysis.PreAnalyzer")).create().get[Any]()
-    }
-
-    private def doPreAnalyze(preAnalyzer: Any, statement: Any) = {
-      on(preAnalyzer).call("preAnalyze", statement).get[Any]()
-    }
-
-    private def indexPatternFrom(preAnalysis: Any) = {
-      on(preAnalysis).get[Any]("indexPattern")
-    }
-
-    private def indexPatternStringFrom(indexPattern: Any) = {
-      on(indexPattern).call("indexPattern").get[String]()
+    private def isLookupJoinRelation(relation: Any): Boolean = {
+      Option(on(relation).call("indexMode").get[AnyRef])
+        .exists(indexMode => on(indexMode).call("name").get[String]() == "LOOKUP")
     }
 
   }

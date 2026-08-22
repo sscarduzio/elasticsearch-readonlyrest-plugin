@@ -20,343 +20,406 @@ import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.esql.EsqlCommandKind.{LookupJoin, SourceCommand}
-import tech.beshu.ror.es.esql.EsqlQueryNarrowing.{IndexListsMismatch, PromqlLeaningOnDefaultIndex}
-import tech.beshu.ror.es.esql.{EsqlIndexTable, EsqlNarrowingFailure, EsqlQuery, EsqlQueryNarrowing, NormalizedIndexList}
-import tech.beshu.ror.syntax.*
+import tech.beshu.ror.es.esql.*
+import tech.beshu.ror.es.esql.EsqlIndexListReadingFailure.*
 
+/**
+ * Covers reading the index lists ES reported out of the query text and narrowing them in one go, because that is
+ * the contract: what ES hands ROR has to come back out of the query text as the same list, or the query is not
+ * narrowed at all.
+ *
+ * A reported relation is written the way ES's parser builds it - the raw text of the node it read the index list
+ * from, plus that list normalized (`FROM a, b` reported as `a,b`).
+ */
 class EsqlQueryNarrowingTest extends AnyWordSpec {
 
   private val maskedIndex = """ROR_[A-Za-z0-9]{10}""".r
 
-  "EsqlQueryNarrowing.narrowedQuery" when {
-    "only FROM is used" should {
+  "Reading and narrowing an ES|QL query" when {
+    "a source command is used" should {
       "narrow a wildcard to the allowed indices" in {
-        rewrite("FROM logs-* | LIMIT 10", tables("logs-*"), allowed("logs-1", "logs-2")) should
+        rewrite("FROM logs-* | LIMIT 10", allowed("logs-1", "logs-2"), from("FROM logs-*", "logs-*")) should
           fullyMatch regex "FROM (logs-1,logs-2|logs-2,logs-1) \\| LIMIT 10"
       }
       "keep the query as it was written apart from the index list" in {
-        rewrite("FROM bookshop | LIMIT 100", tables("bookshop"), allowed("bookstore")) shouldBe
+        rewrite("FROM bookshop | LIMIT 100", allowed("bookstore"), from("FROM bookshop", "bookshop")) shouldBe
           "FROM bookstore | LIMIT 100"
       }
       "narrow a comma separated list written with spaces" in {
-        rewrite("FROM a, b | LIMIT 10", tables("a,b"), allowed("a")) shouldBe "FROM a | LIMIT 10"
+        rewrite("FROM a, b | LIMIT 10", allowed("a"), from("FROM a, b", "a,b")) shouldBe "FROM a | LIMIT 10"
       }
       "narrow a comma separated list whose entries are quoted" in {
-        rewrite("""FROM "a", b | LIMIT 10""", tables("a,b"), allowed("a")) shouldBe "FROM a | LIMIT 10"
+        rewrite("""FROM "a", b | LIMIT 10""", allowed("a"), from("""FROM "a", b""", "a,b")) shouldBe
+          "FROM a | LIMIT 10"
       }
       "narrow a single quoted index list holding a comma separated list" in {
-        rewrite("""FROM "a,b" | LIMIT 10""", tables("a,b"), allowed("b")) shouldBe "FROM b | LIMIT 10"
+        rewrite("""FROM "a,b" | LIMIT 10""", allowed("b"), from("""FROM "a,b"""", "a,b")) shouldBe
+          "FROM b | LIMIT 10"
       }
       "leave a METADATA clause in place" in {
-        rewrite("FROM logs-* METADATA _index | LIMIT 10", tables("logs-*"), allowed("logs-1")) shouldBe
-          "FROM logs-1 METADATA _index | LIMIT 10"
+        rewrite(
+          "FROM logs-* METADATA _index | LIMIT 10",
+          allowed("logs-1"),
+          from("FROM logs-* METADATA _index", "logs-*")
+        ) shouldBe "FROM logs-1 METADATA _index | LIMIT 10"
       }
       "leave a bracketed METADATA clause in place" in {
-        rewrite("FROM logs-* [METADATA _index] | LIMIT 10", tables("logs-*"), allowed("logs-1")) shouldBe
-          "FROM logs-1 [METADATA _index] | LIMIT 10"
+        rewrite(
+          "FROM logs-* [METADATA _index] | LIMIT 10",
+          allowed("logs-1"),
+          from("FROM logs-* [METADATA _index]", "logs-*")
+        ) shouldBe "FROM logs-1 [METADATA _index] | LIMIT 10"
       }
       "recognize a lowercase source command" in {
-        rewrite("from logs-* | limit 10", tables("logs-*"), allowed("logs-1")) shouldBe "from logs-1 | limit 10"
+        rewrite("from logs-* | limit 10", allowed("logs-1"), from("from logs-*", "logs-*")) shouldBe
+          "from logs-1 | limit 10"
       }
       "narrow a source command that follows a SET prelude" in {
-        rewrite("SET foo = 1; FROM logs-* | LIMIT 10", tables("logs-*"), allowed("logs-1")) shouldBe
-          "SET foo = 1; FROM logs-1 | LIMIT 10"
-      }
-      "not treat a semicolon inside a string literal as a command boundary" in {
-        rewrite("""FROM logs-* | EVAL x = "; FROM secret"""", tables("logs-*"), allowed("logs-1")) shouldBe
-          """FROM logs-1 | EVAL x = "; FROM secret""""
+        rewrite(
+          "SET foo = 1; FROM logs-* | LIMIT 10",
+          allowed("logs-1"),
+          from("FROM logs-*", "logs-*")
+        ) shouldBe "SET foo = 1; FROM logs-1 | LIMIT 10"
       }
       "not touch a column that happens to share the index name" in {
-        rewrite("""FROM status | WHERE status == "ok"""", tables("status"), allowed("other")) shouldBe
-          """FROM other | WHERE status == "ok""""
+        rewrite(
+          """FROM status | WHERE status == "ok"""",
+          allowed("other"),
+          from("FROM status", "status")
+        ) shouldBe """FROM other | WHERE status == "ok""""
       }
       "not touch an index name mentioned inside a string literal" in {
-        rewrite("""FROM status | EVAL x = "FROM status"""", tables("status"), allowed("other")) shouldBe
-          """FROM other | EVAL x = "FROM status""""
+        rewrite(
+          """FROM status | EVAL x = "FROM status"""",
+          allowed("other"),
+          from("FROM status", "status")
+        ) shouldBe """FROM other | EVAL x = "FROM status""""
       }
-      "not be confused by a comment mentioning a source command" in {
-        rewrite("FROM logs-1 // FROM secret\n| LIMIT 10", tables("logs-1"), allowed("logs-1")) shouldBe
-          "FROM logs-1 // FROM secret\n| LIMIT 10"
+      "narrow an index list a line comment interrupts" in {
+        rewrite(
+          "FROM a, // and\n b | LIMIT 10",
+          allowed("b"),
+          from("FROM a, // and\n b", "a,b")
+        ) shouldBe "FROM b | LIMIT 10"
+      }
+      "narrow an index list a block comment interrupts" in {
+        rewrite(
+          "FROM a, /* and */ b | LIMIT 10",
+          allowed("a"),
+          from("FROM a, /* and */ b", "a,b")
+        ) shouldBe "FROM a | LIMIT 10"
+      }
+      "leave a METADATA clause a comment separates from the index list in place" in {
+        rewrite(
+          "FROM logs-*/* and */METADATA _index",
+          allowed("logs-1"),
+          from("FROM logs-*/* and */METADATA _index", "logs-*")
+        ) shouldBe "FROM logs-1/* and */METADATA _index"
       }
       "handle an index actually named like the METADATA keyword" in {
-        rewrite("FROM metadata | LIMIT 10", tables("metadata"), allowed("metadata")) shouldBe "FROM metadata | LIMIT 10"
+        rewrite("FROM metadata | LIMIT 10", allowed("metadata"), from("FROM metadata", "metadata")) shouldBe
+          "FROM metadata | LIMIT 10"
       }
       "handle an index whose name only ends with the METADATA keyword" in {
-        rewrite("FROM app-metadata* | LIMIT 10", tables("app-metadata*"), allowed("app-metadata-1")) shouldBe
-          "FROM app-metadata-1 | LIMIT 10"
+        rewrite(
+          "FROM app-metadata* | LIMIT 10",
+          allowed("app-metadata-1"),
+          from("FROM app-metadata*", "app-metadata*")
+        ) shouldBe "FROM app-metadata-1 | LIMIT 10"
       }
       "handle an index whose name holds the METADATA keyword after a dot or an asterisk" in {
         rewrite(
           "FROM .ds-metadata, logs*metadata | LIMIT 10",
-          tables(".ds-metadata,logs*metadata"),
-          allowed("a")
-        ) shouldBe
-          "FROM a | LIMIT 10"
-      }
-      "leave a METADATA clause a comment separates from the index list in place" in {
-        rewrite("FROM logs-*/* and */METADATA _index", tables("logs-*"), allowed("logs-1")) shouldBe
-          "FROM logs-1/* and */METADATA _index"
-      }
-      "not mistake a parenthesized expression opening with a source command's name for a command" in {
-        rewrite("""FROM logs-* | WHERE (ts > "2024-01-01") | LIMIT 10""", tables("logs-*"), allowed("logs-1")) shouldBe
-          """FROM logs-1 | WHERE (ts > "2024-01-01") | LIMIT 10"""
-      }
-      "not mistake a function's first argument sharing a source command's name for a command" in {
-        rewrite("FROM logs-* | EVAL b = CASE(ts > 1, 1, 0) | LIMIT 10", tables("logs-*"), allowed("logs-1")) shouldBe
-          "FROM logs-1 | EVAL b = CASE(ts > 1, 1, 0) | LIMIT 10"
+          allowed("a"),
+          from("FROM .ds-metadata, logs*metadata", ".ds-metadata,logs*metadata")
+        ) shouldBe "FROM a | LIMIT 10"
       }
       "narrow the index list of a TS command" in {
-        rewrite("TS metrics-* | LIMIT 10", tables("metrics-*"), allowed("metrics-1")) shouldBe
+        rewrite("TS metrics-* | LIMIT 10", allowed("metrics-1"), from("TS metrics-*", "metrics-*")) shouldBe
           "TS metrics-1 | LIMIT 10"
       }
-      "narrow the index list inside a FROM subquery" in {
-        rewrite("FROM (FROM idx_a | LIMIT 1) | LIMIT 10", tables("idx_a"), allowed("idx_b")) shouldBe
-          "FROM (FROM idx_b | LIMIT 1) | LIMIT 10"
+      "narrow a source command written across more than one line" in {
+        rewrite(
+          "FROM logs-*\n| LIMIT 10",
+          allowed("logs-1"),
+          from("FROM logs-*", "logs-*")
+        ) shouldBe "FROM logs-1\n| LIMIT 10"
       }
-      "keep the separator when a subquery follows a plain index list" in {
-        rewrite("FROM a, (FROM b | LIMIT 1) | LIMIT 10", tables("a", "b"), allowed("a", "b")) shouldBe
-          "FROM a, (FROM b | LIMIT 1) | LIMIT 10"
+      "narrow a source command that follows a line the query opens with" in {
+        rewrite(
+          "// leading comment\nFROM logs-* | LIMIT 10",
+          allowed("logs-1"),
+          from("FROM logs-*", "logs-*")
+        ) shouldBe "// leading comment\nFROM logs-1 | LIMIT 10"
       }
-      "narrow each source command to its own pattern when the query has more than one" in {
-        rewrite("FROM a*, (FROM b | LIMIT 1) | LIMIT 10", tables("a*", "b"), allowed("a1", "b")) shouldBe
-          "FROM a1, (FROM b | LIMIT 1) | LIMIT 10"
+    }
+    "a source command holds a subquery" should {
+      "narrow the subquery, which ES reads as a source command of its own" in {
+        rewrite(
+          "FROM (FROM idx_a | LIMIT 1) | LIMIT 10",
+          allowed("idx_b"),
+          from("FROM (FROM idx_a | LIMIT 1)", ""),
+          from("FROM idx_a", "idx_a")
+        ) shouldBe "FROM (FROM idx_b | LIMIT 1) | LIMIT 10"
       }
-      "mask a source command the ACL left nothing for instead of handing it another one's indices" in {
-        rewrite("FROM a, (FROM b | LIMIT 1) | LIMIT 10", tables("a", "b"), allowed("a")) should
-          fullyMatch regex s"FROM a, \\(FROM $maskedIndex \\| LIMIT 1\\) \\| LIMIT 10"
-      }
-      "narrow an index list holding a block comment" in {
-        rewrite("FROM a, /* and */ b | LIMIT 10", tables("a,b"), allowed("a")) shouldBe "FROM a | LIMIT 10"
-      }
-      "narrow an index list holding a line comment" in {
-        rewrite("FROM a, // and\n b | LIMIT 10", tables("a,b"), allowed("b")) shouldBe "FROM b | LIMIT 10"
-      }
-      "narrow every entry of an index list that a subquery splits in two" in {
-        rewrite("FROM a, (FROM b | LIMIT 1), c | LIMIT 10", tables("a,c", "b"), allowed("a", "b")) shouldBe
-          "FROM a, (FROM b | LIMIT 1) | LIMIT 10"
-      }
-      "keep the separator when the index list opens with a subquery" in {
-        val query = "FROM (FROM b | LIMIT 1), a | LIMIT 10"
-        rewrite(query, tables("a", "b"), allowed("a", "b")) shouldBe query
-      }
-      "narrow every subquery of an index list, not only the first" in {
+      "narrow each subquery to its own pattern, since neither may answer for the other" in {
         rewrite(
           "FROM (FROM a* | LIMIT 1), (FROM b* | LIMIT 1) | LIMIT 10",
-          tables("a*", "b*"),
-          allowed("a1", "b1")
+          allowed("a1", "b1"),
+          from("FROM (FROM a* | LIMIT 1), (FROM b* | LIMIT 1)", ""),
+          from("FROM a*", "a*"),
+          from("FROM b*", "b*")
         ) shouldBe "FROM (FROM a1 | LIMIT 1), (FROM b1 | LIMIT 1) | LIMIT 10"
-      }
-      "hand the whole allowed set to twin subqueries ES reported as a single index list" in {
-        rewrite(
-          "FROM (FROM secret | LIMIT 1), (FROM secret | LIMIT 1) | LIMIT 10",
-          tables("secret"),
-          allowed("allowed_idx")
-        ) shouldBe "FROM (FROM allowed_idx | LIMIT 1), (FROM allowed_idx | LIMIT 1) | LIMIT 10"
-      }
-      "mask twin subqueries ES reported as an index list each, since neither may answer for the other" in {
-        rewrite(
-          "FROM (FROM secret | LIMIT 1), (FROM secret | LIMIT 1) | LIMIT 10",
-          tables("secret", "secret"),
-          allowed("allowed_idx")
-        ) should fullyMatch regex
-          s"FROM \\(FROM $maskedIndex \\| LIMIT 1\\), \\(FROM $maskedIndex \\| LIMIT 1\\) \\| LIMIT 10"
-      }
-      "narrow the index list of a subquery nested in another subquery" in {
-        val query = "FROM (FROM (FROM a | LIMIT 1), b | LIMIT 1), c | LIMIT 10"
-        rewrite(query, tables("a", "b", "c"), allowed("a", "b", "c")) shouldBe query
       }
       "mask a subquery the ACL left nothing for without touching its siblings" in {
         rewrite(
-          "FROM a, (FROM b | LIMIT 1), (FROM c | LIMIT 1) | LIMIT 10",
-          tables("a", "b", "c"),
-          allowed("a", "c")
+          "FROM (FROM b | LIMIT 1), (FROM c | LIMIT 1) | LIMIT 10",
+          allowed("c"),
+          from("FROM (FROM b | LIMIT 1), (FROM c | LIMIT 1)", ""),
+          from("FROM b", "b"),
+          from("FROM c", "c")
         ) should fullyMatch regex
-          s"FROM a, \\(FROM $maskedIndex \\| LIMIT 1\\), \\(FROM c \\| LIMIT 1\\) \\| LIMIT 10"
+          s"FROM \\(FROM $maskedIndex \\| LIMIT 1\\), \\(FROM c \\| LIMIT 1\\) \\| LIMIT 10"
       }
-      "mask the index list as nonexistent when nothing is left for it" in {
+      "narrow every source command naming the same index, not only the first ES reported" in {
         rewrite(
-          "FROM forbidden | LOOKUP JOIN lookup_idx ON key",
-          tables("forbidden") ++ lookupTables("lookup_idx"),
-          allowed("lookup_idx")
-        ) should fullyMatch regex s"FROM $maskedIndex \\| LOOKUP JOIN lookup_idx ON key"
+          "FROM (FROM secret | LIMIT 1), (FROM secret | LIMIT 1) | LIMIT 10",
+          allowed("allowed_idx"),
+          from("FROM (FROM secret | LIMIT 1), (FROM secret | LIMIT 1)", ""),
+          from("FROM secret", "secret"),
+          from("FROM secret", "secret")
+        ) should fullyMatch regex
+          s"FROM \\(FROM $maskedIndex \\| LIMIT 1\\), \\(FROM $maskedIndex \\| LIMIT 1\\) \\| LIMIT 10"
+      }
+      "narrow a subquery nested in another subquery" in {
+        rewrite(
+          "FROM (FROM (FROM a | LIMIT 1) | LIMIT 1) | LIMIT 10",
+          allowed("a"),
+          from("FROM (FROM (FROM a | LIMIT 1) | LIMIT 1)", ""),
+          from("FROM (FROM a | LIMIT 1)", ""),
+          from("FROM a", "a")
+        ) shouldBe "FROM (FROM (FROM a | LIMIT 1) | LIMIT 1) | LIMIT 10"
+      }
+      "refuse to read a command mixing indices of its own with a subquery, which ES reports merged into one list" in {
+        readingFailureFor(
+          "FROM a, (FROM b | LIMIT 1), c | LIMIT 10",
+          allowed("a"),
+          from("FROM a, (FROM b | LIMIT 1), c", "a,c"),
+          from("FROM b", "b")
+        ) shouldBe SubqueryInSourceCommand("a,c")
       }
     }
     "LOOKUP JOIN is used" should {
       "leave an authorized target untouched" in {
         val query = "FROM src | LOOKUP JOIN lookup_idx ON key"
-        rewrite(query, tables("src") ++ lookupTables("lookup_idx"), allowed("src", "lookup_idx")) shouldBe query
+        rewrite(
+          query,
+          allowed("src", "lookup_idx"),
+          from("FROM src", "src"),
+          join("lookup_idx", "lookup_idx")
+        ) shouldBe query
       }
-      "mask an unauthorized target while leaving an authorized FROM alone" in {
+      "mask an unauthorized target while leaving an authorized source command alone" in {
         rewrite(
           "FROM src | LOOKUP JOIN secret_idx ON key",
-          tables("src") ++ lookupTables("secret_idx"),
-          allowed("src")
+          allowed("src"),
+          from("FROM src", "src"),
+          join("secret_idx", "secret_idx")
         ) should fullyMatch regex s"FROM src \\| LOOKUP JOIN $maskedIndex ON key"
       }
       "handle a target whose name only ends with the ON keyword" in {
         rewrite(
           "FROM src | LOOKUP JOIN ref-on ON key",
-          tables("src") ++ lookupTables("ref-on"),
-          allowed("src", "ref-on")
+          allowed("src", "ref-on"),
+          from("FROM src", "src"),
+          join("ref-on", "ref-on")
         ) shouldBe "FROM src | LOOKUP JOIN ref-on ON key"
       }
       "not rewrite a join key that shares the target's name" in {
         rewrite(
           "FROM src | LOOKUP JOIN prices ON prices",
-          tables("src") ++ lookupTables("prices"),
-          allowed("src")
+          allowed("src"),
+          from("FROM src", "src"),
+          join("prices", "prices")
         ) should fullyMatch regex s"FROM src \\| LOOKUP JOIN $maskedIndex ON prices"
       }
-      "keep a wildcard FROM and a masked target from contaminating each other" in {
+      "keep a wildcard source command and a masked target from contaminating each other" in {
         rewrite(
           "FROM book* | LOOKUP JOIN book_prices ON isbn",
-          tables("book*") ++ lookupTables("book_prices"),
-          allowed("bookstore")
+          allowed("bookstore"),
+          from("FROM book*", "book*"),
+          join("book_prices", "book_prices")
         ) should fullyMatch regex s"FROM bookstore \\| LOOKUP JOIN $maskedIndex ON isbn"
       }
-      "include the target in a wildcard FROM's list when the wildcard genuinely matches it" in {
+      "include the target in a wildcard source command's list when the wildcard genuinely matches it" in {
         rewrite(
           "FROM book_* | LOOKUP JOIN book_prices ON isbn",
-          tables("book_*") ++ lookupTables("book_prices"),
-          allowed("book_catalog", "book_prices")
+          allowed("book_catalog", "book_prices"),
+          from("FROM book_*", "book_*"),
+          join("book_prices", "book_prices")
         ) should fullyMatch regex
           "FROM (book_catalog,book_prices|book_prices,book_catalog) \\| LOOKUP JOIN book_prices ON isbn"
       }
-      "exclude the target from a wildcard FROM's list when the wildcard doesn't match it" in {
+      "exclude the target from a wildcard source command's list when the wildcard doesn't match it" in {
         rewrite(
           "FROM bookstore* | LOOKUP JOIN lookup_idx ON isbn",
-          tables("bookstore*") ++ lookupTables("lookup_idx"),
-          allowed("bookstore1", "lookup_idx")
+          allowed("bookstore1", "lookup_idx"),
+          from("FROM bookstore*", "bookstore*"),
+          join("lookup_idx", "lookup_idx")
         ) shouldBe "FROM bookstore1 | LOOKUP JOIN lookup_idx ON isbn"
       }
-      "not strip a literal shared with FROM from FROM's own replacement" in {
+      "not strip a literal shared with the source command from its own replacement" in {
+        val query = "FROM shared_idx | LOOKUP JOIN shared_idx ON key"
         rewrite(
-          "FROM shared_idx | LOOKUP JOIN shared_idx ON key",
-          tables("shared_idx") ++ lookupTables("shared_idx"),
-          allowed("shared_idx")
-        ) shouldBe "FROM shared_idx | LOOKUP JOIN shared_idx ON key"
+          query,
+          allowed("shared_idx"),
+          from("FROM shared_idx", "shared_idx"),
+          join("shared_idx", "shared_idx")
+        ) shouldBe query
       }
       "rewrite a join that opens a FORK branch" in {
         rewrite(
           "FROM src | FORK (LOOKUP JOIN secret_idx ON k) (WHERE x > 1)",
-          tables("src") ++ lookupTables("secret_idx"),
-          allowed("src")
-        ) should fullyMatch regex
-          s"FROM src \\| FORK \\(LOOKUP JOIN $maskedIndex ON k\\) \\(WHERE x > 1\\)"
+          allowed("src"),
+          from("FROM src", "src"),
+          join("secret_idx", "secret_idx")
+        ) should fullyMatch regex s"FROM src \\| FORK \\(LOOKUP JOIN $maskedIndex ON k\\) \\(WHERE x > 1\\)"
       }
       "rewrite every join in a query with more than one" in {
         rewrite(
           "FROM src | LOOKUP JOIN allowed_idx ON k1 | LOOKUP JOIN secret_idx ON k2",
-          tables("src") ++ lookupTables("allowed_idx", "secret_idx"),
-          allowed("src", "allowed_idx")
+          allowed("src", "allowed_idx"),
+          from("FROM src", "src"),
+          join("allowed_idx", "allowed_idx"),
+          join("secret_idx", "secret_idx")
         ) should fullyMatch regex
           s"FROM src \\| LOOKUP JOIN allowed_idx ON k1 \\| LOOKUP JOIN $maskedIndex ON k2"
+      }
+      "mask a source command the ACL left nothing for" in {
+        rewrite(
+          "FROM forbidden | LOOKUP JOIN lookup_idx ON key",
+          allowed("lookup_idx"),
+          from("FROM forbidden", "forbidden"),
+          join("lookup_idx", "lookup_idx")
+        ) should fullyMatch regex s"FROM $maskedIndex \\| LOOKUP JOIN lookup_idx ON key"
+      }
+      "refuse to read a target that is not a single plain index" in {
+        readingFailureFor(
+          """FROM src | LOOKUP JOIN "a,b" ON key""",
+          allowed("src"),
+          from("FROM src", "src"),
+          join("\"a,b\"", "a,b")
+        ) shouldBe UnsupportedIndexList("a,b")
       }
     }
     "PROMQL is used" should {
       "narrow the index pattern its index parameter names" in {
-        rewrite("PROMQL index=metrics-* step=1m rate(v)", tables("metrics-*"), allowed("metrics-1")) shouldBe
-          "PROMQL index=metrics-1 step=1m rate(v)"
-      }
-      "narrow the index parameter wherever it sits among the other parameters" in {
         rewrite(
-          "PROMQL step=1m index=metrics-* scrape_interval=30s v",
-          tables("metrics-*"),
-          allowed("metrics-1")
-        ) shouldBe
-          "PROMQL step=1m index=metrics-1 scrape_interval=30s v"
+          "PROMQL index=metrics-* step=1m rate(v)",
+          allowed("metrics-1"),
+          from("metrics-*", "metrics-*")
+        ) shouldBe "PROMQL index=metrics-1 step=1m rate(v)"
       }
       "narrow a quoted index parameter holding a comma separated list" in {
-        rewrite("""PROMQL index="a,b" step=1m v""", tables("a,b"), allowed("b")) shouldBe
+        rewrite("""PROMQL index="a,b" step=1m v""", allowed("b"), from(""""a,b"""", "a,b")) shouldBe
           "PROMQL index=b step=1m v"
       }
-      "not mistake a comparison in the PromQL expression for a parameter" in {
-        rewrite("PROMQL index=metrics-* step=1m v == 1", tables("metrics-*"), allowed("metrics-1")) shouldBe
-          "PROMQL index=metrics-1 step=1m v == 1"
-      }
-      "not read an index parameter out of the PromQL expression's label matchers" in {
-        narrowingFailureFor("""PROMQL step=1m v{index="secret"}""", tables("metrics-*"), allowed("a")) shouldBe
-          PromqlLeaningOnDefaultIndex
-      }
-      "refuse to rewrite a command that leaves ES to pick the indices" in {
-        narrowingFailureFor("PROMQL step=1m rate(v)", tables("metrics-*"), allowed("metrics-1")) shouldBe
-          PromqlLeaningOnDefaultIndex
-      }
-      "narrow a PROMQL command the rest of the pipeline follows" in {
-        rewrite("PROMQL index=metrics-* step=1m v | LIMIT 5", tables("metrics-*"), allowed("metrics-1")) shouldBe
-          "PROMQL index=metrics-1 step=1m v | LIMIT 5"
+      "refuse to read a command that leaves ES to pick the indices" in {
+        readingFailureFor(
+          "PROMQL step=1m rate(v)",
+          allowed("metrics-1"),
+          from("PROMQL step=1m rate(v)", "*")
+        ) shouldBe PromqlLeaningOnDefaultIndex
       }
     }
-    "the query cannot be matched to the tables ES reported" should {
-      "refuse to rewrite when a reported table has no index list in the query" in {
-        narrowingFailureFor("FROM src | LIMIT 10", tables("other_src"), allowed("src")) shouldBe
-          IndexListsMismatch(SourceCommand, reported("other_src"), written("src"))
+    "the query does not hold the index list ES reported" should {
+      "refuse to read a list that is not written where ES reported it" in {
+        readingFailureFor("FROM src | LIMIT 10", allowed("src"), at(99, "FROM src", "src")) shouldBe
+          NotWhereEsReportedIt("src")
       }
-      "refuse to rewrite when the query holds an index list ES didn't report" in {
-        narrowingFailureFor(
-          "FROM src | LOOKUP JOIN secret_idx ON key",
-          tables("src"),
-          allowed("src")
-        ) shouldBe IndexListsMismatch(LookupJoin, reported(), written("secret_idx"))
-      }
-      "refuse to rewrite when a subquery holds an index list ES didn't report" in {
-        narrowingFailureFor(
-          "FROM a, (FROM secret | LIMIT 1) | LIMIT 10",
-          tables("a"),
-          allowed("a")
-        ) shouldBe IndexListsMismatch(SourceCommand, reported(), written("secret"))
-      }
-      "refuse to rewrite a LOOKUP JOIN target that is not a single plain index" in {
-        EsqlIndexTable.LookupJoin.parse(indexList("a,b")) shouldBe None
-        EsqlIndexTable.LookupJoin.parse(indexList("-a")) shouldBe None
+      "refuse to read a list whose text does not normalize back to the report" in {
+        readingFailureFor("FROM src | LIMIT 10", allowed("src"), from("FROM src", "other_src")) shouldBe
+          DoesNotMatchEsReport("src", "other_src")
       }
     }
   }
 
   private def rewrite(
       query: String,
-      tables: NonEmptyList[EsqlIndexTable],
-      allowed: NonEmptyList[RequestedIndex[ClusterIndexName]]
+      allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      reported: ReportedRelation*
   ): String = {
-    EsqlQueryNarrowing
-      .narrowedQuery(EsqlQuery(query), tables, allowed)
-      .fold(mismatch => fail(s"query was not rewritten: $query; ${mismatch.toString}"), _.value)
+    val tables = tablesIn(query, reported)
+      .fold(failure => fail(s"index lists were not read: ${failure.toString}"), identity)
+    EsqlQueryNarrowing.narrowedQuery(EsqlQuery(query), tables, allowed).value
   }
 
-  private def narrowingFailureFor(
+  private def readingFailureFor(
       query: String,
-      tables: NonEmptyList[EsqlIndexTable],
-      allowed: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): EsqlNarrowingFailure = {
-    EsqlQueryNarrowing
-      .narrowedQuery(EsqlQuery(query), tables, allowed)
-      .fold(identity, narrowed => fail(s"query was rewritten, although it should not have been: ${narrowed.value}"))
-  }
-
-  private def tables(indexLists: String*): NonEmptyList[EsqlIndexTable] = {
-    NonEmptyList.fromListUnsafe(
-      indexLists.toList.map { list =>
-        EsqlIndexTable.SourceCommand.parse(indexList(list)).getOrElse(fail(s"not a valid source command list: $list"))
-      }
+      allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      reported: ReportedRelation*
+  ): EsqlIndexListReadingFailure = {
+    tablesIn(query, reported).fold(
+      identity,
+      tables =>
+        fail(
+          s"index lists were read, although they should not have been: " +
+            s"${EsqlQueryNarrowing.narrowedQuery(EsqlQuery(query), tables, allowed).value}"
+        )
     )
   }
 
-  private def lookupTables(indexLists: String*): List[EsqlIndexTable] = {
-    indexLists.toList.map { list =>
-      EsqlIndexTable.LookupJoin.parse(indexList(list)).getOrElse(fail(s"not a valid LOOKUP JOIN target: $list"))
-    }
+  private def tablesIn(
+      query: String,
+      reported: Seq[ReportedRelation]
+  ): Either[EsqlIndexListReadingFailure, NonEmptyList[EsqlIndexTable]] = {
+    val relations = reported.toList
+      .foldLeft((Map.empty[String, Int], List.empty[EsqlReportedRelation])) {
+        case ((claimedUpTo, relations), relation) =>
+          val offset = relation.forcedOffset.getOrElse {
+            query.indexOf(relation.writtenText, claimedUpTo.getOrElse(relation.writtenText, 0))
+          }
+          (claimedUpTo.updated(relation.writtenText, offset + 1), relations :+ relation.reportedAt(query, offset))
+      }
+      ._2
+    EsqlIndexListLocator
+      .indexTablesIn(EsqlQuery(query), relations)
+      .map(tables => NonEmptyList.fromListUnsafe(tables))
   }
 
-  private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] = {
+  private def from(writtenText: String, indexList: String): ReportedRelation =
+    ReportedRelation(writtenText, indexList, isLookupJoin = false, forcedOffset = None)
+
+  private def join(writtenText: String, indexList: String): ReportedRelation =
+    ReportedRelation(writtenText, indexList, isLookupJoin = true, forcedOffset = None)
+
+  private def at(offset: Int, writtenText: String, indexList: String): ReportedRelation =
+    ReportedRelation(writtenText, indexList, isLookupJoin = false, forcedOffset = Some(offset))
+
+  private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] =
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))
+
+  /** Written the way ES's parser builds it: the raw text of the node, and where in the query that text sits. */
+  private final case class ReportedRelation(
+      writtenText: String,
+      indexList: String,
+      isLookupJoin: Boolean,
+      forcedOffset: Option[Int]
+  ) {
+
+    def reportedAt(query: String, offset: Int): EsqlReportedRelation = {
+      val before = query.take(offset)
+      EsqlReportedRelation(
+        indexList = indexList,
+        writtenAt = EsqlSourceLocation(
+          line = before.count(_ == '\n') + 1,
+          column = offset - (before.lastIndexOf('\n') + 1)
+        ),
+        writtenText = writtenText,
+        isLookupJoin = isLookupJoin
+      )
+    }
+
   }
-
-  private def reported(indexLists: String*): Set[NormalizedIndexList] = indexLists.toList.map(indexList).toCovariantSet
-
-  private def written(indexLists: String*): Set[NormalizedIndexList] = indexLists.toList.map(indexList).toCovariantSet
-
-  private def indexList(text: String): NormalizedIndexList =
-    NormalizedIndexList.fromEsReport(text).getOrElse(fail(s"not an index list: $text"))
 
 }

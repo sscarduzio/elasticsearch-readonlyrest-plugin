@@ -91,17 +91,15 @@ class EsqlIndicesEsRequestContext private (
         Right(())
       case Right(classification @ EsqlRequestClassification.IndicesRelated(tables)) =>
         if (filteredIndices.toList.toCovariantSet != classification.requestedIndices) {
-          EsqlRequestHelper.narrowIndicesOf(request, tables, filteredIndices)
+          Right(EsqlRequestHelper.narrowIndicesOf(request, tables, filteredIndices))
         } else {
           Right(())
         }
       case Left(EsqlClassificationError.NotParsable(cause)) =>
         logger.debug("Cannot parse the ES|QL statement - we can pass it through, because ES will reject it too", cause)
         Right(())
-      case Left(EsqlClassificationError.UnsupportedIndexList(text)) =>
-        Left(EsqlQueryRejection.UnsupportedIndexList(text))
-      case Left(EsqlClassificationError.UnreviewedQueryContent(fields)) =>
-        Left(EsqlQueryRejection.UnreviewedQueryContent(fields))
+      case Left(EsqlClassificationError.CannotReadIndexList(failure)) =>
+        Left(EsqlQueryRejection.CannotReadIndexList(failure))
     }
   }
 

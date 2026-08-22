@@ -63,26 +63,24 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](
         val nonExistingIndices = NonEmptyList
           .fromList(discoveredIndices.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
-        updateToNonexistentIndices(nonExistingIndices)
+        update(
+          request = actionRequest,
+          filteredRequestedIndices = nonExistingIndices,
+          filter = None,
+          fieldLevelSecurity = None
+        )
+        Modified
       } else {
         ShouldBeInterrupted
       }
     } else {
-      updateToNonexistentIndices(NonEmptyList.of(discoveredIndices.randomNonexistentLocalIndex()))
-    }
-  }
-
-  private def updateToNonexistentIndices(
-      indices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): ModificationResult = {
-    update(
-      request = actionRequest,
-      filteredRequestedIndices = indices,
-      filter = None,
-      fieldLevelSecurity = None
-    ) match {
-      case ShouldBeInterrupted => ShouldBeInterrupted
-      case _                   => Modified
+      update(
+        request = actionRequest,
+        filteredRequestedIndices = NonEmptyList.of(discoveredIndices.randomNonexistentLocalIndex()),
+        filter = None,
+        fieldLevelSecurity = None
+      )
+      Modified
     }
   }
 

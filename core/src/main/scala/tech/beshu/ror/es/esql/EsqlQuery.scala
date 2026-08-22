@@ -16,28 +16,23 @@
  */
 package tech.beshu.ror.es.esql
 
-import cats.Show
-import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.implicits.*
-
 final case class EsqlQuery(value: String) extends AnyVal
 
+final case class QueryTextSpan(start: Int, end: Int)
+
+/** ES reports a line as 1-based and a column as 0-based, the way ANTLR hands them to it. */
+final case class EsqlSourceLocation(line: Int, column: Int)
+
 /**
- * The key matching a table ES reported to the place in the query text it was written at, so [[EsqlQueryScanner]]
- * has to normalize the text exactly the way ES's parser does.
+ * One index-reading node of the parsed query, as ES's own parser describes it: the index list ES read out of it,
+ * normalized (`FROM a, b` becomes `a,b`), together with the place in the query text it was written at.
+ *
+ * The written text is what makes the query narrowable - the normalized list cannot be searched for, because it is
+ * not what the user wrote.
  */
-final case class NormalizedIndexList private (value: String) extends AnyVal
-
-object NormalizedIndexList {
-
-  def fromEsReport(reported: String): Option[NormalizedIndexList] =
-    Option.when(!reported.isBlank)(NormalizedIndexList(reported))
-
-  def of(indices: NonEmptyList[ClusterIndexName]): NormalizedIndexList =
-    NormalizedIndexList(indices.toList.map(_.show).mkString(","))
-
-  private[esql] def normalizedFromQueryText(text: String): NormalizedIndexList = NormalizedIndexList(text)
-
-  implicit val show: Show[NormalizedIndexList] = Show.show(_.value)
-}
+final case class EsqlReportedRelation(
+    indexList: String,
+    writtenAt: EsqlSourceLocation,
+    writtenText: String,
+    isLookupJoin: Boolean
+)
