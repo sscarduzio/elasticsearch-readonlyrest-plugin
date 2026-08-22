@@ -14,45 +14,22 @@ steps:
     fetchDepth: 1
     clean: false
     persistCredentials: true
-
-  # MUST run on the host (target: host), not in the container — else the `rm` runs in the container's
-  # mount namespace and frees NOTHING on the VM disk (~16G of preinstalled toolchains). Hosted-only.
-  - bash: ci/free-host-disk.sh
-    displayName: 'Free hosted-VM disk for ES image builds (HOST namespace)'
-    target: host
-    env:
-      AGENT_ISSELFHOSTED: $(Agent.IsSelfHosted)
+  # No ROR_S3_* here: these tests only READ the ES libs, and Gradle's default public store
+  # (readonlyrest.plugin-common-conventions.gradle) already serves them. Passing the vars in is a
+  # hazard - Azure leaves `$(NAME)` literal when the pipeline variable is undefined, and Gradle then
+  # builds a nonsense repository URL that fails to resolve.
   - script: |
-      export ROR_S3_ENDPOINT_URL=$VAR_ROR_S3_ENDPOINT_URL
-      export ROR_S3_REGION=$VAR_ROR_S3_REGION
-      export ROR_S3_BUCKET=$VAR_ROR_S3_BUCKET
-      export ROR_S3_ACCESS_KEY_ID=$VAR_ROR_S3_ACCESS_KEY_ID
-      export ROR_S3_SECRET_ACCESS_KEY=$VAR_ROR_S3_SECRET_ACCESS_KEY
-      export ROR_S3_PATH_LIBS=$VAR_ROR_S3_PATH_LIBS
-
-      # Sourced in-process so DOCKER_AUTH_CONFIG reaches the testcontainers JVM when set, and stays
-      # UNSET otherwise (an empty/literal Azure var would fail RegistryAuthLocator's JSON-parse).
-      # The first file maps the Azure variables onto the names the second one reads.
-      source ci/azure-templates/docker-credentials.sh
-      source ci/configure-docker.sh
+      # Sourced in-process so DOCKER_AUTH_CONFIG (when set) reaches the testcontainers JVM, and
+      # stays UNSET otherwise (a cross-step Azure var can't express "absent", only ""/literal — both
+      # of which testcontainers' RegistryAuthLocator would fail to JSON-parse).
+      source ci/docker-hub-auth.sh
 
       echo "[TEST] executing ROR_TASK = $ROR_TASK"
       ci/run-pipeline.sh
     env:
       GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-      ROR_CI_JOB_ID: $(Build.BuildId)-$(System.JobId)
-      # Intra-agent parallelism: K sharded test JVMs (each own ES), default 1. Must be declared here —
-      # Azure scrubs step env to declared vars. Gate >1 only on agents with RAM for K ES instances.
-      IT_PARALLELISM: $(IT_PARALLELISM)
-      VAR_ROR_S3_ENDPOINT_URL: $(ROR_S3_ENDPOINT_URL)
-      VAR_ROR_S3_REGION: $(ROR_S3_REGION)
-      VAR_ROR_S3_BUCKET: $(ROR_S3_BUCKET)
-      VAR_ROR_S3_ACCESS_KEY_ID: $(ROR_S3_ACCESS_KEY_ID)
-      VAR_ROR_S3_SECRET_ACCESS_KEY: $(ROR_S3_SECRET_ACCESS_KEY)
-      VAR_ROR_S3_PATH_LIBS: $(ROR_S3_PATH_LIBS)
-      VAR_DOCKER_HUB_USER: $(DOCKER_HUB_USER)
-      VAR_DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
-      DOCKER_AUTH_REQUIRED: "false"
+      DOCKER_HUB_USER: $(DOCKER_HUB_USER)
+      DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
 
   - task: PublishTestResults@2
     condition: failed()
