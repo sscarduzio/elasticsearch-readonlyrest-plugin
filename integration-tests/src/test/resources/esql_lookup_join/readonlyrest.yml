@@ -1,0 +1,24 @@
+readonlyrest:
+
+  access_control_rules:
+
+    # ES container initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      type: allow
+      auth_key: admin:container
+
+    - name: "Catalog only - the LOOKUP JOIN target is out of reach"
+      auth_key: catalog:test
+      indices: ["book_catalog"]
+
+    - name: "Prices only - the FROM target is out of reach"
+      auth_key: prices:test
+      indices: ["book_prices"]
+
+    - name: "Both the FROM and the LOOKUP JOIN target"
+      auth_key: both:test
+      indices: ["book_catalog", "book_prices"]
+
+    - name: "Everything matching the book_ prefix"
+      auth_key: books:test
+      indices: ["book_*"]

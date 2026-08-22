@@ -29,12 +29,12 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
+import tech.beshu.ror.es.esql.{EsqlClassificationError, EsqlQueryRejection, EsqlRequestClassification}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.EsqlRequestHelper
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -58,9 +58,9 @@ class EsqlIndicesEsRequestContext private (
       request: ActionRequest with CompositeIndicesRequest
   ): Set[RequestedIndex[ClusterIndexName]] = {
     requestClassification match {
-      case Right(r @ EsqlRequestClassification.IndicesRelated(_)) =>
-        r.indices.flatMap(RequestedIndex.fromString)
-      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(ClassificationError.ParsingException(_)) =>
+      case Right(classification @ EsqlRequestClassification.IndicesRelated(_)) =>
+        classification.requestedIndices
+      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(_) =>
         Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
     }
   }
@@ -71,32 +71,37 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    modifyRequestIndices(request, filteredRequestedIndices)
-    applyFieldLevelSecurityTo(request, fieldLevelSecurity)
-    applyFilterTo(request, filter)
-    UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
+    narrowIndicesOf(request, filteredRequestedIndices) match {
+      case Right(_) =>
+        applyFieldLevelSecurityTo(request, fieldLevelSecurity)
+        applyFilterTo(request, filter)
+        UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
+      case Left(rejection) =>
+        logger.warn(rejection.show)
+        ModificationResult.ShouldBeInterrupted
+    }
   }
 
-  private def modifyRequestIndices(
+  private def narrowIndicesOf(
       request: ActionRequest with CompositeIndicesRequest,
       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): CompositeIndicesRequest = {
+  ): Either[EsqlQueryRejection, Unit] = {
     requestClassification match {
       case Right(EsqlRequestClassification.NonIndicesRelated) =>
-        request
-      case Right(r @ EsqlRequestClassification.IndicesRelated(tables)) =>
-        val filteredIndicesStrings = filteredIndices.stringify.toCovariantSet
-        if (filteredIndicesStrings != r.indices) {
-          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndicesStrings)
+        Right(())
+      case Right(classification @ EsqlRequestClassification.IndicesRelated(tables)) =>
+        if (filteredIndices.toList.toCovariantSet != classification.requestedIndices) {
+          EsqlRequestHelper.narrowIndicesOf(request, tables, filteredIndices)
         } else {
-          request
+          Right(())
         }
-      case Left(ClassificationError.ParsingException(ex)) =>
-        logger.debug(
-          s"Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:",
-          ex
-        )
-        request
+      case Left(EsqlClassificationError.NotParsable(cause)) =>
+        logger.debug("Cannot parse the ES|QL statement - we can pass it through, because ES will reject it too", cause)
+        Right(())
+      case Left(EsqlClassificationError.UnsupportedIndexList(text)) =>
+        Left(EsqlQueryRejection.UnsupportedIndexList(text))
+      case Left(EsqlClassificationError.UnreviewedQueryContent(fields)) =>
+        Left(EsqlQueryRejection.UnreviewedQueryContent(fields))
     }
   }
 

@@ -23,24 +23,38 @@ import org.joor.Reflect.*
 import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.es.esql.{
+  EsqlClassificationError,
+  EsqlIndexTable,
+  EsqlPreAnalysisReview,
+  EsqlQuery,
+  EsqlQueryNarrowing,
+  EsqlQueryRejection,
+  EsqlRequestClassification,
+  NormalizedIndexList,
+  PreAnalysisField
+}
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.List as JList
-import java.util.regex.Pattern
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
 object EsqlRequestHelper {
 
-  def modifyIndicesOf(
+  def narrowIndicesOf(
       request: CompositeIndicesRequest,
-      requestTables: NonEmptyList[IndexTable],
-      finalIndices: Set[String]
-  ): CompositeIndicesRequest = {
-    setQuery(request, newQueryFrom(getQuery(request), requestTables, finalIndices))
+      tables: NonEmptyList[EsqlIndexTable],
+      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ): Either[EsqlQueryRejection, Unit] = {
+    EsqlQueryNarrowing.narrowedQuery(getQuery(request), tables, allowedIndices) match {
+      case Right(narrowedQuery) => Right(setQuery(request, narrowedQuery))
+      case Left(mismatch)       => Left(EsqlQueryRejection.CannotNarrowQuery(mismatch))
+    }
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -52,46 +66,31 @@ object EsqlRequestHelper {
 
   import EsqlRequestClassification.*
 
-  def classifyEsqlRequest(request: CompositeIndicesRequest): Either[ClassificationError, EsqlRequestClassification] = {
+  def classifyEsqlRequest(
+      request: CompositeIndicesRequest
+  ): Either[EsqlClassificationError, EsqlRequestClassification] = {
     createStatement(request) match {
-      case Right(statement: IndicesRelatedStatement) => Right(IndicesRelated(statement.indices))
-      case Right(command: OtherCommand)              => Right(NonIndicesRelated)
+      case Right(statement: IndicesRelatedStatement) => Right(IndicesRelated(statement.tables))
+      case Right(_: OtherCommand)                    => Right(NonIndicesRelated)
       case Left(error)                               => Left(error)
     }
   }
 
-  private def createStatement(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
+  private def createStatement(request: CompositeIndicesRequest): Either[EsqlClassificationError, Statement] = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
     new EsqlParser().createStatementBasedOn(request)
   }
 
-  private def getQuery(request: CompositeIndicesRequest): String = {
-    on(request).call("query").get[String]
+  private def getQuery(request: CompositeIndicesRequest): EsqlQuery = {
+    EsqlQuery(on(request).call("query").get[String])
   }
 
-  private def setQuery(request: CompositeIndicesRequest, newQuery: String): CompositeIndicesRequest = {
-    on(request).call("query", newQuery)
-    request
+  private def setQuery(request: CompositeIndicesRequest, query: EsqlQuery): Unit = {
+    on(request).call("query", query.value)
   }
 
   private def getParams(request: CompositeIndicesRequest): AnyRef = {
     on(request).call("params").get[AnyRef]
-  }
-
-  private def newQueryFrom(oldQuery: String, requestTables: NonEmptyList[IndexTable], finalIndices: Set[String]) = {
-    requestTables.toList.foldLeft(oldQuery) { case (currentQuery, table) =>
-      val (beforeFrom, afterFrom) = currentQuery.splitBy("FROM")
-      afterFrom match {
-        case None =>
-          replaceTableNameInQueryPart(currentQuery, table.tableStringInQuery, finalIndices)
-        case Some(tablesPart) =>
-          s"${beforeFrom}FROM ${replaceTableNameInQueryPart(tablesPart, table.tableStringInQuery, finalIndices)}"
-      }
-    }
-  }
-
-  private def replaceTableNameInQueryPart(currentQuery: String, originTable: String, finalIndices: Set[String]) = {
-    currentQuery.replaceAll(Pattern.quote(originTable), finalIndices.mkString(","))
   }
 
   private final class EsqlParser(
@@ -103,40 +102,60 @@ object EsqlRequestHelper {
         .create()
         .get[Any]()
 
-    def createStatementBasedOn(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
-      createStatement(request).map { statement =>
-        NonEmptyList.fromList(indicesFrom(statement)) match {
-          case Some(indices) => new IndicesRelatedStatement(statement, indices)
-          case None          => OtherCommand(statement)
+    def createStatementBasedOn(request: CompositeIndicesRequest): Either[EsqlClassificationError, Statement] = {
+      createStatement(request).flatMap { statement =>
+        indexTablesFrom(statement).map { tables =>
+          NonEmptyList.fromList(tables) match {
+            case Some(indexTables) => new IndicesRelatedStatement(statement, indexTables)
+            case None              => OtherCommand(statement)
+          }
         }
       }
     }
 
     private def createStatement(request: CompositeIndicesRequest) = {
-      val query = getQuery(request)
+      val query = getQuery(request).value
       val params = getParams(request)
       Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
         case Success(s)                                                                       => Right(s)
         case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
-        case Failure(ex) => Left(ClassificationError.ParsingException(ex))
+        case Failure(ex) => Left(EsqlClassificationError.NotParsable(ex))
       }
     }
 
-    private def indicesFrom(statement: Any) = {
-      val preAnalyze = doPreAnalyze(newPreAnalyzer, statement)
-      val tableInfoList = tableInfosFrom(preAnalyze)
-      tableInfoList
-        .map(tableIdentifierFrom)
-        .map(indexStringFrom)
-        .flatMap { tableString =>
-          NonEmptyList
-            .fromList(splitIntoIndices(tableString))
-            .map(IndexTable(tableString, _))
-        }
+    private def indexTablesFrom(statement: Any): Either[EsqlClassificationError, List[EsqlIndexTable]] = {
+      val preAnalysis = doPreAnalyze(newPreAnalyzer, statement)
+      for {
+        _ <- reviewPreAnalysis(preAnalysis)
+        sourceCommands <- tablesFrom(sourceCommandIndexLists(preAnalysis), EsqlIndexTable.SourceCommand.parse)
+        lookupJoins <- tablesFrom(lookupJoinIndexLists(preAnalysis), EsqlIndexTable.LookupJoin.parse)
+      } yield sourceCommands ::: lookupJoins
     }
 
-    private def splitIntoIndices(tableString: String) = {
-      tableString.split(',').asSafeList.filter(_.nonEmpty)
+    private val reviewedPreAnalysisFields: Map[String, PreAnalysisField] = Map(
+      "indices" -> PreAnalysisField.Handled,
+      "enriches" -> PreAnalysisField.NotAnIndexSource,
+      "lookupIndices" -> PreAnalysisField.Handled
+    )
+
+    private def reviewPreAnalysis(preAnalysis: Any): Either[EsqlClassificationError, Unit] = {
+      EsqlPreAnalysisReview
+        .unreviewedFieldsIn(
+          fieldNames = EsqlPreAnalysisReview.instanceFieldNamesOf(preAnalysis.getClass),
+          reviewed = reviewedPreAnalysisFields,
+          valueOf = name => Try(on(preAnalysis).get[AnyRef](name))
+        )
+        .map(EsqlClassificationError.UnreviewedQueryContent.apply)
+        .toLeft(())
+    }
+
+    private def tablesFrom(
+        reportedIndexLists: List[String],
+        tableFrom: NormalizedIndexList => Option[EsqlIndexTable]
+    ): Either[EsqlClassificationError, List[EsqlIndexTable]] = {
+      reportedIndexLists
+        .flatMap(NormalizedIndexList.fromEsReport)
+        .traverse(text => tableFrom(text).toRight(EsqlClassificationError.UnsupportedIndexList(text)))
     }
 
     private def newPreAnalyzer(
@@ -149,22 +168,26 @@ object EsqlRequestHelper {
       on(preAnalyzer).call("preAnalyze", statement).get[Any]()
     }
 
-    private def tableInfosFrom(preAnalysis: Any) = {
-      on(preAnalysis).get[java.util.List[Any]]("indices").asScala.toList
+    private def sourceCommandIndexLists(preAnalysis: Any): List[String] = {
+      indexListsOf(tableInfosIn(preAnalysis, field = "indices"))
     }
 
-    private def tableIdentifierFrom(tableInfo: Any) = {
-      on(tableInfo).call("id").get[Any]()
+    private def lookupJoinIndexLists(preAnalysis: Any): List[String] = {
+      indexListsOf(tableInfosIn(preAnalysis, field = "lookupIndices"))
     }
 
-    private def indexStringFrom(tableIdentifier: Any) = {
-      on(tableIdentifier).call("indexPattern").get[String]()
+    private def tableInfosIn(preAnalysis: Any, field: String) = {
+      on(preAnalysis).get[java.util.List[Any]](field).asScala.toList
+    }
+
+    private def indexListsOf(tableInfos: List[Any]): List[String] = {
+      tableInfos.map(tableInfo => on(tableInfo).call("id").get[Any]()).map(on(_).call("indexPattern").get[String]())
     }
 
   }
 
   private sealed trait Statement
-  private final class IndicesRelatedStatement(val underlyingObject: Any, val indices: NonEmptyList[IndexTable])
+  private final class IndicesRelatedStatement(val underlyingObject: Any, val tables: NonEmptyList[EsqlIndexTable])
       extends Statement
 
   private final class OtherCommand(val underlyingObject: Any) extends Statement
@@ -259,25 +282,6 @@ object EsqlRequestHelper {
 
     }
 
-  }
-
-  final case class IndexTable(tableStringInQuery: String, indices: NonEmptyList[String])
-
-  sealed trait EsqlRequestClassification
-
-  object EsqlRequestClassification {
-
-    final case class IndicesRelated(tables: NonEmptyList[IndexTable]) extends EsqlRequestClassification {
-      lazy val indices: Set[String] = tables.toCovariantSet.flatMap(_.indices.toIterable)
-    }
-
-    case object NonIndicesRelated extends EsqlRequestClassification
-  }
-
-  sealed trait ClassificationError
-
-  object ClassificationError {
-    final case class ParsingException(cause: Throwable) extends ClassificationError
   }
 
 }
