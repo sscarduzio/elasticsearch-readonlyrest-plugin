@@ -19,18 +19,19 @@ package tech.beshu.ror.unit.es.esql
 import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.es.esql.{EsqlPlanLeafReview, PlanLeaf}
+import tech.beshu.ror.es.esql.PlanLeafReview
+import tech.beshu.ror.es.esql.PlanLeafReview.Verdict
 
-class EsqlPlanLeafReviewTest extends AnyWordSpec {
+class PlanLeafReviewTest extends AnyWordSpec {
 
   private val reviewed = Map(
-    "UnresolvedRelation" -> PlanLeaf.Handled,
-    "Row" -> PlanLeaf.NotAnIndexSource,
-    "UnresolvedExternalRelation" -> PlanLeaf.UnsupportedIndexSource,
-    "Explain" -> PlanLeaf.UnsupportedIndexSource
+    "UnresolvedRelation" -> Verdict.Handled,
+    "Row" -> Verdict.NotAnIndexSource,
+    "UnresolvedExternalRelation" -> Verdict.UnsupportedIndexSource,
+    "Explain" -> Verdict.UnsupportedIndexSource
   )
 
-  "EsqlPlanLeafReview.unreviewedLeavesIn" should {
+  "PlanLeafReview.unreviewedLeavesIn" should {
     "accept a plan whose every leaf was reviewed" in {
       review("UnresolvedRelation", "Row") shouldBe None
     }
@@ -57,6 +58,6 @@ class EsqlPlanLeafReviewTest extends AnyWordSpec {
   }
 
   private def review(leafTypeNames: String*): Option[NonEmptyList[String]] =
-    EsqlPlanLeafReview.unreviewedLeavesIn(leafTypeNames.toList, reviewed)
+    PlanLeafReview.unreviewedLeavesIn(leafTypeNames.toList, reviewed)
 
 }

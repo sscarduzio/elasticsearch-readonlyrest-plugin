@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.esql.{EsqlClassificationError, EsqlQueryRejection, EsqlRequestClassification}
+import tech.beshu.ror.es.esql.{ClassificationError, QueryRejection, RequestClassification}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
@@ -58,9 +58,9 @@ class EsqlIndicesEsRequestContext private (
       request: ActionRequest with CompositeIndicesRequest
   ): Set[RequestedIndex[ClusterIndexName]] = {
     requestClassification match {
-      case Right(classification @ EsqlRequestClassification.IndicesRelated(_)) =>
+      case Right(classification @ RequestClassification.IndicesRelated(_)) =>
         classification.requestedIndices
-      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(_) =>
+      case Right(RequestClassification.NonIndicesRelated) | Left(_) =>
         Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
     }
   }
@@ -85,23 +85,23 @@ class EsqlIndicesEsRequestContext private (
   private def modifyRequestIndices(
       request: ActionRequest with CompositeIndicesRequest,
       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Either[EsqlQueryRejection, Unit] = {
+  ): Either[QueryRejection, Unit] = {
     requestClassification match {
-      case Right(EsqlRequestClassification.NonIndicesRelated) =>
+      case Right(RequestClassification.NonIndicesRelated) =>
         Right(())
-      case Right(classification @ EsqlRequestClassification.IndicesRelated(tables)) =>
+      case Right(classification @ RequestClassification.IndicesRelated(indexLists)) =>
         if (filteredIndices.toList.toCovariantSet != classification.requestedIndices) {
-          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndices)
+          EsqlRequestHelper.modifyIndicesOf(request, indexLists, filteredIndices)
         } else {
           Right(())
         }
-      case Left(EsqlClassificationError.NotParsable(cause)) =>
+      case Left(ClassificationError.NotParsable(cause)) =>
         logger.debug("Cannot parse the ES|QL statement - we can pass it through, because ES will reject it too", cause)
         Right(())
-      case Left(EsqlClassificationError.CannotReadIndexList(failure)) =>
-        Left(EsqlQueryRejection.CannotReadIndexList(failure))
-      case Left(EsqlClassificationError.UnreviewedQueryContent(fields)) =>
-        Left(EsqlQueryRejection.UnreviewedQueryContent(fields))
+      case Left(ClassificationError.CannotReadIndexList(failure)) =>
+        Left(QueryRejection.CannotReadIndexList(failure))
+      case Left(ClassificationError.UnreviewedQueryContent(fields)) =>
+        Left(QueryRejection.UnreviewedQueryContent(fields))
     }
   }
 

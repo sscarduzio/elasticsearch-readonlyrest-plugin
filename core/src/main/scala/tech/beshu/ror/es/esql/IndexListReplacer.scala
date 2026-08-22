@@ -18,24 +18,43 @@ package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.esql.EsqlIndexTable.{LookupJoin, SourceCommand}
+import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoin, SourceCommand}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
 /** A rewritten query, together with what ES has to read out of it for the rewrite to have done its job. */
-final case class EsqlReplacedQuery(query: EsqlQuery, intendedReads: List[EsqlIndexListRead])
+final case class ReplacedQuery(query: Query, intendedReads: List[IndexListRead]) {
 
-object EsqlIndexListReplacing {
+  /**
+   * The rewrite is held to what ES reads back out of it, rather than to what ROR read out of the query it was
+   * given. Only the second says the index lists ES will run the query against are the ones the ACL allowed - a
+   * span read a character short, or a name that needed quoting, shows up here and nowhere else.
+   */
+  def checkedAgainst(esReads: List[IndexListRead]): Either[QueryRejection, Query] = {
+    val intended = rendered(intendedReads)
+    val read = rendered(esReads)
+    Either.cond(
+      test = intended == read,
+      right = query,
+      left = QueryRejection.QueryNotReplacedAsIntended(intended, read)
+    )
+  }
 
-  def queryWithAllowedIndices(
-      query: EsqlQuery,
-      tables: NonEmptyList[EsqlIndexTable],
+  private def rendered(reads: List[IndexListRead]): List[String] = reads.map(_.show).sorted
+}
+
+object IndexListReplacer {
+
+  def replacing(
+      query: Query,
+      indexLists: NonEmptyList[LocatedIndexList],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): EsqlReplacedQuery = {
+  ): ReplacedQuery = {
     val allowedIndexNames: Set[ClusterIndexName] = allowedIndices.includedOnly
 
-    val (lookupJoins, sourceCommands) = tables.toList.partitionMap {
-      case table: LookupJoin    => Left(table)
-      case table: SourceCommand => Right(table)
+    val (lookupJoins, sourceCommands) = indexLists.toList.partitionMap {
+      case indexList: LookupJoin    => Left(indexList)
+      case indexList: SourceCommand => Right(indexList)
     }
 
     val reachableOnlyThroughLookupJoin: Set[ClusterIndexName] =
@@ -45,43 +64,17 @@ object EsqlIndexListReplacing {
       if (sourceCommands.sizeIs == 1) SourceCommandScope.TheOnlyOne else SourceCommandScope.OneOfSeveral
 
     val edits =
-      sourceCommands.map { table =>
+      sourceCommands.map { indexList =>
         Edit(
-          table.indexListSpan,
-          allowedIndicesFor(table, allowedIndexNames, reachableOnlyThroughLookupJoin, scope),
+          indexList.span,
+          allowedIndicesFor(indexList, allowedIndexNames, reachableOnlyThroughLookupJoin, scope),
           isLookupJoin = false
         )
-      } ::: lookupJoins.map { table =>
-        Edit(table.indexListSpan, allowedIndicesFor(table, allowedIndexNames), isLookupJoin = true)
+      } ::: lookupJoins.map { indexList =>
+        Edit(indexList.span, allowedIndicesFor(indexList, allowedIndexNames), isLookupJoin = true)
       }
 
-    EsqlReplacedQuery(
-      rewritten(query, edits),
-      edits.map(edit => EsqlIndexListRead(edit.isLookupJoin, edit.newIndexList))
-    )
-  }
-
-  /**
-   * The rewrite is held to what ES reads back out of it, rather than to what ROR read out of the query it was given.
-   * Only the second says the index lists ES will run the query against are the ones the ACL allowed - a span read a
-   * character short, or a name that needed quoting, shows up here and nowhere else.
-   */
-  def verified(
-      replaced: EsqlReplacedQuery,
-      esReadsFromRewrittenQuery: List[EsqlIndexListRead]
-  ): Either[EsqlQueryRejection, EsqlQuery] = {
-    val intended = rendered(replaced.intendedReads)
-    val read = rendered(esReadsFromRewrittenQuery)
-    Either.cond(
-      test = intended == read,
-      right = replaced.query,
-      left = EsqlQueryRejection.QueryNotReplacedAsIntended(intended, read)
-    )
-  }
-
-  private def rendered(reads: List[EsqlIndexListRead]): List[String] = {
-    import tech.beshu.ror.implicits.*
-    reads.map(_.show).sorted
+    ReplacedQuery(rewritten(query, edits), edits.map(edit => IndexListRead(edit.isLookupJoin, edit.newIndexList)))
   }
 
   /**
@@ -91,12 +84,12 @@ object EsqlIndexListReplacing {
    * with another command's rows.
    */
   private def allowedIndicesFor(
-      table: SourceCommand,
+      indexList: SourceCommand,
       allowedIndices: Set[ClusterIndexName],
       reachableOnlyThroughLookupJoin: Set[ClusterIndexName],
       scope: SourceCommandScope
   ): NonEmptyList[ClusterIndexName] = {
-    val namesMatchingWrittenPattern = table.writtenPattern.filter(allowedIndices)
+    val namesMatchingWrittenPattern = indexList.writtenPattern.filter(allowedIndices)
     val names = scope match {
       case SourceCommandScope.TheOnlyOne =>
         (allowedIndices -- reachableOnlyThroughLookupJoin) ++ namesMatchingWrittenPattern
@@ -107,27 +100,23 @@ object EsqlIndexListReplacing {
   }
 
   private def allowedIndicesFor(
-      table: LookupJoin,
+      indexList: LookupJoin,
       allowedIndices: Set[ClusterIndexName]
   ): NonEmptyList[ClusterIndexName] =
-    if (allowedIndices.contains(table.index)) NonEmptyList.one(table.index) else maskedAsNonexistent
+    if (allowedIndices.contains(indexList.index)) NonEmptyList.one(indexList.index) else maskedAsNonexistent
 
   private def maskedAsNonexistent: NonEmptyList[ClusterIndexName] =
     NonEmptyList.one(ClusterIndexName.Local.randomNonexistentIndex())
 
-  private def rewritten(query: EsqlQuery, edits: List[Edit]): EsqlQuery = {
-    EsqlQuery(
-      edits.sortBy(-_.indexListSpan.start).foldLeft(query.value) { case (text, edit) =>
-        s"${text.substring(0, edit.indexListSpan.start)}${edit.newIndexList}${text.substring(edit.indexListSpan.end)}"
+  private def rewritten(query: Query, edits: List[Edit]): Query = {
+    Query(
+      edits.sortBy(-_.span.start).foldLeft(query.value) { case (text, edit) =>
+        s"${text.substring(0, edit.span.start)}${edit.newIndexList}${text.substring(edit.span.end)}"
       }
     )
   }
 
-  private final case class Edit(
-      indexListSpan: QueryTextSpan,
-      newIndices: NonEmptyList[ClusterIndexName],
-      isLookupJoin: Boolean
-  ) {
+  private final case class Edit(span: TextSpan, newIndices: NonEmptyList[ClusterIndexName], isLookupJoin: Boolean) {
     def newIndexList: String = newIndices.toList.map(_.stringify).mkString(",")
   }
 

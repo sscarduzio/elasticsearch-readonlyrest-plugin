@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.*
-import tech.beshu.ror.es.esql.EsqlIndexListReadingFailure.*
+import tech.beshu.ror.es.esql.IndexListReadingFailure.*
 
 /**
  * Covers reading the index lists ES reported out of the query text and replacing them in one go, because that is
@@ -31,7 +31,7 @@ import tech.beshu.ror.es.esql.EsqlIndexListReadingFailure.*
  * A reported relation is written the way ES's parser builds it - the raw text of the node it read the index list
  * from, plus that list normalized (`FROM a, b` reported as `a,b`).
  */
-class EsqlIndexListReplacingTest extends AnyWordSpec {
+class IndexListReplacerTest extends AnyWordSpec {
 
   private val maskedIndex = """ROR_[A-Za-z0-9]{10}""".r
 
@@ -337,7 +337,7 @@ class EsqlIndexListReplacingTest extends AnyWordSpec {
         verify(
           "FROM logs-* | LIMIT 10",
           allowed("logs-1"),
-          esReads = List(EsqlIndexListRead(isLookupJoin = false, "logs-1")),
+          esReads = List(IndexListRead(isLookupJoin = false, "logs-1")),
           from("FROM logs-*", "logs-*")
         ) shouldBe Right("FROM logs-1 | LIMIT 10")
       }
@@ -345,9 +345,9 @@ class EsqlIndexListReplacingTest extends AnyWordSpec {
         verify(
           "FROM a, // and\n b | LIMIT 10",
           allowed("b"),
-          esReads = List(EsqlIndexListRead(isLookupJoin = false, "b,b")),
+          esReads = List(IndexListRead(isLookupJoin = false, "b,b")),
           from("FROM a, // and\n b", "a,b")
-        ) shouldBe Left(EsqlQueryRejection.QueryNotReplacedAsIntended(List("b"), List("b,b")))
+        ) shouldBe Left(QueryRejection.QueryNotReplacedAsIntended(List("b"), List("b,b")))
       }
       "reject a rewrite ES cannot parse at all, which it reads nothing out of" in {
         verify(
@@ -355,20 +355,20 @@ class EsqlIndexListReplacingTest extends AnyWordSpec {
           allowed("logs-1"),
           esReads = List.empty,
           from("FROM logs-*", "logs-*")
-        ) shouldBe Left(EsqlQueryRejection.QueryNotReplacedAsIntended(List("logs-1"), List.empty))
+        ) shouldBe Left(QueryRejection.QueryNotReplacedAsIntended(List("logs-1"), List.empty))
       }
       "hold a LOOKUP JOIN target to being read as one" in {
         verify(
           "FROM src | LOOKUP JOIN lookup_idx ON key",
           allowed("src", "lookup_idx"),
           esReads = List(
-            EsqlIndexListRead(isLookupJoin = false, "src"),
-            EsqlIndexListRead(isLookupJoin = false, "lookup_idx")
+            IndexListRead(isLookupJoin = false, "src"),
+            IndexListRead(isLookupJoin = false, "lookup_idx")
           ),
           from("FROM src", "src"),
           join("lookup_idx", "lookup_idx")
         ) shouldBe Left(
-          EsqlQueryRejection.QueryNotReplacedAsIntended(
+          QueryRejection.QueryNotReplacedAsIntended(
             List("LOOKUP JOIN lookup_idx", "src"),
             List("lookup_idx", "src")
           )
@@ -386,24 +386,24 @@ class EsqlIndexListReplacingTest extends AnyWordSpec {
   private def rewrite(
       query: String,
       allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      reported: ReportedRelation*
+      reported: ReportedBy*
   ): String = {
-    val tables = tablesIn(query, reported)
+    val indexLists = indexListsIn(query, reported)
       .fold(failure => fail(s"index lists were not read: ${failure.toString}"), identity)
-    EsqlIndexListReplacing.queryWithAllowedIndices(EsqlQuery(query), tables, allowed).query.value
+    IndexListReplacer.replacing(Query(query), indexLists, allowed).query.value
   }
 
   private def readingFailureFor(
       query: String,
       allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      reported: ReportedRelation*
-  ): EsqlIndexListReadingFailure = {
-    tablesIn(query, reported).fold(
+      reported: ReportedBy*
+  ): IndexListReadingFailure = {
+    indexListsIn(query, reported).fold(
       identity,
-      tables =>
+      indexLists =>
         fail(
           s"index lists were read, although they should not have been: " +
-            s"${EsqlIndexListReplacing.queryWithAllowedIndices(EsqlQuery(query), tables, allowed).query.value}"
+            s"${IndexListReplacer.replacing(Query(query), indexLists, allowed).query.value}"
         )
     )
   }
@@ -411,63 +411,61 @@ class EsqlIndexListReplacingTest extends AnyWordSpec {
   private def verify(
       query: String,
       allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      esReads: List[EsqlIndexListRead],
-      reported: ReportedRelation*
-  ): Either[EsqlQueryRejection, String] = {
-    val tables = tablesIn(query, reported)
+      esReads: List[IndexListRead],
+      reported: ReportedBy*
+  ): Either[QueryRejection, String] = {
+    val indexLists = indexListsIn(query, reported)
       .fold(failure => fail(s"index lists were not read: ${failure.toString}"), identity)
-    val replaced = EsqlIndexListReplacing.queryWithAllowedIndices(EsqlQuery(query), tables, allowed)
-    EsqlIndexListReplacing.verified(replaced, esReads).map(_.value)
+    val replaced = IndexListReplacer.replacing(Query(query), indexLists, allowed)
+    replaced.checkedAgainst(esReads).map(_.value)
   }
 
-  private def tablesIn(
+  private def indexListsIn(
       query: String,
-      reported: Seq[ReportedRelation]
-  ): Either[EsqlIndexListReadingFailure, NonEmptyList[EsqlIndexTable]] = {
+      reported: Seq[ReportedBy]
+  ): Either[IndexListReadingFailure, NonEmptyList[LocatedIndexList]] = {
     val relations = reported.toList
-      .foldLeft((Map.empty[String, Int], List.empty[EsqlReportedRelation])) {
-        case ((claimedUpTo, relations), relation) =>
-          val offset = relation.forcedOffset.getOrElse {
-            query.indexOf(relation.writtenText, claimedUpTo.getOrElse(relation.writtenText, 0))
-          }
-          (claimedUpTo.updated(relation.writtenText, offset + 1), relations :+ relation.reportedAt(query, offset))
+      .foldLeft((Map.empty[String, Int], List.empty[ReportedIndexList])) { case ((claimedUpTo, relations), relation) =>
+        val offset = relation.forcedOffset.getOrElse {
+          query.indexOf(relation.writtenText, claimedUpTo.getOrElse(relation.writtenText, 0))
+        }
+        (claimedUpTo.updated(relation.writtenText, offset + 1), relations :+ relation.reportedAt(query, offset))
       }
       ._2
-    EsqlIndexListLocator
-      .indexTablesIn(EsqlQuery(query), relations)
-      .map(tables => NonEmptyList.fromListUnsafe(tables))
+    IndexListLocator
+      .locatedIn(Query(query), relations)
+      .map(lists => NonEmptyList.fromListUnsafe(lists))
   }
 
-  private def from(writtenText: String, indexList: String): ReportedRelation =
-    ReportedRelation(writtenText, indexList, isLookupJoin = false, forcedOffset = None)
+  private def from(writtenText: String, indexList: String): ReportedBy =
+    ReportedBy(writtenText, indexList, isLookupJoin = false, forcedOffset = None)
 
-  private def join(writtenText: String, indexList: String): ReportedRelation =
-    ReportedRelation(writtenText, indexList, isLookupJoin = true, forcedOffset = None)
+  private def join(writtenText: String, indexList: String): ReportedBy =
+    ReportedBy(writtenText, indexList, isLookupJoin = true, forcedOffset = None)
 
-  private def at(offset: Int, writtenText: String, indexList: String): ReportedRelation =
-    ReportedRelation(writtenText, indexList, isLookupJoin = false, forcedOffset = Some(offset))
+  private def at(offset: Int, writtenText: String, indexList: String): ReportedBy =
+    ReportedBy(writtenText, indexList, isLookupJoin = false, forcedOffset = Some(offset))
 
   private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] =
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))
 
   /** Written the way ES's parser builds it: the raw text of the node, and where in the query that text sits. */
-  private final case class ReportedRelation(
+  private final case class ReportedBy(
       writtenText: String,
       indexList: String,
       isLookupJoin: Boolean,
       forcedOffset: Option[Int]
   ) {
 
-    def reportedAt(query: String, offset: Int): EsqlReportedRelation = {
+    def reportedAt(query: String, offset: Int): ReportedIndexList = {
       val before = query.take(offset)
-      EsqlReportedRelation(
-        indexList = indexList,
-        writtenAt = EsqlSourceLocation(
+      ReportedIndexList(
+        read = IndexListRead(isLookupJoin, indexList),
+        writtenAt = SourceLocation(
           line = before.count(_ == '\n') + 1,
           column = offset - (before.lastIndexOf('\n') + 1)
         ),
-        writtenText = writtenText,
-        isLookupJoin = isLookupJoin
+        writtenText = writtenText
       )
     }
 
