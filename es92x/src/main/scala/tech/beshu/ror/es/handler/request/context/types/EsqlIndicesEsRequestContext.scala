@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.esql.{EsqlClassificationError, EsqlRequestClassification}
+import tech.beshu.ror.es.esql.{EsqlClassificationError, EsqlQueryRejection, EsqlRequestClassification}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
@@ -86,7 +86,7 @@ class EsqlIndicesEsRequestContext private (
   private def modifyRequestIndices(
       request: ActionRequest with CompositeIndicesRequest,
       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Either[EsqlClassificationError.Unauthorizable, Unit] = {
+  ): Either[EsqlQueryRejection, Unit] = {
     requestClassification match {
       case Right(EsqlRequestClassification.NonIndicesRelated) =>
         Right(())
@@ -99,8 +99,10 @@ class EsqlIndicesEsRequestContext private (
       case Left(EsqlClassificationError.NotParsable(cause)) =>
         logger.debug("Cannot parse the ES|QL statement - we can pass it through, because ES will reject it too", cause)
         Right(())
-      case Left(error: EsqlClassificationError.Unauthorizable) =>
-        Left(error)
+      case Left(EsqlClassificationError.CannotReadIndexList(failure)) =>
+        Left(EsqlQueryRejection.CannotReadIndexList(failure))
+      case Left(EsqlClassificationError.UnreviewedQueryContent(fields)) =>
+        Left(EsqlQueryRejection.UnreviewedQueryContent(fields))
     }
   }
 
