@@ -90,14 +90,15 @@ retry_with_backoff() {
   fi
 
   while true; do
+    # Both branches run inside a group followed by `|| true`, so errexit in a caller cannot stop us
+    # at a failure we are about to repeat. The status is read inside the group, where PIPESTATUS
+    # still holds the command's own value.
     if [ -n "$log" ]; then
       # tee keeps the output on the console. PIPESTATUS holds the status of the command itself, not
       # the status of tee.
-      "$@" 2>&1 | tee "$log"
-      status=${PIPESTATUS[0]}
+      { "$@" 2>&1 | tee "$log"; status=${PIPESTATUS[0]}; } || true
     else
-      "$@"
-      status=$?
+      { "$@"; status=$?; } || true
     fi
 
     if [ "$status" -eq 0 ]; then
@@ -127,7 +128,7 @@ retry_with_backoff() {
 # multi-arch image before they push, so a repeat of such a failure costs two more full builds.
 is_docker_registry_error() {
   grep -Eqi \
-    'toomanyrequests|429 Too Many Requests|received unexpected HTTP status: 4?5[0-9][0-9]|unexpected status: 5[0-9][0-9]|50[0234] (Internal Server Error|Bad Gateway|Service Unavailable|Gateway Time-?out)|TLS handshake timeout|i/o timeout|connection reset by peer|unexpected EOF|net/http: request canceled' \
+    'toomanyrequests|429 Too Many Requests|received unexpected HTTP status: 5[0-9][0-9]|unexpected status: 5[0-9][0-9]|50[0234] (Internal Server Error|Bad Gateway|Service Unavailable|Gateway Time-?out)|TLS handshake timeout|i/o timeout|connection reset by peer|unexpected EOF|net/http: request canceled' \
     "$1"
 }
 
