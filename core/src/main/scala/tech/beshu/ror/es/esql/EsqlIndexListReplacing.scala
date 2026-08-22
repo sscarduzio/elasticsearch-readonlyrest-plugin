@@ -21,9 +21,9 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.EsqlIndexTable.{LookupJoin, SourceCommand}
 import tech.beshu.ror.syntax.*
 
-object EsqlQueryNarrowing {
+object EsqlIndexListReplacing {
 
-  def narrowedQuery(
+  def queryWithAllowedIndices(
       query: EsqlQuery,
       tables: NonEmptyList[EsqlIndexTable],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
@@ -43,9 +43,9 @@ object EsqlQueryNarrowing {
 
     val edits =
       sourceCommands.map { table =>
-        Edit(table.indexListSpan, narrowed(table, allowedIndexNames, reachableOnlyThroughLookupJoin, scope))
+        Edit(table.indexListSpan, allowedIndicesFor(table, allowedIndexNames, reachableOnlyThroughLookupJoin, scope))
       } ::: lookupJoins.map { table =>
-        Edit(table.indexListSpan, narrowed(table, allowedIndexNames))
+        Edit(table.indexListSpan, allowedIndicesFor(table, allowedIndexNames))
       }
 
     rewritten(query, edits)
@@ -57,7 +57,7 @@ object EsqlQueryNarrowing {
    * to any single command once there are several, where handing it to each would answer a subquery the ACL denied
    * with another command's rows.
    */
-  private def narrowed(
+  private def allowedIndicesFor(
       table: SourceCommand,
       allowedIndices: Set[ClusterIndexName],
       reachableOnlyThroughLookupJoin: Set[ClusterIndexName],
@@ -73,7 +73,10 @@ object EsqlQueryNarrowing {
     NonEmptyList.fromList(names.toList).getOrElse(maskedAsNonexistent)
   }
 
-  private def narrowed(table: LookupJoin, allowedIndices: Set[ClusterIndexName]): NonEmptyList[ClusterIndexName] =
+  private def allowedIndicesFor(
+      table: LookupJoin,
+      allowedIndices: Set[ClusterIndexName]
+  ): NonEmptyList[ClusterIndexName] =
     if (allowedIndices.contains(table.index)) NonEmptyList.one(table.index) else maskedAsNonexistent
 
   private def maskedAsNonexistent: NonEmptyList[ClusterIndexName] =

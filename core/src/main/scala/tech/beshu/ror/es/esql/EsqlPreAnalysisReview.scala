@@ -39,7 +39,7 @@ object PreAnalysisField {
  * ES keeps the indices a query reads in the fields of its pre-analysis result, and has grown a new one per
  * clause it added ([[PreAnalysisField.Handled]] `lookupIndices` for `LOOKUP JOIN`, `linkedIndices` for views).
  * A field nobody reviewed is indistinguishable from an absent one - both leave ROR extracting nothing, the
- * query scanner finding nothing, and the two agreeing that there is nothing to narrow - so the indices it
+ * query text holding nothing to replace, and the two agreeing that there is nothing to do - so the indices it
  * holds reach ES unauthorized. Reviewing the whole field set turns the next such addition into a rejection.
  */
 object EsqlPreAnalysisReview {

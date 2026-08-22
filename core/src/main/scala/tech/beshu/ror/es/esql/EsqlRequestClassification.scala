@@ -66,10 +66,10 @@ object EsqlIndexListReadingFailure {
       s"the index list found in the query [${written.show}] is not the one ES reported [${reported.show}]"
     case SubqueryInSourceCommand(indexList) =>
       s"the source command reading [${indexList.show}] holds a subquery, which ES reports merged into the " +
-        "surrounding index list, leaving no index list of its own to narrow"
+        "surrounding index list, leaving no index list of its own to replace"
     case PromqlLeaningOnDefaultIndex =>
       "the PROMQL command names no [index] parameter, so the indices it reads are the ones ES defaults to and " +
-        "the query holds no index list to narrow - name them with [index=...] to have the query authorized"
+        "the query holds no index list to replace - name them with [index=...] to have the query authorized"
     case UnsupportedIndexList(indexList) =>
       s"the index list [${indexList.show}] cannot be read as indices"
   }
@@ -86,8 +86,8 @@ object EsqlQueryRejection {
 
   implicit val show: Show[EsqlQueryRejection] = Show.show {
     case CannotReadIndexList(failure) =>
-      s"Cannot narrow the ES|QL query down to the indices the ACL allowed - the request is rejected, because " +
-        s"passing it through would run it against the originally requested indices; ${failure.show}"
+      s"Cannot replace the ES|QL query's index lists with the ones the ACL allowed - the request is rejected, " +
+        s"because passing it through would run it against the originally requested indices; ${failure.show}"
     case UnreviewedQueryContent(fields) =>
       s"The ES|QL query is read by ES into [${fields.toList.mkString(", ")}] of its pre-analysis, which this ROR " +
         "version does not read - the request is rejected, because passing it through would run it against " +

@@ -24,20 +24,20 @@ import tech.beshu.ror.es.esql.*
 import tech.beshu.ror.es.esql.EsqlIndexListReadingFailure.*
 
 /**
- * Covers reading the index lists ES reported out of the query text and narrowing them in one go, because that is
- * the contract: what ES hands ROR has to come back out of the query text as the same list, or the query is not
- * narrowed at all.
+ * Covers reading the index lists ES reported out of the query text and replacing them in one go, because that is
+ * the contract: what ES hands ROR has to come back out of the query text as the same list, or the query is left
+ * alone entirely.
  *
  * A reported relation is written the way ES's parser builds it - the raw text of the node it read the index list
  * from, plus that list normalized (`FROM a, b` reported as `a,b`).
  */
-class EsqlQueryNarrowingTest extends AnyWordSpec {
+class EsqlIndexListReplacingTest extends AnyWordSpec {
 
   private val maskedIndex = """ROR_[A-Za-z0-9]{10}""".r
 
-  "Reading and narrowing an ES|QL query" when {
+  "Reading and replacing the index lists of an ES|QL query" when {
     "a source command is used" should {
-      "narrow a wildcard to the allowed indices" in {
+      "replace a wildcard with the allowed indices" in {
         rewrite("FROM logs-* | LIMIT 10", allowed("logs-1", "logs-2"), from("FROM logs-*", "logs-*")) should
           fullyMatch regex "FROM (logs-1,logs-2|logs-2,logs-1) \\| LIMIT 10"
       }
@@ -45,14 +45,14 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
         rewrite("FROM bookshop | LIMIT 100", allowed("bookstore"), from("FROM bookshop", "bookshop")) shouldBe
           "FROM bookstore | LIMIT 100"
       }
-      "narrow a comma separated list written with spaces" in {
+      "replace a comma separated list written with spaces" in {
         rewrite("FROM a, b | LIMIT 10", allowed("a"), from("FROM a, b", "a,b")) shouldBe "FROM a | LIMIT 10"
       }
-      "narrow a comma separated list whose entries are quoted" in {
+      "replace a comma separated list whose entries are quoted" in {
         rewrite("""FROM "a", b | LIMIT 10""", allowed("a"), from("""FROM "a", b""", "a,b")) shouldBe
           "FROM a | LIMIT 10"
       }
-      "narrow a single quoted index list holding a comma separated list" in {
+      "replace a single quoted index list holding a comma separated list" in {
         rewrite("""FROM "a,b" | LIMIT 10""", allowed("b"), from("""FROM "a,b"""", "a,b")) shouldBe
           "FROM b | LIMIT 10"
       }
@@ -74,7 +74,7 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
         rewrite("from logs-* | limit 10", allowed("logs-1"), from("from logs-*", "logs-*")) shouldBe
           "from logs-1 | limit 10"
       }
-      "narrow a source command that follows a SET prelude" in {
+      "replace the index list of a source command that follows a SET prelude" in {
         rewrite(
           "SET foo = 1; FROM logs-* | LIMIT 10",
           allowed("logs-1"),
@@ -95,14 +95,14 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
           from("FROM status", "status")
         ) shouldBe """FROM other | EVAL x = "FROM status""""
       }
-      "narrow an index list a line comment interrupts" in {
+      "replace an index list a line comment interrupts" in {
         rewrite(
           "FROM a, // and\n b | LIMIT 10",
           allowed("b"),
           from("FROM a, // and\n b", "a,b")
         ) shouldBe "FROM b | LIMIT 10"
       }
-      "narrow an index list a block comment interrupts" in {
+      "replace an index list a block comment interrupts" in {
         rewrite(
           "FROM a, /* and */ b | LIMIT 10",
           allowed("a"),
@@ -134,18 +134,18 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
           from("FROM .ds-metadata, logs*metadata", ".ds-metadata,logs*metadata")
         ) shouldBe "FROM a | LIMIT 10"
       }
-      "narrow the index list of a TS command" in {
+      "replace the index list of a TS command" in {
         rewrite("TS metrics-* | LIMIT 10", allowed("metrics-1"), from("TS metrics-*", "metrics-*")) shouldBe
           "TS metrics-1 | LIMIT 10"
       }
-      "narrow a source command written across more than one line" in {
+      "replace the index list of a source command written across more than one line" in {
         rewrite(
           "FROM logs-*\n| LIMIT 10",
           allowed("logs-1"),
           from("FROM logs-*", "logs-*")
         ) shouldBe "FROM logs-1\n| LIMIT 10"
       }
-      "narrow a source command that follows a line the query opens with" in {
+      "replace the index list of a source command that follows a line the query opens with" in {
         rewrite(
           "// leading comment\nFROM logs-* | LIMIT 10",
           allowed("logs-1"),
@@ -154,7 +154,7 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
       }
     }
     "a source command holds a subquery" should {
-      "narrow the subquery, which ES reads as a source command of its own" in {
+      "replace the index list of a subquery, which ES reads as a source command of its own" in {
         rewrite(
           "FROM (FROM idx_a | LIMIT 1) | LIMIT 10",
           allowed("idx_b"),
@@ -162,7 +162,7 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
           from("FROM idx_a", "idx_a")
         ) shouldBe "FROM (FROM idx_b | LIMIT 1) | LIMIT 10"
       }
-      "narrow each subquery to its own pattern, since neither may answer for the other" in {
+      "give each subquery only what its own pattern matches, since neither may answer for the other" in {
         rewrite(
           "FROM (FROM a* | LIMIT 1), (FROM b* | LIMIT 1) | LIMIT 10",
           allowed("a1", "b1"),
@@ -181,7 +181,7 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
         ) should fullyMatch regex
           s"FROM \\(FROM $maskedIndex \\| LIMIT 1\\), \\(FROM c \\| LIMIT 1\\) \\| LIMIT 10"
       }
-      "narrow every source command naming the same index, not only the first ES reported" in {
+      "replace every source command naming the same index, not only the first ES reported" in {
         rewrite(
           "FROM (FROM secret | LIMIT 1), (FROM secret | LIMIT 1) | LIMIT 10",
           allowed("allowed_idx"),
@@ -191,7 +191,7 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
         ) should fullyMatch regex
           s"FROM \\(FROM $maskedIndex \\| LIMIT 1\\), \\(FROM $maskedIndex \\| LIMIT 1\\) \\| LIMIT 10"
       }
-      "narrow a subquery nested in another subquery" in {
+      "replace the index list of a subquery nested in another subquery" in {
         rewrite(
           "FROM (FROM (FROM a | LIMIT 1) | LIMIT 1) | LIMIT 10",
           allowed("a"),
@@ -313,14 +313,14 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
       }
     }
     "PROMQL is used" should {
-      "narrow the index pattern its index parameter names" in {
+      "replace the index pattern named by its index parameter" in {
         rewrite(
           "PROMQL index=metrics-* step=1m rate(v)",
           allowed("metrics-1"),
           from("metrics-*", "metrics-*")
         ) shouldBe "PROMQL index=metrics-1 step=1m rate(v)"
       }
-      "narrow a quoted index parameter holding a comma separated list" in {
+      "replace a quoted index parameter holding a comma separated list" in {
         rewrite("""PROMQL index="a,b" step=1m v""", allowed("b"), from(""""a,b"""", "a,b")) shouldBe
           "PROMQL index=b step=1m v"
       }
@@ -351,7 +351,7 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
   ): String = {
     val tables = tablesIn(query, reported)
       .fold(failure => fail(s"index lists were not read: ${failure.toString}"), identity)
-    EsqlQueryNarrowing.narrowedQuery(EsqlQuery(query), tables, allowed).value
+    EsqlIndexListReplacing.queryWithAllowedIndices(EsqlQuery(query), tables, allowed).value
   }
 
   private def readingFailureFor(
@@ -364,7 +364,7 @@ class EsqlQueryNarrowingTest extends AnyWordSpec {
       tables =>
         fail(
           s"index lists were read, although they should not have been: " +
-            s"${EsqlQueryNarrowing.narrowedQuery(EsqlQuery(query), tables, allowed).value}"
+            s"${EsqlIndexListReplacing.queryWithAllowedIndices(EsqlQuery(query), tables, allowed).value}"
         )
     )
   }

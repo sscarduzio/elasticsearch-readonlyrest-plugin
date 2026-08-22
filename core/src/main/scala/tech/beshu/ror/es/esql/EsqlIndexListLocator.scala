@@ -22,8 +22,8 @@ import scala.annotation.tailrec
 
 /**
  * ES reports an index list normalized (`FROM a, b` as `a,b`), so searching the query for it silently finds nothing
- * and leaves the user's own indices in place. What makes the query narrowable is the source location ES's parser
- * keeps next to every index list - this turns it into the span of query text to rewrite.
+ * and leaves the user's own indices in place. What makes an index list replaceable is the source location ES's
+ * parser keeps next to every one of them - this turns it into the span of query text to rewrite.
  *
  * A `LOOKUP JOIN` target is located exactly. A source command is located as a whole (`FROM a, b METADATA _index`),
  * so its index list still has to be picked out of the command's own text.

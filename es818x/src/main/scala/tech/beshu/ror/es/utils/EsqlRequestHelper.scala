@@ -28,10 +28,10 @@ import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.esql.{
   EsqlClassificationError,
   EsqlIndexListLocator,
+  EsqlIndexListReplacing,
   EsqlIndexTable,
   EsqlPreAnalysisReview,
   EsqlQuery,
-  EsqlQueryNarrowing,
   EsqlReportedRelation,
   EsqlRequestClassification,
   EsqlSourceLocation,
@@ -50,12 +50,12 @@ import scala.util.{Failure, Success, Try}
 
 class EsqlRequestHelper(esVersion: EsVersion) {
 
-  def narrowIndicesOf(
+  def modifyIndicesOf(
       request: CompositeIndicesRequest,
       tables: NonEmptyList[EsqlIndexTable],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): Unit = {
-    setQuery(request, EsqlQueryNarrowing.narrowedQuery(getQuery(request), tables, allowedIndices))
+    setQuery(request, EsqlIndexListReplacing.queryWithAllowedIndices(getQuery(request), tables, allowedIndices))
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -197,8 +197,8 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
     /**
      * The very nodes ES reads the query's indices from when it pre-analyzes the plan - except the pre-analysis
-     * deduplicates them by pattern text and keeps one source location per pattern, which is one span too few to
-     * narrow a query naming the same pattern twice.
+     * deduplicates them by pattern text and keeps one source location per pattern, which is one span too few for
+     * a query naming the same pattern twice.
      */
     private def reportedRelationsIn(plan: Any): List[EsqlReportedRelation] = {
       val isUnresolvedRelation: JPredicate[Any] = node => node.getClass.getSimpleName == "UnresolvedRelation"

@@ -72,7 +72,7 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    narrowIndicesOf(request, filteredRequestedIndices) match {
+    modifyRequestIndices(request, filteredRequestedIndices) match {
       case Right(_) =>
         applyFieldLevelSecurityTo(request, fieldLevelSecurity)
         applyFilterTo(request, filter)
@@ -83,7 +83,7 @@ class EsqlIndicesEsRequestContext private (
     }
   }
 
-  private def narrowIndicesOf(
+  private def modifyRequestIndices(
       request: ActionRequest with CompositeIndicesRequest,
       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): Either[EsqlQueryRejection, Unit] = {
@@ -92,7 +92,7 @@ class EsqlIndicesEsRequestContext private (
         Right(())
       case Right(classification @ EsqlRequestClassification.IndicesRelated(tables)) =>
         if (filteredIndices.toList.toCovariantSet != classification.requestedIndices) {
-          Right(esqlRequestHelper.narrowIndicesOf(request, tables, filteredIndices))
+          Right(esqlRequestHelper.modifyIndicesOf(request, tables, filteredIndices))
         } else {
           Right(())
         }

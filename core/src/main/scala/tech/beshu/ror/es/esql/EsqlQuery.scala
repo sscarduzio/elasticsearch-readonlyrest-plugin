@@ -27,8 +27,8 @@ final case class EsqlSourceLocation(line: Int, column: Int)
  * One index-reading node of the parsed query, as ES's own parser describes it: the index list ES read out of it,
  * normalized (`FROM a, b` becomes `a,b`), together with the place in the query text it was written at.
  *
- * The written text is what makes the query narrowable - the normalized list cannot be searched for, because it is
- * not what the user wrote.
+ * The written text is what makes the index list replaceable - the normalized list cannot be searched for, because
+ * it is not what the user wrote.
  */
 final case class EsqlReportedRelation(
     indexList: String,

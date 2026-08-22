@@ -151,7 +151,7 @@ class EsqlLookupJoinSuite
       }
     }
     "be rejected as forbidden" when {
-      "ROR cannot read the LOOKUP JOIN target as a single index, so it cannot narrow the query" excludeES (
+      "ROR cannot read the LOOKUP JOIN target as a single index, so it cannot replace it" excludeES (
         allEs6x,
         allEs7x,
         allEs8xBelowEs818x
@@ -163,7 +163,7 @@ class EsqlLookupJoinSuite
         result should have statusCode 403
       }
     }
-    "narrow an index list whose written form differs from the one ES's parser reports" when {
+    "replace an index list whose written form differs from the one ES's parser reports" when {
       "it is written with spaces after the commas" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
         val result = catalogOnlyEsqlManager.execute("""FROM book_catalog, book_prices | LIMIT 100""")
 
