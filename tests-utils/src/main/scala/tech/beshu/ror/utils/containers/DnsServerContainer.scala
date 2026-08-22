@@ -18,26 +18,19 @@ package tech.beshu.ror.utils.containers
 
 import com.dimafeng.testcontainers.GenericContainer
 import com.github.dockerjava.api.model.{ExposedPort, InternetProtocol, Ports}
-import org.testcontainers.images.builder.ImageFromDockerfile
+import org.testcontainers.images.builder.Transferable
 
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
 
+// withPortBindings is deprecated. testcontainers maps no UDP port without it.
 @nowarn("cat=deprecation")
 class DnsServerContainer(srvServiceHost: String, srvServicePort: Int)
-    extends GenericContainer(
-      dockerImage = new ImageFromDockerfile()
-        .withFileFromClasspath("Dockerfile", "coredns-image/Dockerfile")
-        .withFileFromClasspath("Corefile", "coredns-image/Corefile")
-        .withFileFromString(
-          "conf",
-          s"""
-             |$$ORIGIN example.org.
-             |@	3600	IN	SOA someorg.org.  someorg.com.  (2017042745 7200 3600 1209600 3600)
-             |_ldap._tcp.	 86400	IN	SRV	10	60     $srvServicePort	$srvServiceHost.
-             |""".stripMargin
-        ),
-    ) {
+    extends GenericContainer(dockerImage = DockerHubMirror.applyTo("coredns/coredns:1.13.2")) {
+
+  this.underlyingUnsafeContainer
+    .withCopyToContainer(Transferable.of(corefile), "/Corefile")
+    .withCopyToContainer(Transferable.of(zone(srvServiceHost, srvServicePort)), "/conf")
 
   this.underlyingUnsafeContainer.withCreateContainerCmdModifier { cmd =>
     cmd.withExposedPorts(
@@ -70,5 +63,19 @@ class DnsServerContainer(srvServiceHost: String, srvServicePort: Int)
   override def stop(): Unit = {
     this.container.stop()
   }
+
+  private lazy val corefile =
+    """. {
+      |  file /conf
+      |  log
+      |}
+      |""".stripMargin
+
+  private def zone(srvServiceHost: String, srvServicePort: Int): String =
+    s"""
+       |$$ORIGIN example.org.
+       |@	3600	IN	SOA someorg.org.  someorg.com.  (2017042745 7200 3600 1209600 3600)
+       |_ldap._tcp.	 86400	IN	SRV	10	60     $srvServicePort	$srvServiceHost.
+       |""".stripMargin
 
 }
