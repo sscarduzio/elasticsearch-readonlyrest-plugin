@@ -120,8 +120,8 @@ object IndexListLocator {
 
   private def indexListAt(span: TextSpan, read: IndexListRead): Either[IndexListReadingFailure, LocatedIndexList] = {
     val indexList =
-      if (read.isLookupJoin) LocatedIndexList.LookupJoin.parse(span, read)
-      else LocatedIndexList.SourceCommand.parse(span, read)
+      if (read.isLookupJoin) LocatedIndexList.LookupJoinTarget.parse(span, read)
+      else LocatedIndexList.SourceCommandIndices.parse(span, read)
     indexList.toRight(IndexListReadingFailure.UnsupportedIndexList(read.indexList))
   }
 

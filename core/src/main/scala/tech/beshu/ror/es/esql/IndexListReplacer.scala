@@ -18,7 +18,7 @@ package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoin, SourceCommand}
+import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -52,25 +52,27 @@ object IndexListReplacer {
   ): ReplacedQuery = {
     val allowedIndexNames: Set[ClusterIndexName] = allowedIndices.includedOnly
 
-    val (lookupJoins, sourceCommands) = indexLists.toList.partitionMap {
-      case indexList: LookupJoin    => Left(indexList)
-      case indexList: SourceCommand => Right(indexList)
+    val (lookupJoinTargets, sourceCommandIndices) = indexLists.toList.partitionMap {
+      case indexList: LookupJoinTarget     => Left(indexList)
+      case indexList: SourceCommandIndices => Right(indexList)
     }
 
     val reachableOnlyThroughLookupJoin: Set[ClusterIndexName] =
-      lookupJoins.map(_.index).toCovariantSet -- sourceCommands.flatMap(_.requestedIndices.includedOnly).toCovariantSet
+      lookupJoinTargets.map(_.index).toCovariantSet -- sourceCommandIndices
+        .flatMap(_.requestedIndices.includedOnly)
+        .toCovariantSet
 
     val scope =
-      if (sourceCommands.sizeIs == 1) SourceCommandScope.TheOnlyOne else SourceCommandScope.OneOfSeveral
+      if (sourceCommandIndices.sizeIs == 1) SourceCommandScope.TheOnlyOne else SourceCommandScope.OneOfSeveral
 
     val edits =
-      sourceCommands.map { indexList =>
+      sourceCommandIndices.map { indexList =>
         Edit(
           indexList.span,
           allowedIndicesFor(indexList, allowedIndexNames, reachableOnlyThroughLookupJoin, scope),
           isLookupJoin = false
         )
-      } ::: lookupJoins.map { indexList =>
+      } ::: lookupJoinTargets.map { indexList =>
         Edit(indexList.span, allowedIndicesFor(indexList, allowedIndexNames), isLookupJoin = true)
       }
 
@@ -84,7 +86,7 @@ object IndexListReplacer {
    * with another command's rows.
    */
   private def allowedIndicesFor(
-      indexList: SourceCommand,
+      indexList: SourceCommandIndices,
       allowedIndices: Set[ClusterIndexName],
       reachableOnlyThroughLookupJoin: Set[ClusterIndexName],
       scope: SourceCommandScope
@@ -100,7 +102,7 @@ object IndexListReplacer {
   }
 
   private def allowedIndicesFor(
-      indexList: LookupJoin,
+      indexList: LookupJoinTarget,
       allowedIndices: Set[ClusterIndexName]
   ): NonEmptyList[ClusterIndexName] =
     if (allowedIndices.contains(indexList.index)) NonEmptyList.one(indexList.index) else maskedAsNonexistent

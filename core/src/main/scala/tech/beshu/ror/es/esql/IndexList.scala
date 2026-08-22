@@ -51,7 +51,7 @@ sealed trait LocatedIndexList {
 
 object LocatedIndexList {
 
-  final case class SourceCommand private (
+  final case class SourceCommandIndices private (
       span: TextSpan,
       requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ) extends LocatedIndexList {
@@ -60,21 +60,21 @@ object LocatedIndexList {
       PatternsMatcher.create(requestedIndices.includedOnly)
   }
 
-  object SourceCommand {
-    def parse(span: TextSpan, read: IndexListRead): Option[SourceCommand] =
-      requestedIndicesIn(read).map(SourceCommand(span, _))
+  object SourceCommandIndices {
+    def parse(span: TextSpan, read: IndexListRead): Option[SourceCommandIndices] =
+      requestedIndicesIn(read).map(SourceCommandIndices(span, _))
   }
 
-  final case class LookupJoin private (span: TextSpan, index: ClusterIndexName) extends LocatedIndexList {
+  final case class LookupJoinTarget private (span: TextSpan, index: ClusterIndexName) extends LocatedIndexList {
     override def requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]] =
       NonEmptyList.one(RequestedIndex(index, excluded = false))
   }
 
-  object LookupJoin {
+  object LookupJoinTarget {
 
-    def parse(span: TextSpan, read: IndexListRead): Option[LookupJoin] =
+    def parse(span: TextSpan, read: IndexListRead): Option[LookupJoinTarget] =
       requestedIndicesIn(read).collect {
-        case NonEmptyList(onlyOne, Nil) if !onlyOne.excluded => LookupJoin(span, onlyOne.name)
+        case NonEmptyList(onlyOne, Nil) if !onlyOne.excluded => LookupJoinTarget(span, onlyOne.name)
       }
 
   }
