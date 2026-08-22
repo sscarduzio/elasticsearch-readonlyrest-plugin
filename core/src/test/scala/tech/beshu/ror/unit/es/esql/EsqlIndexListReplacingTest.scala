@@ -95,6 +95,20 @@ class EsqlIndexListReplacingTest extends AnyWordSpec {
           from("FROM status", "status")
         ) shouldBe """FROM other | EVAL x = "FROM status""""
       }
+      "replace an index list a line comment interrupts" in {
+        rewrite(
+          "FROM a, // and\n b | LIMIT 10",
+          allowed("b"),
+          from("FROM a, // and\n b", "a,b")
+        ) shouldBe "FROM b | LIMIT 10"
+      }
+      "replace an index list a block comment interrupts" in {
+        rewrite(
+          "FROM a, /* and */ b | LIMIT 10",
+          allowed("a"),
+          from("FROM a, /* and */ b", "a,b")
+        ) shouldBe "FROM a | LIMIT 10"
+      }
       "leave a METADATA clause a comment separates from the index list in place" in {
         rewrite(
           "FROM logs-*/* and */METADATA _index",
