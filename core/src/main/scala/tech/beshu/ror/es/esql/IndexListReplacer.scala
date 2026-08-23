@@ -46,23 +46,19 @@ object IndexListReplacer {
 
     val edits =
       sourceCommandIndices.map { indexList =>
-        Edit(
-          indexList.span,
-          allowedIndicesFor(indexList, allowedIndexNames, reachableOnlyThroughLookupJoin, scope),
-          isLookupJoin = false
-        )
+        val allowed = allowedIndicesFor(indexList, allowedIndexNames, reachableOnlyThroughLookupJoin, scope)
+        Edit(indexList.span, IndexListRead.BySourceCommand(indexListOf(allowed)))
       } ::: lookupJoinTargets.map { indexList =>
-        Edit(indexList.span, allowedIndicesFor(indexList, allowedIndexNames), isLookupJoin = true)
+        Edit(indexList.span, IndexListRead.ByLookupJoin(indexListOf(allowedIndicesFor(indexList, allowedIndexNames))))
       }
 
-    ReplacedQuery(rewritten(query, edits), edits.map(edit => IndexListRead(edit.isLookupJoin, edit.newIndexList)))
+    ReplacedQuery(rewritten(query, edits), edits.map(_.intendedRead))
   }
 
   /**
-   * A lone source command gets the whole ACL-resolved set, because a rule may resolve a request to indices the
-   * written pattern never matched (`FROM bookshop` under `indices: ["bookstore"]`). That set cannot be attributed
-   * to any single command once there are several, where handing it to each would answer a subquery the ACL denied
-   * with another command's rows.
+   * A lone source command gets the whole ACL-resolved set, since a rule may resolve to indices the written pattern
+   * never matched (`FROM bookshop` under `indices: ["bookstore"]`). With several, that set belongs to no single one
+   * of them, so each keeps only what its own pattern matched.
    */
   private def allowedIndicesFor(
       indexList: SourceCommandIndices,
@@ -89,17 +85,18 @@ object IndexListReplacer {
   private def maskedAsNonexistent: NonEmptyList[ClusterIndexName] =
     NonEmptyList.one(ClusterIndexName.Local.randomNonexistentIndex())
 
+  private def indexListOf(indices: NonEmptyList[ClusterIndexName]): String =
+    indices.toList.map(_.stringify).mkString(",")
+
   private def rewritten(query: Query, edits: List[Edit]): Query = {
     Query(
       edits.sortBy(-_.span.start).foldLeft(query.value) { case (text, edit) =>
-        s"${text.substring(0, edit.span.start)}${edit.newIndexList}${text.substring(edit.span.end)}"
+        s"${text.substring(0, edit.span.start)}${edit.intendedRead.indexList}${text.substring(edit.span.end)}"
       }
     )
   }
 
-  private final case class Edit(span: TextSpan, newIndices: NonEmptyList[ClusterIndexName], isLookupJoin: Boolean) {
-    def newIndexList: String = newIndices.toList.map(_.stringify).mkString(",")
-  }
+  private final case class Edit(span: TextSpan, intendedRead: IndexListRead)
 
   private sealed trait SourceCommandScope
 

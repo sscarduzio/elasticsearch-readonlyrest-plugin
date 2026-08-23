@@ -17,22 +17,17 @@
 package tech.beshu.ror.es.esql
 
 import cats.implicits.*
+import tech.beshu.ror.es.esql.LocatedIndexList.ReadingFailure
 import tech.beshu.ror.es.esql.Query.{SourceLocation, TextSpan}
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
 
 /**
- * ES reports an index list normalized (`FROM a, b` as `a,b`), so searching the query for it silently finds nothing
- * and leaves the user's own indices in place. What makes an index list replaceable is the source location ES's
- * parser keeps next to every one of them - this turns it into the span of query text to rewrite.
- *
- * A `LOOKUP JOIN` target is located exactly. A source command is located as a whole (`FROM a, b METADATA _index`),
- * so its index list still has to be picked out of the command's own text - which is all this does, and it does it
- * literally, because [[ReplacedQuery.checkedAgainst]] holds the result to what ES reads back out of the query.
- *
- * A source command whose every entry is a subquery names no index of its own - ES reports it an empty index list,
- * and the subqueries it holds are reported as source commands in their own right.
+ * ES reports an index list normalized (`FROM a, b` as `a,b`), so it cannot be searched for in the query - only the
+ * source location ES keeps next to it turns it into a span to rewrite. A `LOOKUP JOIN` target is located exactly;
+ * a source command is located whole (`FROM a, b METADATA _index`), so its list is picked out of the command text
+ * literally, since [[ReplacedQuery.checkedAgainst]] holds the result to what ES reads back.
  */
 object IndexListLocator {
 
@@ -47,13 +42,14 @@ object IndexListLocator {
   def locatedIn(
       query: Query,
       reported: List[ReportedIndexList]
-  ): Either[IndexListReadingFailure, List[LocatedIndexList]] =
+  ): Either[ReadingFailure, List[LocatedIndexList]] =
+    // a source command of only subqueries names no index of its own - ES reports its list empty
     reported.filterNot(_.read.indexList.isBlank).traverse(locate(query.value, _))
 
   private def locate(
       query: String,
       reported: ReportedIndexList
-  ): Either[IndexListReadingFailure, LocatedIndexList] = {
+  ): Either[ReadingFailure, LocatedIndexList] = {
     for {
       writtenSpan <- writtenSpanOf(query, reported)
       span <- indexListSpanIn(reported, writtenSpan)
@@ -64,11 +60,11 @@ object IndexListLocator {
   private def writtenSpanOf(
       query: String,
       reported: ReportedIndexList
-  ): Either[IndexListReadingFailure, TextSpan] = {
+  ): Either[ReadingFailure, TextSpan] = {
     offsetOf(query, reported.writtenAt)
       .map(start => TextSpan(start, start + reported.writtenText.length))
       .filter(span => span.end <= query.length && query.substring(span.start, span.end) == reported.writtenText)
-      .toRight(IndexListReadingFailure.NotWhereEsReportedIt(reported.read.indexList))
+      .toRight(ReadingFailure.NotWhereEsReportedIt(reported.read.indexList))
   }
 
   private def offsetOf(query: String, location: SourceLocation): Option[Int] = {
@@ -91,37 +87,39 @@ object IndexListLocator {
   private def indexListSpanIn(
       reported: ReportedIndexList,
       writtenSpan: TextSpan
-  ): Either[IndexListReadingFailure, TextSpan] = {
-    if (reported.read.isLookupJoin) {
-      Right(writtenSpan)
-    } else {
-      sourceCommandIndexList.findFirstMatchIn(withoutComments(reported.writtenText)) match {
-        case Some(indexList) =>
-          val span = TextSpan(writtenSpan.start + indexList.start(1), writtenSpan.start + indexList.end(1))
-          Either.cond(
-            // a subquery entry is reported merged into the surrounding list, so its span cannot be rewritten alone
-            test = !reported.writtenText.substring(indexList.start(1), indexList.end(1)).contains('('),
-            right = span,
-            left = IndexListReadingFailure.SubqueryInSourceCommand(reported.read.indexList)
-          )
-        case None if promqlCommand.matches(reported.writtenText) =>
-          Left(IndexListReadingFailure.PromqlLeaningOnDefaultIndex)
-        case None =>
-          // a `PROMQL` command's `index=` parameter: ES locates its value, so there is nothing left to pick out
-          Right(writtenSpan)
-      }
+  ): Either[ReadingFailure, TextSpan] = {
+    reported.read match {
+      case _: IndexListRead.ByLookupJoin =>
+        Right(writtenSpan)
+      case _: IndexListRead.BySourceCommand =>
+        sourceCommandIndexList.findFirstMatchIn(withoutComments(reported.writtenText)) match {
+          case Some(indexList) =>
+            val span = TextSpan(writtenSpan.start + indexList.start(1), writtenSpan.start + indexList.end(1))
+            Either.cond(
+              // a subquery entry is merged into the reported list, leaving it no span of its own
+              test = !reported.writtenText.substring(indexList.start(1), indexList.end(1)).contains('('),
+              right = span,
+              left = ReadingFailure.SubqueryInSourceCommand(reported.read.indexList)
+            )
+          case None if promqlCommand.matches(reported.writtenText) =>
+            Left(ReadingFailure.PromqlLeaningOnDefaultIndex)
+          case None =>
+            // a `PROMQL` command's `index=` parameter: ES locates its value exactly
+            Right(writtenSpan)
+        }
     }
   }
 
-  /** Blanked rather than dropped, so what is left sits where it was written and its span still means something. */
+  /** Blanked, not dropped, so what is left keeps its offsets. */
   private def withoutComments(commandText: String): String =
     comment.replaceAllIn(commandText, found => " " * found.matched.length)
 
-  private def indexListAt(span: TextSpan, read: IndexListRead): Either[IndexListReadingFailure, LocatedIndexList] = {
-    val indexList =
-      if (read.isLookupJoin) LocatedIndexList.LookupJoinTarget.parse(span, read)
-      else LocatedIndexList.SourceCommandIndices.parse(span, read)
-    indexList.toRight(IndexListReadingFailure.UnsupportedIndexList(read.indexList))
+  private def indexListAt(span: TextSpan, read: IndexListRead): Either[ReadingFailure, LocatedIndexList] = {
+    val indexList = read match {
+      case read: IndexListRead.ByLookupJoin    => LocatedIndexList.LookupJoinTarget.parse(span, read)
+      case read: IndexListRead.BySourceCommand => LocatedIndexList.SourceCommandIndices.parse(span, read)
+    }
+    indexList.toRight(ReadingFailure.UnsupportedIndexList(read.indexList))
   }
 
 }

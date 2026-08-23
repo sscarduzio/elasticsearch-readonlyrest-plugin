@@ -21,7 +21,8 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.*
-import tech.beshu.ror.es.esql.IndexListReadingFailure.*
+import tech.beshu.ror.es.esql.LocatedIndexList.ReadingFailure
+import tech.beshu.ror.es.esql.LocatedIndexList.ReadingFailure.*
 import tech.beshu.ror.es.esql.Query.SourceLocation
 
 /**
@@ -338,7 +339,7 @@ class IndexListReplacerTest extends AnyWordSpec {
         verify(
           "FROM logs-* | LIMIT 10",
           allowed("logs-1"),
-          esReads = List(IndexListRead(isLookupJoin = false, "logs-1")),
+          esReads = List(IndexListRead.BySourceCommand("logs-1")),
           from("FROM logs-*", "logs-*")
         ) shouldBe Right("FROM logs-1 | LIMIT 10")
       }
@@ -346,9 +347,9 @@ class IndexListReplacerTest extends AnyWordSpec {
         verify(
           "FROM a, // and\n b | LIMIT 10",
           allowed("b"),
-          esReads = List(IndexListRead(isLookupJoin = false, "b,b")),
+          esReads = List(IndexListRead.BySourceCommand("b,b")),
           from("FROM a, // and\n b", "a,b")
-        ) shouldBe Left(QueryRejection.QueryNotReplacedAsIntended(List("b"), List("b,b")))
+        ) shouldBe Left(Query.Rejection.NotReplacedAsIntended(List("b"), List("b,b")))
       }
       "reject a rewrite ES cannot parse at all, which it reads nothing out of" in {
         verify(
@@ -356,20 +357,20 @@ class IndexListReplacerTest extends AnyWordSpec {
           allowed("logs-1"),
           esReads = List.empty,
           from("FROM logs-*", "logs-*")
-        ) shouldBe Left(QueryRejection.QueryNotReplacedAsIntended(List("logs-1"), List.empty))
+        ) shouldBe Left(Query.Rejection.NotReplacedAsIntended(List("logs-1"), List.empty))
       }
       "hold a LOOKUP JOIN target to being read as one" in {
         verify(
           "FROM src | LOOKUP JOIN lookup_idx ON key",
           allowed("src", "lookup_idx"),
           esReads = List(
-            IndexListRead(isLookupJoin = false, "src"),
-            IndexListRead(isLookupJoin = false, "lookup_idx")
+            IndexListRead.BySourceCommand("src"),
+            IndexListRead.BySourceCommand("lookup_idx")
           ),
           from("FROM src", "src"),
           join("lookup_idx", "lookup_idx")
         ) shouldBe Left(
-          QueryRejection.QueryNotReplacedAsIntended(
+          Query.Rejection.NotReplacedAsIntended(
             List("LOOKUP JOIN lookup_idx", "src"),
             List("lookup_idx", "src")
           )
@@ -398,7 +399,7 @@ class IndexListReplacerTest extends AnyWordSpec {
       query: String,
       allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
       reported: ReportedBy*
-  ): IndexListReadingFailure = {
+  ): ReadingFailure = {
     indexListsIn(query, reported).fold(
       identity,
       indexLists =>
@@ -414,7 +415,7 @@ class IndexListReplacerTest extends AnyWordSpec {
       allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
       esReads: List[IndexListRead],
       reported: ReportedBy*
-  ): Either[QueryRejection, String] = {
+  ): Either[Query.Rejection, String] = {
     val indexLists = indexListsIn(query, reported)
       .fold(failure => fail(s"index lists were not read: ${failure.toString}"), identity)
     val replaced = IndexListReplacer.replacing(Query(query), indexLists, allowed)
@@ -424,7 +425,7 @@ class IndexListReplacerTest extends AnyWordSpec {
   private def indexListsIn(
       query: String,
       reported: Seq[ReportedBy]
-  ): Either[IndexListReadingFailure, NonEmptyList[LocatedIndexList]] = {
+  ): Either[ReadingFailure, NonEmptyList[LocatedIndexList]] = {
     val relations = reported.toList
       .foldLeft((Map.empty[String, Int], List.empty[ReportedIndexList])) { case ((claimedUpTo, relations), relation) =>
         val offset = relation.forcedOffset.getOrElse {
@@ -439,29 +440,24 @@ class IndexListReplacerTest extends AnyWordSpec {
   }
 
   private def from(writtenText: String, indexList: String): ReportedBy =
-    ReportedBy(writtenText, indexList, isLookupJoin = false, forcedOffset = None)
+    ReportedBy(writtenText, IndexListRead.BySourceCommand(indexList), forcedOffset = None)
 
   private def join(writtenText: String, indexList: String): ReportedBy =
-    ReportedBy(writtenText, indexList, isLookupJoin = true, forcedOffset = None)
+    ReportedBy(writtenText, IndexListRead.ByLookupJoin(indexList), forcedOffset = None)
 
   private def at(offset: Int, writtenText: String, indexList: String): ReportedBy =
-    ReportedBy(writtenText, indexList, isLookupJoin = false, forcedOffset = Some(offset))
+    ReportedBy(writtenText, IndexListRead.BySourceCommand(indexList), forcedOffset = Some(offset))
 
   private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] =
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))
 
   /** Written the way ES's parser builds it: the raw text of the node, and where in the query that text sits. */
-  private final case class ReportedBy(
-      writtenText: String,
-      indexList: String,
-      isLookupJoin: Boolean,
-      forcedOffset: Option[Int]
-  ) {
+  private final case class ReportedBy(writtenText: String, read: IndexListRead, forcedOffset: Option[Int]) {
 
     def reportedAt(query: String, offset: Int): ReportedIndexList = {
       val before = query.take(offset)
       ReportedIndexList(
-        read = IndexListRead(isLookupJoin, indexList),
+        read = read,
         writtenAt = SourceLocation(
           line = before.count(_ == '\n') + 1,
           column = offset - (before.lastIndexOf('\n') + 1)

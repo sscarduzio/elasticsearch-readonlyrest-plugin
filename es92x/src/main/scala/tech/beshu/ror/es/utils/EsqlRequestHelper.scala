@@ -27,13 +27,11 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.esql.Query.SourceLocation
 import tech.beshu.ror.es.esql.{
-  ClassificationError,
   IndexListLocator,
   IndexListRead,
   IndexListReplacer,
   LocatedIndexList,
   Query,
-  QueryRejection,
   ReportedIndexList,
   RequestClassification
 }
@@ -53,7 +51,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       request: CompositeIndicesRequest,
       indexLists: NonEmptyList[LocatedIndexList],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Either[QueryRejection, Unit] = {
+  ): Either[Query.Rejection, Unit] = {
     val replaced = IndexListReplacer.replacing(getQuery(request), indexLists, allowedIndices)
     replaced
       .checkedAgainst(indexListReadsIn(request, replaced.query))
@@ -77,7 +75,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
   def classifyEsqlRequest(
       request: CompositeIndicesRequest
-  ): Either[ClassificationError, RequestClassification] = {
+  ): Either[RequestClassification.Error, RequestClassification] = {
     createStatement(request) match {
       case Right(statement: IndicesRelatedStatement) => Right(IndicesRelated(statement.indexLists))
       case Right(_: OtherCommand)                    => Right(NonIndicesRelated)
@@ -85,7 +83,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     }
   }
 
-  private def createStatement(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
+  private def createStatement(request: CompositeIndicesRequest): Either[RequestClassification.Error, Statement] = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
     new EsqlParser().createStatementBasedOn(request)
   }
@@ -111,7 +109,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
         .create()
         .get[Any]()
 
-    def createStatementBasedOn(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
+    def createStatementBasedOn(request: CompositeIndicesRequest): Either[RequestClassification.Error, Statement] = {
       createStatement(getQuery(request).value, request).flatMap { statement =>
         indexListsFrom(request, statement).map { indexLists =>
           NonEmptyList.fromList(indexLists) match {
@@ -127,7 +125,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
         case Success(s)                                                                       => Right(s)
         case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
-        case Failure(ex) => Left(ClassificationError.NotParsable(ex))
+        case Failure(ex) => Left(RequestClassification.Error.NotParsable(ex))
       }
     }
 
@@ -145,10 +143,10 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     private def indexListsFrom(
         request: CompositeIndicesRequest,
         statement: Any
-    ): Either[ClassificationError, List[LocatedIndexList]] = {
+    ): Either[RequestClassification.Error, List[LocatedIndexList]] = {
       IndexListLocator
         .locatedIn(getQuery(request), reportedIndexListsIn(planOf(statement)))
-        .leftMap(ClassificationError.CannotReadIndexList.apply)
+        .leftMap(RequestClassification.Error.CannotReadIndexList.apply)
     }
 
     /**
@@ -171,10 +169,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       val source = on(indexPattern).call("source").get[Any]()
       val location = on(source).call("source").get[Any]()
       ReportedIndexList(
-        read = IndexListRead(
-          isLookupJoin = isLookupJoinRelation(relation),
-          indexList = on(indexPattern).call("indexPattern").get[String]()
-        ),
+        read = indexListReadOf(relation, on(indexPattern).call("indexPattern").get[String]()),
         writtenAt = SourceLocation(
           line = on(location).call("getLineNumber").get[Int](),
           column = on(location).call("getColumnNumber").get[Int]() - 1
@@ -183,9 +178,10 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       )
     }
 
-    private def isLookupJoinRelation(relation: Any): Boolean = {
-      Option(on(relation).call("indexMode").get[AnyRef])
+    private def indexListReadOf(relation: Any, indexList: String): IndexListRead = {
+      val isLookupJoin = Option(on(relation).call("indexMode").get[AnyRef])
         .exists(indexMode => on(indexMode).call("name").get[String]() == "LOOKUP")
+      if (isLookupJoin) IndexListRead.ByLookupJoin(indexList) else IndexListRead.BySourceCommand(indexList)
     }
 
   }
