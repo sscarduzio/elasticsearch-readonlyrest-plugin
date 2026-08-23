@@ -255,6 +255,15 @@ class EsqlLookupJoinSuite
         result.columnNames should contain only ("book_id", "title", "title.keyword", "_index")
         result.rows.size should be(2)
       }
+      "a comment holding a bracket interrupts it" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+        val result = catalogOnlyEsqlManager.execute(
+          """FROM book_catalog, /* and (also) */ book_prices | LIMIT 100"""
+        )
+
+        result should have statusCode 200
+        result.columnNames should contain only ("book_id", "title", "title.keyword")
+        result.rows.size should be(2)
+      }
       "its entries are quoted" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
         val result = catalogOnlyEsqlManager.execute("""FROM \"book_catalog\",\"book_prices\" | LIMIT 100""")
 

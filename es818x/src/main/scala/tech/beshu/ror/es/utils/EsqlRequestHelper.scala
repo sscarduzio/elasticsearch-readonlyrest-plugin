@@ -77,16 +77,11 @@ class EsqlRequestHelper(esVersion: EsVersion) {
   def classifyEsqlRequest(
       request: CompositeIndicesRequest
   ): Either[RequestClassification.Error, RequestClassification] = {
-    createStatement(request) match {
-      case Right(statement: IndicesRelatedStatement) => Right(IndicesRelated(statement.indexLists))
-      case Right(_: OtherCommand)                    => Right(NonIndicesRelated)
-      case Left(error)                               => Left(error)
-    }
-  }
-
-  private def createStatement(request: CompositeIndicesRequest): Either[RequestClassification.Error, Statement] = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-    new EsqlParser().createStatementBasedOn(request)
+    new EsqlParser().indexListsIn(request).map {
+      case Some(indexLists) => IndicesRelated(indexLists)
+      case None             => NonIndicesRelated
+    }
   }
 
   private def getQuery(request: CompositeIndicesRequest): Query = {
@@ -130,15 +125,12 @@ class EsqlRequestHelper(esVersion: EsVersion) {
         .create()
         .get[Any]()
 
-    def createStatementBasedOn(request: CompositeIndicesRequest): Either[RequestClassification.Error, Statement] = {
-      createStatement(getQuery(request).value, request).flatMap { s =>
-        indexListsFrom(request, s).map { indexLists =>
-          NonEmptyList.fromList(indexLists) match {
-            case Some(lists) => new IndicesRelatedStatement(s, lists)
-            case None        => OtherCommand(s)
-          }
-        }
-      }
+    def indexListsIn(
+        request: CompositeIndicesRequest
+    ): Either[RequestClassification.Error, Option[NonEmptyList[LocatedIndexList]]] = {
+      createStatement(getQuery(request).value, request)
+        .flatMap(statement => indexListsFrom(request, statement))
+        .map(NonEmptyList.fromList)
     }
 
     private def createStatement(query: String, request: CompositeIndicesRequest) = {
@@ -169,7 +161,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
     def indexListReadsIn(query: Query, request: CompositeIndicesRequest): List[IndexListRead] = {
       createStatement(query.value, request)
-        .map(statement => reportedIndexListsIn(planOf(statement)).map(_.read).filter(_.indexList.nonEmpty))
+        .map(statement => reportedIndexListsIn(planOf(statement)).map(_.read).filterNot(_.namesNoIndex))
         .getOrElse(List.empty)
     }
 
@@ -220,12 +212,6 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     }
 
   }
-
-  private sealed trait Statement
-  private final class IndicesRelatedStatement(val underlyingObject: Any, val indexLists: NonEmptyList[LocatedIndexList])
-      extends Statement
-
-  private final class OtherCommand(val underlyingObject: Any) extends Statement
 
   private final class EsqlQueryResponse(val underlyingObject: ActionResponse) {
 

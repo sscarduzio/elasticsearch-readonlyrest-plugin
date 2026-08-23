@@ -18,6 +18,7 @@ package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
 import tech.beshu.ror.es.esql.Query.TextSpan
 import tech.beshu.ror.syntax.*
@@ -29,7 +30,7 @@ object IndexListReplacer {
       indexLists: NonEmptyList[LocatedIndexList],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): ReplacedQuery = {
-    val allowedIndexNames: Set[ClusterIndexName] = allowedIndices.includedOnly
+    val allowedIndexNames: Set[ClusterIndexName] = allowedIndexNamesOf(allowedIndices)
 
     val (lookupJoinTargets, sourceCommandIndices) = indexLists.toList.partitionMap {
       case indexList: LookupJoinTarget     => Left(indexList)
@@ -54,6 +55,23 @@ object IndexListReplacer {
 
     ReplacedQuery(rewritten(query, edits), edits.map(_.intendedRead))
   }
+
+  /**
+   * A rewritten index list cannot express an exclusion, so one the ACL left in has to be applied here - and an
+   * allowed pattern an exclusion falls under has to go whole, since keeping it would read that exclusion back in.
+   */
+  private def allowedIndexNamesOf(
+      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ): Set[ClusterIndexName] = {
+    val included = allowedIndices.includedOnly
+    allowedIndices.toList.filter(_.excluded).map(_.name) match {
+      case Nil      => included
+      case excluded => included.filterNot(name => excluded.exists(overlapping(name, _)))
+    }
+  }
+
+  private def overlapping(one: ClusterIndexName, other: ClusterIndexName): Boolean =
+    PatternsMatcher.create(Set(one)).`match`(other) || PatternsMatcher.create(Set(other)).`match`(one)
 
   /**
    * A lone source command gets the whole ACL-resolved set, since a rule may resolve to indices the written pattern

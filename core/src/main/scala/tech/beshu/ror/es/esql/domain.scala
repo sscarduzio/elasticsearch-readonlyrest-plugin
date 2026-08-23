@@ -63,7 +63,11 @@ object Query {
 
 /** An index list ES read out of a query, normalized its way (`FROM a, b` as `a,b`). All a rewrite is held to. */
 sealed trait IndexListRead {
+
   def indexList: String
+
+  /** ES reports an empty list for a source command of only subqueries. */
+  def namesNoIndex: Boolean = indexList.isBlank
 }
 
 object IndexListRead {

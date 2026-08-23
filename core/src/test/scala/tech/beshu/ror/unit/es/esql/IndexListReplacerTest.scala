@@ -111,6 +111,13 @@ class IndexListReplacerTest extends AnyWordSpec {
           from("FROM a, /* and */ b", "a,b")
         ) shouldBe "FROM a | LIMIT 10"
       }
+      "replace an index list a comment holding a bracket interrupts" in {
+        rewrite(
+          "FROM a, /* and (b) */ b | LIMIT 10",
+          allowed("a"),
+          from("FROM a, /* and (b) */ b", "a,b")
+        ) shouldBe "FROM a | LIMIT 10"
+      }
       "leave a METADATA clause a comment separates from the index list in place" in {
         rewrite(
           "FROM logs-*/* and */METADATA _index",
@@ -135,6 +142,41 @@ class IndexListReplacerTest extends AnyWordSpec {
           allowed("a"),
           from("FROM .ds-metadata, logs*metadata", ".ds-metadata,logs*metadata")
         ) shouldBe "FROM a | LIMIT 10"
+      }
+      "replace an index list whose remote cluster prefix is written with spaces around the colon" in {
+        rewrite(
+          "FROM remote : logs-* | LIMIT 10",
+          allowed("remote:logs-1"),
+          from("FROM remote : logs-*", "remote:logs-*")
+        ) shouldBe "FROM remote:logs-1 | LIMIT 10"
+      }
+      "replace an index list whose selector is written with spaces around the cast operator" in {
+        rewrite(
+          "FROM logs :: data | LIMIT 10",
+          allowed("logs::data"),
+          from("FROM logs :: data", "logs::data")
+        ) shouldBe "FROM logs::data | LIMIT 10"
+      }
+      "replace an index list quoting only the index of a remote cluster prefix" in {
+        rewrite(
+          """FROM remote:"logs-*" | LIMIT 10""",
+          allowed("remote:logs-1"),
+          from("""FROM remote:"logs-*"""", "remote:logs-*")
+        ) shouldBe "FROM remote:logs-1 | LIMIT 10"
+      }
+      "handle an index named like the METADATA keyword closing the list" in {
+        rewrite(
+          "FROM a, metadata | LIMIT 10",
+          allowed("a"),
+          from("FROM a, metadata", "a,metadata")
+        ) shouldBe "FROM a | LIMIT 10"
+      }
+      "tell an index named like the METADATA keyword from the clause that follows it" in {
+        rewrite(
+          "FROM *, metadata METADATA _index | LIMIT 10",
+          allowed("a"),
+          from("FROM *, metadata METADATA _index", "*,metadata")
+        ) shouldBe "FROM a METADATA _index | LIMIT 10"
       }
       "replace the index list of a TS command" in {
         rewrite("TS metrics-* | LIMIT 10", allowed("metrics-1"), from("TS metrics-*", "metrics-*")) shouldBe
@@ -201,6 +243,14 @@ class IndexListReplacerTest extends AnyWordSpec {
           from("FROM (FROM a | LIMIT 1)", ""),
           from("FROM a", "a")
         ) shouldBe "FROM (FROM (FROM a | LIMIT 1) | LIMIT 1) | LIMIT 10"
+      }
+      "pass over a source command naming no index of its own, whichever blank ES reports its list as" in {
+        rewrite(
+          "FROM ( FROM idx_a | LIMIT 1) | LIMIT 10",
+          allowed("idx_b"),
+          from("FROM ( FROM idx_a | LIMIT 1)", " "),
+          from("FROM idx_a", "idx_a")
+        ) shouldBe "FROM ( FROM idx_b | LIMIT 1) | LIMIT 10"
       }
       "refuse to read a command mixing indices of its own with a subquery, which ES reports merged into one list" in {
         readingFailureFor(
@@ -332,6 +382,54 @@ class IndexListReplacerTest extends AnyWordSpec {
           allowed("metrics-1"),
           from("PROMQL step=1m rate(v)", "*")
         ) shouldBe PromqlLeaningOnDefaultIndex
+      }
+      "replace an index parameter, whose value lives outside the query text ES points at" in {
+        rewrite(
+          "PROMQL index=?idx step=1m rate(v)",
+          allowed("metrics-1"),
+          from("?idx", "metrics-*")
+        ) shouldBe "PROMQL index=metrics-1 step=1m rate(v)"
+      }
+    }
+    "the ACL left an exclusion in the indices it allowed" should {
+      "apply the exclusion, since a rewritten index list has nowhere to write one down" in {
+        rewrite(
+          "FROM logs-* | LIMIT 10",
+          allowed("logs-1", "logs-2", "-logs-2"),
+          from("FROM logs-*", "logs-*")
+        ) shouldBe "FROM logs-1 | LIMIT 10"
+      }
+      "drop an allowed pattern an exclusion falls under, rather than read the exclusion back in" in {
+        rewrite(
+          "FROM logs-* | LIMIT 10",
+          allowed("logs-*", "-logs-secret"),
+          from("FROM logs-*", "logs-*")
+        ) should fullyMatch regex s"FROM $maskedIndex \\| LIMIT 10"
+      }
+      "mask a LOOKUP JOIN target the ACL excluded" in {
+        rewrite(
+          "FROM src | LOOKUP JOIN lookup_idx ON key",
+          allowed("src", "lookup_idx", "-lookup_idx"),
+          from("FROM src", "src"),
+          join("lookup_idx", "lookup_idx")
+        ) should fullyMatch regex s"FROM src \\| LOOKUP JOIN $maskedIndex ON key"
+      }
+    }
+    "the span picked out of the query does not hold the index list ES reported" should {
+      "refuse to read a source command whose keyword is none this knows" in {
+        readingFailureFor(
+          "METRICS metrics-1 | LIMIT 10",
+          allowed("metrics-1"),
+          from("METRICS metrics-1", "metrics-1")
+        ) shouldBe NotWhereEsReportedIt("metrics-1")
+      }
+      "refuse to read a LOOKUP JOIN target ES points at somewhere it is not written" in {
+        readingFailureFor(
+          "FROM src | LOOKUP JOIN lookup_idx ON key",
+          allowed("src"),
+          from("FROM src", "src"),
+          join("lookup_idx ON key", "lookup_idx")
+        ) shouldBe NotWhereEsReportedIt("lookup_idx")
       }
     }
     "the rewritten query is held to what ES reads out of it" should {
