@@ -57,6 +57,9 @@ class EsqlLookupJoinSuite
         indexManager
           .createIndex("book_prices", settings = Some(ujson.read("""{"settings": {"index": {"mode": "lookup"}}}""")))
           .force()
+        indexManager
+          .createIndex("store_ratings", settings = Some(ujson.read("""{"settings": {"index": {"mode": "lookup"}}}""")))
+          .force()
       }
       documentManager.createDocAndAssert(
         index = "book_prices",
@@ -70,6 +73,18 @@ class EsqlLookupJoinSuite
         id = 2,
         content = ujson.read("""{"book_id": 2, "discount_price": 180}""")
       )
+      documentManager.createDocAndAssert(
+        index = "store_ratings",
+        `type` = "_doc",
+        id = 1,
+        content = ujson.read("""{"book_id": 1, "rating": 4}""")
+      )
+      documentManager.createDocAndAssert(
+        index = "store_ratings",
+        `type` = "_doc",
+        id = 2,
+        content = ujson.read("""{"book_id": 2, "rating": 5}""")
+      )
     }
   }
 
@@ -77,6 +92,8 @@ class EsqlLookupJoinSuite
   private lazy val pricesOnlyEsqlManager = new EsqlApiManager(basicAuthClient("prices", "test"), esVersionUsed)
   private lazy val bothIndicesEsqlManager = new EsqlApiManager(basicAuthClient("both", "test"), esVersionUsed)
   private lazy val bookWildcardEsqlManager = new EsqlApiManager(basicAuthClient("books", "test"), esVersionUsed)
+  private lazy val allJoinTargetsEsqlManager = new EsqlApiManager(basicAuthClient("joins", "test"), esVersionUsed)
+  private lazy val adminEsqlManager = new EsqlApiManager(basicAuthClient("admin", "container"), esVersionUsed)
 
   "An ESQL LOOKUP JOIN request" should {
     "be allowed" when {
@@ -107,6 +124,20 @@ class EsqlLookupJoinSuite
         result.column("title").toList should contain only (Str("Leviathan Wakes"), Str("Hyperion"), Null)
         result.rows.size should be(4)
       }
+      "every LOOKUP JOIN target of a query with several is authorized on its own" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs818x
+      ) in {
+        val result = allJoinTargetsEsqlManager.execute(
+          """FROM book_c* | LOOKUP JOIN book_prices ON book_id | LOOKUP JOIN store_ratings ON book_id | SORT book_id | LIMIT 100"""
+        )
+
+        result should have statusCode 200
+        result.columnNames should contain allOf ("discount_price", "rating")
+        result.column("rating").toList should contain only (Num(4), Num(5))
+        result.rows.size should be(2)
+      }
       "the index list is written with spaces after the commas" excludeES (
         allEs6x,
         allEs7x,
@@ -128,6 +159,34 @@ class EsqlLookupJoinSuite
       ) in {
         val result = catalogOnlyEsqlManager.execute(
           """FROM book_catalog | LOOKUP JOIN book_prices ON book_id | LIMIT 100"""
+        )
+
+        result should have statusCode 400
+        val reason = result.responseJson("error").obj("reason").str
+        reason should include("Unknown index")
+        reason should not include "book_prices"
+      }
+      "one LOOKUP JOIN target among several is not authorized" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs818x
+      ) in {
+        val result = bothIndicesEsqlManager.execute(
+          """FROM book_catalog | LOOKUP JOIN book_prices ON book_id | LOOKUP JOIN store_ratings ON book_id | LIMIT 100"""
+        )
+
+        result should have statusCode 400
+        val reason = result.responseJson("error").obj("reason").str
+        reason should include("Unknown index")
+        reason should not include "store_ratings"
+      }
+      "the same index is named by both FROM and a LOOKUP JOIN, and only one of the two is authorized" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs818x
+      ) in {
+        val result = catalogOnlyEsqlManager.execute(
+          """FROM book_catalog, book_prices | LOOKUP JOIN book_prices ON book_id | LIMIT 100"""
         )
 
         result should have statusCode 400
@@ -161,6 +220,19 @@ class EsqlLookupJoinSuite
         )
 
         result should have statusCode 403
+      }
+    }
+    "be left to run as written" when {
+      "ROR cannot read the LOOKUP JOIN target, but the ACL narrowed nothing to hold the query to" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs818x
+      ) in {
+        val result = adminEsqlManager.execute(
+          """FROM book_catalog | LOOKUP JOIN \"book_catalog,book_prices\" ON book_id | LIMIT 100"""
+        )
+
+        result.responseCode should not be 403
       }
     }
     "replace an index list whose written form differs from the one ES's parser reports" when {

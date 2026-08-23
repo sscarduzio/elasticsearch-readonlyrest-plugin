@@ -22,3 +22,7 @@ readonlyrest:
     - name: "Everything matching the book_ prefix"
       auth_key: books:test
       indices: ["book_*"]
+
+    - name: "The FROM target and both LOOKUP JOIN targets"
+      auth_key: joins:test
+      indices: ["book_catalog", "book_prices", "store_ratings"]

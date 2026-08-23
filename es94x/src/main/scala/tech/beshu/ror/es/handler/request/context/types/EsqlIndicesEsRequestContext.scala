@@ -65,7 +65,7 @@ class EsqlIndicesEsRequestContext private (
     }
   }
 
-  /** What a query ROR could not read the index lists of has to be taken to request. */
+  /** What a query ROR cannot read the index lists of has to be taken to ask for. */
   private val allIndices: Set[RequestedIndex[ClusterIndexName]] =
     Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
@@ -94,22 +94,20 @@ class EsqlIndicesEsRequestContext private (
       case Right(RequestClassification.NonIndicesRelated) =>
         Right(())
       case Right(classification @ RequestClassification.IndicesRelated(indexLists)) =>
-        if (aclLeftIndicesAlone(filteredIndices, classification.requestedIndices)) Right(())
+        if (aclNarrowedNothing(filteredIndices, classification.requestedIndices)) Right(())
         else EsqlRequestHelper.modifyIndicesOf(request, indexLists, filteredIndices)
       case Left(RequestClassification.Error.NotParsable(cause)) =>
         logger.debug("Cannot parse the ES|QL statement - we can pass it through, because ES will reject it too", cause)
         Right(())
       case Left(RequestClassification.Error.CannotReadIndexList(failure)) =>
-        if (aclLeftIndicesAlone(filteredIndices, allIndices)) Right(())
+        // such a query is taken to ask for every index, so it runs only when the ACL allowed every index
+        if (aclNarrowedNothing(filteredIndices, allIndices)) Right(())
         else Left(Query.Rejection.CannotReadIndexList(failure))
     }
   }
 
-  /**
-   * A query ROR cannot rewrite is only a problem when it would have had to. Left to run against the indices it
-   * already asked for, an ES|QL query ROR cannot read is no worse off than before ROR could read any of them.
-   */
-  private def aclLeftIndicesAlone(
+  /** When the ACL allows exactly what the query asked for, there is nothing to narrow down and nothing to rewrite. */
+  private def aclNarrowedNothing(
       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
       requestedIndices: Set[RequestedIndex[ClusterIndexName]]
   ): Boolean = filteredIndices.toList.toCovariantSet == requestedIndices
