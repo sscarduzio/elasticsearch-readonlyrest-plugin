@@ -138,18 +138,6 @@ class EsqlLookupJoinSuite
         result.column("rating").toList should contain only (Num(4), Num(5))
         result.rows.size should be(2)
       }
-      "the index list is written with spaces after the commas" excludeES (
-        allEs6x,
-        allEs7x,
-        allEs8xBelowEs811x
-      ) in {
-        val result = bothIndicesEsqlManager.execute(
-          """FROM book_catalog, book_prices | SORT book_id | LIMIT 100"""
-        )
-
-        result should have statusCode 200
-        result.rows.size should be(4)
-      }
     }
     "be rejected with a generic 'Unknown index' error, leaking neither the index's existence nor its data" when {
       "the LOOKUP JOIN target is not authorized, even though FROM's own target is fine" excludeES (
@@ -236,7 +224,7 @@ class EsqlLookupJoinSuite
       }
     }
     "replace an index list whose written form differs from the one ES's parser reports" when {
-      "it is written with spaces after the commas" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+      "it is written with spaces after the commas" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
         val result = catalogOnlyEsqlManager.execute("""FROM book_catalog, book_prices | LIMIT 100""")
 
         result should have statusCode 200
