@@ -98,21 +98,10 @@ class EsqlIndicesEsRequestContext private (
         if (aclNarrowedNothing(filteredIndices, classification.requestedIndices)) Right(())
         else esqlRequestHelper.modifyIndicesOf(request, indexLists, filteredIndices)
       case Left(RequestClassification.Error.NotParsable(cause)) =>
-        if (aclNarrowedNothing(filteredIndices, allIndices)) {
-          logger.debug(
-            "Cannot parse the ES|QL statement - we can pass it through, because ES will reject it too",
-            cause
-          )
-        } else {
-          logger.warn(
-            "Cannot parse the ES|QL statement, so it goes to Elasticsearch as written even though the ACL narrowed " +
-              "the indices it may read. Elasticsearch is expected to reject it on its own.",
-            cause
-          )
-        }
-        Right(())
+        logger.debug("Cannot parse the ES|QL statement", cause)
+        if (aclNarrowedNothing(filteredIndices, allIndices)) Right(())
+        else Left(Query.Rejection.CannotParse)
       case Left(RequestClassification.Error.CannotReadIndexList(failure)) =>
-        // such a query is taken to ask for every index, so it runs only when the ACL allowed every index
         if (aclNarrowedNothing(filteredIndices, allIndices)) Right(())
         else Left(Query.Rejection.CannotReadIndexList(failure))
     }

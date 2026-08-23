@@ -40,12 +40,18 @@ object Query {
 
   object Rejection {
 
+    case object CannotParse extends Rejection
+
     final case class CannotReadIndexList(failure: LocatedIndexList.ReadingFailure) extends Rejection
 
     final case class NotReplacedAsIntended(intendedIndexLists: List[String], readIndexLists: List[String])
         extends Rejection
 
     implicit val show: Show[Rejection] = Show.show {
+      case CannotParse =>
+        "The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
+          "indices the user is allowed to, and it could not read the query at all - so it cannot tell which indices " +
+          "the query would run against. If the query is valid ES|QL, please report it to the ReadonlyREST team."
       case CannotReadIndexList(failure) =>
         s"The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
           s"indices the user is allowed to, and running it as written would have let the user read the indices " +

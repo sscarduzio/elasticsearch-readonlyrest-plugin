@@ -198,6 +198,15 @@ class EsqlLookupJoinSuite
       }
     }
     "be rejected as forbidden" when {
+      "ReadonlyREST cannot parse the query, so it cannot hold it to the indices the ACL allowed" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs811x
+      ) in {
+        val result = catalogOnlyEsqlManager.execute("""FROM book_catalog | NOT_A_COMMAND""")
+
+        result should have statusCode 403
+      }
       "ROR cannot read the LOOKUP JOIN target as a single index, so it cannot replace it" excludeES (
         allEs6x,
         allEs7x,
@@ -211,6 +220,15 @@ class EsqlLookupJoinSuite
       }
     }
     "be left to run as written" when {
+      "ReadonlyREST cannot parse the query, but the ACL narrowed nothing to hold it to" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8xBelowEs811x
+      ) in {
+        val result = adminEsqlManager.execute("""FROM book_catalog | NOT_A_COMMAND""")
+
+        result should have statusCode 400
+      }
       "ROR cannot read the LOOKUP JOIN target, but the ACL narrowed nothing to hold the query to" excludeES (
         allEs6x,
         allEs7x,
