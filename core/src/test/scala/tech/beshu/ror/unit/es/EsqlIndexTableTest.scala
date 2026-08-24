@@ -59,17 +59,16 @@ class EsqlIndexTableTest extends AnyWordSpec {
         Rewritten("FROM src | LOOKUP JOIN ROR_nonexistent0001 ON key")
     }
 
-    "rewrite a wildcard-narrowed FROM and a masked LOOKUP JOIN independently, without cross-contaminating" +
-      " each other's replacement text" in {
-        val query = "FROM book* | LOOKUP JOIN book_prices ON isbn"
-        val replacements = NonEmptyList.of(
-          replacementFor(newFromTable("book*"), "bookstore1", "bookstore2"),
-          replacementFor(lookupJoinTable("book_prices"), "ROR_nonexistent0002")
-        )
+    "rewrite a wildcard-narrowed FROM and a masked LOOKUP JOIN without cross-contamination" in {
+      val query = "FROM book* | LOOKUP JOIN book_prices ON isbn"
+      val replacements = NonEmptyList.of(
+        replacementFor(newFromTable("book*"), "bookstore1", "bookstore2"),
+        replacementFor(lookupJoinTable("book_prices"), "ROR_nonexistent0002")
+      )
 
-        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
-          Rewritten("FROM bookstore1,bookstore2 | LOOKUP JOIN ROR_nonexistent0002 ON isbn")
-      }
+      EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
+        Rewritten("FROM bookstore1,bookstore2 | LOOKUP JOIN ROR_nonexistent0002 ON isbn")
+    }
 
     "narrow a comma-separated FROM list, whatever way the user spelled it" when {
       "the entries are separated by a space" in {
@@ -286,13 +285,13 @@ class EsqlIndexTableTest extends AnyWordSpec {
           replacementFor(lookupJoinTable("prices"), "ROR_nonexistent0004")
         )
 
-        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe CannotRewriteQuery
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe a[CannotRewriteQuery]
       }
       "a FROM table is only spelled as a LOOKUP JOIN target in the query" in {
         val query = "FROM src | LOOKUP JOIN prices ON key"
         val replacements = NonEmptyList.one(replacementFor(newFromTable("prices"), "other"))
 
-        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe CannotRewriteQuery
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe a[CannotRewriteQuery]
       }
       "the same index list can be located in more than one place" in {
         val query = "FROM logs | LOOKUP JOIN prices ON key | FORK (WHERE a) (FROM logs)"
@@ -301,7 +300,7 @@ class EsqlIndexTableTest extends AnyWordSpec {
           replacementFor(lookupJoinTable("prices"), "prices")
         )
 
-        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe CannotRewriteQuery
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe a[CannotRewriteQuery]
       }
       "the query spells the list in a way that doesn't normalize to what ES reported" in {
         val query = "FROM book_catalog | LIMIT 100"
@@ -309,13 +308,13 @@ class EsqlIndexTableTest extends AnyWordSpec {
           replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
         )
 
-        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe CannotRewriteQuery
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe a[CannotRewriteQuery]
       }
       "an unterminated string literal swallows the only index list ES reported" in {
         val query = """FROM logs | WHERE msg == "oops | LIMIT 10"""
         val replacements = NonEmptyList.one(replacementFor(newFromTable("oops"), "other"))
 
-        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe CannotRewriteQuery
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe a[CannotRewriteQuery]
       }
     }
   }
@@ -360,51 +359,48 @@ class EsqlIndexTableTest extends AnyWordSpec {
       newIndicesOf(replacements, lookupTable) shouldBe NonEmptyList.one("lookup_idx")
     }
 
-    "not strip a literal index name from FROM's replacement just because the same name is also " +
-      "requested by LOOKUP JOIN" in {
-        val fromTable = newFromTable("shared_idx")
-        val lookupTable = lookupJoinTable("shared_idx")
+    "keep a literal index name in FROM's replacement when LOOKUP JOIN requests it too" in {
+      val fromTable = newFromTable("shared_idx")
+      val lookupTable = lookupJoinTable("shared_idx")
 
-        val replacements = EsqlIndexTable.buildReplacements(
-          NonEmptyList.of(fromTable, lookupTable),
-          allowedIndices = authorizedIndicesOf("shared_idx")
-        )
+      val replacements = EsqlIndexTable.buildReplacements(
+        NonEmptyList.of(fromTable, lookupTable),
+        allowedIndices = authorizedIndicesOf("shared_idx")
+      )
 
-        newIndicesOf(replacements, fromTable) shouldBe NonEmptyList.one("shared_idx")
-        newIndicesOf(replacements, lookupTable) shouldBe NonEmptyList.one("shared_idx")
-      }
+      newIndicesOf(replacements, fromTable) shouldBe NonEmptyList.one("shared_idx")
+      newIndicesOf(replacements, lookupTable) shouldBe NonEmptyList.one("shared_idx")
+    }
 
-    "resolve a literal name shared by a forbidden FROM and a forbidden LOOKUP JOIN to the same " +
-      "nonexistent index" in {
-        val fromTable = newFromTable("shared_idx")
-        val lookupTable = lookupJoinTable("shared_idx")
-        val decoyLookupTable = lookupJoinTable("decoy_lookup_only")
+    "mask a name shared by a forbidden FROM and a forbidden LOOKUP JOIN to the same nonexistent index" in {
+      val fromTable = newFromTable("shared_idx")
+      val lookupTable = lookupJoinTable("shared_idx")
+      val decoyLookupTable = lookupJoinTable("decoy_lookup_only")
 
-        val replacements = EsqlIndexTable.buildReplacements(
-          NonEmptyList.of(fromTable, lookupTable, decoyLookupTable),
-          allowedIndices = authorizedIndicesOf("decoy_lookup_only")
-        )
+      val replacements = EsqlIndexTable.buildReplacements(
+        NonEmptyList.of(fromTable, lookupTable, decoyLookupTable),
+        allowedIndices = authorizedIndicesOf("decoy_lookup_only")
+      )
 
-        val fromMasked = newIndicesOf(replacements, fromTable)
-        val lookupMasked = newIndicesOf(replacements, lookupTable)
-        assertMasked(fromMasked)
-        assertMasked(lookupMasked)
-        fromMasked shouldBe lookupMasked
-      }
+      val fromMasked = newIndicesOf(replacements, fromTable)
+      val lookupMasked = newIndicesOf(replacements, lookupTable)
+      assertMasked(fromMasked)
+      assertMasked(lookupMasked)
+      fromMasked shouldBe lookupMasked
+    }
 
-    "include a LOOKUP JOIN target's name in a wildcard FROM's narrowed list when the wildcard genuinely " +
-      "matches it too" in {
-        val fromTable = newFromTable("book*")
-        val lookupTable = lookupJoinTable("book_prices")
+    "include a LOOKUP JOIN target in a wildcard FROM's narrowed list when the wildcard matches it" in {
+      val fromTable = newFromTable("book*")
+      val lookupTable = lookupJoinTable("book_prices")
 
-        val replacements = EsqlIndexTable.buildReplacements(
-          NonEmptyList.of(fromTable, lookupTable),
-          allowedIndices = authorizedIndicesOf("bookstore1", "bookstore2", "book_prices")
-        )
+      val replacements = EsqlIndexTable.buildReplacements(
+        NonEmptyList.of(fromTable, lookupTable),
+        allowedIndices = authorizedIndicesOf("bookstore1", "bookstore2", "book_prices")
+      )
 
-        newIndicesOf(replacements, fromTable).toList.sorted shouldBe List("book_prices", "bookstore1", "bookstore2")
-        newIndicesOf(replacements, lookupTable) shouldBe NonEmptyList.one("book_prices")
-      }
+      newIndicesOf(replacements, fromTable).toList.sorted shouldBe List("book_prices", "bookstore1", "bookstore2")
+      newIndicesOf(replacements, lookupTable) shouldBe NonEmptyList.one("book_prices")
+    }
 
     "exclude a LOOKUP JOIN target from a wildcard FROM's narrowed list when the wildcard doesn't match it" in {
       val fromTable = newFromTable("bookstore*")
@@ -445,17 +441,16 @@ class EsqlIndexTableTest extends AnyWordSpec {
       assertMasked(newIndicesOf(replacements, secretTable))
     }
 
-    "resolve a literal FROM alias whose ACL-narrowed concrete index name doesn't textually match the " +
-      "query's own alias text (e.g. the ACL resolved \"bookshop\" to its underlying \"bookstore\")" in {
-        val fromTable = newFromTable("bookshop")
+    "resolve a literal FROM alias to the concrete index name the ACL narrowed it to" in {
+      val fromTable = newFromTable("bookshop")
 
-        val replacements = EsqlIndexTable.buildReplacements(
-          NonEmptyList.one(fromTable),
-          allowedIndices = authorizedIndicesOf("bookstore")
-        )
+      val replacements = EsqlIndexTable.buildReplacements(
+        NonEmptyList.one(fromTable),
+        allowedIndices = authorizedIndicesOf("bookstore")
+      )
 
-        newIndicesOf(replacements, fromTable) shouldBe NonEmptyList.one("bookstore")
-      }
+      newIndicesOf(replacements, fromTable) shouldBe NonEmptyList.one("bookstore")
+    }
   }
 
   "EsqlIndexTable.LookupJoin.parse" should {

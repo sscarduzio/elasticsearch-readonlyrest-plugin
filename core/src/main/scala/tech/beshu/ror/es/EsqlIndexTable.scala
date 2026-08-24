@@ -31,7 +31,7 @@ sealed trait EsqlQueryRewriteResult
 
 object EsqlQueryRewriteResult {
   final case class Rewritten(newQuery: String) extends EsqlQueryRewriteResult
-  case object CannotRewriteQuery extends EsqlQueryRewriteResult
+  final case class CannotRewriteQuery(reason: String) extends EsqlQueryRewriteResult
 }
 
 sealed trait EsqlIndexTable {
@@ -51,8 +51,17 @@ object EsqlIndexTable {
   }
 
   object From {
+
     def parse(tableStringInQuery: String): Option[From] =
       requestedIndicesFrom(tableStringInQuery).map(From(tableStringInQuery, _))
+
+    private def requestedIndicesFrom(
+        tableStringInQuery: String
+    ): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
+      NonEmptyList.fromList(
+        tableStringInQuery.split(',').asSafeList.filter(_.nonEmpty).flatMap(RequestedIndex.fromString)
+      )
+
   }
 
   final case class LookupJoin(tableStringInQuery: String, index: IndexName.Full) extends EsqlIndexTable {
@@ -71,7 +80,7 @@ object EsqlIndexTable {
 
   }
 
-  final case class Replacement(table: EsqlIndexTable, newIndices: NonEmptyList[ClusterIndexName])
+  private[ror] final case class Replacement(table: EsqlIndexTable, newIndices: NonEmptyList[ClusterIndexName])
 
   def requestedIndicesOf(tables: NonEmptyList[EsqlIndexTable]): Set[RequestedIndex[ClusterIndexName]] =
     tables.toList.flatMap(_.requestedIndices.toList).toCovariantSet
@@ -84,37 +93,37 @@ object EsqlIndexTable {
     newQueryFrom(oldQuery, buildReplacements(tables, allowedIndices))
   }
 
-  def buildReplacements(
+  private[ror] def buildReplacements(
       tables: NonEmptyList[EsqlIndexTable],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): NonEmptyList[Replacement] = {
     val allowedIndexNames: Set[ClusterIndexName] = allowedIndices.includedOnly
     val fromTables = tables.collect { case table: From => table }
 
-    val lookupOnlyNames: Set[ClusterIndexName] =
+    val lookupOnlyIndexNames: Set[ClusterIndexName] =
       tables.collect { case table: LookupJoin => table.clusterIndexName }.toCovariantSet --
         fromTables.flatMap(_.requestedIndices.includedOnly).toCovariantSet
 
-    val matchedNamesByFromTable: Map[From, Set[ClusterIndexName]] =
+    val matchedIndexNamesByFromTable: Map[From, Set[ClusterIndexName]] =
       fromTables.map(table => (table, table.matcher.filter(allowedIndexNames))).toMap
 
     // an alias the ACL replaced with its backing index matches no FROM pattern, and nothing left in the
     // request says which table it came from
-    val unattributedNames: Set[ClusterIndexName] =
-      allowedIndexNames -- lookupOnlyNames -- matchedNamesByFromTable.values.flatten.toCovariantSet
+    val unattributedIndexNames: Set[ClusterIndexName] =
+      allowedIndexNames -- lookupOnlyIndexNames -- matchedIndexNamesByFromTable.values.flatten.toCovariantSet
 
-    def authorizedNamesFor(table: EsqlIndexTable): Option[NonEmptyList[ClusterIndexName]] = table match {
+    def authorizedIndexNamesFor(table: EsqlIndexTable): Option[NonEmptyList[ClusterIndexName]] = table match {
       case table: LookupJoin =>
         Option.when(allowedIndexNames.contains(table.clusterIndexName))(NonEmptyList.one(table.clusterIndexName))
       case table: From =>
-        NonEmptyList.fromList((matchedNamesByFromTable(table) ++ unattributedNames).toList)
+        NonEmptyList.fromList((matchedIndexNamesByFromTable(table) ++ unattributedIndexNames).toList)
     }
 
-    val authorizedNamesByTable: Map[EsqlIndexTable, Option[NonEmptyList[ClusterIndexName]]] =
-      tables.toList.map(table => (table, authorizedNamesFor(table))).toMap
+    val authorizedIndexNamesByTable: Map[EsqlIndexTable, Option[NonEmptyList[ClusterIndexName]]] =
+      tables.toList.map(table => (table, authorizedIndexNamesFor(table))).toMap
 
     val nonexistentIndexByTableText: Map[String, ClusterIndexName] =
-      authorizedNamesByTable
+      authorizedIndexNamesByTable
         .collect { case (table, None) => table.tableStringInQuery }
         .toList
         .distinct
@@ -122,31 +131,32 @@ object EsqlIndexTable {
         .toMap
 
     tables.map { table =>
-      val newIndices = authorizedNamesByTable(table)
+      val newIndices = authorizedIndexNamesByTable(table)
         .getOrElse(NonEmptyList.one(nonexistentIndexByTableText(table.tableStringInQuery)))
       Replacement(table, newIndices)
     }
   }
 
-  def newQueryFrom(oldQuery: String, replacements: NonEmptyList[Replacement]): EsqlQueryRewriteResult = {
+  private[ror] def newQueryFrom(
+      oldQuery: String,
+      replacements: NonEmptyList[Replacement]
+  ): EsqlQueryRewriteResult = {
     val scan = QueryScan.of(oldQuery)
     replacements.toList
       .groupBy(_.table)
       .toList
       .traverse { case (table, tableReplacements) =>
         val spans = indexListSpansIn(scan, table)
-        Option.when(spans.size === tableReplacements.size)(spans.zip(tableReplacements))
+        Either.cond(
+          spans.size === tableReplacements.size,
+          spans.zip(tableReplacements),
+          s"the table [${table.show}] cannot be unambiguously located in the query text"
+        )
       }
       .map(_.flatten)
       .flatMap(spliceIndexLists(oldQuery, _))
-      .map(EsqlQueryRewriteResult.Rewritten.apply)
-      .getOrElse(EsqlQueryRewriteResult.CannotRewriteQuery)
+      .fold(EsqlQueryRewriteResult.CannotRewriteQuery.apply, EsqlQueryRewriteResult.Rewritten.apply)
   }
-
-  private def requestedIndicesFrom(tableStringInQuery: String): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
-    NonEmptyList.fromList(
-      tableStringInQuery.split(',').asSafeList.filter(_.nonEmpty).flatMap(RequestedIndex.fromString)
-    )
 
   private def indexListSpansIn(scan: QueryScan, table: EsqlIndexTable): List[(Int, Int)] = {
     val matcher = indexListPatternOf(table).matcher(scan.text)
@@ -284,15 +294,15 @@ object EsqlIndexTable {
 
   }
 
-  private def spliceIndexLists(query: String, spans: List[((Int, Int), Replacement)]): Option[String] = {
+  private def spliceIndexLists(query: String, spans: List[((Int, Int), Replacement)]): Either[String, String] = {
     val sortedSpans = spans.sortBy { case ((start, _), _) => start }
     val overlapping = sortedSpans.sliding(2).exists {
       case List(((_, previousEnd), _), ((start, _), _)) => previousEnd > start
       case _                                            => false
     }
-    if (overlapping) None
+    if (overlapping) Left("the index lists of the tables overlap in the query text")
     else
-      Some {
+      Right {
         sortedSpans.reverse.foldLeft(query) { case (currentQuery, ((start, end), replacement)) =>
           val newIndices = replacement.newIndices.toList.map(_.show).mkString(",")
           s"${currentQuery.substring(0, start)}$newIndices${currentQuery.substring(end)}"

@@ -29,13 +29,17 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.EsqlQueryRewriteResult
+import tech.beshu.ror.es.EsqlIndexTable
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.EsqlRequestHelper
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification}
+import tech.beshu.ror.es.utils.EsqlRequestHelper.{
+  ClassificationError,
+  EsqlRequestClassification,
+  IndicesModificationResult
+}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -75,16 +79,7 @@ class EsqlIndicesEsRequestContext private (
     requestClassification match {
       case Right(r @ EsqlRequestClassification.IndicesRelated(tables))
           if filteredRequestedIndices.toList.toCovariantSet != r.requestedIndices =>
-        EsqlRequestHelper.modifyIndicesOf(request, tables, filteredRequestedIndices) match {
-          case EsqlQueryRewriteResult.Rewritten(_) =>
-            updatedRequest(request, filter, fieldLevelSecurity)
-          case EsqlQueryRewriteResult.CannotRewriteQuery =>
-            logger.warn(
-              s"[${id.show}] Cannot unambiguously locate tables [${tables.show}] in the ESQL query text, so the " +
-                s"query cannot be narrowed down to [${filteredRequestedIndices.show}]. The request will be rejected."
-            )
-            ModificationResult.ShouldBeInterrupted
-        }
+        requestWithIndicesNarrowedTo(request, tables, filteredRequestedIndices, filter, fieldLevelSecurity)
       case Right(_) =>
         updatedRequest(request, filter, fieldLevelSecurity)
       case Left(ClassificationError.ParsingException(ex)) =>
@@ -98,6 +93,25 @@ class EsqlIndicesEsRequestContext private (
           s"[${id.show}] Cannot read the tables of the parsed ESQL statement - the indices it touches are " +
             "unknown. The request will be rejected. Cause:",
           ex
+        )
+        ModificationResult.ShouldBeInterrupted
+    }
+  }
+
+  private def requestWithIndicesNarrowedTo(
+      request: ActionRequest with CompositeIndicesRequest,
+      tables: NonEmptyList[EsqlIndexTable],
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult = {
+    EsqlRequestHelper.modifyIndicesOf(request, tables, filteredRequestedIndices) match {
+      case IndicesModificationResult.IndicesModified =>
+        updatedRequest(request, filter, fieldLevelSecurity)
+      case IndicesModificationResult.CannotModifyIndices(reason) =>
+        logger.warn(
+          s"[${id.show}] The ESQL query cannot be narrowed down to [${filteredRequestedIndices.show}], because " +
+            s"$reason. The request will be rejected."
         )
         ModificationResult.ShouldBeInterrupted
     }

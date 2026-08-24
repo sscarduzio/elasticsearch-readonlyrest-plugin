@@ -27,7 +27,11 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification}
+import tech.beshu.ror.es.utils.EsqlRequestHelper.{
+  ClassificationError,
+  EsqlRequestClassification,
+  IndicesModificationResult
+}
 import tech.beshu.ror.es.{EsqlIndexTable, EsqlQueryRewriteResult}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -43,13 +47,13 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       request: CompositeIndicesRequest,
       requestTables: NonEmptyList[EsqlIndexTable],
       finalIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): EsqlQueryRewriteResult = {
+  ): IndicesModificationResult = {
     EsqlIndexTable.newQueryFrom(getQuery(request), requestTables, finalIndices) match {
-      case rewritten @ EsqlQueryRewriteResult.Rewritten(newQuery) =>
+      case EsqlQueryRewriteResult.Rewritten(newQuery) =>
         setQuery(request, newQuery)
-        rewritten
-      case EsqlQueryRewriteResult.CannotRewriteQuery =>
-        EsqlQueryRewriteResult.CannotRewriteQuery
+        IndicesModificationResult.IndicesModified
+      case EsqlQueryRewriteResult.CannotRewriteQuery(reason) =>
+        IndicesModificationResult.CannotModifyIndices(reason)
     }
   }
 
@@ -300,6 +304,13 @@ object EsqlRequestHelper {
   object ClassificationError {
     final case class ParsingException(cause: Throwable) extends ClassificationError
     final case class IndicesExtractionException(cause: Throwable) extends ClassificationError
+  }
+
+  sealed trait IndicesModificationResult
+
+  object IndicesModificationResult {
+    case object IndicesModified extends IndicesModificationResult
+    final case class CannotModifyIndices(reason: String) extends IndicesModificationResult
   }
 
 }

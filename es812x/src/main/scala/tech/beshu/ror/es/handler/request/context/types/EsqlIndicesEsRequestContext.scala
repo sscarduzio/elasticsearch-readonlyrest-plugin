@@ -34,7 +34,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.EsqlRequestHelper
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification}
+import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification, IndexTable}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -60,7 +60,7 @@ class EsqlIndicesEsRequestContext private (
     requestClassification match {
       case Right(r @ EsqlRequestClassification.IndicesRelated(_)) =>
         r.indices.flatMap(RequestedIndex.fromString)
-      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(ClassificationError.ParsingException(_)) =>
+      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(_) =>
         Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
     }
   }
@@ -71,33 +71,47 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    modifyRequestIndices(request, filteredRequestedIndices)
-    applyFieldLevelSecurityTo(request, fieldLevelSecurity)
-    applyFilterTo(request, filter)
-    UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
-  }
-
-  private def modifyRequestIndices(
-      request: ActionRequest with CompositeIndicesRequest,
-      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): CompositeIndicesRequest = {
     requestClassification match {
-      case Right(EsqlRequestClassification.NonIndicesRelated) =>
-        request
-      case Right(r @ EsqlRequestClassification.IndicesRelated(tables)) =>
-        val filteredIndicesStrings = filteredIndices.stringify.toCovariantSet
-        if (filteredIndicesStrings != r.indices) {
-          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndicesStrings)
-        } else {
-          request
-        }
+      case Right(r @ EsqlRequestClassification.IndicesRelated(tables))
+          if filteredRequestedIndices.stringify.toCovariantSet != r.indices =>
+        requestWithIndicesNarrowedTo(request, tables, filteredRequestedIndices, filter, fieldLevelSecurity)
+      case Right(_) =>
+        updatedRequest(request, filter, fieldLevelSecurity)
       case Left(ClassificationError.ParsingException(ex)) =>
         logger.debug(
           s"Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:",
           ex
         )
-        request
+        updatedRequest(request, filter, fieldLevelSecurity)
+      case Left(ClassificationError.IndicesExtractionException(ex)) =>
+        logger.warn(
+          s"[${id.show}] Cannot read the tables of the parsed ESQL statement - the indices it touches are " +
+            "unknown. The request will be rejected. Cause:",
+          ex
+        )
+        ModificationResult.ShouldBeInterrupted
     }
+  }
+
+  private def requestWithIndicesNarrowedTo(
+      request: ActionRequest with CompositeIndicesRequest,
+      tables: NonEmptyList[IndexTable],
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult = {
+    EsqlRequestHelper.modifyIndicesOf(request, tables, filteredRequestedIndices.stringify.toCovariantSet)
+    updatedRequest(request, filter, fieldLevelSecurity)
+  }
+
+  private def updatedRequest(
+      request: ActionRequest with CompositeIndicesRequest,
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult = {
+    applyFieldLevelSecurityTo(request, fieldLevelSecurity)
+    applyFilterTo(request, filter)
+    UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
   }
 
   private def applyFieldLevelSecurityTo(
