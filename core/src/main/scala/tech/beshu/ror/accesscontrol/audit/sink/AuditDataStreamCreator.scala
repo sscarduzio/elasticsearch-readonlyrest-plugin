@@ -34,7 +34,8 @@ import java.util.concurrent.TimeUnit
 final class AuditDataStreamCreator(service: DataStreamService) extends RequestIdAwareLogging {
 
   def createIfNotExists(dataStreamName: RorAuditDataStream): Task[Either[NonEmptyList[ErrorMessage], Unit]] = {
-    createIfNotExists(service, dataStreamName).map(_.toEither.left.map(NonEmptyList.one))
+    createIfNotExists(service, dataStreamName)
+      .map(_.toEither.left.map(NonEmptyList.one))
   }
 
   private def createIfNotExists(
