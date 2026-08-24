@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.es.services
 
+import cats.data.NonEmptyList
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
+import monix.eval.Task
 import org.apache.http.HttpHost
 import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials}
 import org.apache.http.client.config.RequestConfig
@@ -25,15 +27,18 @@ import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.elasticsearch.client.*
 import org.elasticsearch.client.RestClient.FailureListener
-import tech.beshu.ror.accesscontrol.domain.AuditCluster.ClusterMode
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RequestId}
+import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.security.cert.X509Certificate
 import java.util.concurrent.Semaphore
 
-final class RestClientAuditSinkService private (client: RestClient, inFlightRequestSemaphore: Semaphore)
-    extends IndexBasedAuditSinkService
+final class RestClientAuditSinkService private (
+    client: MultiNodeRestClient[Request, Response],
+    inFlightRequestSemaphore: Semaphore
+) extends IndexBasedAuditSinkService
     with RequestIdAwareLogging {
 
   override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
@@ -51,10 +56,13 @@ final class RestClientAuditSinkService private (client: RestClient, inFlightRequ
   ): Unit = {
     if (inFlightRequestSemaphore.tryAcquire()) {
       client
-        .performRequestAsync(
-          createRequest(indexName, documentId, jsonRecord),
-          createResponseListener(indexName, documentId)
+        .perform(createRequest(indexName, documentId, jsonRecord))
+        .flatMap(response => Task.delay(handleResponse(indexName, documentId, response)))
+        .onErrorHandleWith(ex =>
+          Task.delay(logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex))
         )
+        .doOnFinish(_ => Task.delay(inFlightRequestSemaphore.release()))
+        .runAsyncAndForget(RorSchedulers.mainScheduler)
     } else {
       logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] — too many in-flight requests")
     }
@@ -67,59 +75,58 @@ final class RestClientAuditSinkService private (client: RestClient, inFlightRequ
     request
   }
 
-  private def createResponseListener(indexName: String, documentId: String)(
+  private def handleResponse(indexName: String, documentId: String, response: Response)(
       implicit requestId: RequestId
-  ) =
-    new ResponseListener() {
-      override def onSuccess(response: Response): Unit = {
-        try {
-          response.getStatusLine.getStatusCode / 100 match {
-            case 2 => // 2xx
-              logger.debug(s"Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
-            case _ =>
-              logger.error(
-                s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}"
-              )
-          }
-        } finally {
-          inFlightRequestSemaphore.release()
-        }
-      }
-
-      override def onFailure(ex: Exception): Unit = {
-        try {
-          logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
-        } finally {
-          inFlightRequestSemaphore.release()
-        }
-      }
+  ): Unit = {
+    response.getStatusLine.getStatusCode / 100 match {
+      case 2 => // 2xx
+        logger.debug(s"Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
+      case _ =>
+        logger.error(
+          s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}"
+        )
     }
+  }
 
 }
 
 object RestClientAuditSinkService extends RequestIdAwareLogging {
 
   def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditSinkService = {
+    val hosts = remoteCluster.nodes.toNonEmptyList.map(toHttpHost)
+    createService(remoteCluster, createClusterAwareClient(remoteCluster, hosts))
+  }
+
+  private def createClusterAwareClient(
+      remoteCluster: AuditCluster.RemoteAuditCluster,
+      hosts: NonEmptyList[HttpHost]
+  ): MultiNodeRestClient[Request, Response] = {
     remoteCluster.mode match {
       case ClusterMode.RoundRobin =>
-        new RestClientAuditSinkService(
-          client = createRestClient(remoteCluster),
-          inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests)
-        )
+        RestClientRequestExecutor.roundRobinClient(createRestClient(remoteCluster, hosts))
     }
   }
 
-  private def createRestClient(remoteCluster: AuditCluster.RemoteAuditCluster) = {
-    val hosts = remoteCluster.nodes.map { node =>
-      new HttpHost(node.hostname, node.port, node.scheme)
-    }
+  private def createService(
+      remoteCluster: AuditCluster.RemoteAuditCluster,
+      client: MultiNodeRestClient[Request, Response]
+  ) = {
+    new RestClientAuditSinkService(
+      client = client,
+      inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
+    )
+  }
 
+  private def createRestClient(
+      remoteCluster: AuditCluster.RemoteAuditCluster,
+      hosts: NonEmptyList[HttpHost]
+  ): RestClient = {
     val credentials =
       remoteCluster.credentials
         .map(c => new UsernamePasswordCredentials(c.username.value, c.password.value))
 
     RestClient
-      .builder(hosts.toSeq: _*)
+      .builder(hosts.toList: _*)
       .setHttpClientConfigCallback((httpClientBuilder: HttpAsyncClientBuilder) => {
         val configurations =
           configureRequestConfig(remoteCluster) andThen configureCredentials(credentials) andThen configureSsl()
@@ -181,6 +188,10 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
     override def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
     override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
     override def getAcceptedIssuers: Array[X509Certificate] = null
+  }
+
+  private def toHttpHost(node: AuditClusterNode) = {
+    new HttpHost(node.hostname, node.port, node.scheme)
   }
 
 }

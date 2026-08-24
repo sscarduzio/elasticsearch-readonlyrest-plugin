@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, LocalUsers, RorSettingsIn
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorSettingsBasedCoreFactory}
-import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider, MockedCapabilities}
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
@@ -210,7 +210,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           }
 
           inside(createCore(settings, new UnboundidLdapConnectionPoolProvider())) { case Right(core) =>
-            core.dependencies.localUsers should be(allUsersResolved(UniqueNonEmptyList.of(User.Id("admin"))))
+            core.core.dependencies.localUsers should be(allUsersResolved(UniqueNonEmptyList.of(User.Id("admin"))))
           }
         }
         "ror_kbn_auth rule used" in {
@@ -232,7 +232,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
 
           val rorSettings = rorSettingsFromUnsafe(settings)
           inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) { case Right(core) =>
-            core.dependencies.localUsers should be(
+            core.core.dependencies.localUsers should be(
               allUsersResolved(
                 UniqueNonEmptyList.of(
                   User.Id("admin")
@@ -260,7 +260,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
 
           val rorSettings = rorSettingsFromUnsafe(settings)
           inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) { case Right(core) =>
-            core.dependencies.localUsers should be(
+            core.core.dependencies.localUsers should be(
               allUsersResolved(
                 UniqueNonEmptyList.of(
                   User.Id("admin")
@@ -463,7 +463,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
   private def assertLocalUsersFromSettings(settingsString: String, expected: LocalUsers) = {
     val settings = rorSettingsFromUnsafe(settingsString)
     inside(createCore(settings)) { case Right(core) =>
-      core.dependencies.localUsers should be(expected)
+      core.core.dependencies.localUsers should be(expected)
     }
   }
 
@@ -478,7 +478,8 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
         ldapConnectionPoolProvider,
-        NoOpMocksProvider
+        NoOpMocksProvider,
+        MockedCapabilities.standard
       )
       .runSyncUnsafe()
   }

@@ -26,9 +26,7 @@ trait IndexBasedAuditSinkServiceCreator extends AuditSinkServiceCreator {
   def index(cluster: AuditCluster): IndexBasedAuditSinkService
 }
 
-trait DataStreamAndIndexBasedAuditSinkServiceCreator
-    extends AuditSinkServiceCreator
-    with IndexBasedAuditSinkServiceCreator {
+trait DataStreamBasedAuditSinkServiceCreator extends AuditSinkServiceCreator {
 
   def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService
 }

@@ -27,7 +27,7 @@ import org.apache.logging.log4j.core.appender.rolling.{
 import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.{LogManager, Logger}
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.RollingFileBasedSink.FileAppenderConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput.RollingFileBasedSink.FileAppenderConfig
 import tech.beshu.ror.accesscontrol.domain.{RorAuditLoggerName, SinkName}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 

@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvid
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider, MockedCapabilities}
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -63,9 +63,10 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         httpClientsFactory,
         ldapConnectionPoolProvider,
-        mockProvider
+        mockProvider,
+        MockedCapabilities.standard
       )
-      .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), _.accessControl))
+      .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), _.core.accessControl))
       .runSyncUnsafe()
   }
 

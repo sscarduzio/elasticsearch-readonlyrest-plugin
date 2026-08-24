@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
-import tech.beshu.ror.mocks.MockHttpClientsFactory
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockedCapabilities}
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
@@ -408,7 +408,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
   private def impersonationWarningsReader(settingsString: String, mocksProvider: MocksProvider = NoOpMocksProvider) = {
     val settings = rorSettingsFromUnsafe(settingsString)
     inside(createCore(settings, mocksProvider = mocksProvider)) { case Right(core) =>
-      core.dependencies.impersonationWarningsReader
+      core.core.dependencies.impersonationWarningsReader
     }
   }
 
@@ -425,7 +425,8 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
         new UnboundidLdapConnectionPoolProvider(),
-        mocksProvider
+        mocksProvider,
+        MockedCapabilities.standard
       )
       .runSyncUnsafe()
   }

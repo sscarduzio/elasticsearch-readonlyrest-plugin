@@ -23,15 +23,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{
-  EsDataStreamBasedSink,
-  EsIndexBasedSink,
-  LogBasedSink,
-  RollingFileBasedSink
-}
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings, AuditingConfig}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput.*
 import tech.beshu.ror.accesscontrol.audit.configurable.AuditFieldValueDescriptorParser
 import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, JsonAuditSerializer}
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
@@ -48,11 +42,8 @@ import tech.beshu.ror.accesscontrol.domain.{
   RorAuditLoggerName,
   SinkName
 }
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
-  AuditingSettingsCreationError,
-  Reason
-}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
@@ -61,7 +52,7 @@ import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.constants.EsFeatureVersions
-import tech.beshu.ror.es.{EsEnv, EsVersion}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -72,17 +63,28 @@ import scala.util.{Failure, Success, Try}
 
 object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
-  def instance(esEnv: EsEnv): Decoder[AuditingConfig] = {
+  def indexOrDataStream(esEnv: EsEnv): Decoder[AuditingConfig.IndexOrDataStream] =
+    makeDecoder(esEnv, decodeIndexOrDataStreamAuditSettings)
+
+  def indexOnly(esEnv: EsEnv): Decoder[AuditingConfig.IndexOnly] =
+    makeDecoder(esEnv, decodeIndexOnlyAuditSettings)
+
+  private def makeDecoder[O >: AuditOutput.WithoutDataStream <: AuditOutput](
+      esEnv: EsEnv,
+      specificDecoder: Decoder[AuditOutputsConfig[O]],
+  ): Decoder[AuditingConfig[O]] =
     for {
-      auditSettings <- auditSettingsDecoder(esEnv)
+      auditSettings <- auditSettingsDecoder[O](specificDecoder)
       deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance
       defaultAclLog <- defaultAclLogDecoder
     } yield AuditingConfig(
-      outputsConfig = auditSettings.orElse(deprecatedAuditSettings),
+      outputsConfig = auditSettings match {
+        case AuditOutputsConfig.Disabled => deprecatedAuditSettings
+        case enabled                     => enabled
+      },
       defaultAclLog = defaultAclLog,
       esNodeSettings = esEnv.esNodeSettings,
     )
-  }
 
   private def defaultAclLogDecoder: Decoder[Boolean] = Decoder.instance { c =>
     val nested = c.downField("audit").downField("default_acl_log_enabled")
@@ -104,11 +106,13 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     }
   }
 
-  private def auditSettingsDecoder(esEnv: EsEnv): Decoder[Option[AuditOutputsConfig]] =
+  private def auditSettingsDecoder[O <: AuditOutput](
+      decoder: Decoder[AuditOutputsConfig[O]]
+  ): Decoder[AuditOutputsConfig[O]] =
     Decoder.instance(c =>
       readAuditEnabled(c).flatMap {
-        case Some(true) => decodeAuditSettings(esEnv)(c).map(Some.apply)
-        case _          => Right(None)
+        case Some(true) => decoder(c)
+        case _          => Right(AuditOutputsConfig.Disabled)
       }
     )
 
@@ -132,11 +136,51 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     }
   }
 
-  private def decodeAuditSettings(esEnv: EsEnv): Decoder[AuditOutputsConfig] = {
+  private def decodeIndexOrDataStreamAuditSettings: Decoder[AuditOutputsConfig[AuditOutput]] = {
+    decodeAuditSettingsWithFallback[AuditOutput](
+      simpleDecoder = auditOutputSimpleDecoder[AuditOutputType, AuditOutput] {
+        case (AuditOutputType.DataStream, name) => EsDataStreamBased(name, EsDataStreamBasedSink.default)
+        case (AuditOutputType.Index, name)      => EsIndexBased(name, EsIndexBasedSink.default)
+        case (AuditOutputType.Log, name)        => LogBased(name, LogBasedSink.default)
+      },
+      extendedDecoder = auditOutputExtendedDecoder[AuditOutputType, AuditOutput] {
+        case (c, AuditOutputType.DataStream, name) =>
+          c.as[EsDataStreamBasedSink].map(cfg => EsDataStreamBased(name, cfg))
+        case (c, AuditOutputType.Index, name) => c.as[EsIndexBasedSink].map(cfg => EsIndexBased(name, cfg))
+        case (c, AuditOutputType.Log, name)   => decodeLogOutput(name)(c)
+      }
+    )
+  }
+
+  private def decodeIndexOnlyAuditSettings: Decoder[AuditOutputsConfig[AuditOutput.WithoutDataStream]] = {
+    decodeAuditSettingsWithFallback[AuditOutput.WithoutDataStream](
+      simpleDecoder = auditOutputSimpleDecoder[AuditOutputType.WithoutDataStream, AuditOutput.WithoutDataStream] {
+        case (AuditOutputType.Index, name) => EsIndexBased(name, EsIndexBasedSink.default)
+        case (AuditOutputType.Log, name)   => LogBased(name, LogBasedSink.default)
+      },
+      extendedDecoder = auditOutputExtendedDecoder[
+        AuditOutputType.WithoutDataStream,
+        AuditOutput.WithoutDataStream
+      ] {
+        case (c, AuditOutputType.Index, name) => c.as[EsIndexBasedSink].map(cfg => EsIndexBased(name, cfg))
+        case (c, AuditOutputType.Log, name)   => decodeLogOutput(name)(c)
+      }
+    )
+  }
+
+  private def decodeLogOutput(name: SinkName): Decoder[LogBased | RollingFileBased] = {
+    logBasedSinkConfigDecoder.map {
+      case cfg: LogBasedSink         => LogBased(name, cfg)
+      case cfg: RollingFileBasedSink => RollingFileBased(name, cfg)
+    }
+  }
+
+  private def decodeAuditSettingsWithFallback[O >: AuditOutput.WithoutDataStream <: AuditOutput](
+      simpleDecoder: Decoder[O],
+      extendedDecoder: Decoder[O]
+  ): Decoder[AuditOutputsConfig[O]] = {
     decodeAuditSettingsWith(
-      using auditSinkConfigSimpleDecoder(
-        using esEnv.esVersion
-      )
+      using simpleDecoder
     )
       .handleErrorWith { error =>
         if (error.aclCreationError.isDefined) {
@@ -144,153 +188,195 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
           Decoder.failed(error)
         } else {
           decodeAuditSettingsWith(
-            using auditSinkConfigExtendedDecoder(
-              using esEnv.esVersion
-            )
+            using extendedDecoder
           )
         }
       }
   }
 
-  private def decodeAuditSettingsWith(
-      using Decoder[AuditSink]
-  ): Decoder[AuditOutputsConfig] = {
+  private def decodeAuditSettingsWith[O >: AuditOutput.WithoutDataStream <: AuditOutput](
+      using Decoder[O]
+  ): Decoder[AuditOutputsConfig[O]] =
     SyncDecoderCreator
       .instance {
-        _.downField("audit").downField("outputs").as[Option[List[AuditSink]]]
+        _.downField("audit").downField("outputs").as[Option[List[O]]]
       }
       .emapE {
         case Some(outputs) =>
           NonEmptyList
-            .fromList(outputs.distinct)
-            .map(AuditOutputsConfig.WithOutputs(_))
+            .fromList[O](outputs.distinct)
+            .map(AuditOutputsConfig.Configured(_))
             .toRight(auditSettingsError(s"The audit 'outputs' array cannot be empty"))
         case None =>
-          AuditOutputsConfig.NoOutputsConfigured.asRight
+          AuditOutputsConfig.Defaults.asRight
       }
+      .decoder
+
+  private def auditOutputSimpleDecoder[OUTPUT_TYPE <: AuditOutputType, O <: AuditOutput](
+      f: (OUTPUT_TYPE, SinkName) => O
+  )(
+      using Decoder[OUTPUT_TYPE]
+  ): Decoder[O] =
+    Decoder[OUTPUT_TYPE].map(st => f(st, SinkName.random()))
+
+  private def auditOutputExtendedDecoder[
+      OUTPUT_TYPE <: AuditOutputType,
+      O >: AuditOutput.WithoutDataStream <: AuditOutput
+  ](
+      f: (HCursor, OUTPUT_TYPE, SinkName) => Decoder.Result[O]
+  )(
+      using Decoder[OUTPUT_TYPE]
+  ): Decoder[O] =
+    Decoder.instance { c =>
+      for {
+        outputType <- c.downFieldAs[OUTPUT_TYPE]("type")
+        isOutputEnabledOpt <- c.downFieldAs[Option[Boolean]]("enabled")
+        sinkNameOpt <- c.downFieldAs[Option[SinkName]]("name")
+        name = sinkNameOpt.getOrElse(SinkName.random())
+        result <- f(c, outputType, name)
+      } yield {
+        if (isOutputEnabledOpt.getOrElse(true)) result else AuditOutput.Disabled
+      }
+    }
+
+  private sealed trait AuditOutputType
+
+  private object AuditOutputType {
+    sealed trait WithoutDataStream extends AuditOutputType
+
+    case object Index extends WithoutDataStream
+
+    case object Log extends WithoutDataStream
+
+    case object DataStream extends AuditOutputType
+
+    given Decoder[WithoutDataStream] =
+      SyncDecoderCreator
+        .from(Decoder.decodeString)
+        .emapE[WithoutDataStream] {
+          case "index"       => Right(Index)
+          case "log"         => Right(Log)
+          case "data_stream" =>
+            Left(
+              auditSettingsError(
+                s"Data stream audit output is supported from Elasticsearch version ${EsFeatureVersions.dataStreamSupport.formatted}. " +
+                  s"Use 'index' type or upgrade to ${EsFeatureVersions.dataStreamSupport.formatted} or later."
+              )
+            )
+          case other =>
+            Left(unsupportedOutputTypeError(unsupportedType = other, supportedTypes = NonEmptyList.of("index", "log")))
+        }
+        .decoder
+
+    given Decoder[AuditOutputType] =
+      SyncDecoderCreator
+        .from(Decoder.decodeString)
+        .emapE[AuditOutputType] {
+          case "index"       => Right(Index)
+          case "log"         => Right(Log)
+          case "data_stream" => Right(DataStream)
+          case other         =>
+            Left(
+              unsupportedOutputTypeError(
+                unsupportedType = other,
+                supportedTypes = NonEmptyList.of("data_stream", "index", "log")
+              )
+            )
+        }
+        .decoder
+
+    private def unsupportedOutputTypeError(unsupportedType: String, supportedTypes: NonEmptyList[String]) = {
+      auditSettingsError(
+        s"Unsupported type of audit output: ${unsupportedType.show}. Supported types: [${supportedTypes.toList.show}]"
+      )
+    }
+
+  }
+
+  given Decoder[RorAuditLoggerName] = {
+    SyncDecoderCreator
+      .from(nonEmptyStringDecoder)
+      .map(RorAuditLoggerName.apply)
+      .withError(auditSettingsError("The audit 'logger_name' cannot be empty"))
       .decoder
   }
 
-  private def auditSinkConfigSimpleDecoder(
-      using EsVersion
-  ): Decoder[AuditSink] = {
-    Decoder[AuditSinkType]
-      .emap[AuditSink.Config] {
-        case AuditSinkType.DataStream =>
-          Config.EsDataStreamBasedSink.default.asRight
-        case AuditSinkType.Index =>
-          Config.EsIndexBasedSink.default.asRight
-        case AuditSinkType.Log =>
-          Config.LogBasedSink.default.asRight
-      }
-      .map(config => AuditSink.Enabled(SinkName.random(), config))
-  }
-
-  private def auditSinkConfigExtendedDecoder(
-      using EsVersion
-  ): Decoder[AuditSink] = {
-    given Decoder[RorAuditLoggerName] = {
-      SyncDecoderCreator
-        .from(nonEmptyStringDecoder)
-        .map(RorAuditLoggerName.apply)
-        .withError(auditSettingsError("The audit 'logger_name' cannot be empty"))
-        .decoder
-    }
-
-    given Decoder[RollingFileBasedSink.FileAppenderConfig] = Decoder.instance { c =>
-      for {
-        filePath <- c.downField("file_path").as[String].map(java.nio.file.Paths.get(_))
-        maxFileSize <- c.downField("max_file_size").as[String].flatMap { raw =>
-          FromString.information
-            .decode(raw)
-            .filterOrElse(_.toBytes > 0.0, s"Size must be greater than zero")
-            .left
-            .map { msg =>
-              DecodingFailure(
-                AclCreationErrorCoders.stringify(
-                  auditSettingsError(s"Invalid audit 'max_file_size': $msg")
-                ),
-                Nil
-              )
-            }
-        }
-        maxFiles <- c.downField("max_files").as[Int].flatMap { n =>
-          refineV[Positive](n).leftMap(_ =>
+  given Decoder[RollingFileBasedSink.FileAppenderConfig] = Decoder.instance { c =>
+    for {
+      filePath <- c.downField("file_path").as[String].map(java.nio.file.Paths.get(_))
+      maxFileSize <- c.downField("max_file_size").as[String].flatMap { raw =>
+        FromString.information
+          .decode(raw)
+          .filterOrElse(_.toBytes > 0.0, s"Size must be greater than zero")
+          .left
+          .map { msg =>
             DecodingFailure(
               AclCreationErrorCoders.stringify(
-                auditSettingsError(s"Audit 'max_files' must be a positive integer, got: $n")
+                auditSettingsError(s"Invalid audit 'max_file_size': $msg")
               ),
               Nil
             )
+          }
+      }
+      maxFiles <- c.downField("max_files").as[Int].flatMap { n =>
+        refineV[Positive](n).leftMap(_ =>
+          DecodingFailure(
+            AclCreationErrorCoders.stringify(
+              auditSettingsError(s"Audit 'max_files' must be a positive integer, got: $n")
+            ),
+            Nil
           )
-        }
-      } yield RollingFileBasedSink.FileAppenderConfig(filePath, maxFileSize, maxFiles)
-    }
-
-    given logBasedSinkConfigDecoder: Decoder[AuditSink.Config] = {
-      given logSinkSerializerDecoder: Decoder[Option[AuditSerializer]] = Decoder.instance { c =>
-        c.as[SerializerType].flatMap {
-          case SerializerType.AclSerializer => Right(Some(AuditSerializer.Acl))
-          case st                           => decodeNonAclSerializer(st, c)
-        }
+        )
       }
-      Decoder.instance { c =>
-        for {
-          logSerializer <- c.as[Option[AuditSerializer]]
-          loggerName <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
-          fileAppender <- c.downField("file_appender").as[Option[RollingFileBasedSink.FileAppenderConfig]]
-        } yield {
-          val serializer = logSerializer.getOrElse(LogBasedSink.default.serializer)
-          val logger = loggerName.getOrElse(LogBasedSink.default.loggerName)
-          fileAppender match {
-            case None     => LogBasedSink(serializer, logger)
-            case Some(fa) => RollingFileBasedSink(serializer, logger, fa)
-          }
-        }
+    } yield RollingFileBasedSink.FileAppenderConfig(filePath, maxFileSize, maxFiles)
+  }
+
+  private given logBasedSinkConfigDecoder: Decoder[LogBasedSink | RollingFileBasedSink] = {
+    given logSinkSerializerDecoder: Decoder[Option[AuditSerializer]] = Decoder.instance { c =>
+      c.as[SerializerType].flatMap {
+        case SerializerType.AclSerializer => Right(Some(AuditSerializer.Acl))
+        case st                           => decodeNonAclSerializer(st, c)
       }
     }
 
-    given Decoder[EsIndexBasedSink] = Decoder.instance { c =>
+    Decoder.instance { c =>
       for {
-        auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
-        logSerializer <- c.as[Option[JsonAuditSerializer]]
-        remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
-      } yield EsIndexBasedSink(
-        logSerializer.getOrElse(EsIndexBasedSink.default.serializer),
-        auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
-        remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
-      )
-    }
-
-    given Decoder[EsDataStreamBasedSink] = Decoder.instance { c =>
-      for {
-        rorAuditDataStream <- c.downFieldAs[Option[RorAuditDataStream]]("data_stream")
-        logSerializer <- c.as[Option[JsonAuditSerializer]]
-        remoteAuditCluster <- c.downFieldAs[Option[AuditCluster.RemoteAuditCluster]]("cluster")
-      } yield EsDataStreamBasedSink(
-        logSerializer.getOrElse(EsDataStreamBasedSink.default.serializer),
-        rorAuditDataStream.getOrElse(EsDataStreamBasedSink.default.rorAuditDataStream),
-        remoteAuditCluster.getOrElse(EsDataStreamBasedSink.default.auditCluster),
-      )
-    }
-
-    Decoder
-      .instance[AuditSink] { c =>
-        for {
-          sinkType <- c.downFieldAs[AuditSinkType]("type")
-          sinkConfig <- sinkType match {
-            case AuditSinkType.DataStream => c.as[EsDataStreamBasedSink]
-            case AuditSinkType.Index      => c.as[EsIndexBasedSink]
-            case AuditSinkType.Log        => c.as[AuditSink.Config](logBasedSinkConfigDecoder)
-          }
-          isSinkEnabledOpt <- c.downFieldAs[Option[Boolean]]("enabled")
-          sinkNameOpt <- c.downField("name").as[Option[SinkName]]
-        } yield {
-          val isSinkEnabled = isSinkEnabledOpt.getOrElse(true)
-          lazy val sinkName = sinkNameOpt.getOrElse(SinkName.random())
-          if (isSinkEnabled) AuditSink.Enabled(sinkName, sinkConfig) else AuditSink.Disabled
+        logSerializer <- c.as[Option[AuditSerializer]]
+        loggerName <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
+        fileAppender <- c.downField("file_appender").as[Option[RollingFileBasedSink.FileAppenderConfig]]
+      } yield {
+        val serializer = logSerializer.getOrElse(LogBasedSink.default.serializer)
+        val logger = loggerName.getOrElse(LogBasedSink.default.loggerName)
+        fileAppender match {
+          case None     => LogBasedSink(serializer, logger)
+          case Some(fa) => RollingFileBasedSink(serializer, logger, fa)
         }
       }
+    }
+  }
+
+  private given Decoder[EsIndexBasedSink] = Decoder.instance { c =>
+    for {
+      auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
+      logSerializer <- c.as[Option[JsonAuditSerializer]]
+      remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
+    } yield EsIndexBasedSink(
+      logSerializer.getOrElse(EsIndexBasedSink.default.serializer),
+      auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
+      remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
+    )
+  }
+
+  private given Decoder[EsDataStreamBasedSink] = Decoder.instance { c =>
+    for {
+      rorAuditDataStream <- c.downFieldAs[Option[RorAuditDataStream]]("data_stream")
+      logSerializer <- c.as[Option[JsonAuditSerializer]]
+      remoteAuditCluster <- c.downFieldAs[Option[AuditCluster.RemoteAuditCluster]]("cluster")
+    } yield EsDataStreamBasedSink(
+      logSerializer.getOrElse(EsDataStreamBasedSink.default.serializer),
+      rorAuditDataStream.getOrElse(EsDataStreamBasedSink.default.rorAuditDataStream),
+      remoteAuditCluster.getOrElse(EsDataStreamBasedSink.default.auditCluster),
+    )
   }
 
   private given Decoder[SinkName] = Decoder.decodeString.map(SinkName.apply)
@@ -563,7 +649,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     }
   }
 
-  given allowedEventModeDecoder: Decoder[AllowedEventMode] = {
+  private given allowedEventModeDecoder: Decoder[AllowedEventMode] = {
     SyncDecoderCreator
       .from(Decoder[Option[Set[Verbosity]]])
       .map[AllowedEventMode] {
@@ -612,7 +698,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       } yield result
     }
 
-  given verbosityDecoder: Decoder[Verbosity] = {
+  private given verbosityDecoder: Decoder[Verbosity] = {
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emap {
@@ -706,72 +792,18 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
               case (None, None) =>
                 clusterCredentialsFromNodesUris(clusterNodes)
               case (Some(user), None) =>
-                Left(auditSettingsError(s"Audit output configuration is missing the ‘$passwordKey’ field."))
+                Left(auditSettingsError(s"Audit output configuration is missing the '$passwordKey' field."))
               case (None, Some(pass)) =>
-                Left(auditSettingsError(s"Audit output configuration is missing the ‘$usernameKey’ field."))
+                Left(auditSettingsError(s"Audit output configuration is missing the '$usernameKey' field."))
             }
           }.leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
         } yield AuditCluster.RemoteAuditCluster(clusterNodes, mode, maybeCredentials)
     }
   }
 
-  private sealed trait AuditSinkType
-
-  private object AuditSinkType {
-    case object DataStream extends AuditSinkType
-
-    case object Index extends AuditSinkType
-
-    case object Log extends AuditSinkType
-
-    def from(value: String, esVersion: EsVersion): Either[AuditingSettingsCreationError, AuditSinkType] = value match {
-      case "data_stream" if esVersion >= EsFeatureVersions.dataStreamSupport =>
-        AuditSinkType.DataStream.asRight
-      case "data_stream" =>
-        Left(
-          AuditingSettingsCreationError(
-            Reason.Message(
-              s"Data stream audit output is supported from Elasticsearch version ${EsFeatureVersions.dataStreamSupport.formatted}, " +
-                s"but your version is ${esVersion.formatted}. Use 'index' type or upgrade to ${EsFeatureVersions.dataStreamSupport.formatted} or later."
-            )
-          )
-        )
-      case "index" =>
-        AuditSinkType.Index.asRight
-      case "log" =>
-        AuditSinkType.Log.asRight
-      case other =>
-        unsupportedOutputTypeError(
-          unsupportedType = other,
-          supportedTypes =
-            if (esVersion >= EsFeatureVersions.dataStreamSupport) {
-              NonEmptyList.of("data_stream", "index", "log")
-            } else {
-              NonEmptyList.of("index", "log")
-            }
-        ).asLeft
-    }
-
-    private def unsupportedOutputTypeError(unsupportedType: String, supportedTypes: NonEmptyList[String]) = {
-      auditSettingsError(
-        s"Unsupported type of audit output: ${unsupportedType.show}. Supported types: [${supportedTypes.toList.show}]"
-      )
-    }
-
-    given auditSinkTypeDecoder(
-        using esVersion: EsVersion
-    ): Decoder[AuditSinkType] = {
-      SyncDecoderCreator
-        .from(Decoder.decodeString)
-        .emapE(AuditSinkType.from(_, esVersion))
-        .decoder
-    }
-
-  }
-
   private object DeprecatedAuditSettingsDecoder {
 
-    def instance: Decoder[Option[AuditOutputsConfig]] = Decoder.instance { c =>
+    def instance: Decoder[AuditOutputsConfig[AuditOutput.WithoutDataStream]] = Decoder.instance { c =>
       whenEnabled(c) {
         for {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)(
@@ -789,9 +821,9 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
             "cluster",
             fallbackKey = "audit_cluster"
           )
-        } yield AuditOutputsConfig.WithOutputs(
-          auditSinks = NonEmptyList.one(
-            AuditSink.Enabled(
+        } yield AuditOutputsConfig.Configured(
+          outputs = NonEmptyList.one(
+            EsIndexBased(
               SinkName.random(),
               EsIndexBasedSink(
                 serializer = logSerializer.getOrElse(EsIndexBasedSink.default.serializer),
@@ -804,10 +836,10 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       }
     }
 
-    private def whenEnabled(cursor: HCursor)(decoding: => Decoder.Result[AuditingTool.AuditOutputsConfig]) = {
+    private def whenEnabled[O <: AuditOutput](cursor: HCursor)(decoding: => Decoder.Result[AuditOutputsConfig[O]]) = {
       for {
         isEnabled <- decodeOptionalSetting[Boolean](cursor)("collector", fallbackKey = "audit_collector")
-        result <- if (isEnabled.getOrElse(false)) decoding.map(Some.apply) else Right(None)
+        result <- if (isEnabled.getOrElse(false)) decoding else Right(AuditOutputsConfig.Disabled)
       } yield result
     }
 
