@@ -72,31 +72,36 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    modifyRequestIndices(request, filteredRequestedIndices)
-    applyFieldLevelSecurityTo(request, fieldLevelSecurity)
-    applyFilterTo(request, filter)
-    UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
+    modifyRequestIndices(request, filteredRequestedIndices) match {
+      case Some(_) =>
+        applyFieldLevelSecurityTo(request, fieldLevelSecurity)
+        applyFilterTo(request, filter)
+        UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
+      case None =>
+        logger.debug("Cannot narrow the indices of the ESQL query - the request is going to be rejected")
+        ModificationResult.ShouldBeInterrupted
+    }
   }
 
   private def modifyRequestIndices(
       request: ActionRequest with CompositeIndicesRequest,
       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): CompositeIndicesRequest = {
+  ): Option[CompositeIndicesRequest] = {
     requestClassification match {
       case Right(EsqlRequestClassification.NonIndicesRelated) =>
-        request
+        Some(request)
       case Right(r @ EsqlRequestClassification.IndicesRelated(tables)) =>
         if (filteredIndices.toList.toCovariantSet != r.requestedIndices) {
           esqlRequestHelper.modifyIndicesOf(request, tables, filteredIndices)
         } else {
-          request
+          Some(request)
         }
       case Left(ClassificationError.ParsingException(ex)) =>
         logger.debug(
           s"Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:",
           ex
         )
-        request
+        Some(request)
     }
   }
 

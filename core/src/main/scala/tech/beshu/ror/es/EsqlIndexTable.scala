@@ -24,7 +24,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-import java.util.regex.{Matcher, Pattern}
+import java.util.regex.Pattern
 
 sealed trait EsqlIndexTable {
   def tableStringInQuery: String
@@ -72,7 +72,7 @@ object EsqlIndexTable {
       oldQuery: String,
       tables: NonEmptyList[EsqlIndexTable],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): String = {
+  ): Option[String] = {
     newQueryFrom(oldQuery, buildReplacements(tables, allowedIndices))
   }
 
@@ -100,21 +100,22 @@ object EsqlIndexTable {
     NonEmptyList.fromListUnsafe(fromReplacements ++ lookupReplacements)
   }
 
-  def newQueryFrom(oldQuery: String, replacements: NonEmptyList[Replacement]): String = {
-    replacements.toList.foldLeft(oldQuery) { case (currentQuery, replacement) =>
-      val (beforeFrom, afterFrom) = currentQuery.splitBy("FROM")
-      afterFrom match {
-        case None =>
-          replaceTableNameInQueryPart(currentQuery, replacement.table.tableStringInQuery, replacement.newIndices)
-        case Some(tablesPart) =>
-          s"${beforeFrom}FROM ${replaceTableNameInQueryPart(tablesPart, replacement.table.tableStringInQuery, replacement.newIndices)}"
-      }
-    }
+  /**
+   * `None` whenever a table ES reported cannot be located in the query, or two located index lists overlap.
+   *
+   * The request has already been allowed on the strength of the narrowed index set, so a rewrite that cannot
+   * be performed is not one that can be skipped - forwarding the query untouched would run it against the
+   * user's original, unauthorized indices. Callers turn `None` into a forbidden response.
+   */
+  def newQueryFrom(oldQuery: String, replacements: NonEmptyList[Replacement]): Option[String] = {
+    replacements.toList
+      .traverse(replacement => indexListSpanIn(oldQuery, replacement.table).map((_, replacement)))
+      .flatMap(spliceIndexLists(oldQuery, _))
   }
 
-  // The returned map is threaded into `buildFromReplacements`: if the same literal text is masked in
-  // both a FROM and a LOOKUP JOIN, `newQueryFrom`'s single per-table substitution needs both to
-  // resolve to the same nonexistent name.
+  // The returned map is threaded into `buildFromReplacements` so that a literal masked in both a FROM and
+  // a LOOKUP JOIN reads as the same nonexistent index in the rewritten query, the way it read as the same
+  // index in the original one.
   private def buildLookupReplacements(
       tables: List[LookupJoin],
       allowedIndices: Set[ClusterIndexName]
@@ -170,17 +171,49 @@ object EsqlIndexTable {
     }
   }
 
-  // Anchored to non-identifier boundaries so `originTable` doesn't match as a substring of a longer
-  // identifier (e.g. "book" inside "book_prices").
-  private def replaceTableNameInQueryPart(
-      currentQuery: String,
-      originTable: String,
-      newIndices: NonEmptyList[ClusterIndexName]
-  ): String = {
-    val nonIdentifierChar = "[^\\w.\\-*:]"
-    val pattern = s"(^|$nonIdentifierChar)${Pattern.quote(originTable)}(?=$nonIdentifierChar|$$)"
-    val replacement = "$1" + Matcher.quoteReplacement(newIndices.toList.map(_.show).mkString(","))
-    currentQuery.replaceAll(pattern, replacement)
+  /** `None` unless the list can be located exactly once - an ambiguous query is rejected, not guessed at. */
+  private def indexListSpanIn(query: String, table: EsqlIndexTable): Option[(Int, Int)] = {
+    val matcher = indexListPatternOf(table).matcher(query)
+    Option.when(matcher.find())((matcher.start(1), matcher.end(1))).filterNot(_ => matcher.find())
+  }
+
+  /**
+   * ES reports an index list normalized - entries joined with `,`, quoting stripped - so `FROM a, b` is
+   * reported as `a,b` and plain text search for it finds nothing. The pattern below matches every spelling
+   * that normalizes to what ES reported, and only where a command can start, so neither an identifier that
+   * merely shares an index's name (`FROM status | WHERE status == "ok"`) nor a keyword inside a string
+   * literal is mistaken for an index list.
+   */
+  private def indexListPatternOf(table: EsqlIndexTable): Pattern = {
+    val keywords = table match {
+      case _: From       => "FROM|TS"
+      case _: LookupJoin => "LOOKUP\\s+JOIN"
+    }
+    val optionalQuote = "(?:\"\"\"|\")?"
+    val indexList = table.tableStringInQuery
+      .split(',')
+      .map(index => s"$optionalQuote${Pattern.quote(index)}$optionalQuote")
+      .mkString("\\s*,\\s*")
+    Pattern.compile(
+      s"(?:^|[|(])\\s*(?:$keywords)\\s+($indexList)(?![\\w.\\-*:])",
+      Pattern.CASE_INSENSITIVE
+    )
+  }
+
+  private def spliceIndexLists(query: String, spans: List[((Int, Int), Replacement)]): Option[String] = {
+    val sortedSpans = spans.sortBy { case ((start, _), _) => start }
+    val overlapping = sortedSpans.sliding(2).exists {
+      case List(((_, previousEnd), _), ((start, _), _)) => previousEnd > start
+      case _                                            => false
+    }
+    if (overlapping) None
+    else
+      Some {
+        sortedSpans.reverse.foldLeft(query) { case (currentQuery, ((start, end), replacement)) =>
+          val newIndices = replacement.newIndices.toList.map(_.show).mkString(",")
+          s"${currentQuery.substring(0, start)}$newIndices${currentQuery.substring(end)}"
+        }
+      }
   }
 
 }

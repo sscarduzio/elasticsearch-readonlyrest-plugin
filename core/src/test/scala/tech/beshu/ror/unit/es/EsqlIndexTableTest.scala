@@ -34,7 +34,7 @@ class EsqlIndexTableTest extends AnyWordSpec {
         replacementFor(newFromTable("logs-*"), "logs-1", "logs-2")
       )
 
-      EsqlIndexTable.newQueryFrom(query, replacements) shouldBe "FROM  logs-1,logs-2 | LIMIT 10"
+      EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Some("FROM logs-1,logs-2 | LIMIT 10")
     }
 
     "leave an authorized LOOKUP JOIN target untouched" in {
@@ -44,7 +44,7 @@ class EsqlIndexTableTest extends AnyWordSpec {
         replacementFor(lookupJoinTable("lookup_idx"), "lookup_idx")
       )
 
-      EsqlIndexTable.newQueryFrom(query, replacements) shouldBe "FROM   src | LOOKUP JOIN lookup_idx ON key"
+      EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Some("FROM src | LOOKUP JOIN lookup_idx ON key")
     }
 
     "mask an unauthorized LOOKUP JOIN target" in {
@@ -55,7 +55,7 @@ class EsqlIndexTableTest extends AnyWordSpec {
       )
 
       EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
-        "FROM   src | LOOKUP JOIN ROR_nonexistent0001 ON key"
+        Some("FROM src | LOOKUP JOIN ROR_nonexistent0001 ON key")
     }
 
     "rewrite a wildcard-narrowed FROM and a masked LOOKUP JOIN independently, without cross-contaminating" +
@@ -67,8 +67,136 @@ class EsqlIndexTableTest extends AnyWordSpec {
         )
 
         EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
-          "FROM   bookstore1,bookstore2 | LOOKUP JOIN ROR_nonexistent0002 ON isbn"
+          Some("FROM bookstore1,bookstore2 | LOOKUP JOIN ROR_nonexistent0002 ON isbn")
       }
+
+    // ES reports an index list normalized (entries joined with `,`, quoting stripped), so none of the
+    // spellings below contain the reported text verbatim. Searching the query for it used to find nothing,
+    // leaving the user's original - unauthorized - indices in the forwarded query.
+    "narrow a comma-separated FROM list, whatever way the user spelled it" when {
+      "the entries are separated by a space" in {
+        val query = "FROM book_catalog, book_prices | LIMIT 100"
+        val replacements = NonEmptyList.one(
+          replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Some("FROM book_catalog | LIMIT 100")
+      }
+      "some of the entries are quoted" in {
+        val query = """FROM "book_catalog", book_prices | LIMIT 100"""
+        val replacements = NonEmptyList.one(
+          replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Some("FROM book_catalog | LIMIT 100")
+      }
+      "the whole list is one quoted string" in {
+        val query = """FROM "book_catalog,book_prices" | LIMIT 100"""
+        val replacements = NonEmptyList.one(
+          replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Some("FROM book_catalog | LIMIT 100")
+      }
+      "the entries are triple-quoted" in {
+        val query = "FROM \"\"\"book_catalog\"\"\",\"\"\"book_prices\"\"\" | LIMIT 100"
+        val replacements = NonEmptyList.one(
+          replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Some("FROM book_catalog | LIMIT 100")
+      }
+      "the source command is lowercase" in {
+        val query = "from book_catalog, book_prices | limit 100"
+        val replacements = NonEmptyList.one(
+          replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Some("from book_catalog | limit 100")
+      }
+    }
+
+    "rewrite only the index list, not identifiers that happen to share an index's name" when {
+      "a column has the same name as the FROM index" in {
+        val query = """FROM status | WHERE status == "ok" | LIMIT 10"""
+        val replacements = NonEmptyList.one(replacementFor(newFromTable("status"), "other"))
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
+          Some("""FROM other | WHERE status == "ok" | LIMIT 10""")
+      }
+      "the LOOKUP JOIN key has the same name as its target index" in {
+        val query = "FROM src | LOOKUP JOIN prices ON prices"
+        val replacements = NonEmptyList.of(
+          replacementFor(newFromTable("src"), "src"),
+          replacementFor(lookupJoinTable("prices"), "ROR_nonexistent0003")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
+          Some("FROM src | LOOKUP JOIN ROR_nonexistent0003 ON prices")
+      }
+      "an index name also appears inside a string literal" in {
+        val query = """FROM logs | WHERE msg == "read from logs" | LIMIT 10"""
+        val replacements = NonEmptyList.one(replacementFor(newFromTable("logs"), "logs-1"))
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
+          Some("""FROM logs-1 | WHERE msg == "read from logs" | LIMIT 10""")
+      }
+      "a METADATA clause follows the index list" in {
+        val query = "FROM logs-* METADATA _index | LIMIT 10"
+        val replacements = NonEmptyList.one(replacementFor(newFromTable("logs-*"), "logs-1"))
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Some("FROM logs-1 METADATA _index | LIMIT 10")
+      }
+      "the index is itself named 'metadata'" in {
+        val query = "FROM metadata | LIMIT 10"
+        val replacements = NonEmptyList.one(replacementFor(newFromTable("metadata"), "other"))
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Some("FROM other | LIMIT 10")
+      }
+      "an index name is a prefix of another identifier in the query" in {
+        val query = "FROM book | EVAL x = book_prices | LIMIT 10"
+        val replacements = NonEmptyList.one(replacementFor(newFromTable("book"), "book-1"))
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Some("FROM book-1 | EVAL x = book_prices | LIMIT 10")
+      }
+    }
+
+    // Forwarding a query ROR could not rewrite would run it against the user's original indices - the
+    // request was already allowed only on the strength of the narrowed set.
+    "fail closed" when {
+      "a table ES reported has no index list in the query" in {
+        val query = "FROM logs | LIMIT 10"
+        val replacements = NonEmptyList.of(
+          replacementFor(newFromTable("logs"), "logs"),
+          replacementFor(lookupJoinTable("prices"), "ROR_nonexistent0004")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe None
+      }
+      "a FROM table is only spelled as a LOOKUP JOIN target in the query" in {
+        val query = "FROM src | LOOKUP JOIN prices ON key"
+        val replacements = NonEmptyList.one(replacementFor(newFromTable("prices"), "other"))
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe None
+      }
+      "the same index list can be located in more than one place" in {
+        val query = "FROM logs | LOOKUP JOIN prices ON key | FORK (WHERE a) (FROM logs)"
+        val replacements = NonEmptyList.of(
+          replacementFor(newFromTable("logs"), "logs-1"),
+          replacementFor(lookupJoinTable("prices"), "prices")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe None
+      }
+      "the query spells the list in a way that doesn't normalize to what ES reported" in {
+        val query = "FROM book_catalog, /* and */ book_prices | LIMIT 100"
+        val replacements = NonEmptyList.one(
+          replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe None
+      }
+    }
   }
 
   "EsqlIndexTable.buildReplacements" should {
@@ -128,8 +256,7 @@ class EsqlIndexTableTest extends AnyWordSpec {
       }
 
     "resolve a literal name shared by both a forbidden FROM and a forbidden LOOKUP JOIN to the identical " +
-      "nonexistent index (newQueryFrom's per-table text replace can't tell the two occurrences apart " +
-      "otherwise)" in {
+      "nonexistent index, so the rewritten query keeps reading as one index the way the original did" in {
         val fromTable = newFromTable("shared_idx")
         val lookupTable = lookupJoinTable("shared_idx")
         // Keeps authorizedIndices non-empty (NonEmptyList can't be) while granting nothing to shared_idx.

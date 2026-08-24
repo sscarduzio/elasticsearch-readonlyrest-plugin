@@ -41,8 +41,10 @@ object EsqlRequestHelper {
       request: CompositeIndicesRequest,
       requestTables: NonEmptyList[EsqlIndexTable],
       finalIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): CompositeIndicesRequest = {
-    setQuery(request, EsqlIndexTable.newQueryFrom(getQuery(request), requestTables, finalIndices))
+  ): Option[CompositeIndicesRequest] = {
+    EsqlIndexTable
+      .newQueryFrom(getQuery(request), requestTables, finalIndices)
+      .map(setQuery(request, _))
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -123,7 +125,7 @@ object EsqlRequestHelper {
     private def indicesFromPreAnalysis(preAnalysis: Any) = {
       val fromIndexPatterns = on(preAnalysis).get[java.util.Map[Any, Any]]("indexes").keySet().asScala.toList
       val lookupIndexPatterns =
-        Try(on(preAnalysis).get[java.util.List[Any]]("lookupIndices").asScala.toList).getOrElse(List.empty)
+        on(preAnalysis).get[java.util.List[Any]]("lookupIndices").asScala.toList
       tablesFrom(fromIndexPatterns, EsqlIndexTable.From.parse) ++
         tablesFrom(lookupIndexPatterns, EsqlIndexTable.LookupJoin.parse)
     }
