@@ -70,9 +70,7 @@ class EsqlIndexTableTest extends AnyWordSpec {
           Some("FROM bookstore1,bookstore2 | LOOKUP JOIN ROR_nonexistent0002 ON isbn")
       }
 
-    // ES reports an index list normalized (entries joined with `,`, quoting stripped), so none of the
-    // spellings below contain the reported text verbatim. Searching the query for it used to find nothing,
-    // leaving the user's original - unauthorized - indices in the forwarded query.
+    // ES reports this list as `book_catalog,book_prices`, which no spelling below contains verbatim.
     "narrow a comma-separated FROM list, whatever way the user spelled it" when {
       "the entries are separated by a space" in {
         val query = "FROM book_catalog, book_prices | LIMIT 100"
@@ -161,8 +159,6 @@ class EsqlIndexTableTest extends AnyWordSpec {
       }
     }
 
-    // Forwarding a query ROR could not rewrite would run it against the user's original indices - the
-    // request was already allowed only on the strength of the narrowed set.
     "fail closed" when {
       "a table ES reported has no index list in the query" in {
         val query = "FROM logs | LIMIT 10"
@@ -226,20 +222,18 @@ class EsqlIndexTableTest extends AnyWordSpec {
       assertMasked(newIndicesOf(replacements, lookupTable))
     }
 
-    "mask FROM to a nonexistent index when FROM is fully forbidden but LOOKUP JOIN is allowed " +
-      "(masking FROM to a concrete nonexistent name still 400s the whole query in practice, but " +
-      "buildReplacements' own contract is still to narrow independently per table)" in {
-        val fromTable = newFromTable("forbidden_src")
-        val lookupTable = lookupJoinTable("lookup_idx")
+    "mask FROM to a nonexistent index when FROM is fully forbidden but LOOKUP JOIN is allowed" in {
+      val fromTable = newFromTable("forbidden_src")
+      val lookupTable = lookupJoinTable("lookup_idx")
 
-        val replacements = EsqlIndexTable.buildReplacements(
-          NonEmptyList.of(fromTable, lookupTable),
-          allowedIndices = authorizedIndicesOf("lookup_idx")
-        )
+      val replacements = EsqlIndexTable.buildReplacements(
+        NonEmptyList.of(fromTable, lookupTable),
+        allowedIndices = authorizedIndicesOf("lookup_idx")
+      )
 
-        assertMasked(newIndicesOf(replacements, fromTable))
-        newIndicesOf(replacements, lookupTable) shouldBe NonEmptyList.one("lookup_idx")
-      }
+      assertMasked(newIndicesOf(replacements, fromTable))
+      newIndicesOf(replacements, lookupTable) shouldBe NonEmptyList.one("lookup_idx")
+    }
 
     "not strip a literal index name from FROM's replacement just because the same name is also " +
       "requested by LOOKUP JOIN" in {
@@ -255,8 +249,8 @@ class EsqlIndexTableTest extends AnyWordSpec {
         newIndicesOf(replacements, lookupTable) shouldBe NonEmptyList.one("shared_idx")
       }
 
-    "resolve a literal name shared by both a forbidden FROM and a forbidden LOOKUP JOIN to the identical " +
-      "nonexistent index, so the rewritten query keeps reading as one index the way the original did" in {
+    "resolve a literal name shared by a forbidden FROM and a forbidden LOOKUP JOIN to the same " +
+      "nonexistent index" in {
         val fromTable = newFromTable("shared_idx")
         val lookupTable = lookupJoinTable("shared_idx")
         // Keeps authorizedIndices non-empty (NonEmptyList can't be) while granting nothing to shared_idx.
@@ -312,6 +306,18 @@ class EsqlIndexTableTest extends AnyWordSpec {
 
         newIndicesOf(replacements, fromTable) shouldBe NonEmptyList.one("bookstore")
       }
+  }
+
+  "EsqlIndexTable.LookupJoin.parse" should {
+    "accept a concrete local index name" in {
+      EsqlIndexTable.LookupJoin.parse("book_prices").map(_.index.name.value) shouldBe Some("book_prices")
+    }
+    "reject a wildcard target" in {
+      EsqlIndexTable.LookupJoin.parse("book_*") shouldBe None
+    }
+    "reject a remote cluster target" in {
+      EsqlIndexTable.LookupJoin.parse("remote:book_prices") shouldBe None
+    }
   }
 
   private def newFromTable(tableStringInQuery: String): EsqlIndexTable.From = {

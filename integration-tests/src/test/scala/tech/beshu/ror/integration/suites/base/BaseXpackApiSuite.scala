@@ -1310,9 +1310,7 @@ trait BaseXpackApiSuite
             result.rows.size should be(4)
           }
       }
-      // ES reports the index list normalized ("book_catalog,book_prices"), so neither spelling below
-      // contains it verbatim. The rewrite used to find nothing and forward the query untouched, handing
-      // book_prices' rows to a user with no grant on it.
+      // ES reports this list as `book_catalog,book_prices`, which neither spelling below contains verbatim.
       "narrow a comma-separated FROM list to what the user is granted" when {
         "the entries are separated by a space" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
           val result = dev4EsqlManager.execute("""FROM book_catalog, book_prices | SORT book_id | LIMIT 100""")

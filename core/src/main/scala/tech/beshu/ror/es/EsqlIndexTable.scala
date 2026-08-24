@@ -18,7 +18,7 @@ package tech.beshu.ror.es
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -33,7 +33,6 @@ sealed trait EsqlIndexTable {
 
 object EsqlIndexTable {
 
-  // FROM supports wildcards, comma-separated lists, and `cluster:index` remote references.
   final case class From(
       tableStringInQuery: String,
       requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
@@ -46,27 +45,28 @@ object EsqlIndexTable {
       requestedIndicesFrom(tableStringInQuery).map(From(tableStringInQuery, _))
   }
 
-  // LOOKUP JOIN's target must be a single, specific index name or alias: no wildcards, no comma
-  // lists, no remote cluster prefix (https://www.elastic.co/docs/reference/query-languages/esql/commands/lookup-join).
-  final case class LookupJoin(tableStringInQuery: String, index: ClusterIndexName) extends EsqlIndexTable {
+  // LOOKUP JOIN's target must be a single, specific index name or alias: no wildcards, no comma lists
+  // https://www.elastic.co/docs/reference/query-languages/esql/commands/lookup-join
+  final case class LookupJoin(tableStringInQuery: String, index: IndexName.Full) extends EsqlIndexTable {
+    val clusterIndexName: ClusterIndexName.Local = ClusterIndexName.Local(index)
+
     override def requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]] =
-      NonEmptyList.one(RequestedIndex(index, excluded = false))
+      NonEmptyList.one(RequestedIndex(clusterIndexName, excluded = false))
   }
 
   object LookupJoin {
+
     def parse(tableStringInQuery: String): Option[LookupJoin] =
-      requestedIndicesFrom(tableStringInQuery).map(indices => LookupJoin(tableStringInQuery, indices.head.name))
+      ClusterIndexName.fromString(tableStringInQuery).collect { case ClusterIndexName.Local(index: IndexName.Full) =>
+        LookupJoin(tableStringInQuery, index)
+      }
+
   }
 
   final case class Replacement(table: EsqlIndexTable, newIndices: NonEmptyList[ClusterIndexName])
 
   def requestedIndicesOf(tables: NonEmptyList[EsqlIndexTable]): Set[RequestedIndex[ClusterIndexName]] =
     tables.toList.flatMap(_.requestedIndices.toList).toCovariantSet
-
-  private def requestedIndicesFrom(tableStringInQuery: String): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
-    NonEmptyList.fromList(
-      tableStringInQuery.split(',').asSafeList.filter(_.nonEmpty).flatMap(RequestedIndex.fromString)
-    )
 
   def newQueryFrom(
       oldQuery: String,
@@ -92,7 +92,9 @@ object EsqlIndexTable {
 
     // Excludes names a FROM table also asks for, so a shared literal isn't stripped from FROM's replacement.
     val lookupOnlyNames: Set[ClusterIndexName] =
-      lookupTables.map(_.index).toCovariantSet -- fromTables.flatMap(_.requestedIndices.includedOnly).toCovariantSet
+      lookupTables.map(_.clusterIndexName).toCovariantSet -- fromTables
+        .flatMap(_.requestedIndices.includedOnly)
+        .toCovariantSet
 
     val fromReplacements =
       buildFromReplacements(fromTables, allowedIndexNames, lookupOnlyNames, nonexistentIndexByOriginal)
@@ -100,22 +102,22 @@ object EsqlIndexTable {
     NonEmptyList.fromListUnsafe(fromReplacements ++ lookupReplacements)
   }
 
-  /**
-   * `None` whenever a table ES reported cannot be located in the query, or two located index lists overlap.
-   *
-   * The request has already been allowed on the strength of the narrowed index set, so a rewrite that cannot
-   * be performed is not one that can be skipped - forwarding the query untouched would run it against the
-   * user's original, unauthorized indices. Callers turn `None` into a forbidden response.
-   */
+  /** `None` when the rewrite cannot be applied. Callers must reject the request rather than skip it - the
+    * query was allowed only on the strength of the narrowed set, so unrewritten it runs against the
+    * user's original indices.
+    */
   def newQueryFrom(oldQuery: String, replacements: NonEmptyList[Replacement]): Option[String] = {
     replacements.toList
       .traverse(replacement => indexListSpanIn(oldQuery, replacement.table).map((_, replacement)))
       .flatMap(spliceIndexLists(oldQuery, _))
   }
 
-  // The returned map is threaded into `buildFromReplacements` so that a literal masked in both a FROM and
-  // a LOOKUP JOIN reads as the same nonexistent index in the rewritten query, the way it read as the same
-  // index in the original one.
+  private def requestedIndicesFrom(tableStringInQuery: String): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
+    NonEmptyList.fromList(
+      tableStringInQuery.split(',').asSafeList.filter(_.nonEmpty).flatMap(RequestedIndex.fromString)
+    )
+
+  // The returned map keeps a literal masked in both a FROM and a LOOKUP JOIN masking to the same index.
   private def buildLookupReplacements(
       tables: List[LookupJoin],
       allowedIndices: Set[ClusterIndexName]
@@ -123,8 +125,8 @@ object EsqlIndexTable {
     val (nonexistentIndexByOriginal, reversedReplacements) =
       tables.foldLeft((Map.empty[String, ClusterIndexName], List.empty[Replacement])) {
         case ((nonexistentIndexByOriginal, replacements), table) =>
-          if (allowedIndices.contains(table.index)) {
-            (nonexistentIndexByOriginal, Replacement(table, NonEmptyList.one(table.index)) :: replacements)
+          if (allowedIndices.contains(table.clusterIndexName)) {
+            (nonexistentIndexByOriginal, Replacement(table, NonEmptyList.one(table.clusterIndexName)) :: replacements)
           } else {
             val (updatedMap, nonexistentIndex) =
               nonexistentIndexFor(nonexistentIndexByOriginal, table.tableStringInQuery)
@@ -177,13 +179,10 @@ object EsqlIndexTable {
     Option.when(matcher.find())((matcher.start(1), matcher.end(1))).filterNot(_ => matcher.find())
   }
 
-  /**
-   * ES reports an index list normalized - entries joined with `,`, quoting stripped - so `FROM a, b` is
-   * reported as `a,b` and plain text search for it finds nothing. The pattern below matches every spelling
-   * that normalizes to what ES reported, and only where a command can start, so neither an identifier that
-   * merely shares an index's name (`FROM status | WHERE status == "ok"`) nor a keyword inside a string
-   * literal is mistaken for an index list.
-   */
+  /** ES reports the list normalized - entries joined with `,`, quoting stripped - so `FROM a, b` is reported
+    * as `a,b` and text search for it finds nothing. Matching every spelling that normalizes to it, anchored
+    * to the keyword, also keeps identifiers that merely share an index's name out of the rewrite.
+    */
   private def indexListPatternOf(table: EsqlIndexTable): Pattern = {
     val keywords = table match {
       case _: From       => "FROM|TS"
