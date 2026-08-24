@@ -42,7 +42,7 @@ concurrency:
 permissions:
   contents: read
 
-# Container jobs default run: steps to `sh`, where `source` (docker-hub-auth.sh) fails with 127.
+# Container jobs default run: steps to `sh`, where `source` (configure-docker.sh) fails with 127.
 # Windows jobs are unaffected — their steps declare `shell: pwsh` explicitly.
 defaults:
   run:
@@ -154,12 +154,16 @@ jobs:
             echo "::error::ci.yml container tags do not all match TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE — bump them together"
             exit 1
           fi
-          # Authenticate before the build. The Dockerfile pulls five images from Docker Hub in its
-          # FROM lines (four eclipse-temurin JDKs and the docker CLI), and those pulls are anonymous
-          # if the login comes after them.
-          source ci/docker-hub-auth.sh
+          # Source before the build. It logs in and it sets ROR_DOCKER_HUB_MIRROR_PREFIX, which the
+          # FROM lines need. The Dockerfile pulls five images from Docker Hub in its FROM lines (four
+          # eclipse-temurin JDKs and the docker CLI), and those pulls are anonymous if the login
+          # comes after them.
+          source ci/configure-docker.sh
           echo ">>> Building $TOOLCHAINS_IMAGE"
-          docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
+          # MIRROR puts the pull-through cache in front of those five names. It is empty when the
+          # mirror is off, and the pulls then go to Docker Hub.
+          docker build --build-arg MIRROR="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}" \
+            -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
           docker push "$TOOLCHAINS_IMAGE"
 
   # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
@@ -181,7 +185,7 @@ jobs:
     needs: setup
     if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    # The runner pulls this image before step 1 runs, so ci/docker-hub-auth.sh cannot authenticate
+    # The runner pulls this image before step 1 runs, so ci/configure-docker.sh cannot authenticate
     # it. These credentials can. A fork supplies empty secrets, and the runner then skips the login
     # and pulls anonymously. A read-only token is enough here, because a job only pulls this image.
     container: &toolchains_container
@@ -297,9 +301,8 @@ jobs:
           ROR_TASK: core_tests
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
-          DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
       - name: Publish test results
         if: failure()
@@ -361,9 +364,8 @@ jobs:
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
-          DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
       - name: Publish test results
         # always(): green-run XMLs feed suite-timings.json regeneration (duration-balanced sharding)
@@ -646,13 +648,16 @@ jobs:
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          # The only job that must not use the Docker Hub mirror. It pulls the ROR ES and ROR KBN
+          # images that two other runs pushed a moment before, and a cache can answer stale.
+          ROR_DOCKER_HUB_MIRROR: 'false'
           # Do not let corepack ask before it downloads yarn. CI has no operator.
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
           set -e
            # The e2e repo pins yarn in "packageManager". Corepack reads and uses that.
           corepack enable
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
           ci/run-pipeline.sh
 
@@ -778,7 +783,7 @@ jobs:
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
 
   # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
@@ -832,7 +837,7 @@ jobs:
           TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -e
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
 
   # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─

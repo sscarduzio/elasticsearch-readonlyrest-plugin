@@ -1,0 +1,16 @@
+# BuildKit config for the multi-arch builder. It pulls docker.io images through Google's cache
+# instead of registry-1.docker.io.
+#
+# Docker Hub limits pulls per IP address, and it ignores the account when it does. A CI runner
+# shares its address with other tenants, so a neighbour can make our build fail with a bare 429.
+# A login does not prevent that. The mirror answers from a different host.
+#
+# BuildKit reads this file only. It does not read the variables that ci/configure-docker.sh exports
+# for the other clients of the mirror, so it needs a setting of its own.
+#
+# The mirror serves docker.io. It cannot serve docker.elastic.co, and it cannot accept a push.
+# Digests stay the same, so the pinned FROM lines in es*x/Dockerfile resolve to the same bytes.
+#
+# If the mirror fails, BuildKit falls back to Docker Hub.
+[registry."docker.io"]
+  mirrors = ["mirror.gcr.io"]

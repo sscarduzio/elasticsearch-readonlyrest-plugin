@@ -174,7 +174,7 @@ every push on such a branch, and made five CI jobs depend on a job that almost a
 | Secret | Purpose |
 |---|---|
 | `ROR_S3_ACCESS_KEY_ID` / `ROR_S3_SECRET_ACCESS_KEY` | the one S3 key pair; writes `builds/`, `libs/` and `e2e_reports/` |
-| `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `docker-hub-auth.sh` reads |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `configure-docker.sh` reads |
 | `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. It pulls the `container:` image, and each job that only pulls maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` as well. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
 | `ROR_ENT_ACTIVATION_TOKEN` | ROR PRO/Enterprise key the e2e stack boots with. **The secret is renamed; the env var handed to the container stays `ROR_ACTIVATION_KEY`, which is the customer-facing name** |
 | `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, pushes docs |
@@ -199,7 +199,7 @@ degrade instead of failing.
 Every job that pulls or pushes a Docker Hub image uses one command, and no other:
 
 ```bash
-source ci/docker-hub-auth.sh
+source ci/configure-docker.sh
 ```
 
 The script reads one pair of variables, `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, and
@@ -213,10 +213,13 @@ Credentials that do not work always stop the job. The script never falls back to
 in that case, because a bad login must not hide itself. An expired token thus fails in the job
 that owns it, and not as a rate-limit failure somewhere else one hour later.
 
-`DOCKER_AUTH_REQUIRED` covers one case only: the job supplied no credentials at all. The job then
-stops, because that is the default. The two Linux test jobs set the value from the event: `false`
-for a pull request from a fork, which gets no secrets but must still run its tests, and `true`
-everywhere else, where a missing secret is a mistake.
+`DOCKER_AUTH_REQUIRED` covers one case only: the job supplied no credentials at all. The script
+reads the event and decides. A pull request from a fork continues, and its pulls are anonymous:
+GitHub gives it no secrets, and its tests must still run. Every other run stops, because a missing
+secret there is a mistake. A job that sets the variable overrides the decision, and only the literal
+`false` lets the job continue.
+
+No workflow states this. Two jobs held the same expression before, and a new job had to copy it.
 
 Do not put a `docker login` in a workflow. Two mechanisms with different credentials hide each
 other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
@@ -226,6 +229,63 @@ step 1 starts. Each of the ten `container:` blocks carries a `credentials:` bloc
 They share one anchor, `&toolchains_container`, so the credentials have one definition. A pull
 request from a fork supplies empty secrets, and the runner then skips the login and pulls
 anonymously.
+
+### Docker Hub pull mirror
+
+`ci/configure-docker.sh` also points Docker at a pull-through cache, `mirror.gcr.io`. Authentication
+alone does not stop every rejection, because two limits apply:
+
+- The **pull quota**, 200 pulls per 6 hours on the free plan. It follows the account once a job
+  authenticates, so the login controls it. One full `ci.yml` run makes about 60 pulls.
+- The **abuse rate limit**. Docker applies it per IP address and ignores the account. A runner draws
+  an ephemeral address from the Ubicloud pool (`https://api.ubicloud.com/ips-v4`, 23 Hetzner blocks)
+  and shares it with other tenants, so a neighbour can fill the bucket. The job then fails on a bare
+  `429 Too Many Requests`, and no credential prevents it.
+
+The mirror serves `docker.io`. It cannot serve `docker.elastic.co` or `ghcr.io`, and it cannot accept
+a push. Three clients pull images, and the script sets all three from one variable:
+
+| Client | Setting | Reaches |
+|---|---|---|
+| buildx and BuildKit | `ROR_DOCKER_HUB_MIRROR`, which gradle turns into `--config build-base/buildkitd.toml` | the `FROM` lines in `es*x/Dockerfile` |
+| the test suite | `ROR_DOCKER_HUB_MIRROR_PREFIX`, which `DockerHubMirror` reads | the images each call site names |
+| the toolchains build | the same variable, passed as `--build-arg MIRROR` | the five `FROM` lines in `ci/toolchains/JdkToolchains.Dockerfile` |
+
+No client reads another client's setting, which is why there are three. All three work in a
+`container:` job and on a bare runner, and none of them needs a privilege.
+
+The BuildKit setting keeps the original `docker.io` image identity, so BuildKit falls back to Docker
+Hub when the mirror cannot serve an image. The other two rewrite the image name itself, for example
+`coredns/coredns:1.13.2` becomes `mirror.gcr.io/coredns/coredns:1.13.2`, and `eclipse-temurin:17-jdk`
+becomes `mirror.gcr.io/library/eclipse-temurin:17-jdk`. A rewritten name has no Docker Hub fallback
+and the pull fails if the mirror does not serve the tag. Keep `DockerHubMirror` call sites limited to
+images known to be available from the mirror. For the toolchains build, `ROR_DOCKER_HUB_MIRROR` set
+to `'false'` on the job restores the Docker Hub path.
+
+The test suite names every image it mirrors, one call site at a time. Do not set
+`TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX` instead: testcontainers applies that prefix to every name
+without a registry host, and a locally built name looks the same as a Docker Hub name. It rewrote our
+own `ror-it-es:<hash>` image and then tried to pull it, which failed every `it_linux` leg with
+"manifest unknown". Ryuk still comes from Docker Hub for the same reason.
+
+`ROR_DOCKER_HUB_MIRROR=false` switches the mirror off. `e2e_tests` is the only job that sets it: it
+pulls images that two other runs pushed a moment before, and a cache can answer stale.
+
+The flag answers one question: may this job read a cached answer? It does not follow from what the
+job pushes. `e2e_tests` holds a write token. The two jobs that push most, `publish-pre-builds` and
+`build_toolchains_image`, need the mirror most, because a 429 hits their base-image pulls. A mirror
+rewrites pulls only. A push names `beshultd/...` and goes to Docker Hub whatever the mirror says.
+
+Two more things stay off the mirror by themselves, and both must remain so:
+
+- `docker manifest inspect` (`docker_image_exists`) and `docker buildx imagetools create`. They read
+  a tag we pushed seconds ago. Both run in the CLI, which reads neither `buildkitd.toml` nor any of
+  the variables above, so both address Docker Hub by themselves.
+- Every push. A pull-through cache is read-only, so `beshultd/*` images go to Docker Hub.
+
+The `container:` image cannot use a mirror at all, for the same reason it cannot use the login: the
+runner pulls it before step 1 starts. That is about 11 pulls per `ci.yml` run. Publishing the
+toolchains image to `ghcr.io` is the only way to take them off the Docker Hub budget.
 
 ## Coverage: what happened to every Azure stage
 

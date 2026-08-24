@@ -31,14 +31,28 @@
 # Gradle version changes (gradle/wrapper/gradle-wrapper.properties), or dependencies drift enough
 # that the primed offline cache misses often.
 
-# ---- JDK sources (all temurin images install to /opt/java/openjdk) ----------------------
-FROM eclipse-temurin:8-jdk   AS jdk8
-FROM eclipse-temurin:11-jdk  AS jdk11
-FROM eclipse-temurin:21-jdk  AS jdk21
-# Docker CLIENT source (static binary — distro-agnostic, no apt repo/codename needed)
-FROM docker:27.3.1-cli AS docker-cli
+# Every FROM below names a Docker Hub image, and Docker Hub rejects a pull with a bare
+# `429 Too Many Requests` when the runner's address is over the abuse rate limit. MIRROR puts a
+# pull-through cache in front of these five names. The build step passes it from
+# ROR_DOCKER_HUB_MIRROR_PREFIX, which ci/configure-docker.sh sets, and it is empty when the mirror
+# is off. A local build passes nothing and pulls from Docker Hub.
+#
+# `library/` is the namespace of an official image, so each name resolves with the prefix and
+# without it, to the same digest.
+#
+# A name that carries the mirror host is a different image identity, so these pulls do not fall back
+# to Docker Hub. Should the mirror stop serving one of them, set ROR_DOCKER_HUB_MIRROR=false on the
+# build_toolchains_image job.
+ARG MIRROR=
 
-FROM eclipse-temurin:17-jdk AS base
+# ---- JDK sources (all temurin images install to /opt/java/openjdk) ----------------------
+FROM ${MIRROR}library/eclipse-temurin:8-jdk   AS jdk8
+FROM ${MIRROR}library/eclipse-temurin:11-jdk  AS jdk11
+FROM ${MIRROR}library/eclipse-temurin:21-jdk  AS jdk21
+# Docker CLIENT source (static binary — distro-agnostic, no apt repo/codename needed)
+FROM ${MIRROR}library/docker:27.3.1-cli AS docker-cli
+
+FROM ${MIRROR}library/eclipse-temurin:17-jdk AS base
 
 # apt tools the pipeline needs (was: `apt-get install -y git curl` on every run).
 RUN apt-get update \
