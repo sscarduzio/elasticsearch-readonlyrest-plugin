@@ -46,7 +46,62 @@ if [[ $ROR_TASK == "cve_check" ]]; then
     export DEPENDENCY_CHECK_DATA_DIR="$(cd "$DEPENDENCY_CHECK_DATA_DIR" 2>/dev/null && pwd || echo "$(pwd)/$DEPENDENCY_CHECK_DATA_DIR")"
     echo "    DEPENDENCY_CHECK_DATA_DIR resolved to: $DEPENDENCY_CHECK_DATA_DIR"
   fi
-  ./gradlew --no-daemon --stacktrace dependencyCheckAnalyze
+  CVE_LOG="$(pwd)/build/cve-scan.log"
+  CVE_MODE_FILE="$(pwd)/build/cve-scan-mode.txt"
+  mkdir -p "$(dirname "$CVE_LOG")"
+
+  # Do not add --parallel here. dependencyCheckAnalyze runs in all 41 subprojects that apply
+  # readonlyrest.base-common-conventions, and those subprojects share one H2 data directory.
+  # Only a sequential run is safe.
+  #
+  # -Danalyzer.ossindex.request.delay limits a retry loop. That loop exists because OSS Index
+  # errors are now warn-only. See the ossIndex block in readonlyrest.base-common-conventions.gradle.
+  # dependency-check does not treat a 429, or an unknown error, as fatal. A Sonatype 5xx, a DNS
+  # failure and a reset connection are unknown errors. The analyzer thus stays on, it caches no
+  # report, and it sends the full request again for the next dependency. A delay of one second
+  # makes this a trickle, not a flood. On a good run, the delay occurs one time for each project,
+  # and costs about 41 seconds. dependency-check reads each of its settings from a system property.
+  # This is how the option reaches a setting that the Gradle DSL does not make available.
+  #
+  # The command below runs under `set -e`, but not under `pipefail`. The status of the pipeline is
+  # thus the status of tee, which is always 0. That status would make a true CVE finding look like
+  # a good run. Read the gradle status from PIPESTATUS instead. Read it in the next command, before
+  # another command replaces it.
+  set +e
+  ./gradlew --no-daemon --stacktrace \
+    -Danalyzer.ossindex.request.delay=1 \
+    dependencyCheckAnalyze 2>&1 | tee "$CVE_LOG"
+  CVE_RC=${PIPESTATUS[0]}
+  set -e
+
+  # Find which sources answered. This is only a label. The script writes it to a file, and prints
+  # it. It does not change the exit code below. The search strings are message templates from
+  # dependency-check. OssIndexKnownError writes "Sonatype OSS Index / Guide %s%s. %s".
+  # OssIndexAnalyzer.prepareAnalyzer writes "... disabled due to missing credentials". If a new ODC
+  # version changes these templates, the label becomes "unknown", and nothing else changes.
+  if [[ "${ROR_CVE_OSS_INDEX:-}" == "false" ]]; then
+    CVE_MODE="nvd-only-disabled"
+  elif [[ ! -s "$CVE_LOG" ]]; then
+    CVE_MODE="unknown"
+  elif grep -qF 'disabled due to missing credentials' "$CVE_LOG"; then
+    CVE_MODE="nvd-only-no-credentials"
+  elif grep -qF 'Sonatype OSS Index / Guide' "$CVE_LOG"; then
+    CVE_MODE="nvd-only"
+  else
+    CVE_MODE="full"
+  fi
+  echo "$CVE_MODE" > "$CVE_MODE_FILE"
+
+  case "$CVE_MODE" in
+    full)                    echo ">>> CVE scan sources: NVD + OSS Index" ;;
+    nvd-only)                echo ">>> CVE scan sources: NVD only — OSS Index was unavailable:"
+                             grep -F 'Sonatype OSS Index / Guide' "$CVE_LOG" | sort -u | head -3 ;;
+    nvd-only-no-credentials) echo ">>> CVE scan sources: NVD only — no OSS Index credentials (expected on fork PRs)" ;;
+    nvd-only-disabled)       echo ">>> CVE scan sources: NVD only — OSS Index disabled via ROR_CVE_OSS_INDEX=false" ;;
+    unknown)                 echo ">>> CVE scan sources: unknown — no scan log was produced" ;;
+  esac
+
+  exit "$CVE_RC"
 fi
 
 if [[ $ROR_TASK == "compile_codebase_check" ]]; then

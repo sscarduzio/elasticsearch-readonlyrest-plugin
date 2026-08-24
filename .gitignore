@@ -72,3 +72,6 @@ docker-envs/eck/kind-cluster/subst-ror
 .bsp/
 .metals/
 .vscode/
+
+# Local dependency-check data: the H2 CVE database and oss_cache
+.dependency-check-data/
