@@ -24,9 +24,9 @@ import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.EsqlIndexTable
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
+import tech.beshu.ror.es.{EsqlIndexTable, EsqlQueryRewriteResult}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -42,10 +42,14 @@ object EsqlRequestHelper {
       request: CompositeIndicesRequest,
       requestTables: NonEmptyList[EsqlIndexTable],
       finalIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Option[CompositeIndicesRequest] = {
-    EsqlIndexTable
-      .newQueryFrom(getQuery(request), requestTables, finalIndices)
-      .map(setQuery(request, _))
+  ): EsqlQueryRewriteResult = {
+    EsqlIndexTable.newQueryFrom(getQuery(request), requestTables, finalIndices) match {
+      case rewritten @ EsqlQueryRewriteResult.Rewritten(newQuery) =>
+        setQuery(request, newQuery)
+        rewritten
+      case EsqlQueryRewriteResult.CannotRewriteQuery =>
+        EsqlQueryRewriteResult.CannotRewriteQuery
+    }
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(

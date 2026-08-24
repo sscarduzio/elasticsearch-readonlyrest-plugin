@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
+import tech.beshu.ror.es.EsqlQueryRewriteResult
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
@@ -71,37 +72,34 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    modifyRequestIndices(request, filteredRequestedIndices) match {
-      case Some(_) =>
-        applyFieldLevelSecurityTo(request, fieldLevelSecurity)
-        applyFilterTo(request, filter)
-        UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
-      case None =>
-        logger.debug("Cannot narrow the indices of the ESQL query - the request is going to be rejected")
-        ModificationResult.ShouldBeInterrupted
-    }
-  }
-
-  private def modifyRequestIndices(
-      request: ActionRequest with CompositeIndicesRequest,
-      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Option[CompositeIndicesRequest] = {
     requestClassification match {
-      case Right(EsqlRequestClassification.NonIndicesRelated) =>
-        Some(request)
-      case Right(r @ EsqlRequestClassification.IndicesRelated(tables)) =>
-        if (filteredIndices.toList.toCovariantSet != r.requestedIndices) {
-          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndices)
-        } else {
-          Some(request)
+      case Right(r @ EsqlRequestClassification.IndicesRelated(tables))
+          if filteredRequestedIndices.toList.toCovariantSet != r.requestedIndices =>
+        EsqlRequestHelper.modifyIndicesOf(request, tables, filteredRequestedIndices) match {
+          case EsqlQueryRewriteResult.Rewritten(_) =>
+            updatedRequest(request, filter, fieldLevelSecurity)
+          case EsqlQueryRewriteResult.CannotRewriteQuery =>
+            ModificationResult.ShouldBeInterrupted
         }
+      case Right(_) =>
+        updatedRequest(request, filter, fieldLevelSecurity)
       case Left(ClassificationError.ParsingException(ex)) =>
         logger.debug(
           s"Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:",
           ex
         )
-        Some(request)
+        updatedRequest(request, filter, fieldLevelSecurity)
     }
+  }
+
+  private def updatedRequest(
+      request: ActionRequest with CompositeIndicesRequest,
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult = {
+    applyFieldLevelSecurityTo(request, fieldLevelSecurity)
+    applyFilterTo(request, filter)
+    UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
   }
 
   private def applyFieldLevelSecurityTo(

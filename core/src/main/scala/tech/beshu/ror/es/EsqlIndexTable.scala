@@ -26,6 +26,13 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.regex.Pattern
 
+sealed trait EsqlQueryRewriteResult
+
+object EsqlQueryRewriteResult {
+  final case class Rewritten(newQuery: String) extends EsqlQueryRewriteResult
+  case object CannotRewriteQuery extends EsqlQueryRewriteResult
+}
+
 sealed trait EsqlIndexTable {
   def tableStringInQuery: String
   def requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
@@ -72,7 +79,7 @@ object EsqlIndexTable {
       oldQuery: String,
       tables: NonEmptyList[EsqlIndexTable],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Option[String] = {
+  ): EsqlQueryRewriteResult = {
     newQueryFrom(oldQuery, buildReplacements(tables, allowedIndices))
   }
 
@@ -102,14 +109,12 @@ object EsqlIndexTable {
     NonEmptyList.fromListUnsafe(fromReplacements ++ lookupReplacements)
   }
 
-  /** `None` when the rewrite cannot be applied. Callers must reject the request rather than skip it - the
-    * query was allowed only on the strength of the narrowed set, so unrewritten it runs against the
-    * user's original indices.
-    */
-  def newQueryFrom(oldQuery: String, replacements: NonEmptyList[Replacement]): Option[String] = {
+  def newQueryFrom(oldQuery: String, replacements: NonEmptyList[Replacement]): EsqlQueryRewriteResult = {
     replacements.toList
       .traverse(replacement => indexListSpanIn(oldQuery, replacement.table).map((_, replacement)))
       .flatMap(spliceIndexLists(oldQuery, _))
+      .map(EsqlQueryRewriteResult.Rewritten.apply)
+      .getOrElse(EsqlQueryRewriteResult.CannotRewriteQuery)
   }
 
   private def requestedIndicesFrom(tableStringInQuery: String): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
