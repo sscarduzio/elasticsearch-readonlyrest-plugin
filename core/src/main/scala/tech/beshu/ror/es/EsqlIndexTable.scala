@@ -98,8 +98,8 @@ object EsqlIndexTable {
     val matchedNamesByFromTable: Map[From, Set[ClusterIndexName]] =
       fromTables.map(table => (table, table.matcher.filter(allowedIndexNames))).toMap
 
-    /* Names the ACL resolved to something no FROM pattern can match - an alias replaced by the index behind it.
-     * They belong to a FROM table, but nothing left in the request says which one, so every FROM table keeps them. */
+    // an alias the ACL replaced with its backing index matches no FROM pattern, and nothing left in the
+    // request says which table it came from
     val unattributedNames: Set[ClusterIndexName] =
       allowedIndexNames -- lookupOnlyNames -- matchedNamesByFromTable.values.flatten.toCovariantSet
 
@@ -160,8 +160,7 @@ object EsqlIndexTable {
   }
 
   /** ES reports the list normalized (`FROM a, b` as `a,b`), so instead of searching for it, match every
-    * spelling that normalizes to it. Comments are already blanked out by [[QueryScan]], hence plain `\s`
-    * suffices here for everything the lexer treats as whitespace.
+    * spelling that normalizes to it.
     */
   private def indexListPatternOf(table: EsqlIndexTable): Pattern = {
     val keywords = table match {
@@ -179,11 +178,9 @@ object EsqlIndexTable {
     )
   }
 
-  /** The query text prepared for pattern matching: comments blanked out (the ESQL lexer sends them to a
-    * hidden channel, so `FROM a, /*c*/ b` is reported as `a,b`), and every string literal and backquoted
-    * identifier marked, so that a source command a user spelled out inside one cannot be mistaken for the
-    * real one and rewritten in its place. Blanking preserves offsets, so spans found here index [[text]]
-    * and the original query alike.
+  /** Blanks out comments (ESQL hides them, so `FROM a, /*c*/ b` is reported as `a,b`) and marks string
+    * literals and backquoted identifiers, so a source command spelled out inside one cannot be rewritten in
+    * place of the real one. Blanking keeps offsets, so spans found in [[text]] index the original query too.
     */
   private final class QueryScan(val text: String, literal: Array[Boolean]) {
     def spansLiteral(from: Int, until: Int): Boolean = (from until until).exists(literal(_))
