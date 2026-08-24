@@ -268,13 +268,19 @@ without a registry host, and a locally built name looks the same as a Docker Hub
 own `ror-it-es:<hash>` image and then tried to pull it, which failed every `it_linux` leg with
 "manifest unknown". Ryuk still comes from Docker Hub for the same reason.
 
-`ROR_DOCKER_HUB_MIRROR=false` switches the mirror off. `e2e_tests` is the only job that sets it: it
-pulls images that two other runs pushed a moment before, and a cache can answer stale.
+`ROR_DOCKER_HUB_MIRROR=false` switches the mirror off for one job. No job sets it. It is there for
+the day the mirror cannot serve an image a job needs.
 
 The flag answers one question: may this job read a cached answer? It does not follow from what the
-job pushes. `e2e_tests` holds a write token. The two jobs that push most, `publish-pre-builds` and
-`build_toolchains_image`, need the mirror most, because a 429 hits their base-image pulls. A mirror
-rewrites pulls only. A push names `beshultd/...` and goes to Docker Hub whatever the mirror says.
+job pushes. The two jobs that push most, `publish-pre-builds` and `build_toolchains_image`, need the
+mirror most, because a 429 hits their base-image pulls. A mirror rewrites pulls only. A push names
+`beshultd/...` and goes to Docker Hub whatever the mirror says.
+
+`e2e_tests` keeps the mirror as well, although it pulls the ROR ES and ROR KBN images that two other
+runs pushed a moment before, where a cached answer can be stale. The e2e repo settles that image by
+image: it names the images it takes from the cache, and the ROR images are not among them, so those
+two pulls go to Docker Hub. The job gains the rest: the digest-pinned gosu and corretto pulls of the
+ES image build, and every image the e2e stack takes from the cache.
 
 Two more things stay off the mirror by themselves, and both must remain so:
 
