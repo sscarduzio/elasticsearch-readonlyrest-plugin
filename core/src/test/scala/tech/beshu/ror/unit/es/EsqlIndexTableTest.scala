@@ -419,6 +419,32 @@ class EsqlIndexTableTest extends AnyWordSpec {
       newIndicesOf(replacements, lookupTable) shouldBe NonEmptyList.one("lookup_idx")
     }
 
+    "narrow each of two FROM tables to its own indices, without lending one's indices to the other" in {
+      val bookTable = newFromTable("book*")
+      val movieTable = newFromTable("movie*")
+
+      val replacements = EsqlIndexTable.buildReplacements(
+        NonEmptyList.of(bookTable, movieTable),
+        allowedIndices = authorizedIndicesOf("book_catalog", "movie_catalog")
+      )
+
+      newIndicesOf(replacements, bookTable) shouldBe NonEmptyList.one("book_catalog")
+      newIndicesOf(replacements, movieTable) shouldBe NonEmptyList.one("movie_catalog")
+    }
+
+    "mask only the forbidden one of two FROM tables" in {
+      val bookTable = newFromTable("book*")
+      val secretTable = newFromTable("secret*")
+
+      val replacements = EsqlIndexTable.buildReplacements(
+        NonEmptyList.of(bookTable, secretTable),
+        allowedIndices = authorizedIndicesOf("book_catalog")
+      )
+
+      newIndicesOf(replacements, bookTable) shouldBe NonEmptyList.one("book_catalog")
+      assertMasked(newIndicesOf(replacements, secretTable))
+    }
+
     "resolve a literal FROM alias whose ACL-narrowed concrete index name doesn't textually match the " +
       "query's own alias text (e.g. the ACL resolved \"bookshop\" to its underlying \"bookstore\")" in {
         val fromTable = newFromTable("bookshop")

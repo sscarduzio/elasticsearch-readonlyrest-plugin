@@ -89,36 +89,41 @@ object EsqlIndexTable {
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): NonEmptyList[Replacement] = {
     val allowedIndexNames: Set[ClusterIndexName] = allowedIndices.includedOnly
+    val fromTables = tables.collect { case table: From => table }
 
     val lookupOnlyNames: Set[ClusterIndexName] =
       tables.collect { case table: LookupJoin => table.clusterIndexName }.toCovariantSet --
-        tables.collect { case table: From => table }.flatMap(_.requestedIndices.includedOnly).toCovariantSet
+        fromTables.flatMap(_.requestedIndices.includedOnly).toCovariantSet
+
+    val matchedNamesByFromTable: Map[From, Set[ClusterIndexName]] =
+      fromTables.map(table => (table, table.matcher.filter(allowedIndexNames))).toMap
+
+    /* Names the ACL resolved to something no FROM pattern can match - an alias replaced by the index behind it.
+     * They belong to a FROM table, but nothing left in the request says which one, so every FROM table keeps them. */
+    val unattributedNames: Set[ClusterIndexName] =
+      allowedIndexNames -- lookupOnlyNames -- matchedNamesByFromTable.values.flatten.toCovariantSet
 
     def authorizedNamesFor(table: EsqlIndexTable): Option[NonEmptyList[ClusterIndexName]] = table match {
       case table: LookupJoin =>
         Option.when(allowedIndexNames.contains(table.clusterIndexName))(NonEmptyList.one(table.clusterIndexName))
       case table: From =>
-        // the first term keeps aliases the ACL resolved to a name the table's pattern cannot match
-        NonEmptyList.fromList {
-          ((allowedIndexNames -- lookupOnlyNames) ++ table.matcher.filter(allowedIndexNames)).toList
-        }
+        NonEmptyList.fromList((matchedNamesByFromTable(table) ++ unattributedNames).toList)
     }
 
-    val nonexistentIndexFor: String => ClusterIndexName = {
-      val nonexistentIndexByOriginal =
-        tables.toList
-          .filter(authorizedNamesFor(_).isEmpty)
-          .map(_.tableStringInQuery)
-          .distinct
-          .map(originalTableText => (originalTableText, ClusterIndexName.Local.randomNonexistentIndex()))
-          .toMap
-      originalTableText =>
-        nonexistentIndexByOriginal.getOrElse(originalTableText, ClusterIndexName.Local.randomNonexistentIndex())
-    }
+    val authorizedNamesByTable: Map[EsqlIndexTable, Option[NonEmptyList[ClusterIndexName]]] =
+      tables.toList.map(table => (table, authorizedNamesFor(table))).toMap
+
+    val nonexistentIndexByTableText: Map[String, ClusterIndexName] =
+      authorizedNamesByTable
+        .collect { case (table, None) => table.tableStringInQuery }
+        .toList
+        .distinct
+        .map(tableText => (tableText, ClusterIndexName.Local.randomNonexistentIndex()))
+        .toMap
 
     tables.map { table =>
-      val newIndices = authorizedNamesFor(table)
-        .getOrElse(NonEmptyList.one(nonexistentIndexFor(table.tableStringInQuery)))
+      val newIndices = authorizedNamesByTable(table)
+        .getOrElse(NonEmptyList.one(nonexistentIndexByTableText(table.tableStringInQuery)))
       Replacement(table, newIndices)
     }
   }
