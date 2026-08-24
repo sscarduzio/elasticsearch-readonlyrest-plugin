@@ -124,11 +124,12 @@ object EsqlIndexTable {
   }
 
   def newQueryFrom(oldQuery: String, replacements: NonEmptyList[Replacement]): EsqlQueryRewriteResult = {
+    val scan = QueryScan.of(oldQuery)
     replacements.toList
       .groupBy(_.table)
       .toList
       .traverse { case (table, tableReplacements) =>
-        val spans = indexListSpansIn(oldQuery, table)
+        val spans = indexListSpansIn(scan, table)
         Option.when(spans.size === tableReplacements.size)(spans.zip(tableReplacements))
       }
       .map(_.flatten)
@@ -142,17 +143,20 @@ object EsqlIndexTable {
       tableStringInQuery.split(',').asSafeList.filter(_.nonEmpty).flatMap(RequestedIndex.fromString)
     )
 
-  private def indexListSpansIn(query: String, table: EsqlIndexTable): List[(Int, Int)] = {
-    val matcher = indexListPatternOf(table).matcher(query)
+  private def indexListSpansIn(scan: QueryScan, table: EsqlIndexTable): List[(Int, Int)] = {
+    val matcher = indexListPatternOf(table).matcher(scan.text)
     Iterator
-      .unfold(())(_ => Option.when(matcher.find())(((matcher.start(1), matcher.end(1)), ())))
+      .unfold(())(_ => Option.when(matcher.find())(((matcher.start(), matcher.start(1), matcher.end(1)), ())))
+      .collect {
+        case (sourceCommandStart, listStart, listEnd) if !scan.spansLiteral(sourceCommandStart, listStart) =>
+          (listStart, listEnd)
+      }
       .toList
   }
 
-  private val blank = "(?:\\s|//[^\\n]*|/\\*[\\s\\S]*?\\*/)"
-
   /** ES reports the list normalized (`FROM a, b` as `a,b`), so instead of searching for it, match every
-    * spelling that normalizes to it.
+    * spelling that normalizes to it. Comments are already blanked out by [[QueryScan]], hence plain `\s`
+    * suffices here for everything the lexer treats as whitespace.
     */
   private def indexListPatternOf(table: EsqlIndexTable): Pattern = {
     val keywords = table match {
@@ -165,9 +169,117 @@ object EsqlIndexTable {
       .map(index => s"$optionalQuote${Pattern.quote(index)}$optionalQuote")
       .mkString("\\s*,\\s*")
     Pattern.compile(
-      s"(?:^|[|(;])$blank*(?:$keywords)$blank+($indexList)(?![\\w.\\-*:])",
+      s"(?:^|[|(;])\\s*(?:$keywords)\\s+($indexList)(?![\\w.\\-*:])",
       Pattern.CASE_INSENSITIVE
     )
+  }
+
+  /** The query text prepared for pattern matching: comments blanked out (the ESQL lexer sends them to a
+    * hidden channel, so `FROM a, /*c*/ b` is reported as `a,b`), and every string literal and backquoted
+    * identifier marked, so that a source command a user spelled out inside one cannot be mistaken for the
+    * real one and rewritten in its place. Blanking preserves offsets, so spans found here index [[text]]
+    * and the original query alike.
+    */
+  private final class QueryScan(val text: String, literal: Array[Boolean]) {
+    def spansLiteral(from: Int, until: Int): Boolean = (from until until).exists(literal(_))
+  }
+
+  private object QueryScan {
+
+    def of(query: String): QueryScan = {
+      val text = query.toCharArray
+      val literal = new Array[Boolean](query.length)
+      var index = 0
+      while (index < query.length) {
+        index = endOfCommentAt(query, index) match {
+          case Some(end) =>
+            java.util.Arrays.fill(text, index, end, ' ')
+            end
+          case None =>
+            endOfLiteralAt(query, index) match {
+              case Some(end) =>
+                java.util.Arrays.fill(literal, index, end, true)
+                end
+              case None =>
+                index + 1
+            }
+        }
+      }
+      new QueryScan(new String(text), literal)
+    }
+
+    private def endOfCommentAt(query: String, at: Int): Option[Int] = {
+      if (query.startsWith("//", at)) Some(endOfLine(query, at))
+      else if (query.startsWith("/*", at)) Some(endOfBlockComment(query, at))
+      else None
+    }
+
+    private def endOfLine(query: String, at: Int): Int = {
+      query.indexOf('\n', at) match {
+        case -1  => query.length
+        case end => end
+      }
+    }
+
+    private def endOfBlockComment(query: String, at: Int): Int = {
+      var index = at + 2
+      var depth = 1
+      while (index < query.length && depth > 0) {
+        if (query.startsWith("*/", index)) { depth -= 1; index += 2 }
+        else if (query.startsWith("/*", index)) { depth += 1; index += 2 }
+        else index += 1
+      }
+      index
+    }
+
+    private def endOfLiteralAt(query: String, at: Int): Option[Int] = {
+      query.charAt(at) match {
+        case '"' if query.startsWith("\"\"\"", at) => Some(endOfTripleQuoted(query, at))
+        case '"'                                   => Some(endOfQuoted(query, at))
+        case '`'                                   => Some(endOfBackquoted(query, at))
+        case _                                     => None
+      }
+    }
+
+    private def endOfTripleQuoted(query: String, at: Int): Int = {
+      query.indexOf("\"\"\"", at + 3) match {
+        case -1      => query.length
+        case closing =>
+          var end = closing + 3
+          var trailingQuotes = 0
+          while (trailingQuotes < 2 && end < query.length && query.charAt(end) == '"') {
+            end += 1
+            trailingQuotes += 1
+          }
+          end
+      }
+    }
+
+    private def endOfQuoted(query: String, at: Int): Int = {
+      var index = at + 1
+      var closed = false
+      while (!closed && index < query.length) {
+        query.charAt(index) match {
+          case '\\'        => index += 2
+          case '"'         => index += 1; closed = true
+          case '\n' | '\r' => closed = true
+          case _           => index += 1
+        }
+      }
+      math.min(index, query.length)
+    }
+
+    private def endOfBackquoted(query: String, at: Int): Int = {
+      var index = at + 1
+      var closed = false
+      while (!closed && index < query.length) {
+        if (query.charAt(index) != '`') index += 1
+        else if (query.startsWith("``", index)) index += 2
+        else { index += 1; closed = true }
+      }
+      math.min(index, query.length)
+    }
+
   }
 
   private def spliceIndexLists(query: String, spans: List[((Int, Int), Replacement)]): Option[String] = {

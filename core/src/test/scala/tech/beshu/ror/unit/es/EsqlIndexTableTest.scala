@@ -96,6 +96,32 @@ class EsqlIndexTableTest extends AnyWordSpec {
 
         EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Rewritten("FROM book_catalog | LIMIT 100")
       }
+      "a comment sits inside the list" in {
+        val query = "FROM book_catalog, /* and */ book_prices | LIMIT 100"
+        val replacements = NonEmptyList.one(
+          replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Rewritten("FROM book_catalog | LIMIT 100")
+      }
+      "a nested comment sits inside the list" in {
+        val query = "FROM book_catalog, /* and /* even */ this */ book_prices | LIMIT 100"
+        val replacements = NonEmptyList.one(
+          replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Rewritten("FROM book_catalog | LIMIT 100")
+      }
+      "a comment splits the LOOKUP JOIN keyword" in {
+        val query = "FROM src | LOOKUP /* really */ JOIN secret_idx ON key"
+        val replacements = NonEmptyList.of(
+          replacementFor(newFromTable("src"), "src"),
+          replacementFor(lookupJoinTable("secret_idx"), "ROR_nonexistent0006")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
+          Rewritten("FROM src | LOOKUP /* really */ JOIN ROR_nonexistent0006 ON key")
+      }
       "the entries are triple-quoted" in {
         val query = "FROM \"\"\"book_catalog\"\"\",\"\"\"book_prices\"\"\" | LIMIT 100"
         val replacements = NonEmptyList.one(
@@ -158,6 +184,52 @@ class EsqlIndexTableTest extends AnyWordSpec {
         EsqlIndexTable.newQueryFrom(query, replacements) shouldBe Rewritten(
           "FROM book-1 | EVAL x = book_prices | LIMIT 10"
         )
+      }
+    }
+
+    "rewrite the real index list, not a source command the query only spells out" when {
+      "a string literal spells out another source command for the same index list" in {
+        val query = """FROM logs | WHERE msg == "| FROM logs" | LIMIT 10"""
+        val replacements = NonEmptyList.one(replacementFor(newFromTable("logs"), "logs-1"))
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
+          Rewritten("""FROM logs-1 | WHERE msg == "| FROM logs" | LIMIT 10""")
+      }
+      "a triple-quoted literal spells out another source command for the same index list" in {
+        val query = "FROM logs | WHERE msg == \"\"\"| FROM logs\"\"\" | LIMIT 10"
+        val replacements = NonEmptyList.one(replacementFor(newFromTable("logs"), "logs-1"))
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
+          Rewritten("FROM logs-1 | WHERE msg == \"\"\"| FROM logs\"\"\" | LIMIT 10")
+      }
+      "a backquoted identifier spells out another source command for the same index list" in {
+        val query = "FROM logs | RENAME a AS `| FROM logs` | LIMIT 10"
+        val replacements = NonEmptyList.one(replacementFor(newFromTable("logs"), "logs-1"))
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
+          Rewritten("FROM logs-1 | RENAME a AS `| FROM logs` | LIMIT 10")
+      }
+      "a comment inside the real list would otherwise leave a decoy as the only match" in {
+        val query =
+          """FROM book_catalog, /* and */ book_prices | WHERE msg == "|FROM book_catalog,book_prices " | LIMIT 100"""
+        val replacements = NonEmptyList.one(
+          replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
+          Rewritten("""FROM book_catalog | WHERE msg == "|FROM book_catalog,book_prices " | LIMIT 100""")
+      }
+      "a decoy would otherwise mask an unauthorized LOOKUP JOIN target in the literal's place" in {
+        val query = """FROM src | LOOKUP /* really */ JOIN secret ON key | WHERE m == "|LOOKUP JOIN secret " """
+        val replacements = NonEmptyList.of(
+          replacementFor(newFromTable("src"), "src"),
+          replacementFor(lookupJoinTable("secret"), "ROR_nonexistent0007")
+        )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe
+          Rewritten(
+            """FROM src | LOOKUP /* really */ JOIN ROR_nonexistent0007 ON key | WHERE m == "|LOOKUP JOIN secret " """
+          )
       }
     }
 
@@ -231,17 +303,17 @@ class EsqlIndexTableTest extends AnyWordSpec {
 
         EsqlIndexTable.newQueryFrom(query, replacements) shouldBe CannotRewriteQuery
       }
-      "a string literal spells out another source command for the same index list" in {
-        val query = """FROM logs | WHERE msg == "| FROM logs" | LIMIT 10"""
-        val replacements = NonEmptyList.one(replacementFor(newFromTable("logs"), "logs-1"))
-
-        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe CannotRewriteQuery
-      }
       "the query spells the list in a way that doesn't normalize to what ES reported" in {
-        val query = "FROM book_catalog, /* and */ book_prices | LIMIT 100"
+        val query = "FROM book_catalog | LIMIT 100"
         val replacements = NonEmptyList.one(
           replacementFor(newFromTable("book_catalog,book_prices"), "book_catalog")
         )
+
+        EsqlIndexTable.newQueryFrom(query, replacements) shouldBe CannotRewriteQuery
+      }
+      "an unterminated string literal swallows the only index list ES reported" in {
+        val query = """FROM logs | WHERE msg == "oops | LIMIT 10"""
+        val replacements = NonEmptyList.one(replacementFor(newFromTable("oops"), "other"))
 
         EsqlIndexTable.newQueryFrom(query, replacements) shouldBe CannotRewriteQuery
       }
