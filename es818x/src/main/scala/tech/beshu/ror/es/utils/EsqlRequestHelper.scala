@@ -123,11 +123,18 @@ class EsqlRequestHelper(esVersion: EsVersion) {
         case v if v >= EsVersion(8, 19, 0) => createStatementForEsEqualOrAbove8190(request)
         case v                             => createStatementForEsBelow8190(request)
       }
-      statement.map { s =>
-        NonEmptyList.fromList(indicesFrom(s)) match {
-          case Some(indices) => new IndicesRelatedStatement(statement, indices)
-          case None          => OtherCommand(statement)
-        }
+      statement.flatMap(statementWithIndices)
+    }
+
+    private def statementWithIndices(statement: Any): Either[ClassificationError, Statement] = {
+      Try(indicesFrom(statement)) match {
+        case Success(tables) =>
+          Right(NonEmptyList.fromList(tables) match {
+            case Some(indices) => new IndicesRelatedStatement(statement, indices)
+            case None          => OtherCommand(statement)
+          })
+        case Failure(ex) =>
+          Left(ClassificationError.IndicesExtractionException(ex))
       }
     }
 
@@ -312,6 +319,7 @@ object EsqlRequestHelper {
 
   object ClassificationError {
     final case class ParsingException(cause: Throwable) extends ClassificationError
+    final case class IndicesExtractionException(cause: Throwable) extends ClassificationError
   }
 
 }

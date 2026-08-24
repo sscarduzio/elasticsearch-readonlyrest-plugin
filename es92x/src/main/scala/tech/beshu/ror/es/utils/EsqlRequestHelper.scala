@@ -98,11 +98,18 @@ class EsqlRequestHelper(esVersion: EsVersion) {
         .get[Any]()
 
     def createStatementBasedOn(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
-      createStatement(request).map { statement =>
-        NonEmptyList.fromList(indicesFrom(statement)) match {
-          case Some(indices) => new IndicesRelatedStatement(statement, indices)
-          case None          => OtherCommand(statement)
-        }
+      createStatement(request).flatMap(statementWithIndices)
+    }
+
+    private def statementWithIndices(statement: Any): Either[ClassificationError, Statement] = {
+      Try(indicesFrom(statement)) match {
+        case Success(tables) =>
+          Right(NonEmptyList.fromList(tables) match {
+            case Some(indices) => new IndicesRelatedStatement(statement, indices)
+            case None          => OtherCommand(statement)
+          })
+        case Failure(ex) =>
+          Left(ClassificationError.IndicesExtractionException(ex))
       }
     }
 
@@ -292,6 +299,7 @@ object EsqlRequestHelper {
 
   object ClassificationError {
     final case class ParsingException(cause: Throwable) extends ClassificationError
+    final case class IndicesExtractionException(cause: Throwable) extends ClassificationError
   }
 
 }

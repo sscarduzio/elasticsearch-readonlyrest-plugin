@@ -1294,23 +1294,20 @@ trait BaseXpackApiSuite
           result.columnNames should contain only ("book_id", "title", "title.keyword", "discount_price")
           result.column("discount_price").toList should contain only (Num(90), Num(180))
         }
-        "FROM is wildcard-narrowed and the LOOKUP JOIN target shares its name prefix with the FROM " +
-          "pattern (the wildcard genuinely matches the LOOKUP JOIN target too, so FROM legitimately " +
-          "includes its rows, same as an equivalent-permission admin running the same query would see)" excludeES (
-            allEs6x,
-            allEs7x,
-            allEs8xBelowEs818x
-          ) in {
-            val result = dev5EsqlManager.execute(
-              """FROM book_* | LOOKUP JOIN book_prices ON book_id | SORT book_id | LIMIT 100"""
-            )
-            result should have statusCode 200
-            result.columnNames should contain only ("book_id", "title", "title.keyword", "discount_price")
-            result.column("title").toList should contain only (Str("Leviathan Wakes"), Str("Hyperion"), Null)
-            result.rows.size should be(4)
-          }
+        "the narrowed FROM wildcard also matches the LOOKUP JOIN target" excludeES (
+          allEs6x,
+          allEs7x,
+          allEs8xBelowEs818x
+        ) in {
+          val result = dev5EsqlManager.execute(
+            """FROM book_* | LOOKUP JOIN book_prices ON book_id | SORT book_id | LIMIT 100"""
+          )
+          result should have statusCode 200
+          result.columnNames should contain only ("book_id", "title", "title.keyword", "discount_price")
+          result.column("title").toList should contain only (Str("Leviathan Wakes"), Str("Hyperion"), Null)
+          result.rows.size should be(4)
+        }
       }
-      // ES reports this list as `book_catalog,book_prices`, which neither spelling below contains verbatim.
       "narrow a comma-separated FROM list to what the user is granted" when {
         "the entries are separated by a space" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
           val result = dev4EsqlManager.execute("""FROM book_catalog, book_prices | SORT book_id | LIMIT 100""")
@@ -1325,7 +1322,7 @@ trait BaseXpackApiSuite
           result.rows.size should be(2)
         }
       }
-      "deny the whole request with a generic 'Unknown index' error (masking, not a data/existence leak)" when {
+      "deny the whole request with a generic 'Unknown index' error" when {
         "the LOOKUP JOIN target is not authorized, even though FROM's own target is fine on its own" excludeES (
           allEs6x,
           allEs7x,
@@ -1339,17 +1336,19 @@ trait BaseXpackApiSuite
           reason should include("Unknown index")
           reason should not include "book_prices"
         }
-        "FROM's own target is not authorized, even though the LOOKUP JOIN target is fine on its own " +
-          "(masking FROM to a concrete nonexistent name 400s independently of the join - no behavior " +
-          "change from today, see spec section 4)" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
-            val result = dev6EsqlManager.execute(
-              """FROM book_catalog | LOOKUP JOIN book_prices ON book_id | LIMIT 100"""
-            )
-            result should have statusCode 400
-            val reason = result.responseJson("error").obj("reason").str
-            reason should include("Unknown index")
-            reason should not include "book_catalog"
-          }
+        "FROM's own target is not authorized, even though the LOOKUP JOIN target is fine on its own" excludeES (
+          allEs6x,
+          allEs7x,
+          allEs8xBelowEs818x
+        ) in {
+          val result = dev6EsqlManager.execute(
+            """FROM book_catalog | LOOKUP JOIN book_prices ON book_id | LIMIT 100"""
+          )
+          result should have statusCode 400
+          val reason = result.responseJson("error").obj("reason").str
+          reason should include("Unknown index")
+          reason should not include "book_catalog"
+        }
       }
     }
   }

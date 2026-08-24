@@ -62,7 +62,7 @@ class EsqlIndicesEsRequestContext private (
     requestClassification match {
       case Right(r @ EsqlRequestClassification.IndicesRelated(_)) =>
         r.requestedIndices
-      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(ClassificationError.ParsingException(_)) =>
+      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(_) =>
         Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
     }
   }
@@ -80,6 +80,10 @@ class EsqlIndicesEsRequestContext private (
           case EsqlQueryRewriteResult.Rewritten(_) =>
             updatedRequest(request, filter, fieldLevelSecurity)
           case EsqlQueryRewriteResult.CannotRewriteQuery =>
+            logger.warn(
+              s"[${id.show}] Cannot unambiguously locate tables [${tables.show}] in the ESQL query text, so the " +
+                s"query cannot be narrowed down to [${filteredRequestedIndices.show}]. The request will be rejected."
+            )
             ModificationResult.ShouldBeInterrupted
         }
       case Right(_) =>
@@ -90,6 +94,13 @@ class EsqlIndicesEsRequestContext private (
           ex
         )
         updatedRequest(request, filter, fieldLevelSecurity)
+      case Left(ClassificationError.IndicesExtractionException(ex)) =>
+        logger.warn(
+          s"[${id.show}] Cannot read the tables of the parsed ESQL statement - the indices it touches are " +
+            "unknown. The request will be rejected. Cause:",
+          ex
+        )
+        ModificationResult.ShouldBeInterrupted
     }
   }
 
