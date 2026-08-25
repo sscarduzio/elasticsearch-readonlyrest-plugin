@@ -79,7 +79,7 @@ class EsqlIndicesEsRequestContext private (
     requestClassification match {
       case Right(r @ EsqlRequestClassification.IndicesRelated(tables))
           if filteredRequestedIndices.toList.toCovariantSet != r.requestedIndices =>
-        requestWithIndicesNarrowedTo(request, tables, filteredRequestedIndices, filter, fieldLevelSecurity)
+        updatedRequestWithIndicesNarrowedTo(request, tables, filteredRequestedIndices, filter, fieldLevelSecurity)
       case Right(_) =>
         updatedRequest(request, filter, fieldLevelSecurity)
       case Left(ClassificationError.ParsingException(ex)) =>
@@ -98,7 +98,7 @@ class EsqlIndicesEsRequestContext private (
     }
   }
 
-  private def requestWithIndicesNarrowedTo(
+  private def updatedRequestWithIndicesNarrowedTo(
       request: ActionRequest with CompositeIndicesRequest,
       tables: NonEmptyList[EsqlIndexTable],
       filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],

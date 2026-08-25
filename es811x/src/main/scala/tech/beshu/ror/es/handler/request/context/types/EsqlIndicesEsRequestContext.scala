@@ -29,12 +29,17 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
+import tech.beshu.ror.es.EsqlIndexTable
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.EsqlRequestHelper
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification, IndexTable}
+import tech.beshu.ror.es.utils.EsqlRequestHelper.{
+  ClassificationError,
+  EsqlRequestClassification,
+  IndicesModificationResult
+}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -59,7 +64,7 @@ class EsqlIndicesEsRequestContext private (
   ): Set[RequestedIndex[ClusterIndexName]] = {
     requestClassification match {
       case Right(r @ EsqlRequestClassification.IndicesRelated(_)) =>
-        r.indices.flatMap(RequestedIndex.fromString)
+        r.requestedIndices
       case Right(EsqlRequestClassification.NonIndicesRelated) | Left(_) =>
         Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
     }
@@ -73,8 +78,8 @@ class EsqlIndicesEsRequestContext private (
   ): ModificationResult = {
     requestClassification match {
       case Right(r @ EsqlRequestClassification.IndicesRelated(tables))
-          if filteredRequestedIndices.stringify.toCovariantSet != r.indices =>
-        requestWithIndicesNarrowedTo(request, tables, filteredRequestedIndices, filter, fieldLevelSecurity)
+          if filteredRequestedIndices.toList.toCovariantSet != r.requestedIndices =>
+        updatedRequestWithIndicesNarrowedTo(request, tables, filteredRequestedIndices, filter, fieldLevelSecurity)
       case Right(_) =>
         updatedRequest(request, filter, fieldLevelSecurity)
       case Left(ClassificationError.ParsingException(ex)) =>
@@ -93,15 +98,23 @@ class EsqlIndicesEsRequestContext private (
     }
   }
 
-  private def requestWithIndicesNarrowedTo(
+  private def updatedRequestWithIndicesNarrowedTo(
       request: ActionRequest with CompositeIndicesRequest,
-      tables: NonEmptyList[IndexTable],
+      tables: NonEmptyList[EsqlIndexTable],
       filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    EsqlRequestHelper.modifyIndicesOf(request, tables, filteredRequestedIndices.stringify.toCovariantSet)
-    updatedRequest(request, filter, fieldLevelSecurity)
+    EsqlRequestHelper.modifyIndicesOf(request, tables, filteredRequestedIndices) match {
+      case IndicesModificationResult.IndicesModified =>
+        updatedRequest(request, filter, fieldLevelSecurity)
+      case IndicesModificationResult.CannotModifyIndices(reason) =>
+        logger.warn(
+          s"[${id.show}] The ESQL query cannot be narrowed down to [${filteredRequestedIndices.show}], because " +
+            s"$reason. The request will be rejected."
+        )
+        ModificationResult.ShouldBeInterrupted
+    }
   }
 
   private def updatedRequest(

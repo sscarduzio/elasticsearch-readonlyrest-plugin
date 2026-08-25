@@ -1191,6 +1191,21 @@ trait BaseXpackApiSuite
             )
             result.rows.size should be(3)
           }
+          "full indices names are used, one of them is not allowed and they are separated by a space" excludeES (
+            allEs6x,
+            allEs7x,
+            allEs8xBelowEs811x
+          ) in {
+            val result = dev1EsqlManager.execute("""FROM bookstore, library | LIMIT 100""")
+            result should have statusCode 200
+            result.columnNames should contain only ("author", "author.keyword", "name", "name.keyword", "release_date")
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
+            result.rows.size should be(3)
+          }
           "wildcard is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev1EsqlManager.execute("""FROM book* | LIMIT 100""")
             result should have statusCode 200
