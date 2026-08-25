@@ -23,15 +23,15 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.AuditIndexSchema
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput.*
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputs
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexPattern, RequestId}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.api.MainSettingsApi.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest.Type
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput.*
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutputConfig
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutputConfig.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -71,11 +71,11 @@ class MainSettingsApi(
   }
 
   private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
-    val sinks = rorInstance.auditSettings match {
-      case Some(AuditOutputsConfig.Configured(outputs)) => outputs.toList
-      case _                                            => List.empty
+    val outputs = rorInstance.auditSettings match {
+      case Some(AuditOutputs.Configured(outputs)) => outputs.toList
+      case _                                      => List.empty
     }
-    val auditOutputs = sinks.flatMap {
+    val auditOutputs = outputs.flatMap {
       case s: EsIndexBased if s.config.auditCluster == AuditCluster.LocalAuditCluster =>
         Some(
           LocalAuditIndex(
@@ -259,13 +259,14 @@ object MainSettingsApi {
     sealed trait ProvideAuditSettings extends MainSettingsResponse
 
     object ProvideAuditSettings {
-      final case class AuditSettings(auditOutputs: List[ProvideAuditSettings.AuditOutput]) extends ProvideAuditSettings
-      sealed trait AuditOutput
+      final case class AuditSettings(auditOutputs: List[ProvideAuditSettings.AuditOutputConfig])
+          extends ProvideAuditSettings
+      sealed trait AuditOutputConfig
 
-      object AuditOutput {
-        final case class LocalAuditIndex(indexPattern: IndexPattern, schema: AuditIndexSchema) extends AuditOutput
-        final case class LocalDataStream(name: DataStreamName.Full, schema: AuditIndexSchema) extends AuditOutput
-        final case class OtherAuditOutput(description: String) extends AuditOutput
+      object AuditOutputConfig {
+        final case class LocalAuditIndex(indexPattern: IndexPattern, schema: AuditIndexSchema) extends AuditOutputConfig
+        final case class LocalDataStream(name: DataStreamName.Full, schema: AuditIndexSchema) extends AuditOutputConfig
+        final case class OtherAuditOutput(description: String) extends AuditOutputConfig
       }
 
       final case class Failure(message: String) extends ProvideAuditSettings
@@ -397,16 +398,17 @@ object MainSettingsApi {
   private def addResponseJson(
       builder: EsXContentBuilder,
       status: String,
-      auditOutputs: List[ProvideAuditSettings.AuditOutput]
+      auditOutputs: List[ProvideAuditSettings.AuditOutputConfig]
   ): Unit = {
-    val localAuditIndexes = auditOutputs.collect { case index: ProvideAuditSettings.AuditOutput.LocalAuditIndex =>
+    val localAuditIndexes = auditOutputs.collect { case index: ProvideAuditSettings.AuditOutputConfig.LocalAuditIndex =>
       index
     }
-    val localDataStreams = auditOutputs.collect { case index: ProvideAuditSettings.AuditOutput.LocalDataStream =>
+    val localDataStreams = auditOutputs.collect { case index: ProvideAuditSettings.AuditOutputConfig.LocalDataStream =>
       index
     }
-    val otherAuditOutputs = auditOutputs.collect { case output: ProvideAuditSettings.AuditOutput.OtherAuditOutput =>
-      output
+    val otherAuditOutputs = auditOutputs.collect {
+      case output: ProvideAuditSettings.AuditOutputConfig.OtherAuditOutput =>
+        output
     }
     builder.build(
       Json

@@ -41,7 +41,7 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.mocks.MockedCapabilities
-import tech.beshu.ror.mocks.{MockDataStreamBasedAuditSinkServiceCreator, MockIndexBasedAuditSinkServiceCreator}
+import tech.beshu.ror.mocks.{MockDataStreamBasedAuditOutputServiceCreator, MockIndexBasedAuditOutputServiceCreator}
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
@@ -227,7 +227,7 @@ class IndexSettingsRelatedRorCoreTest
         Task.now(
           Right {
             val auditingConfig = AuditingTool.AuditingConfig(
-              AuditingTool.AuditOutputsConfig.Disabled,
+              AuditingTool.AuditOutputs.Disabled,
               defaultAclLog = true,
               defaultTestEsNodeSettings
             )
@@ -235,8 +235,8 @@ class IndexSettingsRelatedRorCoreTest
               Core(mockAccessControl, RorDependencies.noOp, auditingConfig),
               new CoreCreationResult.AuditSetup(
                 new EsAuditCapabilities.IndexOrDataStream(
-                  MockIndexBasedAuditSinkServiceCreator,
-                  MockDataStreamBasedAuditSinkServiceCreator
+                  MockIndexBasedAuditOutputServiceCreator,
+                  MockDataStreamBasedAuditOutputServiceCreator
                 ),
                 auditingConfig
               )

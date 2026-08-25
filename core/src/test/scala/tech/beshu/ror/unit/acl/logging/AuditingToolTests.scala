@@ -30,9 +30,9 @@ import squants.information.Megabytes
 import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput.*
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
-import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, AuditSink}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditingConfig}
+import tech.beshu.ror.accesscontrol.audit.output.{AuditDataStreamCreator, AuditOutput}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
@@ -48,7 +48,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
+import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, DataStreamService, IndexBasedAuditOutputService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.positiveInt
@@ -67,7 +67,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   "Auditing tool" when {
     "used with DefaultAuditLogSerializer" when {
-      "es index sink is used" should {
+      "es index output is used" should {
         "not submit any audit entry" when {
           "request was allowed and verbosity level was ERROR" in {
             @nowarn("cat=deprecation")
@@ -78,14 +78,14 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
-                indexCreator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
-                dataStreamCreator = (_: AuditCluster) => mockedDataStreamBasedAuditSinkService
+                indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
+                dataStreamCreator = (_: AuditCluster) => mockedDataStreamBasedAuditOutputService
               )
               .runSyncUnsafe()
               .toOption
               .get
             auditingTool
-              .audit(createAllowedResponseContext(Policy.Allow, auditingTool.sinks, logAllowedEvents = false))
+              .audit(createAllowedResponseContext(Policy.Allow, auditingTool.outputs, logAllowedEvents = false))
               .runSyncUnsafe()
           }
           "custom serializer throws exception" in {
@@ -96,27 +96,27 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
-                indexCreator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
-                dataStreamCreator = (_: AuditCluster) => mockedDataStreamBasedAuditSinkService
+                indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
+                dataStreamCreator = (_: AuditCluster) => mockedDataStreamBasedAuditOutputService
               )
               .runSyncUnsafe()
               .toOption
               .get
             an[IllegalArgumentException] should be thrownBy {
-              auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.sinks)).runSyncUnsafe()
+              auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.outputs)).runSyncUnsafe()
             }
           }
         }
         "submit audit entry" when {
           "request was allowed and verbosity level was INFO" in {
             val requestId = RequestId("mock-1")
-            val indexAuditSink = mock[IndexBasedAuditSinkService]
-            (indexAuditSink
+            val indexAuditOutput = mock[IndexBasedAuditOutputService]
+            (indexAuditOutput
               .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
               .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
               .returning(())
-            val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
-            (dataStreamAuditSink
+            val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
+            (dataStreamAuditOutput
               .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
               .expects(fullDataStreamName("test_ds"), "mock-1", *, RequestId("mock-1"))
               .returning(())
@@ -128,23 +128,23 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
-                indexCreator = (_: AuditCluster) => indexAuditSink,
-                dataStreamCreator = (_: AuditCluster) => dataStreamAuditSink
+                indexCreator = (_: AuditCluster) => indexAuditOutput,
+                dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
               )
               .runSyncUnsafe()
               .toOption
               .get
-            auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.sinks)).runSyncUnsafe()
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.outputs)).runSyncUnsafe()
           }
           "request was matched by forbidden rule" in {
             val requestId = RequestId("mock-1")
-            val indexAuditSink = mock[IndexBasedAuditSinkService]
-            (indexAuditSink
+            val indexAuditOutput = mock[IndexBasedAuditOutputService]
+            (indexAuditOutput
               .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
               .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
               .returning(())
-            val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
-            (dataStreamAuditSink
+            val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
+            (dataStreamAuditOutput
               .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
               .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
               .returning(())
@@ -156,8 +156,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
-                indexCreator = (_: AuditCluster) => indexAuditSink,
-                dataStreamCreator = (_: AuditCluster) => dataStreamAuditSink
+                indexCreator = (_: AuditCluster) => indexAuditOutput,
+                dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
               )
               .runSyncUnsafe()
               .toOption
@@ -175,7 +175,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   Block.Policy.Forbid(),
                   NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET)))),
                   Block.Audit.Enabled(),
-                ).withResolvedAuditSinks(auditingTool.sinks),
+                ).withResolvedAuditOutputs(auditingTool.outputs),
                 requestContext = requestContext,
                 blockMetadata = BlockMetadata.empty,
                 responseHeaders = Set.empty,
@@ -191,13 +191,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           }
           "request was forbidden" in {
             val requestId = RequestId("mock-1")
-            val indexAuditSink = mock[IndexBasedAuditSinkService]
-            (indexAuditSink
+            val indexAuditOutput = mock[IndexBasedAuditOutputService]
+            (indexAuditOutput
               .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
               .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
               .returning(())
-            val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
-            (dataStreamAuditSink
+            val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
+            (dataStreamAuditOutput
               .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
               .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
               .returning(())
@@ -209,8 +209,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
-                indexCreator = (_: AuditCluster) => indexAuditSink,
-                dataStreamCreator = (_: AuditCluster) => dataStreamAuditSink
+                indexCreator = (_: AuditCluster) => indexAuditOutput,
+                dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
               )
               .runSyncUnsafe()
               .toOption
@@ -226,13 +226,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           }
           "request was finished with error" in {
             val requestId = RequestId("mock-1")
-            val indexAuditSink = mock[IndexBasedAuditSinkService]
-            (indexAuditSink
+            val indexAuditOutput = mock[IndexBasedAuditOutputService]
+            (indexAuditOutput
               .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
               .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
               .returning(())
-            val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
-            (dataStreamAuditSink
+            val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
+            (dataStreamAuditOutput
               .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
               .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
               .returning(())
@@ -244,8 +244,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
-                indexCreator = (_: AuditCluster) => indexAuditSink,
-                dataStreamCreator = (_: AuditCluster) => dataStreamAuditSink
+                indexCreator = (_: AuditCluster) => indexAuditOutput,
+                dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
               )
               .runSyncUnsafe()
               .toOption
@@ -261,17 +261,17 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           }
         }
       }
-      "log sink is used" should {
+      "log output is used" should {
         "saved audit log to file defined in log4j settings" in {
           @nowarn("cat=deprecation")
           val auditingTool = AuditingTool
             .create(
               config = AuditingConfig(
-                outputsConfig = AuditOutputsConfig.Configured(
+                outputs = AuditOutputs.Configured(
                   NonEmptyList.of(
                     LogBased(
-                      SinkName.random(),
-                      LogBasedSink(
+                      AuditOutputName.random(),
+                      LogBasedSettings(
                         AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                         RorAuditLoggerName.default
                       )
@@ -281,8 +281,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 defaultAclLog = true,
                 esNodeSettings = defaultTestEsNodeSettings,
               ),
-              indexCreator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
-              dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditSinkService]
+              indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
+              dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
             )
             .runSyncUnsafe()
             .toOption
@@ -311,14 +311,14 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           val auditingTool = AuditingTool
             .create(
               config = AuditingConfig(
-                outputsConfig = AuditOutputsConfig.Configured(
+                outputs = AuditOutputs.Configured(
                   NonEmptyList.of(
                     RollingFileBased(
-                      SinkName.random(),
-                      RollingFileBasedSink(
+                      AuditOutputName.random(),
+                      RollingFileBasedSettings(
                         serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                         loggerName = isolatedLoggerName,
-                        fileAppender = RollingFileBasedSink.FileAppenderConfig(
+                        fileAppender = RollingFileBasedSettings.FileAppenderConfig(
                           filePath = filePathAuditLog.path,
                           maxFileSize = Megabytes(100),
                           maxFiles = positiveInt(7)
@@ -330,8 +330,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 defaultAclLog = true,
                 esNodeSettings = defaultTestEsNodeSettings,
               ),
-              indexCreator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
-              dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditSinkService]
+              indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
+              dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
             )
             .runSyncUnsafe()
             .toOption
@@ -349,24 +349,24 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           filePathAuditLog.contentAsString should include(requestContextId.value)
         }
         "should write to custom log file when defaultAclLog is also enabled" in {
-          val customLogFile = File("/tmp/ror/audit_logs/test_both_sinks_audit.log")
+          val customLogFile = File("/tmp/ror/audit_logs/test_both_outputs_audit.log")
           customLogFile.parent.createDirectories()
           customLogFile.overwrite("")
 
-          val customLoggerName = RorAuditLoggerName(nes("ror-audit-both-sinks-test"))
+          val customLoggerName = RorAuditLoggerName(nes("ror-audit-both-outputs-test"))
 
           @nowarn("cat=deprecation")
           val auditingTool = AuditingTool
             .create(
               config = AuditingConfig(
-                outputsConfig = AuditOutputsConfig.Configured(
+                outputs = AuditOutputs.Configured(
                   NonEmptyList.of(
                     RollingFileBased(
-                      SinkName.random(),
-                      RollingFileBasedSink(
+                      AuditOutputName.random(),
+                      RollingFileBasedSettings(
                         serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                         loggerName = customLoggerName,
-                        fileAppender = RollingFileBasedSink.FileAppenderConfig(
+                        fileAppender = RollingFileBasedSettings.FileAppenderConfig(
                           filePath = customLogFile.path,
                           maxFileSize = Megabytes(100),
                           maxFiles = positiveInt(7)
@@ -378,8 +378,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 defaultAclLog = true,
                 esNodeSettings = defaultTestEsNodeSettings,
               ),
-              indexCreator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
-              dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditSinkService]
+              indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
+              dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
             )
             .runSyncUnsafe()
             .toOption
@@ -396,7 +396,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         }
       }
     }
-    "rolling file sink is used" should {
+    "rolling file output is used" should {
       "return a creation error" when {
         "the parent directory does not exist" in {
           // Log4j creates missing directories via Files.createDirectories, so to reliably
@@ -413,12 +413,12 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val result = AuditingTool
               .create(
                 config = AuditingConfig(
-                  rollingFileSinkSettings(logPath),
+                  rollingFileOutputSettings(logPath),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
-                indexCreator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
-                dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditSinkService]
+                indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
+                dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
               )
               .runSyncUnsafe()
 
@@ -450,12 +450,12 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val result = AuditingTool
               .create(
                 config = AuditingConfig(
-                  rollingFileSinkSettings(logPath),
+                  rollingFileOutputSettings(logPath),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
-                indexCreator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
-                dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditSinkService]
+                indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
+                dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
               )
               .runSyncUnsafe()
 
@@ -487,12 +487,12 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val result = AuditingTool
               .create(
                 config = AuditingConfig(
-                  rollingFileSinkSettings(logPath),
+                  rollingFileOutputSettings(logPath),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
-                indexCreator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
-                dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditSinkService]
+                indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
+                dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
               )
               .runSyncUnsafe()
 
@@ -511,13 +511,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
 
     "multi-group user matched by the same block" should {
-      "submit audit event to each sink exactly once, not once per matched group" in {
+      "submit audit event to each output exactly once, not once per matched group" in {
         // A user can belong to multiple groups all granted by the same block.
-        // The audit event describes the request, not the group — so each sink
+        // The audit event describes the request, not the group — so each output
         // should receive it once regardless of how many groups matched.
         val requestId = RequestId("mock-withgroups-dedup")
-        val indexAuditSink = mock[IndexBasedAuditSinkService]
-        (indexAuditSink
+        val indexAuditOutput = mock[IndexBasedAuditOutputService]
+        (indexAuditOutput
           .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
           .expects(fullIndexName("test_2018-12-31"), "mock-withgroups-dedup", *, requestId)
           .returning(())
@@ -527,11 +527,11 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val auditingTool = AuditingTool
           .create(
             config = AuditingConfig(
-              AuditOutputsConfig.Configured(
+              AuditOutputs.Configured(
                 NonEmptyList.of(
                   EsIndexBased(
-                    SinkName.random(),
-                    EsIndexBasedSink(
+                    AuditOutputName.random(),
+                    EsIndexBasedSettings(
                       AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                       RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
                       AuditCluster.LocalAuditCluster
@@ -542,8 +542,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               defaultAclLog = false,
               defaultTestEsNodeSettings
             ),
-            indexCreator = (_: AuditCluster) => indexAuditSink,
-            dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditSinkService]
+            indexCreator = (_: AuditCluster) => indexAuditOutput,
+            dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
           )
           .runSyncUnsafe()
           .toOption
@@ -559,7 +559,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           Block.Policy.Allow,
           NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET)))),
           Block.Audit.Enabled()
-        ).withResolvedAuditSinks(auditingTool.sinks)
+        ).withResolvedAuditOutputs(auditingTool.outputs)
 
         val blockContext = UserMetadataRequestBlockContext(
           block = block,
@@ -591,10 +591,10 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
 
     "index-only audit settings" should {
-      "submit audit entry to index sink" in {
+      "submit audit entry to index output" in {
         val requestId = RequestId("mock-1")
-        val indexAuditSink = mock[IndexBasedAuditSinkService]
-        (indexAuditSink
+        val indexAuditOutput = mock[IndexBasedAuditOutputService]
+        (indexAuditOutput
           .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
           .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
           .returning(())
@@ -602,63 +602,63 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val auditingTool = AuditingTool
           .create(
             config = indexOnlyAuditSettings(new DefaultAuditLogSerializer),
-            creator = (_: AuditCluster) => indexAuditSink
+            creator = (_: AuditCluster) => indexAuditOutput
           )
           .runSyncUnsafe()
           .toOption
           .get
-        auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.sinks)).runSyncUnsafe()
+        auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.outputs)).runSyncUnsafe()
       }
-      "create a tool with no active sinks when all outputs are Disabled" in {
+      "create a tool with no active outputs when all outputs are Disabled" in {
         val creationResult = AuditingTool
           .create(
             config = AuditingConfig(
-              AuditOutputsConfig.Configured(NonEmptyList.of(Disabled, Disabled)),
+              AuditOutputs.Configured(NonEmptyList.of(Disabled, Disabled)),
               defaultAclLog = false,
               defaultTestEsNodeSettings
             ),
-            creator = (_: AuditCluster) => mock[IndexBasedAuditSinkService]
+            creator = (_: AuditCluster) => mock[IndexBasedAuditOutputService]
           )
           .runSyncUnsafe()
-        creationResult.map(_.sinks.isEmpty) should be(Right(true))
+        creationResult.map(_.outputs.isEmpty) should be(Right(true))
       }
     }
     "output configuration" should {
-      "create a tool with no configured sinks when disabled" in {
+      "create a tool with no configured outputs when disabled" in {
         val creationResult = AuditingTool
           .create(
             config = AuditingConfig(
-              AuditOutputsConfig.Disabled,
+              AuditOutputs.Disabled,
               defaultAclLog = false,
               defaultTestEsNodeSettings
             ),
-            creator = (_: AuditCluster) => mock[IndexBasedAuditSinkService]
+            creator = (_: AuditCluster) => mock[IndexBasedAuditOutputService]
           )
           .runSyncUnsafe()
 
-        creationResult.map(_.sinks.isEmpty) should be(Right(true))
+        creationResult.map(_.outputs.isEmpty) should be(Right(true))
       }
-      "create the default index sink when defaults are requested" in {
+      "create the default index output when defaults are requested" in {
         val creationResult = AuditingTool
           .create(
             config = AuditingConfig(
-              AuditOutputsConfig.Defaults,
+              AuditOutputs.Defaults,
               defaultAclLog = false,
               defaultTestEsNodeSettings
             ),
-            creator = (_: AuditCluster) => mock[IndexBasedAuditSinkService]
+            creator = (_: AuditCluster) => mock[IndexBasedAuditOutputService]
           )
           .runSyncUnsafe()
 
-        creationResult.map(_.sinks.size) should be(Right(1))
+        creationResult.map(_.outputs.size) should be(Right(1))
       }
     }
     "no enabled outputs in settings" should {
-      "create a tool with no active sinks" in {
+      "create a tool with no active outputs" in {
         val creationResult = AuditingTool
           .create(
             config = AuditingConfig(
-              AuditOutputsConfig.Configured(
+              AuditOutputs.Configured(
                 NonEmptyList.of(
                   Disabled,
                   Disabled,
@@ -668,8 +668,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               defaultAclLog = true,
               defaultTestEsNodeSettings,
             ),
-            indexCreator = (_: AuditCluster) => mock[IndexBasedAuditSinkService],
-            dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditSinkService]
+            indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
+            dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
           )
           .runSyncUnsafe()
         creationResult.isRight should be(true)
@@ -678,11 +678,11 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   }
 
   private def indexOnlyAuditSettings(serializer: AuditLogSerializer): AuditingConfig.IndexOnly = AuditingConfig(
-    outputsConfig = AuditOutputsConfig.Configured(
+    outputs = AuditOutputs.Configured(
       NonEmptyList.of(
         EsIndexBased(
-          SinkName.random(),
-          EsIndexBasedSink(
+          AuditOutputName.random(),
+          EsIndexBasedSettings(
             AuditSerializer.Delegating(serializer),
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
             AuditCluster.LocalAuditCluster
@@ -694,19 +694,19 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     esNodeSettings = defaultTestEsNodeSettings
   )
 
-  private def auditSettings(serializer: AuditLogSerializer) = AuditOutputsConfig.Configured(
+  private def auditSettings(serializer: AuditLogSerializer) = AuditOutputs.Configured(
     outputs = NonEmptyList.of(
       EsIndexBased(
-        SinkName.random(),
-        EsIndexBasedSink(
+        AuditOutputName.random(),
+        EsIndexBasedSettings(
           AuditSerializer.Delegating(serializer),
           RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
           AuditCluster.LocalAuditCluster
         )
       ),
       EsDataStreamBased(
-        SinkName.random(),
-        EsDataStreamBasedSink(
+        AuditOutputName.random(),
+        EsDataStreamBasedSettings(
           AuditSerializer.Delegating(serializer),
           RorAuditDataStream.from("test_ds").toOption.get,
           AuditCluster.LocalAuditCluster
@@ -719,7 +719,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   private def createAllowedResponseContext(
       policy: Block.Policy,
-      allSinks: List[AuditSink],
+      allOutputs: List[AuditOutput],
       logAllowedEvents: Boolean = true
   ) = {
     val requestContext =
@@ -732,7 +732,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           policy = policy,
           rules = NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET)))),
           audit = Block.Audit.Enabled(logAllowedEvents),
-        ).withResolvedAuditSinks(allSinks),
+        ).withResolvedAuditOutputs(allOutputs),
         requestContext = requestContext,
         blockMetadata = BlockMetadata.empty,
         responseHeaders = Set.empty,
@@ -748,14 +748,14 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   private implicit val fixedClock: Clock = Clock.fixed(someday.toInstant, someday.getZone)
 
   @nowarn("cat=deprecation")
-  private def rollingFileSinkSettings(filePath: java.nio.file.Path) = AuditOutputsConfig.Configured(
+  private def rollingFileOutputSettings(filePath: java.nio.file.Path) = AuditOutputs.Configured(
     NonEmptyList.of(
       RollingFileBased(
-        SinkName.random(),
-        RollingFileBasedSink(
+        AuditOutputName.random(),
+        RollingFileBasedSettings(
           serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
           loggerName = RorAuditLoggerName(nes("ror-audit-error-test")),
-          fileAppender = RollingFileBasedSink.FileAppenderConfig(
+          fileAppender = RollingFileBasedSettings.FileAppenderConfig(
             filePath = filePath,
             maxFileSize = Megabytes(100),
             maxFiles = positiveInt(7)
@@ -771,7 +771,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
   }
 
-  private def mockedDataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService = {
+  private def mockedDataStreamBasedAuditOutputService: DataStreamBasedAuditOutputService = {
     val mockedDataStreamService = mock[DataStreamService]
 
     (mockedDataStreamService
@@ -779,7 +779,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       .expects(fullDataStreamName(nes("test_ds")))
       .returning(Task.now(true))
 
-    val mockedService = mock[DataStreamBasedAuditSinkService]
+    val mockedService = mock[DataStreamBasedAuditOutputService]
     (() => mockedService.dataStreamCreator)
       .expects()
       .returns(Resource.pure(AuditDataStreamCreator(mockedDataStreamService)))

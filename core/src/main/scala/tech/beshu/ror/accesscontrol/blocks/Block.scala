@@ -21,16 +21,16 @@ import cats.{Eq, Show}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
-import tech.beshu.ror.accesscontrol.audit.sink.AuditSink
+import tech.beshu.ror.accesscontrol.audit.output.AuditOutput
 import tech.beshu.ror.accesscontrol.blocks.Block.*
-import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.PrecomputedAuditSinks.Available
-import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.{EnabledAuditSinks, PrecomputedAuditSinks}
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.PrecomputedAuditOutputs.Available
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.{EnabledAuditOutputs, PrecomputedAuditOutputs}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
-import tech.beshu.ror.accesscontrol.domain.SinkName
+import tech.beshu.ror.accesscontrol.domain.AuditOutputName
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
@@ -53,16 +53,16 @@ class Block(
 
   import Lifter.*
 
-  def withResolvedAuditSinks(allSinks: List[AuditSink]): Block = {
+  def withResolvedAuditOutputs(allOutputs: List[AuditOutput]): Block = {
     val newAudit = audit match {
       case Audit.Disabled =>
         Audit.Disabled
-      case enabled @ Audit.Enabled(_, EnabledAuditSinks.All, _) =>
-        enabled.copy(precomputedAuditSinks = Available(allSinks))
-      case enabled @ Audit.Enabled(_, EnabledAuditSinks.Selected(on), _) =>
-        enabled.copy(precomputedAuditSinks = Available(allSinks.filter(s => on.contains(s.name))))
-      case enabled @ Audit.Enabled(_, EnabledAuditSinks.AllExcept(off), _) =>
-        enabled.copy(precomputedAuditSinks = Available(allSinks.filter(s => !off.contains(s.name))))
+      case enabled @ Audit.Enabled(_, EnabledAuditOutputs.All, _) =>
+        enabled.copy(precomputedAuditOutputs = Available(allOutputs))
+      case enabled @ Audit.Enabled(_, EnabledAuditOutputs.Selected(on), _) =>
+        enabled.copy(precomputedAuditOutputs = Available(allOutputs.filter(s => on.contains(s.name))))
+      case enabled @ Audit.Enabled(_, EnabledAuditOutputs.AllExcept(off), _) =>
+        enabled.copy(precomputedAuditOutputs = Available(allOutputs.filter(s => !off.contains(s.name))))
     }
     new Block(name, policy, rules, newAudit)(loggingContext)
   }
@@ -269,33 +269,33 @@ object Block {
 
     final case class Enabled(
         logAllowedEvents: Boolean = true,
-        enabledAuditSinks: EnabledAuditSinks = EnabledAuditSinks.All,
-        // Blocks are decoded before the AuditingTool exists (which resolves sink names to actual AuditSink
-        // instances), so we cannot resolve enabledAuditSinks into concrete sinks at decoding time.
+        enabledAuditOutputs: EnabledAuditOutputs = EnabledAuditOutputs.All,
+        // Blocks are decoded before the AuditingTool exists (which resolves output names to actual AuditOutput
+        // instances), so we cannot resolve enabledAuditOutputs into concrete outputs at decoding time.
         // Resolving them on every audit event would be too costly, so once the AuditingTool is available
-        // (at ROR startup), the resolved sinks are precomputed and injected back into the Block here.
-        // enabledAuditSinks remains the source of truth for the block's audit config; this field is just
+        // (at ROR startup), the resolved outputs are precomputed and injected back into the Block here.
+        // enabledAuditOutputs remains the source of truth for the block's audit config; this field is just
         // a non-normalized cache of its resolution, kept to avoid recomputing it on every request.
-        precomputedAuditSinks: PrecomputedAuditSinks = PrecomputedAuditSinks.NotAvailable,
+        precomputedAuditOutputs: PrecomputedAuditOutputs = PrecomputedAuditOutputs.NotAvailable,
     ) extends Audit
 
     object Enabled {
-      sealed trait EnabledAuditSinks
+      sealed trait EnabledAuditOutputs
 
-      object EnabledAuditSinks {
-        case object All extends EnabledAuditSinks
+      object EnabledAuditOutputs {
+        case object All extends EnabledAuditOutputs
 
-        final case class Selected(enabledSinks: Set[SinkName]) extends EnabledAuditSinks
+        final case class Selected(enabledOutputs: Set[AuditOutputName]) extends EnabledAuditOutputs
 
-        final case class AllExcept(disabledSinks: Set[SinkName]) extends EnabledAuditSinks
+        final case class AllExcept(disabledOutputs: Set[AuditOutputName]) extends EnabledAuditOutputs
       }
 
-      sealed trait PrecomputedAuditSinks
+      sealed trait PrecomputedAuditOutputs
 
-      object PrecomputedAuditSinks {
-        case object NotAvailable extends PrecomputedAuditSinks
+      object PrecomputedAuditOutputs {
+        case object NotAvailable extends PrecomputedAuditOutputs
 
-        final case class Available(auditSinks: List[AuditSink]) extends PrecomputedAuditSinks
+        final case class Available(auditOutputs: List[AuditOutput]) extends PrecomputedAuditOutputs
       }
 
     }

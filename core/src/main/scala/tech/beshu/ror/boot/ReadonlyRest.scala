@@ -21,7 +21,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.AuditOutput
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
@@ -238,7 +238,7 @@ class ReadonlyRest(
       .map { auditingTool =>
         val decoratedCore = Core(
           accessControl = new AccessControlListLoggingDecorator(
-            underlying = core.accessControl.withBlockTransformation(_.withResolvedAuditSinks(auditingTool.sinks)),
+            underlying = core.accessControl.withBlockTransformation(_.withResolvedAuditOutputs(auditingTool.outputs)),
             auditingTool = auditingTool
           ),
           dependencies = core.dependencies,
@@ -252,7 +252,7 @@ class ReadonlyRest(
       }
   }
 
-  private def createAuditingTool[O <: AuditOutput](auditSetup: AuditSetup[O])(
+  private def createAuditingTool[O <: AuditOutputConfig](auditSetup: AuditSetup[O])(
       implicit loggingContext: LoggingContext
   ): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
     auditSetup.capability match {
