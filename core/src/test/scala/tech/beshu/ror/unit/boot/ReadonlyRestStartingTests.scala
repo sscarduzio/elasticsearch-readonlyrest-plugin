@@ -36,11 +36,11 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.sink.{
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditOutputConfig
+import tech.beshu.ror.accesscontrol.audit.output.{
   AuditDataStreamCreator,
-  AuditSinkServiceCreator,
-  DataStreamAndIndexBasedAuditSinkServiceCreator
+  AuditOutputServiceCreator,
+  DataStreamAndIndexBasedAuditOutputServiceCreator
 }
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
@@ -62,7 +62,7 @@ import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, TestSett
 import tech.beshu.ror.es.services.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.IndexDocumentManager.*
-import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexDocumentManager}
+import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, DataStreamService, IndexDocumentManager}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.ror.RawRorSettings
@@ -1587,8 +1587,8 @@ class ReadonlyRestStartingTests
         }
       }
       "unable to setup data stream audit output" in {
-        val dataStreamSinkConfig1 = AuditSink.Config.EsDataStreamBasedSink.default
-        val dataStreamSinkConfig2 = dataStreamSinkConfig1.copy(
+        val dataStreamOutputConfig1 = AuditOutputConfig.Config.EsDataStreamBasedOutput.default
+        val dataStreamOutputConfig2 = dataStreamOutputConfig1.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("0.0.0.0"))),
             ClusterMode.RoundRobin,
@@ -1604,8 +1604,8 @@ class ReadonlyRestStartingTests
           Some(
             AuditingTool.AuditOutputsConfig.WithOutputs(
               NonEmptyList.of(
-                AuditSink.Enabled(SinkName.random(), dataStreamSinkConfig1),
-                AuditSink.Enabled(SinkName.random(), dataStreamSinkConfig2)
+                AuditOutputConfig.Enabled(AuditOutputName.random(), dataStreamOutputConfig1),
+                AuditOutputConfig.Enabled(AuditOutputName.random(), dataStreamOutputConfig2)
               )
             )
           )
@@ -1615,20 +1615,20 @@ class ReadonlyRestStartingTests
         val dataStreamService2 =
           mockedDataSteamService(dataStreamExists = false, componentTemplateResult = NotAcknowledged)
 
-        val auditSinkServiceCreator = mock[DataStreamAndIndexBasedAuditSinkServiceCreator]
+        val auditOutputServiceCreator = mock[DataStreamAndIndexBasedAuditOutputServiceCreator]
 
-        (auditSinkServiceCreator.dataStream _)
-          .expects(dataStreamSinkConfig1.auditCluster)
+        (auditOutputServiceCreator.dataStream _)
+          .expects(dataStreamOutputConfig1.auditCluster)
           .once()
-          .returns(mockedDataStreamAuditSinkService(dataStreamService1))
+          .returns(mockedDataStreamAuditOutputService(dataStreamService1))
 
-        (auditSinkServiceCreator.dataStream _)
-          .expects(dataStreamSinkConfig2.auditCluster)
+        (auditOutputServiceCreator.dataStream _)
+          .expects(dataStreamOutputConfig2.auditCluster)
           .once()
-          .returns(mockedDataStreamAuditSinkService(dataStreamService2))
+          .returns(mockedDataStreamAuditOutputService(dataStreamService2))
 
         implicit val systemContext: SystemContext = createSystemContext()
-        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager], auditSinkServiceCreator)
+        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager], auditOutputServiceCreator)
         val esConfigBasedRorSettings =
           forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_with_audit/")
 
@@ -1786,11 +1786,11 @@ class ReadonlyRestStartingTests
   private def readonlyRestBoot(
       factory: CoreFactory,
       indexDocumentManager: IndexDocumentManager,
-      auditSinkServiceCreator: AuditSinkServiceCreator = mock[AuditSinkServiceCreator]
+      auditOutputServiceCreator: AuditOutputServiceCreator = mock[AuditOutputServiceCreator]
   )(
       implicit systemContext: SystemContext
   ): ReadonlyRest = {
-    ReadonlyRest.create(factory, indexDocumentManager, auditSinkServiceCreator)
+    ReadonlyRest.create(factory, indexDocumentManager, auditOutputServiceCreator)
   }
 
   private def mockCoreFactory(
@@ -1999,13 +1999,13 @@ class ReadonlyRestStartingTests
 
   private abstract class DisabledAcl extends AccessControlList
 
-  private def mockedDataStreamAuditSinkService(dataStreamService: DataStreamService) = {
-    val dataStreamAuditSink = mock[DataStreamBasedAuditSinkService]
-    (() => dataStreamAuditSink.dataStreamCreator)
+  private def mockedDataStreamAuditOutputService(dataStreamService: DataStreamService) = {
+    val dataStreamAuditOutput = mock[DataStreamBasedAuditOutputService]
+    (() => dataStreamAuditOutput.dataStreamCreator)
       .expects()
       .once()
       .returns(new AuditDataStreamCreator(NonEmptyList.of(dataStreamService)))
-    dataStreamAuditSink
+    dataStreamAuditOutput
   }
 
   private def mockGettingMainSettingsReturnsError(

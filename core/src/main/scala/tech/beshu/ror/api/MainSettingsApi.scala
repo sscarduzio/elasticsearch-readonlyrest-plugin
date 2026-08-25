@@ -24,8 +24,8 @@ import io.circe.{Decoder, Encoder, Json}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.AuditIndexSchema
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditOutputConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditOutputConfig.Config
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexPattern, RequestId}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.api.MainSettingsApi.*
@@ -72,30 +72,30 @@ class MainSettingsApi(
   }
 
   private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
-    val sinks = rorInstance.auditSettings match {
-      case Some(AuditOutputsConfig.NoOutputsConfigured)     => List.empty
-      case Some(AuditOutputsConfig.WithOutputs(auditSinks)) => auditSinks.toList
-      case None                                             => List.empty
+    val outputs = rorInstance.auditSettings match {
+      case Some(AuditOutputsConfig.NoOutputsConfigured)       => List.empty
+      case Some(AuditOutputsConfig.WithOutputs(auditOutputs)) => auditOutputs.toList
+      case None                                               => List.empty
     }
-    val auditOutputs = sinks.flatMap {
-      case AuditSink.Enabled(_, config) =>
+    val auditOutputs = outputs.flatMap {
+      case AuditOutputConfig.Enabled(_, config) =>
         config match {
-          case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
+          case Config.EsIndexBasedOutput(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
             Some(LocalAuditIndex(rorAuditIndexTemplate.rorAuditIndexPattern, AuditIndexSchema.from(logSerializer)))
-          case Config.EsIndexBasedSink(_, _, _: AuditCluster.RemoteAuditCluster) =>
+          case Config.EsIndexBasedOutput(_, _, _: AuditCluster.RemoteAuditCluster) =>
             Some(OtherAuditOutput("Remote audit cluster"))
-          case Config.EsDataStreamBasedSink(logSerializer, ds, AuditCluster.LocalAuditCluster) =>
+          case Config.EsDataStreamBasedOutput(logSerializer, ds, AuditCluster.LocalAuditCluster) =>
             Some(LocalDataStream(ds.dataStream, AuditIndexSchema.from(logSerializer)))
-          case Config.EsDataStreamBasedSink(_, ds, _: AuditCluster.RemoteAuditCluster) =>
+          case Config.EsDataStreamBasedOutput(_, ds, _: AuditCluster.RemoteAuditCluster) =>
             Some(OtherAuditOutput(s"Remote ${ds.dataStream.value.value} data stream"))
-          case s: Config.LogBasedSink =>
+          case s: Config.LogBasedOutput =>
             Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}]"))
-          case s: Config.RollingFileBasedSink =>
+          case s: Config.RollingFileBasedOutput =>
             Some(
               OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}] to file [${s.fileAppender.filePath}]")
             )
         }
-      case AuditSink.Disabled => None
+      case AuditOutputConfig.Disabled => None
     }
     ProvideAuditSettings.AuditSettings(auditOutputs)
   }
