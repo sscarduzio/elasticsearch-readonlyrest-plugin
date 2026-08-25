@@ -39,6 +39,7 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
 
@@ -60,9 +61,11 @@ class Block(
       case enabled @ Audit.Enabled(_, EnabledAuditOutputs.All, _) =>
         enabled.copy(precomputedAuditOutputs = Available(allOutputs))
       case enabled @ Audit.Enabled(_, EnabledAuditOutputs.Selected(on), _) =>
-        enabled.copy(precomputedAuditOutputs = Available(allOutputs.filter(s => on.contains(s.name))))
+        val enabledNames = on.toSet
+        enabled.copy(precomputedAuditOutputs = Available(allOutputs.filter(s => enabledNames.contains(s.name))))
       case enabled @ Audit.Enabled(_, EnabledAuditOutputs.AllExcept(off), _) =>
-        enabled.copy(precomputedAuditOutputs = Available(allOutputs.filter(s => !off.contains(s.name))))
+        val disabledNames = off.toSet
+        enabled.copy(precomputedAuditOutputs = Available(allOutputs.filter(s => !disabledNames.contains(s.name))))
     }
     new Block(name, policy, rules, newAudit)(loggingContext)
   }
@@ -285,9 +288,9 @@ object Block {
       object EnabledAuditOutputs {
         case object All extends EnabledAuditOutputs
 
-        final case class Selected(enabledOutputs: Set[AuditOutputName]) extends EnabledAuditOutputs
+        final case class Selected(enabledOutputs: UniqueNonEmptyList[AuditOutputName]) extends EnabledAuditOutputs
 
-        final case class AllExcept(disabledOutputs: Set[AuditOutputName]) extends EnabledAuditOutputs
+        final case class AllExcept(disabledOutputs: UniqueNonEmptyList[AuditOutputName]) extends EnabledAuditOutputs
       }
 
       sealed trait PrecomputedAuditOutputs

@@ -55,6 +55,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class Core(
@@ -323,6 +324,9 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       }
     }
 
+  private def emptyOutputNamesFailure(message: String): DecodingFailure =
+    decodingFailureFrom(BlocksLevelCreationError(Message(message)))
+
   private def enabledAuditOutputsDecoder(
       c: HCursor
   )(
@@ -343,9 +347,19 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
             )
           )
         case (Some(enabledOutputs), None) =>
-          Right(EnabledAuditOutputs.Selected(enabledOutputs.toSet))
+          UniqueNonEmptyList
+            .from(enabledOutputs)
+            .map(EnabledAuditOutputs.Selected.apply)
+            .toRight(
+              emptyOutputNamesFailure(
+                "'enabled_audit_outputs' cannot be empty; to disable all audit for this block use 'audit: {enabled: false}'"
+              )
+            )
         case (None, Some(disabledOutputs)) =>
-          Right(EnabledAuditOutputs.AllExcept(disabledOutputs.toSet))
+          UniqueNonEmptyList
+            .from(disabledOutputs)
+            .map(EnabledAuditOutputs.AllExcept.apply)
+            .toRight(emptyOutputNamesFailure("'disabled_audit_outputs' cannot be empty"))
         case (None, None) =>
           Right(EnabledAuditOutputs.All)
       }
@@ -388,29 +402,19 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
         val errors = blocksNel.toList.map(_.block).flatMap { block =>
           block.audit match {
             case Block.Audit.Enabled(_, EnabledAuditOutputs.Selected(enabledOutputs), _) =>
-              if (enabledOutputs.isEmpty)
+              val unknown = enabledOutputs.toSet -- globalOutputNames
+              if (unknown.nonEmpty)
                 List(
-                  s"Block '${block.name.value}': 'enabled_audit_outputs' cannot be empty; to disable all audit for this block use 'audit: {enabled: false}'"
+                  s"Block '${block.name.value}': 'enabled_audit_outputs' references unknown output names [${unknown.map(_.value).mkString(", ")}]"
                 )
-              else {
-                val unknown = enabledOutputs -- globalOutputNames
-                if (unknown.nonEmpty)
-                  List(
-                    s"Block '${block.name.value}': 'enabled_audit_outputs' references unknown output names [${unknown.map(_.value).mkString(", ")}]"
-                  )
-                else Nil
-              }
+              else Nil
             case Block.Audit.Enabled(_, EnabledAuditOutputs.AllExcept(disabledOutputs), _) =>
-              if (disabledOutputs.isEmpty)
-                List(s"Block '${block.name.value}': 'disabled_audit_outputs' cannot be empty")
-              else {
-                val unknown = disabledOutputs -- globalOutputNames
-                if (unknown.nonEmpty)
-                  List(
-                    s"Block '${block.name.value}': 'disabled_audit_outputs' references unknown output names [${unknown.map(_.value).mkString(", ")}]"
-                  )
-                else Nil
-              }
+              val unknown = disabledOutputs.toSet -- globalOutputNames
+              if (unknown.nonEmpty)
+                List(
+                  s"Block '${block.name.value}': 'disabled_audit_outputs' references unknown output names [${unknown.map(_.value).mkString(", ")}]"
+                )
+              else Nil
             case _ => Nil
           }
         }
