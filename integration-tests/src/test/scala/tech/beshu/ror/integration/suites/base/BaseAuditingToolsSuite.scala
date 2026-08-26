@@ -86,7 +86,7 @@ trait BaseAuditingToolsSuite
       }
     }
 
-  // Audit entries flush to the sink asynchronously; the window must be generous enough for a
+  // Audit entries flush to the output asynchronously; the window must be generous enough for a
   // CPU-loaded machine (e.g. sharded CI runners). eventually returns as soon as the entry lands.
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(60, Seconds)), interval = scaled(Span(100, Millis)))

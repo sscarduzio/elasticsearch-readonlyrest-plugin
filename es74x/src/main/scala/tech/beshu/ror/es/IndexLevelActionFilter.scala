@@ -27,7 +27,7 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.sink.{AuditSinkServiceCreator, IndexBasedAuditSinkServiceCreator}
+import tech.beshu.ror.accesscontrol.audit.output.{AuditOutputServiceCreator, IndexBasedAuditOutputServiceCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
@@ -71,7 +71,7 @@ class IndexLevelActionFilter(
 
   private val ror = ReadonlyRest.create(
     new EsIndexDocumentManager(client),
-    auditSinkServiceCreator,
+    auditOutputServiceCreator,
     esEnv,
   )
 
@@ -101,12 +101,12 @@ class IndexLevelActionFilter(
     startRorInstance()
   }
 
-  private def auditSinkServiceCreator: AuditSinkServiceCreator = new IndexBasedAuditSinkServiceCreator {
-    override def index(cluster: AuditCluster): IndexBasedAuditSinkService = cluster match {
+  private def auditOutputServiceCreator: AuditOutputServiceCreator = new IndexBasedAuditOutputServiceCreator {
+    override def index(cluster: AuditCluster): IndexBasedAuditOutputService = cluster match {
       case AuditCluster.LocalAuditCluster =>
-        new NodeClientBasedAuditSinkService(client)
+        new NodeClientBasedAuditOutputService(client)
       case remote: AuditCluster.RemoteAuditCluster =>
-        RestClientAuditSinkService.create(remote)
+        RestClientAuditOutputService.create(remote)
     }
   }
 
