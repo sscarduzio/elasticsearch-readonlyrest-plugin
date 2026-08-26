@@ -29,7 +29,8 @@ private[audit] final class EsIndexBasedAuditSink private (
     sinkName: SinkName,
     serializer: JsonAuditSerializer,
     rorAuditIndexTemplate: RorAuditIndexTemplate,
-    auditSinkService: IndexBasedAuditSinkService
+    auditSinkService: IndexBasedAuditSinkService,
+    pipeline: Option[String]
 )(
     implicit clock: Clock
 ) extends JsonBasedAuditSink(sinkName, serializer) {
@@ -40,7 +41,8 @@ private[audit] final class EsIndexBasedAuditSink private (
     auditSinkService.submit(
       indexName = rorAuditIndexTemplate.indexName(clock.instant()),
       documentId = event.requestContext.id,
-      jsonRecord = serializedEvent.toString
+      jsonRecord = serializedEvent.toString,
+      pipeline = pipeline
     )
   }
 
@@ -53,11 +55,12 @@ object EsIndexBasedAuditSink {
       sinkName: SinkName,
       serializer: JsonAuditSerializer,
       indexTemplate: RorAuditIndexTemplate,
-      auditSinkService: IndexBasedAuditSinkService
+      auditSinkService: IndexBasedAuditSinkService,
+      pipeline: Option[String] = None
   )(
       implicit clock: Clock
   ): EsIndexBasedAuditSink = {
-    new EsIndexBasedAuditSink(sinkName, serializer, indexTemplate, auditSinkService)
+    new EsIndexBasedAuditSink(sinkName, serializer, indexTemplate, auditSinkService, pipeline)
   }
 
 }

@@ -39,29 +39,34 @@ final class RestClientAuditSinkService private (client: RestClient, inFlightRequ
     with DataStreamBasedAuditSinkService
     with RequestIdAwareLogging {
 
-  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String, pipeline: Option[String])(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(indexName.name.value, documentId, jsonRecord)
+    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline)
   }
 
-  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
+  override def submit(
+      dataStreamName: DataStreamName.Full,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[String]
+  )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(dataStreamName.value.value, documentId, jsonRecord)
+    submitDocument(dataStreamName.value.value, documentId, jsonRecord, pipeline)
   }
 
   override def close(): Unit = {
     client.close()
   }
 
-  private def submitDocument(indexName: String, documentId: String, jsonRecord: String)(
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String, pipeline: Option[String])(
       implicit requestId: RequestId
   ): Unit = {
     if (inFlightRequestSemaphore.tryAcquire()) {
       client
         .performRequestAsync(
-          createRequest(indexName, documentId, jsonRecord),
+          createRequest(indexName, documentId, jsonRecord, pipeline),
           createResponseListener(indexName, documentId)
         )
     } else {
@@ -69,9 +74,10 @@ final class RestClientAuditSinkService private (client: RestClient, inFlightRequ
     }
   }
 
-  private def createRequest(indexName: String, documentId: String, jsonBody: String) = {
+  private def createRequest(indexName: String, documentId: String, jsonBody: String, pipeline: Option[String]) = {
     val request = new Request("PUT", s"/$indexName/_doc/$documentId")
     request.addParameter("op_type", "create")
+    pipeline.foreach(request.addParameter("pipeline", _))
     request.setJsonEntity(jsonBody)
     request
   }

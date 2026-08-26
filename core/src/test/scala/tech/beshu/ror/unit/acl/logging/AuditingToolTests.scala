@@ -125,13 +125,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestId = RequestId("mock-1")
             val indexAuditSink = mock[IndexBasedAuditSinkService]
             (indexAuditSink
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, RequestId("mock-1"))
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, RequestId("mock-1"))
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -152,17 +152,48 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               .get
             auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.sinks)).runSyncUnsafe()
           }
+          "a pipeline is configured for the sink" in {
+            val requestId = RequestId("mock-1")
+            val indexAuditSink = mock[IndexBasedAuditSinkService]
+            (indexAuditSink
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, Some("index_pipeline"), requestId)
+              .returning(())
+            val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
+            (dataStreamAuditSink
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, Some("data_stream_pipeline"), requestId)
+              .returning(())
+            @nowarn("cat=deprecation")
+            val auditingTool = AuditingTool
+              .create(
+                config = AuditingConfig(
+                  Some(auditSettingsWithPipeline(new DefaultAuditLogSerializer)),
+                  defaultAclLog = true,
+                  defaultTestEsNodeSettings
+                ),
+                auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
+                  override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamAuditSink
+
+                  override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
+                }
+              )
+              .runSyncUnsafe()
+              .toOption
+              .get
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.sinks)).runSyncUnsafe()
+          }
           "request was matched by forbidden rule" in {
             val requestId = RequestId("mock-1")
             val indexAuditSink = mock[IndexBasedAuditSinkService]
             (indexAuditSink
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, requestId)
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -212,13 +243,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestId = RequestId("mock-1")
             val indexAuditSink = mock[IndexBasedAuditSinkService]
             (indexAuditSink
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, requestId)
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -250,13 +281,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestId = RequestId("mock-1")
             val indexAuditSink = mock[IndexBasedAuditSinkService]
             (indexAuditSink
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditSink = mockedDataStreamBasedAuditSinkService
             (dataStreamAuditSink
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, requestId)
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -572,8 +603,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val requestId = RequestId("mock-withgroups-dedup")
         val indexAuditSink = mock[IndexBasedAuditSinkService]
         (indexAuditSink
-          .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-          .expects(fullIndexName("test_2018-12-31"), "mock-withgroups-dedup", *, requestId)
+          .submit(_: IndexName.Full, _: String, _: String, _: Option[String])(_: RequestId))
+          .expects(fullIndexName("test_2018-12-31"), "mock-withgroups-dedup", *, None, requestId)
           .returning(())
           .once()
 
@@ -695,6 +726,29 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           AuditSerializer.Delegating(serializer),
           RorAuditDataStream.from("test_ds").toOption.get,
           AuditCluster.LocalAuditCluster
+        )
+      )
+    )
+  )
+
+  private def auditSettingsWithPipeline(serializer: AuditLogSerializer) = AuditOutputsConfig.WithOutputs(
+    auditSinks = NonEmptyList.of(
+      AuditSettings.AuditSink.Enabled(
+        SinkName.random(),
+        Config.EsIndexBasedSink(
+          AuditSerializer.Delegating(serializer),
+          RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
+          AuditCluster.LocalAuditCluster,
+          pipeline = Some("index_pipeline")
+        )
+      ),
+      AuditSettings.AuditSink.Enabled(
+        SinkName.random(),
+        Config.EsDataStreamBasedSink(
+          AuditSerializer.Delegating(serializer),
+          RorAuditDataStream.from("test_ds").toOption.get,
+          AuditCluster.LocalAuditCluster,
+          pipeline = Some("data_stream_pipeline")
         )
       )
     )

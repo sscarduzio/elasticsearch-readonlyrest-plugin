@@ -255,10 +255,12 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
         logSerializer <- c.as[Option[JsonAuditSerializer]]
         remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
+        pipeline <- c.downField("pipeline").as[Option[String]]
       } yield EsIndexBasedSink(
         logSerializer.getOrElse(EsIndexBasedSink.default.serializer),
         auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
         remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
+        pipeline,
       )
     }
 
@@ -267,10 +269,12 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         rorAuditDataStream <- c.downFieldAs[Option[RorAuditDataStream]]("data_stream")
         logSerializer <- c.as[Option[JsonAuditSerializer]]
         remoteAuditCluster <- c.downFieldAs[Option[AuditCluster.RemoteAuditCluster]]("cluster")
+        pipeline <- c.downFieldAs[Option[String]]("pipeline")
       } yield EsDataStreamBasedSink(
         logSerializer.getOrElse(EsDataStreamBasedSink.default.serializer),
         rorAuditDataStream.getOrElse(EsDataStreamBasedSink.default.rorAuditDataStream),
         remoteAuditCluster.getOrElse(EsDataStreamBasedSink.default.auditCluster),
+        pipeline,
       )
     }
 
