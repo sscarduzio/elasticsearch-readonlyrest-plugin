@@ -303,8 +303,8 @@ once, and the `&toolchains_container` anchor reads its two outputs: the name to 
 that name needs a Docker Hub login.
 
 The mirror is a cache and can serve an old image, and the weekly rebuild pushes the same tag. So
-`build_toolchains_image` writes the digest of its push to the Actions cache, and `setup` compares
-that digest with the one the mirror serves. No run calls Docker Hub.
+the rebuild records the digest of its push in the Actions cache, and `setup` compares that digest
+with the one the mirror serves. No run calls Docker Hub.
 
 | What the script finds | What the run pulls |
 |---|---|
@@ -325,6 +325,11 @@ and `setup` reads this one every run. A new tag matches no entry, so its runs us
 the next rebuild. The same holds now: run **Build toolchains image** once, on `develop`, to write the
 first digest.
 
+`record_toolchains_digest` saves that entry, not `build_toolchains_image`. The rebuild runs on an
+Ubicloud runner, and an Ubicloud runner keeps its own Actions cache. A GitHub-hosted runner cannot
+read it, and `setup` is GitHub-hosted. So the digest travels as a job output to a small job on
+`ubuntu-latest`, which saves it. Both ends then read one store.
+
 A mirrored name needs no login, and a login against `mirror.gcr.io` would fail, so the `credentials:`
 block goes empty then. It goes empty for a fork as well, and the runner skips an empty login.
 
@@ -343,7 +348,7 @@ Everything the Azure pipeline did is ported — nothing was dropped. The mapping
 | `SUPERSEDE_GUARD` | native `concurrency:` block (auto-cancel stale PR runs; branch pushes queue) |
 | `DETERMINE_CI_TYPE` | `setup` (branch flags, matrices) + `determine_ci_type` (release-type decision) |
 | `DISK_PROBE` | `disk_probe` (manual `run_disk_probe`) |
-| `BUILD_TOOLCHAINS_IMAGE` | `build_toolchains_image` (weekly cron + manual) |
+| `BUILD_TOOLCHAINS_IMAGE` | `build_toolchains_image` (weekly cron + manual) + `record_toolchains_digest` |
 | `TOOLCHAINS_VERIFY` | `toolchains_verify` |
 | `ES_S3_UP` | the standalone `mirror-es-libs.yml` workflow (manual; was a `newes/*` push trigger) |
 | `REQUIRED_CHECKS` | `required_checks` (same 4-task matrix) |

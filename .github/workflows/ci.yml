@@ -134,8 +134,8 @@ jobs:
             echo "e2e=$E2E_FULL_SET" >> "$GITHUB_OUTPUT"
           fi
       # The runner pulls the container: image before step 1, so ci/configure-docker.sh cannot reach
-      # it. This job can: container: image: reads a job output. build_toolchains_image put the
-      # digest of its push in the cache below. The key holds the tag, so a new tag reads no entry.
+      # it. This job can: container: image: reads a job output. record_toolchains_digest put the
+      # digest of the last push in the cache below. The key holds the tag, so a new tag reads none.
       - id: digest_key
         run: echo "prefix=toolchains-digest-${TOOLCHAINS_IMAGE##*:}-" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
@@ -157,6 +157,10 @@ jobs:
       (github.event_name == 'workflow_dispatch' && needs.setup.outputs.action == 'build_toolchains_image')
     runs-on: ubicloud-standard-4
     timeout-minutes: 240
+    # record_toolchains_digest reads these. A digest is public, so an output carries it safely.
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      key:    ${{ steps.push.outputs.key }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -184,19 +188,32 @@ jobs:
                      | grep "^${TOOLCHAINS_IMAGE%:*}@" | head -1 | sed 's/.*@//')
           echo ">>> Pushed digest: ${DIGEST:-<none>}"
           if [ -n "$DIGEST" ]; then
-            echo "$DIGEST" > .toolchains-digest
+            echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
             echo "key=toolchains-digest-${TOOLCHAINS_IMAGE##*:}-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::The daemon reports no digest for $TOOLCHAINS_IMAGE. Runs will pull from Docker Hub."
           fi
+
+  # ── RECORD_TOOLCHAINS_DIGEST ────────────────────────────────────────────
+  # An Ubicloud runner keeps its own Actions cache. A save there is invisible to a GitHub-hosted
+  # runner, and setup is GitHub-hosted. So the save runs here, and both ends read one store.
+  record_toolchains_digest:
+    needs: build_toolchains_image
+    if: needs.build_toolchains_image.outputs.key != ''
+    runs-on: ubuntu-latest   # GH-hosted, like setup. A different runner means a different store.
+    timeout-minutes: 5
+    steps:
+      - name: Write the digest file
+        env:
+          DIGEST: ${{ needs.build_toolchains_image.outputs.digest }}
+        run: echo "$DIGEST" > .toolchains-digest
       # A key is write-once, so the run id gives each rebuild its own entry. GitHub removes an entry
       # that nothing reads for 7 days, and setup reads this one every run. A branch reads its own
-      # entries and those of the default branch, so dispatch this job on develop.
+      # entries and those of the default branch, so dispatch the rebuild on develop.
       - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        if: steps.push.outputs.key != ''
         with:
           path: .toolchains-digest
-          key: ${{ steps.push.outputs.key }}
+          key: ${{ needs.build_toolchains_image.outputs.key }}
 
   # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
   disk_probe:
