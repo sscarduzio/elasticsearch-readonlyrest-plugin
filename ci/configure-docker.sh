@@ -33,8 +33,8 @@
 # rewrote our own ror-it-es:<hash> image and then tried to pull it from the mirror, which fails with
 # "manifest unknown". The test suite therefore names the images it mirrors, one by one.
 #
-# ROR_DOCKER_HUB_MIRROR=false switches the mirror off. The e2e job does that, because it pulls an
-# image that the publish job pushed a moment before, and a cache can hold a stale answer.
+# ROR_DOCKER_HUB_MIRROR=false switches the mirror off for one job. No job sets it. Use it when the
+# mirror cannot serve an image that a job needs.
 #
 # A mirror never stops the job by itself. BuildKit keeps the docker.io image identity, so it falls
 # back to Docker Hub. The two settings that rewrite the name, the test suite and the toolchains
