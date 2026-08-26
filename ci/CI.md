@@ -327,6 +327,10 @@ and `setup` reads this one every run. A new tag matches no entry, so its runs us
 the next rebuild. The same holds now: run **Build toolchains image** once, on `develop`, to write the
 first digest.
 
+An entry belongs to the ref that saved it. Every run also reads the default branch, `develop`. A
+pull request run reads its merge ref and the base branch, but never the head branch. A rebuild
+dispatched from a feature branch therefore writes an entry that no pull request run finds.
+
 The rebuild does not save that entry. It runs on an Ubicloud runner, and an Ubicloud runner keeps
 its own Actions cache. A GitHub-hosted runner cannot read it, and `setup` is GitHub-hosted. So the
 digest travels as a job output to `record_digest`, a small job on `ubuntu-latest`, which saves it.
