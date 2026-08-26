@@ -54,6 +54,13 @@ if [[ $ROR_TASK == "cve_check" ]]; then
   # readonlyrest.base-common-conventions, and those subprojects share one H2 data directory.
   # Only a sequential run is safe.
   #
+  # --continue is what makes the result complete. failBuildOnCVSS is 3, thus one finding fails the
+  # task of one subproject. Without --continue, gradle stops there, and the later subprojects are
+  # never scanned. The reports on disk would then cover a part of the repository, and no one could
+  # see which part. --continue keeps each subproject independent: every one is scanned, every
+  # report is written, and the build still fails. It does not make the run parallel, thus the H2
+  # directory stays safe.
+  #
   # -Danalyzer.ossindex.request.delay limits a retry loop. That loop exists because OSS Index
   # errors are now warn-only. See the ossIndex block in readonlyrest.base-common-conventions.gradle.
   # dependency-check does not treat a 429, or an unknown error, as fatal. A Sonatype 5xx, a DNS
@@ -68,7 +75,7 @@ if [[ $ROR_TASK == "cve_check" ]]; then
   # a good run. Read the gradle status from PIPESTATUS instead. Read it in the next command, before
   # another command replaces it.
   set +e
-  ./gradlew --no-daemon --stacktrace \
+  ./gradlew --no-daemon --stacktrace --continue \
     -Danalyzer.ossindex.request.delay=1 \
     dependencyCheckAnalyze 2>&1 | tee "$CVE_LOG"
   CVE_RC=${PIPESTATUS[0]}
@@ -82,6 +89,13 @@ if [[ $ROR_TASK == "cve_check" ]]; then
   if [[ "${ROR_CVE_OSS_INDEX:-}" == "false" ]]; then
     CVE_MODE="nvd-only-disabled"
   elif [[ ! -s "$CVE_LOG" ]]; then
+    CVE_MODE="unknown"
+  elif ! grep -qE '^(BUILD SUCCESSFUL|BUILD FAILED)' "$CVE_LOG"; then
+    # Gradle writes one of these two lines when it ends, and it writes it after --continue has run
+    # the last task. No such line means that nothing ended the run in an orderly way: the job hit
+    # its timeout, or the runner killed the JVM. The reports on disk then cover only the
+    # subprojects that came first. Such a run must not name its sources, because it does not know
+    # what it did not read.
     CVE_MODE="unknown"
   elif grep -qF 'disabled due to missing credentials' "$CVE_LOG"; then
     CVE_MODE="nvd-only-no-credentials"
@@ -98,7 +112,7 @@ if [[ $ROR_TASK == "cve_check" ]]; then
                              grep -F 'Sonatype OSS Index / Guide' "$CVE_LOG" | sort -u | head -3 ;;
     nvd-only-no-credentials) echo ">>> CVE scan sources: NVD only — no OSS Index credentials (expected on fork PRs)" ;;
     nvd-only-disabled)       echo ">>> CVE scan sources: NVD only — OSS Index disabled via ROR_CVE_OSS_INDEX=false" ;;
-    unknown)                 echo ">>> CVE scan sources: unknown — no scan log was produced" ;;
+    unknown)                 echo ">>> CVE scan sources: unknown — the scan did not run to the end" ;;
   esac
 
   exit "$CVE_RC"
