@@ -33,28 +33,20 @@ main() {
 
   [ -n "$image" ] || { echo "[CI] TOOLCHAINS_IMAGE is empty. Nothing to resolve." >&2; exit 0; }
 
-  has_tag "$image" || use_docker_hub "$image" \
-    "The image name has no tag: '${image}'. A digest check needs one."
-
-  mirror_is_on || use_docker_hub "$image" \
-    "ROR_DOCKER_HUB_MIRROR is false, so the mirror is off by request."
+  has_tag "$image" || use_docker_hub "$image" "the image name has no tag."
+  mirror_is_on     || use_docker_hub "$image" "ROR_DOCKER_HUB_MIRROR is false."
 
   pushed="$(recorded_digest)"
   [ -n "$pushed" ] || use_docker_hub "$image" \
-    "No digest is on record for '${image}'." \
-    "The 'Build toolchains image' job records the digest of every push. Run that job once."
+    "no digest recorded for this tag. Run 'Build toolchains image'."
 
   served="$(mirror_digest "$image")"
-  [ -n "$served" ] || use_docker_hub "$image" \
-    "${MIRROR_HOST} holds no image for '${image}'." \
-    "The mirror copies an image only after a pull asks for it."
+  [ -n "$served" ] || use_docker_hub "$image" "${MIRROR_HOST} has no copy of this tag."
 
   if [ "$served" != "$pushed" ]; then
-    # The annotation is the headline. The log lines below carry the two digests.
-    warn "${MIRROR_HOST} has not caught up with the last push of ${image}. This run uses Docker Hub."
-    use_docker_hub "$image" \
-      "${MIRROR_HOST} holds an old image for '${image}'." \
-      "It serves ${served}. The last push was ${pushed}."
+    # The annotation carries the two digests. The line below stays short.
+    warn "${MIRROR_HOST} serves ${served} for ${image}. The last push was ${pushed}."
+    use_docker_hub "$image" "${MIRROR_HOST} is behind the last push."
   fi
 
   # The name carries the digest, not the tag. A tag can move between this check and the pull, and
@@ -91,25 +83,18 @@ mirror_digest() {
     | tr -d '\r' | awk 'tolower($1) == "docker-content-digest:" { print $2 }'
 }
 
-# $1 is the image. Every argument after it is one line of the reason. Each line says one fact: what
-# the script looked for, and what it found. The last line says what the run does about it.
+# $2 is the reason, in one short sentence. It names the fact, not the decision.
 use_docker_hub() {
-  local image="$1" line
-  shift
-  for line in "$@"; do echo "[CI] $line"; done
-  echo "[CI] So this run pulls from Docker Hub. The pull works."
-  echo "[CI] It is slower, and it counts against the Docker Hub rate limit."
-  emit "$image" "false"
+  echo "[CI] This run skips the mirror: $2"
+  emit "$1" "false"
 }
 
 use_mirror() {
-  echo "[CI] ${MIRROR_HOST} serves the digest of the last push: $2."
-  echo "[CI] So this run pulls from the mirror."
   emit "${MIRROR_HOST}/${1%:*}@$2" "true"
 }
 
 emit() {
-  echo "[CI] Toolchains image: $1 (mirrored=$2)"
+  echo "[CI] Toolchains image: $1"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
     printf 'image=%s\nmirrored=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"
   else
