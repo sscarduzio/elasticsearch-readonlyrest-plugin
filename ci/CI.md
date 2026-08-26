@@ -2,7 +2,8 @@
 
 CI runs on GitHub Actions: `.github/workflows/ci.yml`. Linux jobs run on **Ubicloud**
 runners (`ubicloud-standard-4` = 4 vCPU / 16 GB) inside the `beshultd/ror-ci-toolchains`
-image; Windows jobs run on GitHub-hosted `windows-2025`.
+image; Windows jobs run on GitHub-hosted `windows-2025`. `ci/toolchains/image.env` holds that
+image's tag, and every workflow that needs it sources that file.
 
 Every Linux job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this
 directory contain the build logic; the workflow only orchestrates.

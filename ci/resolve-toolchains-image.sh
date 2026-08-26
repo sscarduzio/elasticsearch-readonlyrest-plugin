@@ -12,7 +12,7 @@
 # main() holds the steps. Docker Hub is the answer whenever the mirror cannot be trusted, so a
 # wrong choice costs speed only.
 #
-# INPUT   TOOLCHAINS_IMAGE        repository:tag, no registry host
+# INPUT   TOOLCHAINS_IMAGE        repository:tag, no registry host. See ci/toolchains/image.env
 #         TOOLCHAINS_DIGEST_FILE  the digest of the last push. record_toolchains_digest caches it.
 #                                 Default .toolchains-digest. An absent file means no digest.
 #         ROR_DOCKER_HUB_MIRROR   false skips the mirror
