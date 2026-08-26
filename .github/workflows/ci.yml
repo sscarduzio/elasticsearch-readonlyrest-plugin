@@ -17,8 +17,6 @@ on:
       - 'docs/**'
       - '.claude/**'
       - '**/*.md'
-  schedule:
-    - cron: '0 3 * * 1'   # weekly toolchains-image rebuild (build_toolchains_image only)
   workflow_dispatch:
     inputs:
       actionToPerform:
@@ -29,7 +27,6 @@ on:
           - run_all_tests_on_linux
           - run_all_tests_on_windows
           - run_e2e_tests
-          - build_toolchains_image
           - release_without_testing
           - run_disk_probe
 
@@ -131,8 +128,9 @@ jobs:
             echo "e2e=$E2E_FULL_SET" >> "$GITHUB_OUTPUT"
           fi
       # The runner pulls the container: image before step 1, so ci/configure-docker.sh cannot reach
-      # it. This job can: container: image: reads a job output. record_toolchains_digest put the
-      # digest of the last push in the cache below. The key holds the tag, so a new tag reads none.
+      # it. This job can: container: image: reads a job output. The Build toolchains image workflow
+      # put the digest of the last push in the cache below. The key holds the tag, so a new tag
+      # reads no entry.
       - name: Read the toolchains image tag
         run: |
           . ci/toolchains/image.env
@@ -148,79 +146,6 @@ jobs:
           restore-keys: ${{ steps.digest_key.outputs.prefix }}
       - id: toolchains
         run: ci/resolve-toolchains-image.sh
-
-  # ── BUILD_TOOLCHAINS_IMAGE (schedule / manual) ────────────────────────────
-  build_toolchains_image:
-    needs: setup
-    # Schedule runs are pinned to develop (Azure pinned the weekly rebuild to develop; GH schedules
-    # fire on the default branch — the ref guard protects us if the default branch ever changes).
-    if: >-
-      (github.event_name == 'schedule' && github.ref == 'refs/heads/develop') ||
-      (github.event_name == 'workflow_dispatch' && needs.setup.outputs.action == 'build_toolchains_image')
-    runs-on: ubicloud-standard-4
-    timeout-minutes: 240
-    # record_toolchains_digest reads these. A digest is public, so an output carries it safely.
-    outputs:
-      digest: ${{ steps.push.outputs.digest }}
-      key:    ${{ steps.push.outputs.key }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: Read the toolchains image tag
-        run: |
-          . ci/toolchains/image.env
-          [ -n "${TOOLCHAINS_IMAGE:-}" ] || { echo "::error::ci/toolchains/image.env sets no tag."; exit 1; }
-          echo "TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE" >> "$GITHUB_ENV"
-      - name: docker build & push
-        id: push
-        env:
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-        run: |
-          set -e
-          # Source before the build. It logs in and it sets ROR_DOCKER_HUB_MIRROR_PREFIX, which the
-          # FROM lines need. The Dockerfile pulls five images from Docker Hub in its FROM lines (four
-          # eclipse-temurin JDKs and the docker CLI), and those pulls are anonymous if the login
-          # comes after them.
-          source ci/configure-docker.sh
-          echo ">>> Building $TOOLCHAINS_IMAGE"
-          # MIRROR puts the pull-through cache in front of those five names. It is empty when the
-          # mirror is off, and the pulls then go to Docker Hub.
-          docker build --build-arg MIRROR="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}" \
-            -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
-          docker push "$TOOLCHAINS_IMAGE"
-          # The digest of this push, from the local daemon. A run takes the mirror only when the
-          # mirror serves the same digest. See ci/resolve-toolchains-image.sh.
-          DIGEST=$(docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$TOOLCHAINS_IMAGE" \
-                     | grep "^${TOOLCHAINS_IMAGE%:*}@" | head -1 | sed 's/.*@//')
-          echo ">>> Pushed digest: ${DIGEST:-<none>}"
-          if [ -n "$DIGEST" ]; then
-            echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
-            echo "key=toolchains-digest-${TOOLCHAINS_IMAGE##*:}-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::The daemon reports no digest for $TOOLCHAINS_IMAGE. Runs will pull from Docker Hub."
-          fi
-
-  # ── RECORD_TOOLCHAINS_DIGEST ────────────────────────────────────────────
-  # An Ubicloud runner keeps its own Actions cache. A save there is invisible to a GitHub-hosted
-  # runner, and setup is GitHub-hosted. So the save runs here, and both ends read one store.
-  record_toolchains_digest:
-    needs: build_toolchains_image
-    if: needs.build_toolchains_image.outputs.key != ''
-    runs-on: ubuntu-latest   # GH-hosted, like setup. A different runner means a different store.
-    timeout-minutes: 5
-    steps:
-      - name: Write the digest file
-        env:
-          DIGEST: ${{ needs.build_toolchains_image.outputs.digest }}
-        run: echo "$DIGEST" > .toolchains-digest
-      # A key is write-once, so the run id gives each rebuild its own entry. GitHub removes an entry
-      # that nothing reads for 7 days, and setup reads this one every run. A branch reads its own
-      # entries and those of the default branch, so dispatch the rebuild on develop.
-      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .toolchains-digest
-          key: ${{ needs.build_toolchains_image.outputs.key }}
 
   # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
   disk_probe:
@@ -239,7 +164,6 @@ jobs:
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
   toolchains_verify:
     needs: setup
-    if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     # The runner pulls this image before step 1 runs, so ci/configure-docker.sh reaches neither the
     # mirror nor the login for it. The setup job settles both. See ci/resolve-toolchains-image.sh.
@@ -272,7 +196,7 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+      github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     continue-on-error: true
@@ -319,7 +243,7 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+      github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     name: ${{ matrix.ROR_TASK }}
@@ -347,7 +271,6 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
@@ -379,7 +302,6 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubicloud-standard-4
@@ -497,7 +419,6 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.it_windows_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')
     runs-on: windows-2025
@@ -635,7 +556,6 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest
@@ -670,7 +590,6 @@ jobs:
       !cancelled() &&
       needs.e2e_prepare.result == 'success' &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubicloud-standard-4
@@ -780,7 +699,7 @@ jobs:
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       (
         (
-          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          github.event_name != 'workflow_dispatch' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
@@ -814,7 +733,7 @@ jobs:
       needs.determine_ci_type.result == 'success' &&
       needs.determine_ci_type.outputs.is_release == 'false' &&
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
-      github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+      github.event_name != 'workflow_dispatch'
     runs-on: ubicloud-standard-4
     container: *toolchains_container
     timeout-minutes: 600
@@ -854,7 +773,7 @@ jobs:
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       (
         (
-          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          github.event_name != 'workflow_dispatch' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
@@ -906,7 +825,7 @@ jobs:
       needs.setup.outputs.is_master == 'true' &&
       (
         (
-          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          github.event_name != 'workflow_dispatch' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&

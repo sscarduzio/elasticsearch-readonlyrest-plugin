@@ -23,19 +23,18 @@ directory contain the build logic; the workflow only orchestrates.
 | `e2e_prepare` | resolves the e2e matrix + starts the ROR KBN image build | pushes + PRs (not drafts) |
 | `e2e_tests` | Cypress e2e suite, one job per ES version | pushes + PRs (not drafts) |
 | `build_ror` | builds all plugin zips + bytecode-reuse guard | PRs |
-| `build_toolchains_image` | rebuilds the toolchains image | weekly cron + manual |
-| `record_toolchains_digest` | puts the digest of that rebuild in the Actions cache | after `build_toolchains_image` |
 | `determine_ci_type` → `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
 | `disk_probe` | host-disk recon | manual `run_disk_probe` |
 
 Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
-`run_all_tests_on_windows`, `run_e2e_tests`, `build_toolchains_image`,
-`release_without_testing`, `run_disk_probe`.
+`run_all_tests_on_windows`, `run_e2e_tests`, `release_without_testing`, `run_disk_probe`.
 
 Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
-above: `mirror-es-libs.yml` (mirrors ES jars into the libs store — see [S3 stores](#s3-stores)),
-`pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml` (regenerates the ES
-action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand ROR+ES dev images).
+above: `build-toolchains-image.yml` (rebuilds the image every CI job runs in — weekly cron and
+manual; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml` (mirrors ES jars
+into the libs store — see [S3 stores](#s3-stores)), `pr-conventions.yml` (PR title/changelog checks),
+`actionstrings_gen.yml` (regenerates the ES action-string lists in the docs repo),
+`publish-pre-builds.yml` (on-demand ROR+ES dev images).
 
 Two orchestration rules worth knowing before editing conditions:
 
@@ -276,7 +275,7 @@ own `ror-it-es:<hash>` image and then tried to pull it, which failed every `it_l
 the day the mirror cannot serve an image a job needs.
 
 The flag answers one question: may this job read a cached answer? It does not follow from what the
-job pushes. The two jobs that push most, `publish-pre-builds` and `build_toolchains_image`, need the
+job pushes. The two workflows that push most, `publish-pre-builds` and `build-toolchains-image`, need the
 mirror most, because a 429 hits their base-image pulls. A mirror rewrites pulls only. A push names
 `beshultd/...` and goes to Docker Hub whatever the mirror says.
 
@@ -328,10 +327,14 @@ and `setup` reads this one every run. A new tag matches no entry, so its runs us
 the next rebuild. The same holds now: run **Build toolchains image** once, on `develop`, to write the
 first digest.
 
-`record_toolchains_digest` saves that entry, not `build_toolchains_image`. The rebuild runs on an
-Ubicloud runner, and an Ubicloud runner keeps its own Actions cache. A GitHub-hosted runner cannot
-read it, and `setup` is GitHub-hosted. So the digest travels as a job output to a small job on
-`ubuntu-latest`, which saves it. Both ends then read one store.
+The rebuild does not save that entry. It runs on an Ubicloud runner, and an Ubicloud runner keeps
+its own Actions cache. A GitHub-hosted runner cannot read it, and `setup` is GitHub-hosted. So the
+digest travels as a job output to `record_digest`, a small job on `ubuntu-latest`, which saves it.
+Both ends then read one store.
+
+The rebuild lives in `build-toolchains-image.yml`, not in `ci.yml`. It takes up to four hours, and
+no test run waits for it. A rebuild in `ci.yml` would also hold the `develop` concurrency group for
+those hours, and every push to `develop` would queue behind it.
 
 A mirrored name needs no login, and a login against `mirror.gcr.io` would fail, so the `credentials:`
 block goes empty then. It goes empty for a fork as well, and the runner skips an empty login.
@@ -351,7 +354,7 @@ Everything the Azure pipeline did is ported — nothing was dropped. The mapping
 | `SUPERSEDE_GUARD` | native `concurrency:` block (auto-cancel stale PR runs; branch pushes queue) |
 | `DETERMINE_CI_TYPE` | `setup` (branch flags, matrices) + `determine_ci_type` (release-type decision) |
 | `DISK_PROBE` | `disk_probe` (manual `run_disk_probe`) |
-| `BUILD_TOOLCHAINS_IMAGE` | `build_toolchains_image` (weekly cron + manual) + `record_toolchains_digest` |
+| `BUILD_TOOLCHAINS_IMAGE` | the standalone `build-toolchains-image.yml` workflow (weekly cron + manual) |
 | `TOOLCHAINS_VERIFY` | `toolchains_verify` |
 | `ES_S3_UP` | the standalone `mirror-es-libs.yml` workflow (manual; was a `newes/*` push trigger) |
 | `REQUIRED_CHECKS` | `required_checks` (same 4-task matrix) |

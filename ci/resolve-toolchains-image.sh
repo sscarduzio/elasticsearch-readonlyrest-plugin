@@ -13,7 +13,7 @@
 # wrong choice costs speed only.
 #
 # INPUT   TOOLCHAINS_IMAGE        repository:tag, no registry host. See ci/toolchains/image.env
-#         TOOLCHAINS_DIGEST_FILE  the digest of the last push. record_toolchains_digest caches it.
+#         TOOLCHAINS_DIGEST_FILE  the digest of the last push. record_digest caches it.
 #                                 Default .toolchains-digest. An absent file means no digest.
 #         ROR_DOCKER_HUB_MIRROR   false skips the mirror
 # OUTPUT  image=<name>            the name to pull. Mirrored names end in @sha256:...
@@ -64,7 +64,7 @@ mirror_is_on() {
   [ "$flag" != "false" ]
 }
 
-# build_toolchains_image found this digest. The Actions cache carried it here.
+# build-toolchains-image.yml found this digest. The Actions cache carried it here.
 recorded_digest() {
   local file="${TOOLCHAINS_DIGEST_FILE:-.toolchains-digest}"
   [ -r "$file" ] && tr -d '[:space:]' < "$file"

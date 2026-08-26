@@ -25,7 +25,7 @@
 #                          that points at build-base/buildkitd.toml
 #   - the test suite       ROR_DOCKER_HUB_MIRROR_PREFIX, which DockerHubMirror reads. This rewrites
 #                          the registry name directly, so these pulls cannot fall back to Docker Hub.
-#   - the toolchains build the same variable, which the build_toolchains_image job passes as the
+#   - the toolchains build the same variable, which build-toolchains-image.yml passes as the
 #                          MIRROR build argument of ci/toolchains/JdkToolchains.Dockerfile.
 #
 # Do NOT set TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX here. testcontainers applies that prefix to every
