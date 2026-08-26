@@ -636,9 +636,6 @@ jobs:
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-          # The only job that must not use the Docker Hub mirror. It pulls the ROR ES and ROR KBN
-          # images that two other runs pushed a moment before, and a cache can answer stale.
-          ROR_DOCKER_HUB_MIRROR: 'false'
           # Do not let corepack ask before it downloads yarn. CI has no operator.
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
