@@ -23,6 +23,7 @@ directory contain the build logic; the workflow only orchestrates.
 | `e2e_tests` | Cypress e2e suite, one job per ES version | pushes + PRs (not drafts) |
 | `build_ror` | builds all plugin zips + bytecode-reuse guard | PRs |
 | `build_toolchains_image` | rebuilds the toolchains image | weekly cron + manual |
+| `record_toolchains_digest` | puts the digest of that rebuild in the Actions cache | after `build_toolchains_image` |
 | `determine_ci_type` → `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
 | `disk_probe` | host-disk recon | manual `run_disk_probe` |
 
@@ -304,7 +305,8 @@ that name needs a Docker Hub login.
 
 The mirror is a cache and can serve an old image, and the weekly rebuild pushes the same tag. So
 the rebuild records the digest of its push in the Actions cache, and `setup` compares that digest
-with the one the mirror serves. No run calls Docker Hub.
+with the one the mirror serves. The comparison sends no request to Docker Hub. When it does not
+agree, the run pulls from Docker Hub instead:
 
 | What the script finds | What the run pulls |
 |---|---|
