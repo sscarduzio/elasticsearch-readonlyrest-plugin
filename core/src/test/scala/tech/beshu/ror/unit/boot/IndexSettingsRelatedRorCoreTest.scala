@@ -32,7 +32,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
+import tech.beshu.ror.accesscontrol.audit.output.AuditOutputServiceCreator
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsFile}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.boot.ReadonlyRest
@@ -212,7 +212,7 @@ class IndexSettingsRelatedRorCoreTest
 
   private def createReadonlyRestBoot(factory: CoreFactory, indexDocumentManager: IndexDocumentManager) = {
     implicit val systemContext: SystemContext = SystemContext.default
-    ReadonlyRest.create(factory, indexDocumentManager, mock[AuditSinkServiceCreator])
+    ReadonlyRest.create(factory, indexDocumentManager, mock[AuditOutputServiceCreator])
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory, rawRorSettings: RawRorSettings): CoreFactory = {

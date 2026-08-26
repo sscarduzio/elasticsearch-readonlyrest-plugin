@@ -22,7 +22,7 @@ import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditingConfig
-import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
+import tech.beshu.ror.accesscontrol.audit.output.AuditOutputServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
@@ -50,7 +50,7 @@ import scala.language.postfixOps
 class ReadonlyRest(
     coreFactory: CoreFactory,
     indexDocumentManager: IndexDocumentManager,
-    auditSinkServiceCreator: AuditSinkServiceCreator
+    auditOutputServiceCreator: AuditOutputServiceCreator
 )(
     implicit systemContext: SystemContext
 ) extends RequestIdAwareLogging {
@@ -235,7 +235,7 @@ class ReadonlyRest(
       .map { auditingTool =>
         val decoratedCore = Core(
           accessControl = new AccessControlListLoggingDecorator(
-            underlying = core.accessControl.withBlockTransformation(_.withResolvedAuditSinks(auditingTool.sinks)),
+            underlying = core.accessControl.withBlockTransformation(_.withResolvedAuditOutputs(auditingTool.outputs)),
             auditingTool = auditingTool
           ),
           dependencies = core.dependencies,
@@ -253,7 +253,7 @@ class ReadonlyRest(
       implicit loggingContext: LoggingContext
   ): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
     AuditingTool
-      .create(auditingConfig, auditSinkServiceCreator)(
+      .create(auditingConfig, auditOutputServiceCreator)(
         using systemContext.clock,
         loggingContext
       )
@@ -360,21 +360,25 @@ object ReadonlyRest {
 
   private val defaultStartingRetryPolicy: RetryPolicy = RetryPolicy(initialDelay = 5 seconds, maxDelay = 1 minute)
 
-  def create(indexContentService: IndexDocumentManager, auditSinkServiceCreator: AuditSinkServiceCreator, env: EsEnv)(
+  def create(
+      indexContentService: IndexDocumentManager,
+      auditOutputServiceCreator: AuditOutputServiceCreator,
+      env: EsEnv
+  )(
       implicit systemContext: SystemContext
   ): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env)
-    create(coreFactory, indexContentService, auditSinkServiceCreator)
+    create(coreFactory, indexContentService, auditOutputServiceCreator)
   }
 
   def create(
       coreFactory: CoreFactory,
       indexDocumentManager: IndexDocumentManager,
-      auditSinkServiceCreator: AuditSinkServiceCreator
+      auditOutputServiceCreator: AuditOutputServiceCreator
   )(
       implicit systemContext: SystemContext
   ): ReadonlyRest = {
-    new ReadonlyRest(coreFactory, indexDocumentManager, auditSinkServiceCreator)
+    new ReadonlyRest(coreFactory, indexDocumentManager, auditOutputServiceCreator)
   }
 
 }
