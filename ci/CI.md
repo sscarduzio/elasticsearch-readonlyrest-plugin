@@ -315,6 +315,10 @@ that digest with the one the mirror serves. No run calls Docker Hub.
 
 Docker Hub is the safe answer, so a miss costs speed only.
 
+A mirrored name carries the digest, not the tag: `mirror.gcr.io/beshultd/ror-ci-toolchains@sha256:…`.
+The jobs of one run start hours apart, and a tag can move between the check and a pull. A Docker Hub
+name keeps the tag, because no digest is proven in that case.
+
 The cache key holds the tag and the rebuild's run id. A key is write-once, so each rebuild adds an
 entry and `setup` restores the newest by prefix. GitHub drops an entry that nothing reads for 7 days,
 and `setup` reads this one every run. A new tag matches no entry, so its runs use Docker Hub until

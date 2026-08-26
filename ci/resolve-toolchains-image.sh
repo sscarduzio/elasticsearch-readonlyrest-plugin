@@ -6,6 +6,9 @@
 # digest. The script asks the mirror for the digest behind the tag and compares the two. It sends
 # no request to Docker Hub.
 #
+# A mirrored name carries the digest, not the tag, because a tag can move between this check and
+# the pull. A Docker Hub name keeps the tag: no digest is proven in that case.
+#
 # main() holds the steps. Docker Hub is the answer whenever the mirror cannot be trusted, so a
 # wrong choice costs speed only.
 #
@@ -13,7 +16,7 @@
 #         TOOLCHAINS_DIGEST_FILE  the digest of the last push, written by build_toolchains_image.
 #                                 Default .toolchains-digest. An absent file means no digest.
 #         ROR_DOCKER_HUB_MIRROR   false skips the mirror
-# OUTPUT  image=<name>            the name to pull
+# OUTPUT  image=<name>            the name to pull. Mirrored names end in @sha256:...
 #         mirrored=true|false     false means a Docker Hub name, which needs a login
 #         Both go to $GITHUB_OUTPUT when it is set, and to stdout otherwise.
 #
@@ -44,7 +47,9 @@ main() {
     use_docker_hub "$image" "the mirror has not caught up with the last push"
   fi
 
-  use_mirror "$image"
+  # The name carries the digest, not the tag. A tag can move between this check and the pull, and
+  # the jobs of one run start hours apart.
+  use_mirror "$image" "$served"
 }
 
 has_tag() {
@@ -82,7 +87,7 @@ use_docker_hub() {
 }
 
 use_mirror() {
-  emit "${MIRROR_HOST}/$1" "true"
+  emit "${MIRROR_HOST}/${1%:*}@$2" "true"
 }
 
 emit() {

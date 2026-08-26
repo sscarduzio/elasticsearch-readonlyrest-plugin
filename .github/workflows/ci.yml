@@ -219,9 +219,10 @@ jobs:
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     # The runner pulls this image before step 1 runs, so ci/configure-docker.sh reaches neither the
     # mirror nor the login for it. The setup job settles both. See ci/resolve-toolchains-image.sh.
-    # A mirrored name needs no login, and a login against mirror.gcr.io would fail, so the
-    # credentials go empty then. A fork also gives empty secrets, and the runner skips an empty
-    # login. A read-only token is enough: a job only pulls this image.
+    # A mirrored name carries the digest, so every job of a run pulls the same bytes. It needs no
+    # login, and a login against mirror.gcr.io would fail, so the credentials go empty then. A fork
+    # also gives empty secrets, and the runner skips an empty login. A read-only token is enough: a
+    # job only pulls this image.
     container: &toolchains_container
       image: ${{ needs.setup.outputs.toolchains_image }}
       credentials:
