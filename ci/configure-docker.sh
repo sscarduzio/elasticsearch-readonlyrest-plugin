@@ -75,9 +75,8 @@
 #
 # ---------------------------------------------------------------------------------------------
 # TWO LIMITS
-# 1. This script cannot configure the job `container:` image. The runner pulls that image before
-#    step 1 starts, so no step can set a mirror or a login first. The `credentials:` block on each
-#    container does the login instead, and no mirror can reach that pull.
+# 1. This script cannot configure the job `container:` image. The runner pulls it before step 1
+#    starts. The setup job settles that pull instead. See ci/resolve-toolchains-image.sh.
 # 2. Docker CLI 27, which the toolchains image contains, ignores DOCKER_AUTH_CONFIG. This is why
 #    the login is necessary. A later CLI reads the variable and gives it priority over the login.
 #    That priority is safe here, because both halves use the same credentials. It is not safe if

@@ -225,10 +225,10 @@ Do not put a `docker login` in a workflow. Two mechanisms with different credent
 other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
 
 The script cannot authenticate the `container:` image, because the runner pulls that image before
-step 1 starts. Each of the ten `container:` blocks carries a `credentials:` block for that pull.
-They share one anchor, `&toolchains_container`, so the credentials have one definition. A pull
-request from a fork supplies empty secrets, and the runner then skips the login and pulls
-anonymously.
+step 1 starts. The `&toolchains_container` anchor carries a `credentials:` block for that pull, and
+the ten `container:` blocks share it. A fork supplies empty secrets, and the runner then skips the
+login and pulls anonymously. A mirrored name skips it too — see
+[The `container:` image](#the-container-image).
 
 ### Docker Hub pull mirror
 
@@ -243,7 +243,9 @@ alone does not stop every rejection, because two limits apply:
   `429 Too Many Requests`, and no credential prevents it.
 
 The mirror serves `docker.io`. It cannot serve `docker.elastic.co` or `ghcr.io`, and it cannot accept
-a push. Three clients pull images, and the script sets all three from one variable:
+a push. Three clients pull images inside a job, and the script sets all three from one variable. A
+fourth pull happens before any step and needs an answer of its own — see
+[The `container:` image](#the-container-image):
 
 | Client | Setting | Reaches |
 |---|---|---|
@@ -289,9 +291,44 @@ Two more things stay off the mirror by themselves, and both must remain so:
   the variables above, so both address Docker Hub by themselves.
 - Every push. A pull-through cache is read-only, so `beshultd/*` images go to Docker Hub.
 
-The `container:` image cannot use a mirror at all, for the same reason it cannot use the login: the
-runner pulls it before step 1 starts. That is about 11 pulls per `ci.yml` run. Publishing the
-toolchains image to `ghcr.io` is the only way to take them off the Docker Hub budget.
+### The `container:` image
+
+The runner pulls the job `container:` image before step 1 starts. `ci/configure-docker.sh` cannot
+reach that pull, so it sets neither the mirror nor the login for it. Ten jobs and their matrices
+share the image, which makes it the most pulled image of a run. Docker Hub answered a whole run with
+`429 toomanyrequests` on 2026-08-26.
+
+`container: image:` can read a job output. The `setup` job runs `ci/resolve-toolchains-image.sh`
+once, and the `&toolchains_container` anchor reads its two outputs: the name to pull, and whether
+that name needs a Docker Hub login.
+
+The mirror is a cache and can serve an old image, and the weekly rebuild pushes the same tag. So
+`build_toolchains_image` writes the digest of its push to the Actions cache, and `setup` compares
+that digest with the one the mirror serves. No run calls Docker Hub.
+
+| What the script finds | What the run pulls |
+|---|---|
+| no digest on record | Docker Hub |
+| the mirror has no such tag | Docker Hub |
+| the digests differ | Docker Hub, with a warning |
+| the digests agree | the mirror |
+
+Docker Hub is the safe answer, so a miss costs speed only.
+
+The cache key holds the tag and the rebuild's run id. A key is write-once, so each rebuild adds an
+entry and `setup` restores the newest by prefix. GitHub drops an entry that nothing reads for 7 days,
+and `setup` reads this one every run. A new tag matches no entry, so its runs use Docker Hub until
+the next rebuild. The same holds now: run **Build toolchains image** once, on `develop`, to write the
+first digest.
+
+A mirrored name needs no login, and a login against `mirror.gcr.io` would fail, so the `credentials:`
+block goes empty then. It goes empty for a fork as well, and the runner skips an empty login.
+
+One limit. The choice is made once, for the whole run. If the mirror stops answering during a run,
+the jobs that already took the mirrored name fail. The runner's pull has no fallback of its own.
+
+Publishing the image to `ghcr.io` would remove the digest bookkeeping, because the pull would no
+longer cross a cache.
 
 ## Coverage: what happened to every Azure stage
 

@@ -49,10 +49,11 @@ defaults:
     shell: bash
 
 env:
-  # Single source of truth for the toolchains image tag: the &toolchains anchor. Every job's
-  # `container: *toolchains` resolves to it, so a JDK/Gradle bump edits ONE line. Kept per-branch
-  # (not a repo variable) on purpose: the tag is coupled to this commit's baked dependency cache.
-  TOOLCHAINS_IMAGE: &toolchains beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+  # Single source of truth for the toolchains image tag. A JDK/Gradle bump edits ONE line. Kept
+  # per-branch, not in a repo variable: the tag belongs to this commit's baked dependency cache.
+  # The value names Docker Hub, because build_toolchains_image pushes it.
+  # ci/resolve-toolchains-image.sh picks the name a pull uses.
+  TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
   # 4 shards per leg + HeavySuiteGate (max 2 concurrent multi-cluster suites, machine-wide).
@@ -72,15 +73,19 @@ jobs:
   setup:
     runs-on: ubuntu-latest   # trivial job; GH-hosted so it runs even if the Ubicloud app is down
     outputs:
-      is_master:  ${{ steps.f.outputs.is_master }}
-      is_develop: ${{ steps.f.outputs.is_develop }}
-      is_epic:    ${{ steps.f.outputs.is_epic }}
+      is_master:  ${{ steps.flags.outputs.is_master }}
+      is_develop: ${{ steps.flags.outputs.is_develop }}
+      is_epic:    ${{ steps.flags.outputs.is_epic }}
       action:     ${{ github.event.inputs.actionToPerform || 'run_all_tests_on_linux' }}
-      it_linux_matrix:   ${{ steps.m.outputs.linux }}
-      it_windows_matrix: ${{ steps.m.outputs.windows }}
-      e2e_modules:       ${{ steps.m.outputs.e2e }}
+      it_linux_matrix:   ${{ steps.matrices.outputs.linux }}
+      it_windows_matrix: ${{ steps.matrices.outputs.windows }}
+      e2e_modules:       ${{ steps.matrices.outputs.e2e }}
+      toolchains_image:    ${{ steps.toolchains.outputs.image }}
+      toolchains_mirrored: ${{ steps.toolchains.outputs.mirrored }}
     steps:
-      - id: f
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - id: flags
         env:
           REF: ${{ github.head_ref || github.ref_name }}
         run: |
@@ -88,7 +93,7 @@ jobs:
           echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
           # contains() semantics, matching Azure's isEpicBranchOrPr
           case "$REF" in *epic/*)  echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
-      - id: m
+      - id: matrices
         env:
           # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
           IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
@@ -128,6 +133,19 @@ jobs:
           else
             echo "e2e=$E2E_FULL_SET" >> "$GITHUB_OUTPUT"
           fi
+      # The runner pulls the container: image before step 1, so ci/configure-docker.sh cannot reach
+      # it. This job can: container: image: reads a job output. build_toolchains_image put the
+      # digest of its push in the cache below. The key holds the tag, so a new tag reads no entry.
+      - id: digest_key
+        run: echo "prefix=toolchains-digest-${TOOLCHAINS_IMAGE##*:}-" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .toolchains-digest
+          # An exact key needs the rebuild's run id. The prefix gives its newest entry.
+          key: ${{ steps.digest_key.outputs.prefix }}
+          restore-keys: ${{ steps.digest_key.outputs.prefix }}
+      - id: toolchains
+        run: ci/resolve-toolchains-image.sh
 
   # ── BUILD_TOOLCHAINS_IMAGE (schedule / manual) ────────────────────────────
   build_toolchains_image:
@@ -143,17 +161,12 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: docker build & push
+        id: push
         env:
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
-          # Drift guard: every ror-ci-toolchains tag in this workflow (env + all container: lines)
-          # must be identical — a bump that misses some lines would build one tag while jobs run another.
-          if grep -ohE 'beshultd/ror-ci-toolchains:[a-zA-Z0-9._-]+' .github/workflows/ci.yml | grep -vF "$TOOLCHAINS_IMAGE" | grep -q .; then
-            echo "::error::ci.yml container tags do not all match TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE — bump them together"
-            exit 1
-          fi
           # Source before the build. It logs in and it sets ROR_DOCKER_HUB_MIRROR_PREFIX, which the
           # FROM lines need. The Dockerfile pulls five images from Docker Hub in its FROM lines (four
           # eclipse-temurin JDKs and the docker CLI), and those pulls are anonymous if the login
@@ -165,6 +178,25 @@ jobs:
           docker build --build-arg MIRROR="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}" \
             -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
           docker push "$TOOLCHAINS_IMAGE"
+          # The digest of this push, from the local daemon. A run takes the mirror only when the
+          # mirror serves the same digest. See ci/resolve-toolchains-image.sh.
+          DIGEST=$(docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$TOOLCHAINS_IMAGE" \
+                     | grep "^${TOOLCHAINS_IMAGE%:*}@" | head -1 | sed 's/.*@//')
+          echo ">>> Pushed digest: ${DIGEST:-<none>}"
+          if [ -n "$DIGEST" ]; then
+            echo "$DIGEST" > .toolchains-digest
+            echo "key=toolchains-digest-${TOOLCHAINS_IMAGE##*:}-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::The daemon reports no digest for $TOOLCHAINS_IMAGE. Runs will pull from Docker Hub."
+          fi
+      # A key is write-once, so the run id gives each rebuild its own entry. GitHub removes an entry
+      # that nothing reads for 7 days, and setup reads this one every run. A branch reads its own
+      # entries and those of the default branch, so dispatch this job on develop.
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        if: steps.push.outputs.key != ''
+        with:
+          path: .toolchains-digest
+          key: ${{ steps.push.outputs.key }}
 
   # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
   disk_probe:
@@ -185,14 +217,16 @@ jobs:
     needs: setup
     if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    # The runner pulls this image before step 1 runs, so ci/configure-docker.sh cannot authenticate
-    # it. These credentials can. A fork supplies empty secrets, and the runner then skips the login
-    # and pulls anonymously. A read-only token is enough here, because a job only pulls this image.
+    # The runner pulls this image before step 1 runs, so ci/configure-docker.sh reaches neither the
+    # mirror nor the login for it. The setup job settles both. See ci/resolve-toolchains-image.sh.
+    # A mirrored name needs no login, and a login against mirror.gcr.io would fail, so the
+    # credentials go empty then. A fork also gives empty secrets, and the runner skips an empty
+    # login. A read-only token is enough: a job only pulls this image.
     container: &toolchains_container
-      image: *toolchains
+      image: ${{ needs.setup.outputs.toolchains_image }}
       credentials:
-        username: ${{ secrets.DOCKER_HUB_USER }}
-        password: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+        username: ${{ needs.setup.outputs.toolchains_mirrored != 'true' && secrets.DOCKER_HUB_USER || '' }}
+        password: ${{ needs.setup.outputs.toolchains_mirrored != 'true' && secrets.DOCKER_HUB_RO_TOKEN || '' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -735,11 +769,11 @@ jobs:
       )
     runs-on: ubuntu-latest
     outputs:
-      is_release: ${{ steps.r.outputs.is_release }}
+      is_release: ${{ steps.release_check.outputs.is_release }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - id: r
+      - id: release_check
         run: |
           IS_RELEASE=true
           if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep -- '-pre'; then
