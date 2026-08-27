@@ -318,7 +318,8 @@ no image, and it reaches no Docker Hub:
 | the mirror cannot serve the digest | Docker Hub |
 | the mirror serves the digest | the mirror |
 
-Docker Hub is the safe answer, so a miss costs speed only.
+Docker Hub is the safe answer, so a miss costs speed only. `setup` writes the choice to the step
+summary, so the run page shows which registry a run used, and why.
 
 The mirror fetches a digest it has never held. So a run keeps the mirror in the hours after a
 rebuild, before the mirror knows the new tag. A question about the tag would lose the mirror in that

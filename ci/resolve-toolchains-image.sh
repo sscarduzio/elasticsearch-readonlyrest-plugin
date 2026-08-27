@@ -19,6 +19,7 @@
 # OUTPUT  image=<name>            the name to pull. Mirrored names end in @sha256:...
 #         mirrored=true|false     false means a Docker Hub name, which needs a login
 #         Both go to $GITHUB_OUTPUT when it is set, and to stdout otherwise.
+#         The choice also goes to $GITHUB_STEP_SUMMARY, so the run page shows it.
 #
 # The script always exits 0. A mirror is an optimisation. It must never stop a run.
 #
@@ -80,15 +81,29 @@ mirror_has_digest() {
 # $2 is the reason, in one short sentence. It names the fact, not the decision.
 use_docker_hub() {
   echo "[CI] This run skips the mirror: $2"
-  emit "$1" "false"
+  emit "$1" "false" "$2"
 }
 
 use_mirror() {
   emit "${MIRROR_HOST}/${1%:*}@$2" "true"
 }
 
+# The run page carries the choice. A step log hides it, and a run that left the mirror in silence is
+# the fault this note makes visible.
+summarise() {
+  local line
+  [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+  if [ "$2" = "true" ]; then
+    line="This run pulls the toolchains image from ${MIRROR_HOST}."
+  else
+    line="This run pulls the toolchains image from Docker Hub: $3"
+  fi
+  printf '### Toolchains image\n\n%s\n\n`%s`\n' "$line" "$1" >> "$GITHUB_STEP_SUMMARY"
+}
+
 emit() {
   echo "[CI] Toolchains image: $1"
+  summarise "$1" "$2" "${3:-}"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
     printf 'image=%s\nmirrored=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"
   else
