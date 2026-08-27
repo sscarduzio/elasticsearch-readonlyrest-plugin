@@ -27,7 +27,6 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, Inside}
 import squants.information.Megabytes
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputs.Configured
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditingConfig}
@@ -110,7 +109,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider,
             NoOpMocksProvider,
-            MockedCapabilities.standard
+            MockedCapabilities.indexOrDataStream
           )
           .map(_.map(_.core))
           .runSyncUnsafe()
@@ -225,7 +224,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
               NoOpMocksProvider,
-              MockedCapabilities.standard
+              MockedCapabilities.indexOrDataStream
             )
             .map(_.map(_.core))
             .runSyncUnsafe()
@@ -1410,7 +1409,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
               NoOpMocksProvider,
-              MockedCapabilities.standard
+              MockedCapabilities.indexOrDataStream
             )
             .map(_.map(_.core))
             .runSyncUnsafe()
@@ -1467,7 +1466,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
               NoOpMocksProvider,
-              MockedCapabilities.standard
+              MockedCapabilities.indexOrDataStream
             )
             .map(_.map(_.core))
             .runSyncUnsafe()
@@ -1519,7 +1518,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1544,7 +1543,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1572,7 +1571,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1598,7 +1597,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1624,7 +1623,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1648,7 +1647,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1986,13 +1985,13 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               settings,
               expectedErrorMessage =
                 "Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]",
-              auditCapabilities = MockedCapabilities.standard
+              auditCapabilities = MockedCapabilities.indexOrDataStream
             )
 
             assertInvalidSettings(
               settings,
               expectedErrorMessage = "Unsupported type of audit output: custom_type. Supported types: [index, log]",
-              auditCapabilities = MockedCapabilities.legacy
+              auditCapabilities = MockedCapabilities.indexOnly
             )
           }
           "'outputs' array is empty" in {
@@ -2416,7 +2415,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2432,7 +2431,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2482,7 +2481,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2525,7 +2524,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2566,7 +2565,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2596,7 +2595,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2627,7 +2626,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2646,7 +2645,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
   private def assertInvalidSettings(
       settings: RawRorSettings,
       expectedErrorMessage: String,
-      auditCapabilities: EsAuditCapabilities = MockedCapabilities.standard
+      auditCapabilities: EsAuditCapabilities = MockedCapabilities.indexOrDataStream
   ): Unit = {
     val core = factory()
       .createCoreFrom(
