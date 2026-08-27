@@ -21,7 +21,9 @@
 #         Both go to $GITHUB_OUTPUT when it is set, and to stdout otherwise.
 #         The choice also goes to $GITHUB_STEP_SUMMARY, so the run page shows it.
 #
-# The script always exits 0. A mirror is an optimisation. It must never stop a run.
+# A mirror is an optimisation, so no mirror fault stops a run. The script takes Docker Hub and exits
+# 0. An empty TOOLCHAINS_IMAGE is a different matter. There is nothing safe to emit, the jobs would
+# take container: image: '', and that failure would not name this script. So that one exits 1.
 #
 # For the reason this script exists, see "The container: image" in ci/CI.md.
 set -uo pipefail
@@ -32,7 +34,7 @@ main() {
   local image="${TOOLCHAINS_IMAGE:-}"
   local pushed
 
-  [ -n "$image" ] || { echo "[CI] TOOLCHAINS_IMAGE is empty. Nothing to resolve." >&2; exit 0; }
+  [ -n "$image" ] || fail "TOOLCHAINS_IMAGE is empty. ci/toolchains/image.env must set it."
 
   has_tag "$image" || use_docker_hub "$image" "the image name has no tag."
   mirror_is_on     || use_docker_hub "$image" "ROR_DOCKER_HUB_MIRROR is false."
@@ -47,6 +49,13 @@ main() {
   # The name carries the digest, not the tag. A tag can move between this check and the pull, and
   # the jobs of one run start hours apart.
   use_mirror "$image" "$pushed"
+}
+
+# The one fault with no fallback. Silence here would give ten jobs an empty container: image:.
+fail() {
+  [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::$1"
+  echo "[CI] $1" >&2
+  exit 1
 }
 
 has_tag() {
