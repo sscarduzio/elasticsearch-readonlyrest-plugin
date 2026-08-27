@@ -21,12 +21,12 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSetup
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
-import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult.AuditSetup
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason
@@ -254,29 +254,12 @@ class ReadonlyRest(
   private def createAuditingTool(auditSetup: AuditSetup)(
       implicit loggingContext: LoggingContext
   ): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
-    auditSetup match {
-      case setup: AuditSetup.SupportedByAllEsVersions =>
-        AuditingTool
-          .create(
-            config = setup.settings,
-            creator = setup.capability.creator
-          )(
-            using systemContext.clock,
-            loggingContext
-          )
-          .map(_.leftMap(toCreationErrors))
-      case setup: AuditSetup.AnyOutput =>
-        AuditingTool
-          .create(
-            config = setup.settings,
-            indexCreator = setup.capability.indexCreator,
-            dataStreamCreator = setup.capability.dataStreamCreator
-          )(
-            using systemContext.clock,
-            loggingContext
-          )
-          .map(_.leftMap(toCreationErrors))
-    }
+    AuditingTool
+      .create(auditSetup)(
+        using systemContext.clock,
+        loggingContext
+      )
+      .map(_.leftMap(toCreationErrors))
   }
 
   private def toCreationErrors(errors: NonEmptyList[AuditingTool.CreationError]): NonEmptyList[CoreCreationError] =

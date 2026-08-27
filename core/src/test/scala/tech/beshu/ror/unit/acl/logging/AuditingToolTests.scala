@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditingConfig}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditSetup, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.output.{AuditDataStreamCreator, AuditOutput}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
@@ -660,7 +660,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   private def auditingConfigSupportedByAllEsVersions(
       serializer: AuditLogSerializer
-  ): AuditingConfig.SupportedByAllEsVersions = AuditingConfig(
+  ): AuditingConfig[AuditSetup.OutputSupportedByAllEsVersions] = AuditingConfig(
     outputs = AuditOutputs.Configured(
       NonEmptyList.of(
         EsIndexBased(

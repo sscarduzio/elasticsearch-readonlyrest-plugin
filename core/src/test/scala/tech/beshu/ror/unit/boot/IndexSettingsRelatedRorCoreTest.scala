@@ -31,6 +31,7 @@ import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSetup
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsFile}
 import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
@@ -233,7 +234,7 @@ class IndexSettingsRelatedRorCoreTest
             )
             new CoreCreationResult(
               Core(mockAccessControl, RorDependencies.noOp, auditingConfig),
-              new CoreCreationResult.AuditSetup.AnyOutput(
+              new AuditSetup.AnyOutput(
                 new EsAuditCapabilities.IndexOrDataStream(
                   MockIndexBasedAuditOutputServiceCreator,
                   MockDataStreamBasedAuditOutputServiceCreator

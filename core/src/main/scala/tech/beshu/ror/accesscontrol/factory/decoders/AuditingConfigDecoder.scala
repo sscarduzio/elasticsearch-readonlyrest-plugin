@@ -63,13 +63,13 @@ import scala.util.{Failure, Success, Try}
 
 object AuditingConfigDecoder extends RequestIdAwareLogging {
 
-  def anyOutput(esEnv: EsEnv): Decoder[AuditingConfig.AnyOutput] =
+  def anyOutput(esEnv: EsEnv): Decoder[AuditingConfig[AuditOutputConfig]] =
     makeDecoder(esEnv, decodeAnyAuditOutputs)
 
-  def supportedByAllEsVersions(esEnv: EsEnv): Decoder[AuditingConfig.SupportedByAllEsVersions] =
+  def supportedByAllEsVersions(esEnv: EsEnv): Decoder[AuditingConfig[AuditSetup.OutputSupportedByAllEsVersions]] =
     makeDecoder(esEnv, decodeAuditOutputsSupportedByAllEsVersions)
 
-  private def makeDecoder[O >: AuditingConfig.OutputsSupportedByAllEsVersions <: AuditOutputConfig](
+  private def makeDecoder[O >: AuditSetup.OutputSupportedByAllEsVersions <: AuditOutputConfig](
       esEnv: EsEnv,
       specificDecoder: Decoder[AuditOutputs[O]],
   ): Decoder[AuditingConfig[O]] =
@@ -146,18 +146,18 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
   }
 
   private def decodeAuditOutputsSupportedByAllEsVersions
-      : Decoder[AuditOutputs[AuditingConfig.OutputsSupportedByAllEsVersions]] = {
-    decodeAuditOutputsWithFallback[AuditingConfig.OutputsSupportedByAllEsVersions](
+      : Decoder[AuditOutputs[AuditSetup.OutputSupportedByAllEsVersions]] = {
+    decodeAuditOutputsWithFallback[AuditSetup.OutputSupportedByAllEsVersions](
       simpleDecoder = auditOutputSimpleDecoder[
         AuditOutputType.SupportedByAllEsVersions,
-        AuditingConfig.OutputsSupportedByAllEsVersions
+        AuditSetup.OutputSupportedByAllEsVersions
       ] {
         case (AuditOutputType.Index, name) => EsIndexBased(name, EsIndexBased.Config.default)
         case (AuditOutputType.Log, name)   => LogBased(name, LogBased.Config.default)
       },
       extendedDecoder = auditOutputExtendedDecoder[
         AuditOutputType.SupportedByAllEsVersions,
-        AuditingConfig.OutputsSupportedByAllEsVersions
+        AuditSetup.OutputSupportedByAllEsVersions
       ] {
         case (c, AuditOutputType.Index, name) => c.as[EsIndexBased.Config].map(cfg => EsIndexBased(name, cfg))
         case (c, AuditOutputType.Log, name)   => decodeLogOutput(name)(c)
@@ -802,7 +802,7 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
 
   private object DeprecatedAuditConfigDecoder {
 
-    def instance: Decoder[AuditOutputs[AuditingConfig.OutputsSupportedByAllEsVersions]] = Decoder.instance { c =>
+    def instance: Decoder[AuditOutputs[AuditSetup.OutputSupportedByAllEsVersions]] = Decoder.instance { c =>
       whenEnabled(c) {
         for {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)(

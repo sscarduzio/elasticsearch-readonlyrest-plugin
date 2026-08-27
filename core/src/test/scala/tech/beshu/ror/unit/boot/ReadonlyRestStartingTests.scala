@@ -38,6 +38,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSetup
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities.IndexOrDataStream
@@ -282,7 +283,7 @@ class ReadonlyRestStartingTests
                     )
                   new CoreCreationResult(
                     Core(mockEnabledAccessControl, RorDependencies.noOp, auditingConfig),
-                    new CoreCreationResult.AuditSetup.AnyOutput(
+                    new AuditSetup.AnyOutput(
                       new IndexOrDataStream(
                         MockIndexBasedAuditOutputServiceCreator,
                         MockDataStreamBasedAuditOutputServiceCreator
@@ -1643,7 +1644,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup.AnyOutput(
+            new AuditSetup.AnyOutput(
               capability,
               AuditingConfig(
                 AuditOutputs.Configured(
@@ -1759,7 +1760,7 @@ class ReadonlyRestStartingTests
             Right(
               new CoreCreationResult(
                 Core(accessControl, RorDependencies.noOp, auditingConfig),
-                new CoreCreationResult.AuditSetup.AnyOutput(
+                new AuditSetup.AnyOutput(
                   new IndexOrDataStream(
                     MockIndexBasedAuditOutputServiceCreator,
                     MockDataStreamBasedAuditOutputServiceCreator
@@ -1853,7 +1854,7 @@ class ReadonlyRestStartingTests
       loadedMainSettingsResourceFileName: String,
       accessControlMock: AccessControlList = mockEnabledAccessControl,
       dependencies: RorDependencies = RorDependencies.noOp,
-      auditSetup: Option[CoreCreationResult.AuditSetup] = None
+      auditSetup: Option[AuditSetup] = None
   ): CoreFactory = {
     mockCoreFactory(
       mockedCoreFactory,
@@ -1869,7 +1870,7 @@ class ReadonlyRestStartingTests
       loadedMainSettings: RawRorSettings,
       accessControlMock: AccessControlList,
       dependencies: RorDependencies,
-      auditSetup: Option[CoreCreationResult.AuditSetup]
+      auditSetup: Option[AuditSetup]
   ): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where { (settings: RawRorSettings, _, _, _, _, _) =>
@@ -1878,7 +1879,7 @@ class ReadonlyRestStartingTests
       .once()
       .returns(Task.now(Right {
         val resolvedAuditSetup = auditSetup.getOrElse(
-          new CoreCreationResult.AuditSetup.AnyOutput(
+          new AuditSetup.AnyOutput(
             new IndexOrDataStream(
               MockIndexBasedAuditOutputServiceCreator,
               MockDataStreamBasedAuditOutputServiceCreator
@@ -1890,7 +1891,7 @@ class ReadonlyRestStartingTests
             )
           )
         )
-        new CoreCreationResult(Core(accessControlMock, dependencies, resolvedAuditSetup.settings), resolvedAuditSetup)
+        new CoreCreationResult(Core(accessControlMock, dependencies, resolvedAuditSetup.config), resolvedAuditSetup)
       }))
     mockedCoreFactory
   }

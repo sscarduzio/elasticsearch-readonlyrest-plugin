@@ -24,7 +24,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditingConfig}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditSetup, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditOutputs
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
@@ -37,7 +37,6 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.Transformati
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
-import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
@@ -63,7 +62,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 final case class Core(
     accessControl: AccessControlList,
     dependencies: RorDependencies,
-    auditingConfig: AuditingTool.AuditingConfig.AnyOutput
+    auditingConfig: AuditingTool.AuditingConfig[AuditOutputConfig]
 )
 
 trait CoreFactory {
@@ -82,28 +81,6 @@ trait CoreFactory {
 object CoreFactory {
 
   final class CoreCreationResult(val core: Core, val auditSetup: AuditSetup)
-
-  object CoreCreationResult {
-
-    sealed trait AuditSetup {
-      def settings: AuditingConfig.AnyOutput
-    }
-
-    object AuditSetup {
-
-      final class SupportedByAllEsVersions(
-          val capability: EsAuditCapabilities.IndexOnly,
-          val settings: AuditingConfig.SupportedByAllEsVersions
-      ) extends AuditSetup
-
-      final class AnyOutput(
-          val capability: EsAuditCapabilities.IndexOrDataStream,
-          val settings: AuditingConfig.AnyOutput
-      ) extends AuditSetup
-
-    }
-
-  }
 
 }
 
@@ -199,7 +176,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
                 core = Core(
                   accessControl = DisabledAccessControlList,
                   dependencies = RorDependencies.noOp,
-                  auditingConfig = auditSetup.settings,
+                  auditingConfig = auditSetup.config,
                 ),
                 auditSetup = auditSetup
               )
@@ -544,11 +521,11 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
     case cap: EsAuditCapabilities.IndexOnly =>
       AuditingConfigDecoder
         .supportedByAllEsVersions(esEnv)
-        .map(settings => new AuditSetup.SupportedByAllEsVersions(cap, settings))
+        .map(config => new AuditSetup.SupportedByAllEsVersions(cap, config))
     case cap: EsAuditCapabilities.IndexOrDataStream =>
       AuditingConfigDecoder
         .anyOutput(esEnv)
-        .map(settings => new AuditSetup.AnyOutput(cap, settings))
+        .map(config => new AuditSetup.AnyOutput(cap, config))
   }
 
   private def coreDecoder(
@@ -638,7 +615,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
                 .toEither
             }
         }
-        _ <- auditOutputNamesDecoder(blocksNel, auditSetup.settings)
+        _ <- auditOutputNamesDecoder(blocksNel, auditSetup.config)
       } yield {
         val blocks = blocksNel.map(_.block)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
@@ -671,7 +648,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
             obfuscatedHeaders
           )
         ): AccessControlList
-        new CoreCreationResult(Core(accessControl, rorDependencies, auditSetup.settings), auditSetup)
+        new CoreCreationResult(Core(accessControl, rorDependencies, auditSetup.config), auditSetup)
       }
       decoder.apply(c)
     }

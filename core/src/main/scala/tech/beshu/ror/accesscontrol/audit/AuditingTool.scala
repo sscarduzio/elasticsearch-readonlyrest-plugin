@@ -311,28 +311,56 @@ object AuditingTool extends RequestIdAwareLogging {
       esNodeSettings: EsNodeSettings
   )
 
-  object AuditingConfig {
+  sealed trait AuditSetup {
+    def config: AuditingConfig[AuditOutputConfig]
+  }
+
+  object AuditSetup {
 
     /**
-     * Audit outputs that all supported ES versions accept. ES older than
+     * An audit output that all supported ES versions accept. ES older than
      * [[tech.beshu.ror.constants.EsFeatureVersions.dataStreamSupport]] has no data streams.
      */
-    type OutputsSupportedByAllEsVersions = EsIndexBased | LogBased | RollingFileBased
+    type OutputSupportedByAllEsVersions = EsIndexBased | LogBased | RollingFileBased
 
-    type SupportedByAllEsVersions = AuditingConfig[OutputsSupportedByAllEsVersions]
-    type AnyOutput = AuditingConfig[AuditOutputConfig]
+    final class SupportedByAllEsVersions(
+        val capability: EsAuditCapabilities.IndexOnly,
+        val config: AuditingConfig[OutputSupportedByAllEsVersions]
+    ) extends AuditSetup
+
+    final class AnyOutput(
+        val capability: EsAuditCapabilities.IndexOrDataStream,
+        val config: AuditingConfig[AuditOutputConfig]
+    ) extends AuditSetup
+
   }
 
   final case class CreationError(message: String) extends AnyVal
 
   def create(
-      config: AuditingConfig.SupportedByAllEsVersions,
+      setup: AuditSetup
+  )(
+      using Clock,
+      LoggingContext
+  ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = setup match {
+    case s: AuditSetup.SupportedByAllEsVersions =>
+      create(config = s.config, creator = s.capability.creator)
+    case s: AuditSetup.AnyOutput =>
+      create(
+        config = s.config,
+        indexCreator = s.capability.indexCreator,
+        dataStreamCreator = s.capability.dataStreamCreator
+      )
+  }
+
+  private def create(
+      config: AuditingConfig[AuditSetup.OutputSupportedByAllEsVersions],
       creator: IndexBasedAuditOutputServiceCreator
   )(
       using Clock,
       LoggingContext
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
-    val effectiveOutputs: List[AuditingConfig.OutputsSupportedByAllEsVersions] =
+    val effectiveOutputs: List[AuditSetup.OutputSupportedByAllEsVersions] =
       applyDefaults(config.outputs, config.defaultAclLog)
     val outputTasks = effectiveOutputs.map {
       case s: EsIndexBased     => createIndexOutput(s, creator)
@@ -342,8 +370,8 @@ object AuditingTool extends RequestIdAwareLogging {
     createAuditingTool(config.esNodeSettings, outputTasks)
   }
 
-  def create(
-      config: AuditingConfig.AnyOutput,
+  private def create(
+      config: AuditingConfig[AuditOutputConfig],
       indexCreator: IndexBasedAuditOutputServiceCreator,
       dataStreamCreator: DataStreamBasedAuditOutputServiceCreator
   )(
@@ -361,7 +389,7 @@ object AuditingTool extends RequestIdAwareLogging {
     createAuditingTool(config.esNodeSettings, outputTasks)
   }
 
-  private def applyDefaults[O >: AuditingConfig.OutputsSupportedByAllEsVersions <: AuditOutputConfig](
+  private def applyDefaults[O >: AuditSetup.OutputSupportedByAllEsVersions <: AuditOutputConfig](
       settings: AuditOutputs[O],
       defaultAclLog: Boolean
   ): List[O] = {
