@@ -23,7 +23,6 @@ import cats.implicits.*
 import eu.timepit.refined.api.{Result as _, *}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
-import io.lemonlabs.uri.config.UriConfig
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
@@ -733,10 +732,12 @@ trait LogsShowInstances extends cats.instances.AllInstances {
     val url = n.toUrl
     url.authorityOption match {
       case Some(authority) =>
+        // the credentials must not reach the logs, so drop the user info part of the authority.
+        // keep the URL's own config, because a fresh one could render the rest of the authority differently
         url
           .withAuthority(
             authority.copy(userInfo = None)(
-              using UriConfig.default
+              using url.config
             )
           )
           .toUrl
