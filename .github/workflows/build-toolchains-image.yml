@@ -58,26 +58,24 @@ jobs:
           # mirror is off, and the pulls then go to Docker Hub.
           docker build --build-arg MIRROR="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}" \
             -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
-          docker push "$TOOLCHAINS_IMAGE"
-          # The digest of this push, from the local daemon. A run takes the mirror only when the
-          # mirror serves the same digest. See ci/resolve-toolchains-image.sh.
-          DIGEST=$(docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$TOOLCHAINS_IMAGE" \
-                     | grep "^${TOOLCHAINS_IMAGE%:*}@" | head -1 | sed 's/.*@//')
-          echo ">>> Pushed digest: ${DIGEST:-<none>}"
-          if [ -n "$DIGEST" ]; then
-            echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
-            echo "key=toolchains-digest-${TOOLCHAINS_IMAGE##*:}-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::The daemon reports no digest for $TOOLCHAINS_IMAGE. Runs will pull from Docker Hub."
-          fi
+          # docker push prints the digest of this push. A run takes the mirror only when the mirror
+          # can serve that digest. See ci/resolve-toolchains-image.sh.
+          PUSH_LOG=$(mktemp)
+          docker push "$TOOLCHAINS_IMAGE" 2>&1 | tee "$PUSH_LOG"
+          DIGEST=$(sed -n 's/.*digest: \(sha256:[0-9a-f]\{64\}\).*/\1/p' "$PUSH_LOG" | head -1)
+          # The push has succeeded here. Without a digest the mirror stays off for every run until
+          # the next rebuild, and nobody sees it. So this fails loudly.
+          [ -n "$DIGEST" ] || { echo "::error::The push of $TOOLCHAINS_IMAGE printed no digest."; exit 1; }
+          echo ">>> Pushed digest: $DIGEST"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "key=toolchains-digest-${TOOLCHAINS_IMAGE##*:}-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
 
   # ── RECORD_DIGEST ─────────────────────────────────────────────────────────
   # An Ubicloud runner keeps its own Actions cache. A save there is invisible to a GitHub-hosted
   # runner, and the setup job of ci.yml is GitHub-hosted. So the save runs here, on a GitHub-hosted
   # runner, and both ends read one store.
   record_digest:
-    needs: build
-    if: needs.build.outputs.key != ''
+    needs: build          # build fails without a digest, so this job needs no guard of its own
     runs-on: ubuntu-latest   # GH-hosted, like setup. A different runner means a different store.
     timeout-minutes: 5
     steps:
