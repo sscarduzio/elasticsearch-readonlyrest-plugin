@@ -215,7 +215,7 @@ class IndexSettingsRelatedRorCoreTest
 
   private def createReadonlyRestBoot(factory: CoreFactory, indexDocumentManager: IndexDocumentManager) = {
     implicit val systemContext: SystemContext = SystemContext.default
-    ReadonlyRest.create(factory, indexDocumentManager, MockedCapabilities.standard)
+    ReadonlyRest.create(factory, indexDocumentManager, MockedCapabilities.indexOrDataStream)
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory, rawRorSettings: RawRorSettings): CoreFactory = {

@@ -607,7 +607,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
         clientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()

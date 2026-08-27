@@ -426,7 +426,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
         clientsFactory,
         new UnboundidLdapConnectionPoolProvider(),
         mocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .runSyncUnsafe()
   }

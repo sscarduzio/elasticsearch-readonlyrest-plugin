@@ -479,7 +479,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         clientsFactory,
         ldapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .runSyncUnsafe()
   }

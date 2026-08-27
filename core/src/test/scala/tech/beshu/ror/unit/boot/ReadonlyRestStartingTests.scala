@@ -284,7 +284,7 @@ class ReadonlyRestStartingTests
                   new CoreCreationResult(
                     Core(mockEnabledAccessControl, RorDependencies.noOp, auditingConfig),
                     new AuditSetup.AnyOutput(
-                      MockedCapabilities.standard,
+                      MockedCapabilities.indexOrDataStream,
                       auditingConfig
                     )
                   )
@@ -1795,7 +1795,7 @@ class ReadonlyRestStartingTests
               new CoreCreationResult(
                 Core(accessControl, RorDependencies.noOp, auditingConfig),
                 new AuditSetup.AnyOutput(
-                  MockedCapabilities.standard,
+                  MockedCapabilities.indexOrDataStream,
                   auditingConfig
                 )
               )
@@ -1921,7 +1921,7 @@ class ReadonlyRestStartingTests
       .returns(Task.now(Right {
         val resolvedAuditSetup = auditSetup.getOrElse(
           new AuditSetup.AnyOutput(
-            MockedCapabilities.standard,
+            MockedCapabilities.indexOrDataStream,
             AuditingTool.AuditingConfig(
               AuditOutputs.Disabled,
               defaultAclLog = true,
