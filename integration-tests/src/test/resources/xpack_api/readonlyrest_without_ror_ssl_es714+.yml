@@ -78,6 +78,22 @@ readonlyrest:
       indices: ["bookstore"]
       filter: '{"query_string":{"query":"name:(Dune)"}}'
 
+    - name: "dev4 sql"
+      auth_key: dev4sql:test
+      indices: ["book_catalog"]
+
+    - name: "dev5 sql"
+      auth_key: dev5sql:test
+      indices: ["book_*"]
+
+    - name: "dev6 sql"
+      auth_key: dev6sql:test
+      indices: ["book_prices"]
+
+    - name: "dev7 sql"
+      auth_key: dev7sql:test
+      indices: ["book_catalog", "book_prices"]
+
     - name: "dev7"
       auth_key: dev7:test
       indices: ["test7_*"]
