@@ -21,13 +21,12 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSetup
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
-import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult.AuditSetup
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason
@@ -51,7 +50,7 @@ import scala.language.postfixOps
 class ReadonlyRest(
     coreFactory: CoreFactory,
     indexDocumentManager: IndexDocumentManager,
-    auditCapabilities: EsAuditCapabilities.Supported
+    auditCapabilities: EsAuditCapabilities
 )(
     implicit systemContext: SystemContext
 ) extends RequestIdAwareLogging {
@@ -252,37 +251,18 @@ class ReadonlyRest(
       }
   }
 
-  private def createAuditingTool[O <: AuditOutputConfig](
-      auditSetup: AuditSetup[O],
+  private def createAuditingTool(
+      auditSetup: AuditSetup,
       httpClientsFactory: HttpClientsFactory
   )(
       implicit loggingContext: LoggingContext
   ): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
-    auditSetup.capability match {
-      case capability: EsAuditCapabilities.IndexOnly =>
-        AuditingTool
-          .create(
-            config = auditSetup.settings,
-            creator = capability.creator,
-            httpClientsFactory = httpClientsFactory
-          )(
-            using systemContext.clock,
-            loggingContext
-          )
-          .map(_.leftMap(toCreationErrors))
-      case capability: EsAuditCapabilities.IndexOrDataStream =>
-        AuditingTool
-          .create(
-            config = auditSetup.settings,
-            indexCreator = capability.indexCreator,
-            dataStreamCreator = capability.dataStreamCreator,
-            httpClientsFactory = httpClientsFactory
-          )(
-            using systemContext.clock,
-            loggingContext
-          )
-          .map(_.leftMap(toCreationErrors))
-    }
+    AuditingTool
+      .create(auditSetup, httpClientsFactory)(
+        using systemContext.clock,
+        loggingContext
+      )
+      .map(_.leftMap(toCreationErrors))
   }
 
   private def toCreationErrors(errors: NonEmptyList[AuditingTool.CreationError]): NonEmptyList[CoreCreationError] =
@@ -384,7 +364,7 @@ object ReadonlyRest {
 
   private val defaultStartingRetryPolicy: RetryPolicy = RetryPolicy(initialDelay = 5 seconds, maxDelay = 1 minute)
 
-  def create(indexContentService: IndexDocumentManager, auditCapabilities: EsAuditCapabilities.Supported, env: EsEnv)(
+  def create(indexContentService: IndexDocumentManager, auditCapabilities: EsAuditCapabilities, env: EsEnv)(
       implicit systemContext: SystemContext
   ): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env)
@@ -394,7 +374,7 @@ object ReadonlyRest {
   def create(
       coreFactory: CoreFactory,
       indexDocumentManager: IndexDocumentManager,
-      auditCapabilities: EsAuditCapabilities.Supported
+      auditCapabilities: EsAuditCapabilities
   )(
       implicit systemContext: SystemContext
   ): ReadonlyRest = {

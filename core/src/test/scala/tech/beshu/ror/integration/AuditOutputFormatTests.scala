@@ -25,9 +25,9 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditingConfig}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditSetup, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
-import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
@@ -191,7 +191,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       NonEmptyList.of(
         EsIndexBased(
           AuditOutputName.random(),
-          EsIndexBasedSettings(
+          EsIndexBased.Config(
             AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             RorAuditIndexTemplate.default,
             AuditCluster.LocalAuditCluster
@@ -199,7 +199,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         ),
         EsDataStreamBased(
           AuditOutputName.random(),
-          EsDataStreamBasedSettings(
+          EsDataStreamBased.Config(
             AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             RorAuditDataStream.default,
             AuditCluster.LocalAuditCluster
@@ -209,9 +209,13 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     )
     val auditingTool = AuditingTool
       .create(
-        config = AuditingConfig(settings, defaultAclLog = true, defaultTestEsNodeSettings),
-        indexCreator = (_: AuditCluster) => indexBasedAuditOutputService,
-        dataStreamCreator = (_: AuditCluster) => dataStreamBasedAuditOutputService,
+        setup = new AuditSetup.AnyOutput(
+          capability = new EsAuditCapabilities.IndexOrDataStream(
+            indexCreator = (_: AuditCluster) => indexBasedAuditOutputService,
+            dataStreamCreator = (_: AuditCluster) => dataStreamBasedAuditOutputService,
+          ),
+          config = AuditingConfig(settings, defaultAclLog = true, defaultTestEsNodeSettings),
+        ),
         httpClientsFactory = MockHttpClientsFactory,
       )
       .runSyncUnsafe()

@@ -39,6 +39,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSetup
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities.IndexOrDataStream
@@ -295,7 +296,7 @@ class ReadonlyRestStartingTests
                     )
                   new CoreCreationResult(
                     Core(mockEnabledAccessControl, RorDependencies.noOp, auditingConfig),
-                    new CoreCreationResult.AuditSetup(
+                    new AuditSetup.AnyOutput(
                       new IndexOrDataStream(
                         MockIndexBasedAuditOutputServiceCreator,
                         MockDataStreamBasedAuditOutputServiceCreator
@@ -1622,7 +1623,7 @@ class ReadonlyRestStartingTests
         }
       }
       "unable to setup data stream audit output" in {
-        val dataStreamOutputConfig1 = EsDataStreamBasedSettings.default
+        val dataStreamOutputConfig1 = EsDataStreamBased.Config.default
         val dataStreamOutputConfig2 = dataStreamOutputConfig1.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
@@ -1657,7 +1658,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup(
+            new AuditSetup.AnyOutput(
               capability,
               AuditingConfig(
                 AuditOutputs.Configured(
@@ -1693,7 +1694,7 @@ class ReadonlyRestStartingTests
         }
       }
       "audit remote clusters are mixed" in {
-        val dataStreamOutputConfig = EsDataStreamBasedSettings.default.copy(
+        val dataStreamOutputConfig = EsDataStreamBased.Config.default.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
               AuditClusterNode(Uri.parse(s"http://$wiremockHost/c1n1")),
@@ -1711,7 +1712,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup(
+            new AuditSetup.AnyOutput(
               new IndexOrDataStream(
                 mock[IndexBasedAuditOutputServiceCreator],
                 mock[DataStreamBasedAuditOutputServiceCreator]
@@ -1741,7 +1742,7 @@ class ReadonlyRestStartingTests
         }
       }
       "audit remote clusters are mixed even when ignore_es_connectivity_problems is enabled" in {
-        val dataStreamOutputConfig = EsDataStreamBasedSettings.default.copy(
+        val dataStreamOutputConfig = EsDataStreamBased.Config.default.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
               AuditClusterNode(Uri.parse(s"http://$wiremockHost/c1n1")),
@@ -1759,7 +1760,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup(
+            new AuditSetup.AnyOutput(
               new IndexOrDataStream(
                 mock[IndexBasedAuditOutputServiceCreator],
                 mock[DataStreamBasedAuditOutputServiceCreator]
@@ -1789,7 +1790,7 @@ class ReadonlyRestStartingTests
         }
       }
       "all remote audit cluster nodes are unreachable" in {
-        val outputConfig = EsIndexBasedSettings.default.copy(
+        val outputConfig = EsIndexBased.Config.default.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
               AuditClusterNode(Uri.parse("http://127.0.0.1:1"))
@@ -1806,7 +1807,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup(
+            new AuditSetup.AnyOutput(
               new IndexOrDataStream(
                 mock[IndexBasedAuditOutputServiceCreator],
                 mock[DataStreamBasedAuditOutputServiceCreator]
@@ -1836,7 +1837,7 @@ class ReadonlyRestStartingTests
     }
     "be able to be loaded despite remote audit connectivity warnings" when {
       "all remote audit cluster nodes are unreachable but ignore_es_connectivity_problems is enabled" in withReadonlyRest({
-        val outputConfig = EsIndexBasedSettings.default.copy(
+        val outputConfig = EsIndexBased.Config.default.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
               AuditClusterNode(Uri.parse("http://127.0.0.1:1"))
@@ -1861,7 +1862,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup(
+            new AuditSetup.AnyOutput(
               new IndexOrDataStream(
                 indexCreator,
                 mock[DataStreamBasedAuditOutputServiceCreator]
@@ -1884,7 +1885,7 @@ class ReadonlyRestStartingTests
         rorInstance.engines.value.mainEngine.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
       }
       "some remote audit cluster nodes are unreachable but the remaining ones belong to the same cluster" in withReadonlyRest({
-        val outputConfig = EsIndexBasedSettings.default.copy(
+        val outputConfig = EsIndexBased.Config.default.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
               AuditClusterNode(Uri.parse(s"http://$wiremockHost/c1n1")),
@@ -1910,7 +1911,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup(
+            new AuditSetup.AnyOutput(
               new IndexOrDataStream(
                 indexCreator,
                 mock[DataStreamBasedAuditOutputServiceCreator]
@@ -2013,7 +2014,7 @@ class ReadonlyRestStartingTests
             Right(
               new CoreCreationResult(
                 Core(accessControl, RorDependencies.noOp, auditingConfig),
-                new CoreCreationResult.AuditSetup(
+                new AuditSetup.AnyOutput(
                   new IndexOrDataStream(
                     MockIndexBasedAuditOutputServiceCreator,
                     MockDataStreamBasedAuditOutputServiceCreator
@@ -2107,7 +2108,7 @@ class ReadonlyRestStartingTests
       loadedMainSettingsResourceFileName: String,
       accessControlMock: AccessControlList = mockEnabledAccessControl,
       dependencies: RorDependencies = RorDependencies.noOp,
-      auditSetup: Option[CoreCreationResult.AuditSetup.Supported] = None
+      auditSetup: Option[AuditSetup] = None
   ): CoreFactory = {
     mockCoreFactory(
       mockedCoreFactory,
@@ -2123,7 +2124,7 @@ class ReadonlyRestStartingTests
       loadedMainSettings: RawRorSettings,
       accessControlMock: AccessControlList,
       dependencies: RorDependencies,
-      auditSetup: Option[CoreCreationResult.AuditSetup.Supported]
+      auditSetup: Option[AuditSetup]
   ): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where { (settings: RawRorSettings, _, _, _, _, _) =>
@@ -2132,7 +2133,7 @@ class ReadonlyRestStartingTests
       .once()
       .returns(Task.now(Right {
         val resolvedAuditSetup = auditSetup.getOrElse(
-          new CoreCreationResult.AuditSetup(
+          new AuditSetup.AnyOutput(
             new IndexOrDataStream(
               MockIndexBasedAuditOutputServiceCreator,
               MockDataStreamBasedAuditOutputServiceCreator
@@ -2144,7 +2145,7 @@ class ReadonlyRestStartingTests
             )
           )
         )
-        new CoreCreationResult(Core(accessControlMock, dependencies, resolvedAuditSetup.settings), resolvedAuditSetup)
+        new CoreCreationResult(Core(accessControlMock, dependencies, resolvedAuditSetup.config), resolvedAuditSetup)
       }))
     mockedCoreFactory
   }

@@ -30,13 +30,13 @@ import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, IndexBased
 
 object MockedCapabilities {
 
-  val standard: EsAuditCapabilities.Supported =
+  val standard: EsAuditCapabilities =
     new EsAuditCapabilities.IndexOrDataStream(
       MockIndexBasedAuditOutputServiceCreator,
       MockDataStreamBasedAuditOutputServiceCreator
     )
 
-  val legacy: EsAuditCapabilities.Supported =
+  val legacy: EsAuditCapabilities =
     new EsAuditCapabilities.IndexOnly(MockIndexBasedAuditOutputServiceCreator)
 }
 

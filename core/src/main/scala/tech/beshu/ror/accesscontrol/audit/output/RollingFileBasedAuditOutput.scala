@@ -27,7 +27,7 @@ import org.apache.logging.log4j.core.appender.rolling.{
 import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.{LogManager, Logger}
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.RollingFileBasedSettings.FileAppenderConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.RollingFileBased.FileAppender
 import tech.beshu.ror.accesscontrol.domain.{AuditOutputName, RorAuditLoggerName}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -57,7 +57,7 @@ object RollingFileBasedAuditOutput extends RequestIdAwareLogging {
       outputName: AuditOutputName,
       serializer: AuditSerializer,
       loggerName: RorAuditLoggerName,
-      config: FileAppenderConfig
+      config: FileAppender
   ): Task[Either[CreationError, RollingFileBasedAuditOutput]] = {
     directoryError(config.filePath) match {
       case Some(err) => Task.pure(Left(err))
@@ -73,7 +73,7 @@ object RollingFileBasedAuditOutput extends RequestIdAwareLogging {
 
   private def buildAndRegisterAppender(
       loggerName: RorAuditLoggerName,
-      config: FileAppenderConfig
+      config: FileAppender
   ): Task[RollingFileAppender] =
     Task.delay {
       val ctx = LogManager.getContext(false).asInstanceOf[LoggerContext]
