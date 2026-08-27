@@ -169,13 +169,13 @@ jobs:
     # mirror nor the login for it. ci/resolve-toolchains-image.sh settles the name in the setup job.
     # A mirrored name carries the digest, so every job of a run pulls the same bytes.
     #
-    # The pull carries no credentials. mirror.gcr.io needs none, and a Docker Hub login against it
-    # would fail. A credentials: block cannot hold that difference. Its two keys take an expression,
-    # but an expression that evaluates to nothing gives "Unexpected value ''", and the job then dies
-    # in template validation, before step 1. An empty string and null both do it.
+    # The pull sends no credentials. A Docker Hub login against mirror.gcr.io fails, so the block
+    # must be absent on the mirrored path. An empty value does not remove it. GitHub rejects it with
+    # "Unexpected value ''" and stops the run before step 1. YAML cannot drop a key on a condition,
+    # so the block is absent on both paths.
     #
-    # So the Docker Hub fallback pulls anonymously. Docker Hub then counts the pull against the
-    # runner's address, not against our account. That path is the rare one.
+    # Docker Hub then counts the fallback pull against the runner's address, not against our
+    # account. The mirror serves the normal path.
     container: &toolchains_container
       image: ${{ needs.setup.outputs.toolchains_image }}
     timeout-minutes: 10

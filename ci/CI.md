@@ -226,8 +226,8 @@ Do not put a `docker login` in a workflow. Two mechanisms with different credent
 other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
 
 The script cannot authenticate the `container:` image, because the runner pulls that image before
-step 1 starts. No other mechanism authenticates it either: that pull is anonymous, and the mirror is
-what protects it. See [The `container:` image](#the-container-image).
+step 1 starts. Nothing else authenticates it. That pull is anonymous, and the mirror answers it
+instead of Docker Hub. See [The `container:` image](#the-container-image).
 
 ### Docker Hub pull mirror
 
@@ -356,22 +356,19 @@ The rebuild keeps a concurrency group of its own, `build-toolchains-image`. Two 
 tag and file two cache entries, and `setup` takes the newest entry, which need not hold the manifest
 that Docker Hub keeps. A second run waits instead, because cancelling a four-hour build wastes it.
 
-The pull carries no `credentials:` block, so it is anonymous on both paths. `mirror.gcr.io` needs no
-login, and a Docker Hub login against it would fail, so the block would have to empty itself on the
-mirrored path. It cannot: `username:` and `password:` take an expression, but an expression that
-evaluates to nothing gives `Unexpected value ''`, and the job dies in template validation before step
-1. An empty string and `null` both do it.
+The pull sends no credentials, on either path. `mirror.gcr.io` refuses a Docker Hub login, so the
+`credentials:` block must be absent when the name is mirrored. An empty value does not remove it.
+GitHub rejects `username: ''` with `Unexpected value ''` and stops the run before step 1. YAML cannot
+drop a key on a condition, and `credentials:` is a mapping, so no expression reaches it. The block is
+therefore absent on both paths.
 
-This costs the Docker Hub path its account limit. Docker Hub counts an anonymous pull against the
-runner's address, and an authenticated pull against the account. The path is the rare one, so the
-trade is worth it. A tag with no recorded digest takes that path, and the next rebuild closes the
-window.
+Docker Hub counts an anonymous pull against the runner's address, and an authenticated pull against
+the account. So the fallback pull shares an address limit with every other anonymous puller. That
+path is rare. It opens when a tag has no recorded digest, and the next rebuild closes it.
 
-Every run now pulls this image the way a fork always did. A fork gains the most. It has no secrets,
-so it pulled this image anonymously from Docker Hub, where the limit counts against the runner's
-address and every other anonymous puller shares it. The same run now pulls anonymously from
-`mirror.gcr.io`, which sets no limit. A fork run reads the base branch, so it finds the digest that a
-`develop` rebuild saved.
+Every run now pulls this image the way a fork always did, and a fork gains the most. It has no
+secrets, so Docker Hub always answered it anonymously. It now reads `mirror.gcr.io`, which sets no
+limit. A fork run reads the base branch, so it finds the digest that a `develop` rebuild saved.
 
 One limit. The choice is made once, for the whole run. If the mirror stops answering during a run,
 the jobs that already took the mirrored name fail. The runner's pull has no fallback of its own.
