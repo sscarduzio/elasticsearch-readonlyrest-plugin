@@ -181,36 +181,38 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   private def decodeAuditSettingsWithFallback[O <: AuditOutputConfig](
       simpleDecoder: Decoder[O],
-      extendedDecoder: Decoder[O]
+      extendedDecoder: Decoder[Option[O]]
   ): Decoder[AuditOutputs[O]] = {
-    decodeAuditSettingsWith(
-      using simpleDecoder
-    )
+    decodeAuditSettingsWith(simpleDecoder.map(Option(_)))
       .handleErrorWith { error =>
         if (error.aclCreationError.isDefined) {
           // the schema was valid, but the config not
           Decoder.failed(error)
         } else {
-          decodeAuditSettingsWith(
-            using extendedDecoder
-          )
+          decodeAuditSettingsWith(extendedDecoder)
         }
       }
   }
 
+  /**
+   * An output with 'enabled: false' is decoded to [[None]], so that it is not present in the result at all.
+   */
   private def decodeAuditSettingsWith[O <: AuditOutputConfig](
-      using Decoder[O]
+      outputDecoder: Decoder[Option[O]]
   ): Decoder[AuditOutputs[O]] =
     SyncDecoderCreator
       .instance {
-        _.downField("audit").downField("outputs").as[Option[List[O]]]
+        _.downField("audit")
+          .downField("outputs")
+          .as[Option[List[Option[O]]]](
+            using Decoder.decodeOption(Decoder.decodeList(outputDecoder))
+          )
       }
       .emapE {
+        case Some(Nil) =>
+          auditSettingsError(s"The audit 'outputs' array cannot be empty").asLeft
         case Some(outputs) =>
-          NonEmptyList
-            .fromList[O](outputs.distinct)
-            .map(AuditOutputs.Configured(_))
-            .toRight(auditSettingsError(s"The audit 'outputs' array cannot be empty"))
+          AuditOutputs.Configured(outputs.flatten.distinct).asRight
         case None =>
           AuditOutputs.Defaults.asRight
       }
@@ -223,14 +225,11 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
   ): Decoder[O] =
     Decoder[OUTPUT_TYPE].map(st => f(st, AuditOutputName.random()))
 
-  private def auditOutputExtendedDecoder[
-      OUTPUT_TYPE <: AuditOutputType,
-      O >: AuditingConfig.OutputsSupportedByAllEsVersions <: AuditOutputConfig
-  ](
+  private def auditOutputExtendedDecoder[OUTPUT_TYPE <: AuditOutputType, O <: AuditOutputConfig](
       f: (HCursor, OUTPUT_TYPE, AuditOutputName) => Decoder.Result[O]
   )(
       using Decoder[OUTPUT_TYPE]
-  ): Decoder[O] =
+  ): Decoder[Option[O]] =
     Decoder.instance { c =>
       for {
         outputType <- c.downFieldAs[OUTPUT_TYPE]("type")
@@ -238,9 +237,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         outputNameOpt <- c.downFieldAs[Option[AuditOutputName]]("name")
         name = outputNameOpt.getOrElse(AuditOutputName.random())
         result <- f(c, outputType, name)
-      } yield {
-        if (isOutputEnabledOpt.getOrElse(true)) result else AuditOutputConfig.Disabled
-      }
+      } yield Option.when(isOutputEnabledOpt.getOrElse(true))(result)
     }
 
   private sealed trait AuditOutputType
@@ -826,7 +823,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
             fallbackKey = "audit_cluster"
           )
         } yield AuditOutputs.Configured(
-          outputs = NonEmptyList.one(
+          outputs = List(
             EsIndexBased(
               AuditOutputName.random(),
               EsIndexBasedSettings(

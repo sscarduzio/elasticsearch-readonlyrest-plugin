@@ -72,32 +72,27 @@ class MainSettingsApi(
 
   private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
     val outputs = rorInstance.auditSettings match {
-      case Some(AuditOutputs.Configured(outputs)) => outputs.toList
+      case Some(AuditOutputs.Configured(outputs)) => outputs
       case _                                      => List.empty
     }
-    val auditOutputs = outputs.flatMap {
+    val auditOutputs = outputs.map {
       case s: EsIndexBased if s.config.auditCluster == AuditCluster.LocalAuditCluster =>
-        Some(
-          LocalAuditIndex(
-            s.config.rorAuditIndexTemplate.rorAuditIndexPattern,
-            AuditIndexSchema.from(s.config.serializer)
-          )
+        LocalAuditIndex(
+          s.config.rorAuditIndexTemplate.rorAuditIndexPattern,
+          AuditIndexSchema.from(s.config.serializer)
         )
       case _: EsIndexBased =>
-        Some(OtherAuditOutput("Remote audit cluster"))
+        OtherAuditOutput("Remote audit cluster")
       case s: EsDataStreamBased if s.config.auditCluster == AuditCluster.LocalAuditCluster =>
-        Some(LocalDataStream(s.config.rorAuditDataStream.dataStream, AuditIndexSchema.from(s.config.serializer)))
+        LocalDataStream(s.config.rorAuditDataStream.dataStream, AuditIndexSchema.from(s.config.serializer))
       case s: EsDataStreamBased =>
-        Some(OtherAuditOutput(s"Remote ${s.config.rorAuditDataStream.dataStream.value.value} data stream"))
+        OtherAuditOutput(s"Remote ${s.config.rorAuditDataStream.dataStream.value.value} data stream")
       case s: LogBased =>
-        Some(OtherAuditOutput(s"Logger with name [${s.config.loggerName.value.value}]"))
+        OtherAuditOutput(s"Logger with name [${s.config.loggerName.value.value}]")
       case s: RollingFileBased =>
-        Some(
-          OtherAuditOutput(
-            s"Logger with name [${s.config.loggerName.value.value}] to file [${s.config.fileAppender.filePath}]"
-          )
+        OtherAuditOutput(
+          s"Logger with name [${s.config.loggerName.value.value}] to file [${s.config.fileAppender.filePath}]"
         )
-      case Disabled => None
     }
     ProvideAuditSettings.AuditSettings(auditOutputs)
   }

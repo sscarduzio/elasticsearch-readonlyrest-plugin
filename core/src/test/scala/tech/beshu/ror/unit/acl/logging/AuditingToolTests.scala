@@ -268,7 +268,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             .create(
               config = AuditingConfig(
                 outputs = AuditOutputs.Configured(
-                  NonEmptyList.of(
+                  List(
                     LogBased(
                       AuditOutputName.random(),
                       LogBasedSettings(
@@ -312,7 +312,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             .create(
               config = AuditingConfig(
                 outputs = AuditOutputs.Configured(
-                  NonEmptyList.of(
+                  List(
                     RollingFileBased(
                       AuditOutputName.random(),
                       RollingFileBasedSettings(
@@ -360,7 +360,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             .create(
               config = AuditingConfig(
                 outputs = AuditOutputs.Configured(
-                  NonEmptyList.of(
+                  List(
                     RollingFileBased(
                       AuditOutputName.random(),
                       RollingFileBasedSettings(
@@ -528,7 +528,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           .create(
             config = AuditingConfig(
               AuditOutputs.Configured(
-                NonEmptyList.of(
+                List(
                   EsIndexBased(
                     AuditOutputName.random(),
                     EsIndexBasedSettings(
@@ -609,11 +609,11 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           .get
         auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.outputs)).runSyncUnsafe()
       }
-      "create a tool with no active outputs when all outputs are Disabled" in {
+      "create a tool with no active outputs when no output is enabled" in {
         val creationResult = AuditingTool
           .create(
             config = AuditingConfig(
-              AuditOutputs.Configured(NonEmptyList.of(Disabled, Disabled)),
+              AuditOutputs.Configured(List.empty),
               defaultAclLog = false,
               defaultTestEsNodeSettings
             ),
@@ -658,13 +658,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val creationResult = AuditingTool
           .create(
             config = AuditingConfig(
-              AuditOutputs.Configured(
-                NonEmptyList.of(
-                  Disabled,
-                  Disabled,
-                  Disabled
-                )
-              ),
+              AuditOutputs.Configured(List.empty),
               defaultAclLog = true,
               defaultTestEsNodeSettings,
             ),
@@ -681,7 +675,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       serializer: AuditLogSerializer
   ): AuditingConfig.SupportedByAllEsVersions = AuditingConfig(
     outputs = AuditOutputs.Configured(
-      NonEmptyList.of(
+      List(
         EsIndexBased(
           AuditOutputName.random(),
           EsIndexBasedSettings(
@@ -697,7 +691,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   )
 
   private def auditSettings(serializer: AuditLogSerializer) = AuditOutputs.Configured(
-    outputs = NonEmptyList.of(
+    outputs = List(
       EsIndexBased(
         AuditOutputName.random(),
         EsIndexBasedSettings(
@@ -751,7 +745,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   @nowarn("cat=deprecation")
   private def rollingFileOutputSettings(filePath: java.nio.file.Path) = AuditOutputs.Configured(
-    NonEmptyList.of(
+    List(
       RollingFileBased(
         AuditOutputName.random(),
         RollingFileBasedSettings(

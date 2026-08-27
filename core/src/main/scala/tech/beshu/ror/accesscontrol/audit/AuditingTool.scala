@@ -218,10 +218,12 @@ object AuditingTool extends RequestIdAwareLogging {
   object AuditOutputs {
     case object Disabled extends AuditOutputs[Nothing]
     case object Defaults extends AuditOutputs[Nothing]
-    final case class Configured[+O <: AuditOutputConfig](outputs: NonEmptyList[O]) extends AuditOutputs[O]
+    final case class Configured[+O <: AuditOutputConfig](outputs: List[O]) extends AuditOutputs[O]
   }
 
-  sealed trait AuditOutputConfig
+  sealed trait AuditOutputConfig {
+    def name: AuditOutputName
+  }
 
   object AuditOutputConfig {
 
@@ -230,7 +232,6 @@ object AuditingTool extends RequestIdAwareLogging {
         extends AuditOutputConfig
     final case class LogBased(name: AuditOutputName, config: LogBasedSettings) extends AuditOutputConfig
     final case class RollingFileBased(name: AuditOutputName, config: RollingFileBasedSettings) extends AuditOutputConfig
-    case object Disabled extends AuditOutputConfig
 
     final case class EsIndexBasedSettings(
         serializer: JsonAuditSerializer,
@@ -299,7 +300,7 @@ object AuditingTool extends RequestIdAwareLogging {
      * Audit outputs that all supported ES versions accept. ES older than
      * [[tech.beshu.ror.constants.EsFeatureVersions.dataStreamSupport]] has no data streams.
      */
-    type OutputsSupportedByAllEsVersions = EsIndexBased | LogBased | RollingFileBased | Disabled.type
+    type OutputsSupportedByAllEsVersions = EsIndexBased | LogBased | RollingFileBased
 
     type SupportedByAllEsVersions = AuditingConfig[OutputsSupportedByAllEsVersions]
     type AnyOutput = AuditingConfig[AuditOutputConfig]
@@ -316,11 +317,10 @@ object AuditingTool extends RequestIdAwareLogging {
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
     val effectiveOutputs: List[AuditingConfig.OutputsSupportedByAllEsVersions] =
       applyDefaults(config.outputs, config.defaultAclLog)
-    val outputTasks = effectiveOutputs.flatMap {
-      case s: EsIndexBased     => Some(createIndexOutput(s, creator))
-      case s: LogBased         => Some(createLogOutput(s))
-      case s: RollingFileBased => Some(createRollingFileBaseOutput(s))
-      case Disabled            => None
+    val outputTasks = effectiveOutputs.map {
+      case s: EsIndexBased     => createIndexOutput(s, creator)
+      case s: LogBased         => createLogOutput(s)
+      case s: RollingFileBased => createRollingFileBaseOutput(s)
     }
     createAuditingTool(config.esNodeSettings, outputTasks)
   }
@@ -335,12 +335,11 @@ object AuditingTool extends RequestIdAwareLogging {
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
     val effectiveOutputs: List[AuditOutputConfig] =
       applyDefaults(config.outputs, config.defaultAclLog)
-    val outputTasks = effectiveOutputs.flatMap {
-      case s: EsIndexBased      => Some(createIndexOutput(s, indexCreator))
-      case s: EsDataStreamBased => Some(createDataStreamOutput(s, dataStreamCreator))
-      case s: LogBased          => Some(createLogOutput(s))
-      case s: RollingFileBased  => Some(createRollingFileBaseOutput(s))
-      case Disabled             => None
+    val outputTasks = effectiveOutputs.map {
+      case s: EsIndexBased      => createIndexOutput(s, indexCreator)
+      case s: EsDataStreamBased => createDataStreamOutput(s, dataStreamCreator)
+      case s: LogBased          => createLogOutput(s)
+      case s: RollingFileBased  => createRollingFileBaseOutput(s)
     }
     createAuditingTool(config.esNodeSettings, outputTasks)
   }
@@ -352,7 +351,7 @@ object AuditingTool extends RequestIdAwareLogging {
     val outputs: List[O] = settings match {
       case AuditOutputs.Disabled            => List.empty
       case AuditOutputs.Defaults            => List(defaultIndexStorageOutput)
-      case AuditOutputs.Configured(outputs) => outputs.toList
+      case AuditOutputs.Configured(outputs) => outputs
     }
     if (defaultAclLog) defaultAclOutput :: outputs else outputs
   }
@@ -476,18 +475,6 @@ object AuditingTool extends RequestIdAwareLogging {
   }
 
   private given Show[List[SupportedAuditOutput]] = outputs => outputs.map(_.show).mkString(", ")
-
-  extension (output: AuditOutputConfig) {
-
-    def outputName: Option[AuditOutputName] = output match {
-      case s: EsIndexBased      => Some(s.name)
-      case s: EsDataStreamBased => Some(s.name)
-      case s: LogBased          => Some(s.name)
-      case s: RollingFileBased  => Some(s.name)
-      case Disabled             => None
-    }
-
-  }
 
   extension (userMetadata: UserMetadata) {
 

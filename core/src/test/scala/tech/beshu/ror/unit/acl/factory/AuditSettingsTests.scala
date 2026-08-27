@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.factory
 
 import better.files.*
-import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Json, parser}
 import io.lemonlabs.uri.Uri
@@ -309,7 +308,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertSettings(
                 settings,
-                expectedAuditOutputs = NonEmptyList.of(Disabled)
+                expectedAuditOutputs = List.empty
               )
             }
           }
@@ -615,7 +614,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertSettings(
                 settings,
-                expectedAuditOutputs = NonEmptyList.of(Disabled)
+                expectedAuditOutputs = List.empty
               )
             }
           }
@@ -1196,7 +1195,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertSettings(
                 settings,
-                expectedAuditOutputs = NonEmptyList.of(Disabled)
+                expectedAuditOutputs = List.empty
               )
             }
           }
@@ -1496,14 +1495,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             .runSyncUnsafe()
           inside(core) {
             case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditOutputs), _, _))) =>
-              auditOutputs.size should be(2)
+              auditOutputs.size should be(1)
 
-              val output1 = auditOutputs.head
-              output1 should be(Disabled)
-
-              val output2 = auditOutputs.toList(1)
-              output2 shouldBe a[LogBased]
-              val output2Config = output2.asInstanceOf[LogBased].config
+              val output = auditOutputs.head
+              output shouldBe a[LogBased]
+              val output2Config = output.asInstanceOf[LogBased].config
               output2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
               output2Config.serializer
                 .asInstanceOf[AuditSerializer.Delegating]
@@ -2446,7 +2442,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertSettings(settings: RawRorSettings, expectedAuditOutputs: NonEmptyList[AuditOutputConfig]): Unit = {
+  private def assertSettings(settings: RawRorSettings, expectedAuditOutputs: List[AuditOutputConfig]): Unit = {
     val core = factory()
       .createCoreFrom(
         settings,
@@ -2618,7 +2614,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           case c: EsDataStreamBased => c.config.serializer
           case c: LogBased          => c.config.serializer
           case c: RollingFileBased  => c.config.serializer
-          case Disabled             => throw new IllegalStateException("Expected enabled output")
         }
       case _ =>
         throw new IllegalStateException("Expected auditingSettings are not present")

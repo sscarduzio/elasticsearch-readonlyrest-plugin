@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration
 
-import cats.data.NonEmptyList
 import cats.effect.Resource
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -188,7 +187,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   ) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
     val settings = AuditOutputs.Configured(
-      NonEmptyList.of(
+      List(
         EsIndexBased(
           AuditOutputName.random(),
           EsIndexBasedSettings(

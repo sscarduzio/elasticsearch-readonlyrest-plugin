@@ -1647,7 +1647,7 @@ class ReadonlyRestStartingTests
               capability,
               AuditingConfig(
                 AuditOutputs.Configured(
-                  NonEmptyList.of(
+                  List(
                     EsDataStreamBased(AuditOutputName.random(), dataStreamOutputConfig1),
                     EsDataStreamBased(AuditOutputName.random(), dataStreamOutputConfig2)
                   )

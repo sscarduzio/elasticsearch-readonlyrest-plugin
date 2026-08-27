@@ -446,7 +446,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       Task.now {
         val configuredOutputNames: scala.collection.Set[AuditOutputName] = auditingConfig.outputs match {
           case AuditOutputs.Configured(outputs) =>
-            outputs.toList.flatMap(_.outputName).toSet
+            outputs.map(_.name).toSet
           case _ => scala.collection.Set.empty
         }
         val globalOutputNames: scala.collection.Set[AuditOutputName] =
