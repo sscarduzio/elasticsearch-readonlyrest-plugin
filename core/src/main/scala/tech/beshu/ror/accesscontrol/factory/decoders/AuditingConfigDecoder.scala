@@ -24,7 +24,6 @@ import io.circe.*
 import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
 import tech.beshu.ror.accesscontrol.audit.configurable.AuditFieldValueDescriptorParser
 import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, JsonAuditSerializer}

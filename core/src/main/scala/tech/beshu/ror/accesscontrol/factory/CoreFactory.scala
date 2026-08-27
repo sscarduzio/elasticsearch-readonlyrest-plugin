@@ -424,7 +424,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
         val configuredOutputNames: scala.collection.Set[AuditOutputName] = auditingConfig.outputs match {
           case AuditOutputs.Configured(outputs) =>
             outputs.toList.map(_.name).toSet
-          case _ => scala.collection.Set.empty
+          case AuditOutputs.Defaults | AuditOutputs.Disabled =>
+            scala.collection.Set.empty
         }
         val globalOutputNames: scala.collection.Set[AuditOutputName] =
           if (auditingConfig.defaultAclLog) configuredOutputNames ++ Set(AuditOutputName.defaultAclLog)

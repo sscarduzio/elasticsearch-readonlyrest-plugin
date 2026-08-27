@@ -42,7 +42,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSetup
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
-import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities.IndexOrDataStream
+import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities.{IndexOnly, IndexOrDataStream}
 import tech.beshu.ror.accesscontrol.audit.output.{
   AuditDataStreamCreator,
   DataStreamBasedAuditOutputServiceCreator,
@@ -75,7 +75,7 @@ import tech.beshu.ror.es.services.{
   IndexBasedAuditOutputService,
   IndexDocumentManager
 }
-import tech.beshu.ror.mocks.{MockDataStreamBasedAuditOutputServiceCreator, MockIndexBasedAuditOutputServiceCreator}
+import tech.beshu.ror.mocks.{MockIndexBasedAuditOutputServiceCreator, MockedCapabilities}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.ror.RawRorSettings
@@ -297,10 +297,7 @@ class ReadonlyRestStartingTests
                   new CoreCreationResult(
                     Core(mockEnabledAccessControl, RorDependencies.noOp, auditingConfig),
                     new AuditSetup.AnyOutput(
-                      new IndexOrDataStream(
-                        MockIndexBasedAuditOutputServiceCreator,
-                        MockDataStreamBasedAuditOutputServiceCreator
-                      ),
+                      MockedCapabilities.indexOrDataStream,
                       auditingConfig
                     )
                   )
@@ -1934,6 +1931,43 @@ class ReadonlyRestStartingTests
         rorInstance.engines.value.mainEngine.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
       }
     }
+    "be started with audit outputs supported by all ES versions" when {
+      "the ES module supports the index based audit output only" in {
+        val usedAuditClusters = new AtomicReference[Vector[AuditCluster]](Vector.empty)
+        val indexCreator: IndexBasedAuditOutputServiceCreator = (cluster: AuditCluster) => {
+          usedAuditClusters.updateAndGet(_ :+ cluster)
+          MockIndexBasedAuditOutputServiceCreator.indexService
+        }
+        val capability = new IndexOnly(indexCreator)
+
+        val auditingConfig = AuditingConfig(
+          outputs = AuditOutputs.Configured(
+            NonEmptyList.one(EsIndexBased(AuditOutputName.random(), EsIndexBased.Config.default))
+          ),
+          defaultAclLog = true,
+          esNodeSettings = defaultTestEsNodeSettings
+        )
+        val coreFactory = mockCoreFactory(
+          mockedCoreFactory = mock[CoreFactory],
+          "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
+          mockEnabledAccessControl,
+          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          Some(new AuditSetup.SupportedByAllEsVersions(capability, auditingConfig))
+        )
+
+        implicit val systemContext: SystemContext = createSystemContext()
+        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager], capability)
+        val esConfigBasedRorSettings =
+          forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_with_audit/")
+
+        val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+        inside(result) { case Right(rorInstance) =>
+          rorInstance.auditOutputs.value should be(auditingConfig.outputs)
+          usedAuditClusters.get() should be(Vector(AuditCluster.LocalAuditCluster))
+          rorInstance.stop().runSyncUnsafe()
+        }
+      }
+    }
     "be started with a retry" when {
       "the first starting attempts fail, but the core can be eventually created" in {
         val (readonlyRest, esConfigBasedRorSettings) = readonlyRestWithCoreFactoryFailing(
@@ -2015,10 +2049,7 @@ class ReadonlyRestStartingTests
               new CoreCreationResult(
                 Core(accessControl, RorDependencies.noOp, auditingConfig),
                 new AuditSetup.AnyOutput(
-                  new IndexOrDataStream(
-                    MockIndexBasedAuditOutputServiceCreator,
-                    MockDataStreamBasedAuditOutputServiceCreator
-                  ),
+                  MockedCapabilities.indexOrDataStream,
                   auditingConfig
                 )
               )
@@ -2100,7 +2131,17 @@ class ReadonlyRestStartingTests
   )(
       implicit systemContext: SystemContext
   ): ReadonlyRest = {
-    ReadonlyRest.create(factory, indexDocumentManager, new IndexOrDataStream(indexCreator, dataStreamCreator))
+    readonlyRestBoot(factory, indexDocumentManager, new IndexOrDataStream(indexCreator, dataStreamCreator))
+  }
+
+  private def readonlyRestBoot(
+      factory: CoreFactory,
+      indexDocumentManager: IndexDocumentManager,
+      auditCapabilities: EsAuditCapabilities
+  )(
+      implicit systemContext: SystemContext
+  ): ReadonlyRest = {
+    ReadonlyRest.create(factory, indexDocumentManager, auditCapabilities)
   }
 
   private def mockCoreFactory(
@@ -2134,10 +2175,7 @@ class ReadonlyRestStartingTests
       .returns(Task.now(Right {
         val resolvedAuditSetup = auditSetup.getOrElse(
           new AuditSetup.AnyOutput(
-            new IndexOrDataStream(
-              MockIndexBasedAuditOutputServiceCreator,
-              MockDataStreamBasedAuditOutputServiceCreator
-            ),
+            MockedCapabilities.indexOrDataStream,
             AuditingTool.AuditingConfig(
               AuditOutputs.Disabled,
               defaultAclLog = true,

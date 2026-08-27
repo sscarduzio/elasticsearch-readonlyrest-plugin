@@ -30,25 +30,27 @@ import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, IndexBased
 
 object MockedCapabilities {
 
-  val standard: EsAuditCapabilities =
+  val indexOrDataStream: EsAuditCapabilities.IndexOrDataStream =
     new EsAuditCapabilities.IndexOrDataStream(
       MockIndexBasedAuditOutputServiceCreator,
       MockDataStreamBasedAuditOutputServiceCreator
     )
 
-  val legacy: EsAuditCapabilities =
+  val indexOnly: EsAuditCapabilities.IndexOnly =
     new EsAuditCapabilities.IndexOnly(MockIndexBasedAuditOutputServiceCreator)
 }
 
 object MockIndexBasedAuditOutputServiceCreator extends IndexBasedAuditOutputServiceCreator {
 
-  override protected def index(cluster: AuditCluster): IndexBasedAuditOutputService = new IndexBasedAuditOutputService {
+  val indexService: IndexBasedAuditOutputService = new IndexBasedAuditOutputService {
     override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
         implicit requestId: RequestId
     ): Unit =
       throw new IllegalStateException("Cannot use it. It's just a mock")
     override def close(): Unit = ()
   }
+
+  override protected def index(cluster: AuditCluster): IndexBasedAuditOutputService = indexService
 
 }
 

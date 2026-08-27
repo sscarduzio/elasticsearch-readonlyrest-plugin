@@ -64,7 +64,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
         httpClientsFactory,
         ldapConnectionPoolProvider,
         mockProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), _.core.accessControl))
       .runSyncUnsafe()

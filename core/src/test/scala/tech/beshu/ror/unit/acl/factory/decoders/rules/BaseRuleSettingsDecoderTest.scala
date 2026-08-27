@@ -68,7 +68,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule: ClassTag] extends AnyWordS
           httpClientsFactory,
           ldapConnectionPoolProvider,
           mocksProvider,
-          MockedCapabilities.standard
+          MockedCapabilities.indexOrDataStream
         )
         .map(_.map(_.core))
         .runSyncUnsafe()
@@ -97,7 +97,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule: ClassTag] extends AnyWordS
           httpClientsFactory,
           ldapConnectionPoolProvider,
           mocksProvider,
-          MockedCapabilities.standard
+          MockedCapabilities.indexOrDataStream
         )
         .runSyncUnsafe()
     ) { case Left(error) =>

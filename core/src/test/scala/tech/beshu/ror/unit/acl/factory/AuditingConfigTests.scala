@@ -27,7 +27,6 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, Inside}
 import squants.information.Megabytes
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputs.Configured
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditingConfig}
@@ -50,7 +49,7 @@ import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.adapters.{DeprecatedAuditLogSerializerAdapter, EnvironmentAwareAuditLogSerializerAdapter}
 import tech.beshu.ror.audit.instances.*
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
-import tech.beshu.ror.es.{EsEnv, EsVersion}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.mocks.{
   MockHttpClientsFactory,
   MockIndexBasedAuditOutputServiceCreator,
@@ -111,7 +110,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider,
             NoOpMocksProvider,
-            MockedCapabilities.standard
+            MockedCapabilities.indexOrDataStream
           )
           .map(_.map(_.core))
           .runSyncUnsafe()
@@ -226,7 +225,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
               NoOpMocksProvider,
-              MockedCapabilities.standard
+              MockedCapabilities.indexOrDataStream
             )
             .map(_.map(_.core))
             .runSyncUnsafe()
@@ -1429,18 +1428,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               )
             )
           }
-          "ES version is greater than or equal 7.9.0" in {
-            val esVersions =
-              List(
-                EsVersion(8, 17, 0),
-                EsVersion(8, 1, 0),
-                EsVersion(8, 0, 0),
-                EsVersion(7, 17, 27),
-                EsVersion(7, 10, 0),
-                EsVersion(7, 9, 1),
-                EsVersion(7, 9, 0),
-              )
-
+          "the ES module supports data streams" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
                 |  audit:
@@ -1453,18 +1441,16 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               """.stripMargin
             )
 
-            esVersions.foreach { _ =>
-              assertDataStreamAuditOutputConfigPresent[QueryAuditLogSerializer](
-                settings,
-                expectedDataStreamName = "custom_audit_data_stream",
-                expectedAuditCluster = RemoteAuditCluster(
-                  nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
-                  mode = ClusterMode.RoundRobin,
-                  credentials = None,
-                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
-                ),
-              )
-            }
+            assertDataStreamAuditOutputConfigPresent[QueryAuditLogSerializer](
+              settings,
+              expectedDataStreamName = "custom_audit_data_stream",
+              expectedAuditCluster = RemoteAuditCluster(
+                nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                mode = ClusterMode.RoundRobin,
+                credentials = None,
+                ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
+              ),
+            )
           }
         }
 
@@ -1488,7 +1474,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
               NoOpMocksProvider,
-              MockedCapabilities.standard
+              MockedCapabilities.indexOrDataStream
             )
             .map(_.map(_.core))
             .runSyncUnsafe()
@@ -1545,7 +1531,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
               NoOpMocksProvider,
-              MockedCapabilities.standard
+              MockedCapabilities.indexOrDataStream
             )
             .map(_.map(_.core))
             .runSyncUnsafe()
@@ -1561,6 +1547,23 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 .asInstanceOf[AuditSerializer.Delegating]
                 .serializer shouldBe a[QueryAuditLogSerializer]
           }
+        }
+        "all outputs are disabled" in {
+          val settings = rorSettingsWithAuditUnsafe(
+            """
+              |  audit:
+              |    enabled: true
+              |    outputs:
+              |    - type: index
+              |      enabled: false
+              |    - type: log
+              |      enabled: false
+              |    - type: data_stream
+              |      enabled: false
+            """.stripMargin
+          )
+
+          assertOutputsDisabled(settings)
         }
         "default_acl_log_enabled is true by default" should {
           "produce defaultAclLog=true when audit is enabled with outputs and no explicit default_acl_log_enabled" in {
@@ -1580,7 +1583,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1605,7 +1608,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1633,7 +1636,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1659,7 +1662,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1685,7 +1688,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -1709,7 +1712,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 MockHttpClientsFactory,
                 MockLdapConnectionPoolProvider,
                 NoOpMocksProvider,
-                MockedCapabilities.standard
+                MockedCapabilities.indexOrDataStream
               )
               .map(_.map(_.core))
               .runSyncUnsafe()
@@ -2000,18 +2003,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 expectedErrorMessage = "Error for field 'cluster': Non empty list of valid URI is required"
               )
             }
-            "es version is lower than 7.9.0" in {
-              val esVersions =
-                List(
-                  EsVersion(7, 8, 2),
-                  EsVersion(7, 8, 1),
-                  EsVersion(7, 8, 0),
-                  EsVersion(7, 7, 0),
-                  EsVersion(7, 0, 0),
-                  EsVersion(6, 8, 23),
-                  EsVersion(5, 0, 5),
-                )
-
+            "the ES module does not support data streams" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
                   |  audit:
@@ -2021,14 +2013,12 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 """.stripMargin
               )
 
-              esVersions.foreach { _ =>
-                assertInvalidSettings(
-                  settings,
-                  expectedErrorMessage =
-                    "Error for field 'type': Data stream audit output is supported from Elasticsearch version 7.9.0. Use 'index' type or upgrade to 7.9.0 or later.",
-                  auditCapabilities = IndexOnly(MockIndexBasedAuditOutputServiceCreator)
-                )
-              }
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "Error for field 'type': Data stream audit output is supported from Elasticsearch version 7.9.0. Use 'index' type or upgrade to 7.9.0 or later.",
+                auditCapabilities = IndexOnly(MockIndexBasedAuditOutputServiceCreator)
+              )
             }
           }
           "unknown output type is set" in {
@@ -2060,13 +2050,13 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               settings,
               expectedErrorMessage =
                 "Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]",
-              auditCapabilities = MockedCapabilities.standard
+              auditCapabilities = MockedCapabilities.indexOrDataStream
             )
 
             assertInvalidSettings(
               settings,
               expectedErrorMessage = "Unsupported type of audit output: custom_type. Supported types: [index, log]",
-              auditCapabilities = MockedCapabilities.legacy
+              auditCapabilities = MockedCapabilities.indexOnly
             )
           }
           "'outputs' array is empty" in {
@@ -2494,7 +2484,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2510,7 +2500,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2560,7 +2550,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2603,7 +2593,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2644,7 +2634,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2674,7 +2664,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2705,7 +2695,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
         NoOpMocksProvider,
-        MockedCapabilities.standard
+        MockedCapabilities.indexOrDataStream
       )
       .map(_.map(_.core))
       .runSyncUnsafe()
@@ -2724,7 +2714,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
   private def assertInvalidSettings(
       settings: RawRorSettings,
       expectedErrorMessage: String,
-      auditCapabilities: EsAuditCapabilities = MockedCapabilities.standard
+      auditCapabilities: EsAuditCapabilities = MockedCapabilities.indexOrDataStream
   ): Unit = {
     val core = factory()
       .createCoreFrom(

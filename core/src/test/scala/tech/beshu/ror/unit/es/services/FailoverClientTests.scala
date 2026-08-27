@@ -23,7 +23,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.services.MultiNodeRestClient.{FailoverDecision, RequestExecutor}
-import tech.beshu.ror.es.services.{FailoverClient, MultiNodeRestClient, RoundRobinClient}
+import tech.beshu.ror.es.services.{DelegatingMultiNodeRestClient, FailoverClient, MultiNodeRestClient}
 
 import java.io.IOException
 import java.time.{Clock, Instant, ZoneId, ZoneOffset}
@@ -251,10 +251,10 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
     }
   }
 
-  "RoundRobinClient" should {
+  "DelegatingMultiNodeRestClient" should {
     "delegate requests to the underlying executor" in {
       val executor = new RecordingExecutor(_ => Right("response"))
-      val client = new RoundRobinClient(executor)
+      val client = new DelegatingMultiNodeRestClient(executor)
 
       val result = performRequest(client)
 
@@ -264,7 +264,7 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
 
     "close the underlying executor" in {
       val executor = new RecordingExecutor(_ => Right("response"))
-      val client = new RoundRobinClient(executor)
+      val client = new DelegatingMultiNodeRestClient(executor)
 
       client.close()
 
