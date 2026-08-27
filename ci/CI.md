@@ -335,6 +335,11 @@ An entry belongs to the ref that saved it. Every run also reads the default bran
 pull request run reads its merge ref and the base branch, but never the head branch. A rebuild
 dispatched from a feature branch therefore writes an entry that no pull request run finds.
 
+A dispatch off `develop` stays allowed. The image bakes the commit's Gradle dependencies, so a
+branch that bumps one needs its own tag and its own build, and the push is what that branch needs.
+Only the cache entry goes to waste, so `record_digest` raises a `::warning::` instead of a refusal.
+Dispatch the workflow again on `develop` after the merge.
+
 The rebuild does not save that entry. It runs on an Ubicloud runner, and an Ubicloud runner keeps
 its own Actions cache. A GitHub-hosted runner cannot read it, and `setup` is GitHub-hosted. So the
 digest travels as a job output to `record_digest`, a small job on `ubuntu-latest`, which saves it.

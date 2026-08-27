@@ -33,6 +33,8 @@ jobs:
   # ── BUILD ─────────────────────────────────────────────────────────────────
   build:
     # A GitHub schedule fires on the default branch. The guard holds if that branch ever changes.
+    # A dispatch stays open to every branch. The image bakes this commit's Gradle dependencies, so a
+    # branch that bumps one needs its own tag and its own build. record_digest warns about the cost.
     if: github.event_name != 'schedule' || github.ref == 'refs/heads/develop'
     runs-on: ubicloud-standard-4
     timeout-minutes: 240
@@ -90,9 +92,14 @@ jobs:
         env:
           DIGEST: ${{ needs.build.outputs.digest }}
         run: echo "$DIGEST" > .toolchains-digest
+      # An entry belongs to the ref that saved it. A develop run reads develop, and a pull request
+      # run reads its merge ref and the base branch, but never the head branch.
+      - name: Warn when no CI run can read this entry
+        if: github.ref != 'refs/heads/develop'
+        run: |
+          echo "::warning::This rebuild ran on ${GITHUB_REF}. A cache entry belongs to the ref that saved it, so a develop run and a pull request run cannot read this one. Those runs pull the toolchains image from Docker Hub. Dispatch this workflow on develop after the merge."
       # A key is write-once, so the run id gives each rebuild its own entry. GitHub removes an entry
-      # that nothing reads for 7 days, and setup reads this one every run. A branch reads its own
-      # entries and those of the default branch, so dispatch this workflow on develop.
+      # that nothing reads for 7 days, and setup reads this one every run.
       - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: .toolchains-digest
