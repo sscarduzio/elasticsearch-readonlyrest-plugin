@@ -331,6 +331,12 @@ and `setup` reads this one every run. A new tag matches no entry, so its runs us
 the next rebuild. The same holds now: run **Build toolchains image** once, on `develop`, to write the
 first digest.
 
+The key and the prefix put two hyphens after the tag. One hyphen keeps `9.2.1` apart from `9.2.10`,
+but not from `9.2.1-arm64`: that key starts with the prefix of `9.2.1`. The runs of the shorter tag
+could then restore the digest of the longer one, and the mirror serves any digest of the repository,
+so those jobs would run the wrong image. Two hyphens keep the two apart, because no tag here ends
+with a hyphen.
+
 An entry belongs to the ref that saved it. Every run also reads the default branch, `develop`. A
 pull request run reads its merge ref and the base branch, but never the head branch. A rebuild
 dispatched from a feature branch therefore writes an entry that no pull request run finds.

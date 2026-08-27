@@ -77,7 +77,9 @@ jobs:
           [ -n "$DIGEST" ] || { echo "::error::The push of $TOOLCHAINS_IMAGE printed no digest."; exit 1; }
           echo ">>> Pushed digest: $DIGEST"
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
-          echo "key=toolchains-digest-${TOOLCHAINS_IMAGE##*:}-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+          # Two hyphens after the tag. ci.yml restores by prefix, and one hyphen would let a tag
+          # that extends another, such as ...-9.2.1-arm64, answer the prefix of ...-9.2.1.
+          echo "key=toolchains-digest-${TOOLCHAINS_IMAGE##*:}--${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
 
   # ── RECORD_DIGEST ─────────────────────────────────────────────────────────
   # An Ubicloud runner keeps its own Actions cache. A save there is invisible to a GitHub-hosted

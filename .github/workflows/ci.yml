@@ -137,7 +137,8 @@ jobs:
           [ -n "${TOOLCHAINS_IMAGE:-}" ] || { echo "::error::ci/toolchains/image.env sets no tag."; exit 1; }
           echo "TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE" >> "$GITHUB_ENV"
       - id: digest_key
-        run: echo "prefix=toolchains-digest-${TOOLCHAINS_IMAGE##*:}-" >> "$GITHUB_OUTPUT"
+        # Two hyphens. One would also match a tag that extends this one, such as -9.2.1-arm64.
+        run: echo "prefix=toolchains-digest-${TOOLCHAINS_IMAGE##*:}--" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: .toolchains-digest

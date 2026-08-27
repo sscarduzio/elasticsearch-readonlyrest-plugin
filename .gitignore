@@ -72,3 +72,7 @@ docker-envs/eck/kind-cluster/subst-ror
 .bsp/
 .metals/
 .vscode/
+
+// CI
+// ci/resolve-toolchains-image.sh reads this file. The cache restore in the setup job writes it.
+/.toolchains-digest
