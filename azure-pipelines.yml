@@ -1,6 +1,6 @@
-# Single source of truth for the CI toolchains image (bump the tag here on a JDK/Gradle change).
-# Declared as a container resource (NOT a variable) because the job-level `container:` property is
-# resolved at compile time and does not expand $(variables).
+# The CI toolchains image. ci/toolchains/image.env holds the tag, and a JDK or Gradle change bumps
+# it there. The copy below must say the same. Azure resolves the job-level `container:` property at
+# compile time and does not expand $(variables), so this one cannot read the file.
 resources:
   containers:
     - container: ror-toolchains
@@ -37,7 +37,7 @@ trigger: none
 
 pr: none
 
-# (weekly toolchains-image rebuild now lives in the GitHub Actions workflow's schedule)
+# (the weekly toolchains-image rebuild now lives in .github/workflows/build-toolchains-image.yml)
 
 parameters:
   - name: actionToPerform
@@ -149,8 +149,10 @@ stages:
             displayName: 'Free up disk space'
           - script: |
               set -e
-              # The image tag lives in the resources.containers block of this file (single source of truth)
-              IMAGE=$(grep -oE 'beshultd/ror-ci-toolchains:[^ ]+' azure-pipelines.yml | head -1)
+              # ci/toolchains/image.env holds the tag. The resources.containers block at the top of
+              # this file carries a copy, because Azure cannot read the file there.
+              . ci/toolchains/image.env
+              IMAGE="$TOOLCHAINS_IMAGE"
               echo ">>> Building $IMAGE"
               docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$IMAGE" .
               echo "$var_docker_hub_rw_token" | docker login -u "$var_docker_hub_user" --password-stdin

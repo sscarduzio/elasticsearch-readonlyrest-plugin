@@ -16,12 +16,13 @@
 #   * JDK 21  -> ES 9.x adapters                                      (ES 9.x bundles Java 21)
 #
 # Build context MUST be the repo root (the build needs settings.gradle/*/build.gradle to
-# resolve dependencies during the priming step). Built & pushed by the BUILD_TOOLCHAINS_IMAGE
-# stage in azure-pipelines.yml — weekly on a schedule (keeps the baked cache fresh) or manually
-# (actionToPerform=build_toolchains_image) — or locally:
+# resolve dependencies during the priming step). Built & pushed by the Build toolchains image
+# workflow, .github/workflows/build-toolchains-image.yml — weekly on a schedule, which keeps the
+# baked cache fresh, or by hand — or locally:
 #
-#   docker build -f ci/toolchains/JdkToolchains.Dockerfile -t beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1 .
-#   docker push beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+#   . ci/toolchains/image.env
+#   docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
+#   docker push "$TOOLCHAINS_IMAGE"
 #
 # (BuildKit is required: the build context is filtered by the sibling
 # ci/toolchains/JdkToolchains.Dockerfile.dockerignore file.)
@@ -42,7 +43,7 @@
 #
 # A name that carries the mirror host is a different image identity, so these pulls do not fall back
 # to Docker Hub. Should the mirror stop serving one of them, set ROR_DOCKER_HUB_MIRROR=false on the
-# build_toolchains_image job.
+# build job of build-toolchains-image.yml.
 ARG MIRROR=
 
 # ---- JDK sources (all temurin images install to /opt/java/openjdk) ----------------------
