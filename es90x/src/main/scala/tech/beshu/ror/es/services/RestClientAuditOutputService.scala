@@ -104,37 +104,33 @@ object RestClientAuditOutputService extends RequestIdAwareLogging {
 
   def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditOutputService = {
     val hosts = remoteCluster.nodes.toNonEmptyList.map(toHttpHost)
-    createService(remoteCluster, createClusterAwareClient(remoteCluster, hosts), hosts)
+    val restClient = createRestClient(remoteCluster, hosts)
+    createService(remoteCluster, restClient)
   }
 
   private def createClusterAwareClient(
       remoteCluster: AuditCluster.RemoteAuditCluster,
-      hosts: NonEmptyList[HttpHost]
+      restClient: RestClient
   ): MultiNodeRestClient[Request, Response] = {
     remoteCluster.mode match {
       case ClusterMode.RoundRobin =>
-        RestClientRequestExecutor.roundRobinClient(createRestClient(remoteCluster, hosts))
+        RestClientRequestExecutor.roundRobinClient(restClient)
     }
   }
 
-  private def createAuditOutputCreator(
-      hosts: NonEmptyList[HttpHost],
-      remoteCluster: AuditCluster.RemoteAuditCluster
-  ) = {
-    Resource
-      .make(Task.delay(createRestClient(remoteCluster, hosts)))(client => Task.delay(client.close()))
-      .map(client => AuditDataStreamCreator(new RestClientDataStreamService(client)))
+  // the same client submits the audit events, so the resource must not close it. The service closes it.
+  private def createAuditOutputCreator(restClient: RestClient) = {
+    Resource.eval(Task.delay(AuditDataStreamCreator(new RestClientDataStreamService(restClient))))
   }
 
   private def createService(
       remoteCluster: AuditCluster.RemoteAuditCluster,
-      client: MultiNodeRestClient[Request, Response],
-      httpHosts: NonEmptyList[HttpHost]
+      restClient: RestClient
   ) = {
     new RestClientAuditOutputService(
-      client = client,
+      client = createClusterAwareClient(remoteCluster, restClient),
       inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
-      dataStreamCreator = createAuditOutputCreator(httpHosts, remoteCluster)
+      dataStreamCreator = createAuditOutputCreator(restClient)
     )
   }
 
