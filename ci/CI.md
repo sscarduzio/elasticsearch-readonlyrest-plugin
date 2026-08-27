@@ -2,7 +2,8 @@
 
 CI runs on GitHub Actions: `.github/workflows/ci.yml`. Linux jobs run on **Ubicloud**
 runners (`ubicloud-standard-4` = 4 vCPU / 16 GB) inside the `beshultd/ror-ci-toolchains`
-image; Windows jobs run on GitHub-hosted `windows-2025`.
+image; Windows jobs run on GitHub-hosted `windows-2025`. `ci/toolchains/image.env` holds that
+image's tag, and every workflow that needs it sources that file.
 
 Every Linux job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this
 directory contain the build logic; the workflow only orchestrates.
@@ -22,18 +23,18 @@ directory contain the build logic; the workflow only orchestrates.
 | `e2e_prepare` | resolves the e2e matrix + starts the ROR KBN image build | pushes + PRs (not drafts) |
 | `e2e_tests` | Cypress e2e suite, one job per ES version | pushes + PRs (not drafts) |
 | `build_ror` | builds all plugin zips + bytecode-reuse guard | PRs |
-| `build_toolchains_image` | rebuilds the toolchains image | weekly cron + manual |
 | `determine_ci_type` → `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
 | `disk_probe` | host-disk recon | manual `run_disk_probe` |
 
 Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
-`run_all_tests_on_windows`, `run_e2e_tests`, `build_toolchains_image`,
-`release_without_testing`, `run_disk_probe`.
+`run_all_tests_on_windows`, `run_e2e_tests`, `release_without_testing`, `run_disk_probe`.
 
 Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
-above: `mirror-es-libs.yml` (mirrors ES jars into the libs store — see [S3 stores](#s3-stores)),
-`pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml` (regenerates the ES
-action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand ROR+ES dev images).
+above: `build-toolchains-image.yml` (rebuilds the image every CI job runs in — weekly cron and
+manual; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml` (mirrors ES jars
+into the libs store — see [S3 stores](#s3-stores)), `pr-conventions.yml` (PR title/changelog checks),
+`actionstrings_gen.yml` (regenerates the ES action-string lists in the docs repo),
+`publish-pre-builds.yml` (on-demand ROR+ES dev images).
 
 Two orchestration rules worth knowing before editing conditions:
 
@@ -225,10 +226,10 @@ Do not put a `docker login` in a workflow. Two mechanisms with different credent
 other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
 
 The script cannot authenticate the `container:` image, because the runner pulls that image before
-step 1 starts. Each of the ten `container:` blocks carries a `credentials:` block for that pull.
-They share one anchor, `&toolchains_container`, so the credentials have one definition. A pull
-request from a fork supplies empty secrets, and the runner then skips the login and pulls
-anonymously.
+step 1 starts. The `&toolchains_container` anchor carries a `credentials:` block for that pull, and
+the ten `container:` blocks share it. A fork supplies empty secrets, and the runner then skips the
+login and pulls anonymously. A mirrored name skips it too — see
+[The `container:` image](#the-container-image).
 
 ### Docker Hub pull mirror
 
@@ -243,7 +244,9 @@ alone does not stop every rejection, because two limits apply:
   `429 Too Many Requests`, and no credential prevents it.
 
 The mirror serves `docker.io`. It cannot serve `docker.elastic.co` or `ghcr.io`, and it cannot accept
-a push. Three clients pull images, and the script sets all three from one variable:
+a push. Three clients pull images inside a job, and the script sets all three from one variable. A
+fourth pull happens before any step and needs an answer of its own — see
+[The `container:` image](#the-container-image):
 
 | Client | Setting | Reaches |
 |---|---|---|
@@ -272,7 +275,7 @@ own `ror-it-es:<hash>` image and then tried to pull it, which failed every `it_l
 the day the mirror cannot serve an image a job needs.
 
 The flag answers one question: may this job read a cached answer? It does not follow from what the
-job pushes. The two jobs that push most, `publish-pre-builds` and `build_toolchains_image`, need the
+job pushes. The two workflows that push most, `publish-pre-builds` and `build-toolchains-image`, need the
 mirror most, because a 429 hits their base-image pulls. A mirror rewrites pulls only. A push names
 `beshultd/...` and goes to Docker Hub whatever the mirror says.
 
@@ -289,9 +292,89 @@ Two more things stay off the mirror by themselves, and both must remain so:
   the variables above, so both address Docker Hub by themselves.
 - Every push. A pull-through cache is read-only, so `beshultd/*` images go to Docker Hub.
 
-The `container:` image cannot use a mirror at all, for the same reason it cannot use the login: the
-runner pulls it before step 1 starts. That is about 11 pulls per `ci.yml` run. Publishing the
-toolchains image to `ghcr.io` is the only way to take them off the Docker Hub budget.
+### The `container:` image
+
+The runner pulls the job `container:` image before step 1 starts. `ci/configure-docker.sh` cannot
+reach that pull, so it sets neither the mirror nor the login for it. Ten jobs and their matrices
+share the image, which makes it the most pulled image of a run. Docker Hub answered a whole run with
+`429 toomanyrequests` on 2026-08-26.
+
+`container: image:` can read a job output. The `setup` job runs `ci/resolve-toolchains-image.sh`
+once, and the `&toolchains_container` anchor reads its two outputs: the name to pull, and whether
+that name needs a Docker Hub login.
+
+A mirrored name carries the digest, not the tag: `mirror.gcr.io/beshultd/ror-ci-toolchains@sha256:…`.
+The jobs of one run start hours apart, and a tag can move between the check and a pull. A Docker Hub
+name keeps the tag, because no digest is proven in that case.
+
+So `setup` asks the mirror about the digest, not about the tag. A digest names the bytes, and a
+cache cannot answer it with the wrong image. The rebuild records the digest of its push in the
+Actions cache. `setup` then sends the mirror one HEAD request for that digest. The request downloads
+no image, and it reaches no Docker Hub:
+
+| What the script finds | What the run pulls |
+|---|---|
+| no digest on record | Docker Hub |
+| the mirror cannot serve the digest | Docker Hub |
+| the mirror serves the digest | the mirror |
+
+Docker Hub is the safe answer, so a miss costs speed only. `setup` writes the choice to the step
+summary, so the run page shows which registry a run used, and why.
+
+The mirror fetches a digest it has never held. So a run keeps the mirror in the hours after a
+rebuild, before the mirror knows the new tag. A question about the tag would lose the mirror in that
+window, where the recorded digest is newest.
+
+The cache key holds the tag and the rebuild's run id. A key is write-once, so each rebuild adds an
+entry and `setup` restores the newest by prefix. GitHub drops an entry that nothing reads for 7 days,
+and `setup` reads this one every run. A new tag matches no entry, so its runs use Docker Hub until
+the next rebuild. The same holds now: run **Build toolchains image** once, on `develop`, to write the
+first digest.
+
+The key and the prefix put two hyphens after the tag. One hyphen keeps `9.2.1` apart from `9.2.10`,
+but not from `9.2.1-arm64`: that key starts with the prefix of `9.2.1`. The runs of the shorter tag
+could then restore the digest of the longer one, and the mirror serves any digest of the repository,
+so those jobs would run the wrong image. Two hyphens keep the two apart, because no tag here ends
+with a hyphen.
+
+An entry belongs to the ref that saved it. Every run also reads the default branch, `develop`. A
+pull request run reads its merge ref and the base branch, but never the head branch. A rebuild
+dispatched from a feature branch therefore writes an entry that no pull request run finds.
+
+A dispatch off `develop` stays allowed. The image bakes the commit's Gradle dependencies, so a
+branch that bumps one needs its own tag and its own build, and the push is what that branch needs.
+Only the cache entry goes to waste, so `record_digest` raises a `::warning::` instead of a refusal.
+Dispatch the workflow again on `develop` after the merge.
+
+The rebuild does not save that entry. It runs on an Ubicloud runner, and an Ubicloud runner keeps
+its own Actions cache. A GitHub-hosted runner cannot read it, and `setup` is GitHub-hosted. So the
+digest travels as a job output to `record_digest`, a small job on `ubuntu-latest`, which saves it.
+Both ends then read one store.
+
+The rebuild lives in `build-toolchains-image.yml`, not in `ci.yml`. It takes up to four hours, and
+no test run waits for it. A rebuild in `ci.yml` would also hold the `develop` concurrency group for
+those hours, and every push to `develop` would queue behind it.
+
+The rebuild keeps a concurrency group of its own, `build-toolchains-image`. Two rebuilds push one
+tag and file two cache entries, and `setup` takes the newest entry, which need not hold the manifest
+that Docker Hub keeps. A second run waits instead, because cancelling a four-hour build wastes it.
+
+A mirrored name needs no login, and a login against `mirror.gcr.io` would fail, so the `credentials:`
+block goes empty then. It goes empty for a fork as well, and the runner skips an empty login.
+
+A fork run gains the most. It has no secrets, so it pulled this image anonymously from Docker Hub,
+where the limit counts against the runner's address and every other anonymous puller shares it. The
+same run now pulls anonymously from `mirror.gcr.io`, which sets no limit. A fork run reads the base
+branch, so it finds the digest that a `develop` rebuild saved.
+
+One limit. The choice is made once, for the whole run. If the mirror stops answering during a run,
+the jobs that already took the mirrored name fail. The runner's pull has no fallback of its own.
+
+`ghcr.io` is the other direction. It would remove the digest bookkeeping, because the pull would no
+longer cross a cache, and a public package needs no `credentials:` block at all. It costs a tag in
+`image.env`, a `docker login ghcr.io` with `GITHUB_TOKEN`, `packages: write`, and a package the org
+makes public. It would not retire the mirror, which `buildx`, the test suite and the toolchains
+build still need for their own Docker Hub pulls. This change does not settle that question.
 
 ## Coverage: what happened to every Azure stage
 
@@ -302,7 +385,7 @@ Everything the Azure pipeline did is ported — nothing was dropped. The mapping
 | `SUPERSEDE_GUARD` | native `concurrency:` block (auto-cancel stale PR runs; branch pushes queue) |
 | `DETERMINE_CI_TYPE` | `setup` (branch flags, matrices) + `determine_ci_type` (release-type decision) |
 | `DISK_PROBE` | `disk_probe` (manual `run_disk_probe`) |
-| `BUILD_TOOLCHAINS_IMAGE` | `build_toolchains_image` (weekly cron + manual) |
+| `BUILD_TOOLCHAINS_IMAGE` | the standalone `build-toolchains-image.yml` workflow (weekly cron + manual) |
 | `TOOLCHAINS_VERIFY` | `toolchains_verify` |
 | `ES_S3_UP` | the standalone `mirror-es-libs.yml` workflow (manual; was a `newes/*` push trigger) |
 | `REQUIRED_CHECKS` | `required_checks` (same 4-task matrix) |
