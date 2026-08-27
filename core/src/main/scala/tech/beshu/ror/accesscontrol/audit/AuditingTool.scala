@@ -227,7 +227,7 @@ object AuditingTool extends RequestIdAwareLogging {
 
     final case class EsIndexBased(name: AuditOutputName, config: EsIndexBasedSettings) extends AuditOutputConfig
     final case class EsDataStreamBased(name: AuditOutputName, config: EsDataStreamBasedSettings)
-      extends AuditOutputConfig
+        extends AuditOutputConfig
     final case class LogBased(name: AuditOutputName, config: LogBasedSettings) extends AuditOutputConfig
     final case class RollingFileBased(name: AuditOutputName, config: RollingFileBasedSettings) extends AuditOutputConfig
     case object Disabled extends AuditOutputConfig
@@ -294,7 +294,14 @@ object AuditingTool extends RequestIdAwareLogging {
   )
 
   object AuditingConfig {
-    type SupportedByAllEsVersions = AuditingConfig[EsAuditCapabilities.SupportedByAllEsVersions]
+
+    /**
+     * Audit outputs that all supported ES versions accept. ES older than
+     * [[tech.beshu.ror.constants.EsFeatureVersions.dataStreamSupport]] has no data streams.
+     */
+    type OutputsSupportedByAllEsVersions = EsIndexBased | LogBased | RollingFileBased | Disabled.type
+
+    type SupportedByAllEsVersions = AuditingConfig[OutputsSupportedByAllEsVersions]
     type AnyOutput = AuditingConfig[AuditOutputConfig]
   }
 
@@ -307,7 +314,7 @@ object AuditingTool extends RequestIdAwareLogging {
       using Clock,
       LoggingContext
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
-    val effectiveOutputs: List[EsAuditCapabilities.SupportedByAllEsVersions] =
+    val effectiveOutputs: List[AuditingConfig.OutputsSupportedByAllEsVersions] =
       applyDefaults(config.outputs, config.defaultAclLog)
     val outputTasks = effectiveOutputs.flatMap {
       case s: EsIndexBased     => Some(createIndexOutput(s, creator))
@@ -338,7 +345,7 @@ object AuditingTool extends RequestIdAwareLogging {
     createAuditingTool(config.esNodeSettings, outputTasks)
   }
 
-  private def applyDefaults[O >: EsAuditCapabilities.SupportedByAllEsVersions <: AuditOutputConfig](
+  private def applyDefaults[O >: AuditingConfig.OutputsSupportedByAllEsVersions <: AuditOutputConfig](
       settings: AuditOutputs[O],
       defaultAclLog: Boolean
   ): List[O] = {

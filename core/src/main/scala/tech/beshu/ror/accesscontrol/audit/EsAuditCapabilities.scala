@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.audit
 
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
 import tech.beshu.ror.accesscontrol.audit.output.{
   DataStreamBasedAuditOutputServiceCreator,
   IndexBasedAuditOutputServiceCreator
@@ -25,12 +24,6 @@ import tech.beshu.ror.accesscontrol.audit.output.{
 sealed trait EsAuditCapabilities
 
 object EsAuditCapabilities {
-
-  /**
-   * Audit outputs that all supported ES versions accept. ES older than
-   * [[tech.beshu.ror.constants.EsFeatureVersions.dataStreamSupport]] has no data streams.
-   */
-  type SupportedByAllEsVersions = EsIndexBased | LogBased | RollingFileBased | Disabled.type
 
   final class IndexOnly(val creator: IndexBasedAuditOutputServiceCreator) extends EsAuditCapabilities
 

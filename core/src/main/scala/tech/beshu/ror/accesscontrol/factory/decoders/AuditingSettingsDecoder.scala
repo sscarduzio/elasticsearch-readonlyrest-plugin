@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
 import tech.beshu.ror.accesscontrol.audit.configurable.AuditFieldValueDescriptorParser
-import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, EsAuditCapabilities, JsonAuditSerializer}
+import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, JsonAuditSerializer}
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
   AuditClusterNode,
   ClusterMode,
@@ -69,7 +69,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
   def supportedByAllEsVersions(esEnv: EsEnv): Decoder[AuditingConfig.SupportedByAllEsVersions] =
     makeDecoder(esEnv, decodeAuditOutputSettingsSupportedByAllEsVersions)
 
-  private def makeDecoder[O >: EsAuditCapabilities.SupportedByAllEsVersions <: AuditOutputConfig](
+  private def makeDecoder[O >: AuditingConfig.OutputsSupportedByAllEsVersions <: AuditOutputConfig](
       esEnv: EsEnv,
       specificDecoder: Decoder[AuditOutputs[O]],
   ): Decoder[AuditingConfig[O]] =
@@ -153,18 +153,18 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
   }
 
   private def decodeAuditOutputSettingsSupportedByAllEsVersions
-      : Decoder[AuditOutputs[EsAuditCapabilities.SupportedByAllEsVersions]] = {
-    decodeAuditSettingsWithFallback[EsAuditCapabilities.SupportedByAllEsVersions](
+      : Decoder[AuditOutputs[AuditingConfig.OutputsSupportedByAllEsVersions]] = {
+    decodeAuditSettingsWithFallback[AuditingConfig.OutputsSupportedByAllEsVersions](
       simpleDecoder = auditOutputSimpleDecoder[
         AuditOutputType.SupportedByAllEsVersions,
-        EsAuditCapabilities.SupportedByAllEsVersions
+        AuditingConfig.OutputsSupportedByAllEsVersions
       ] {
         case (AuditOutputType.Index, name) => EsIndexBased(name, EsIndexBasedSettings.default)
         case (AuditOutputType.Log, name)   => LogBased(name, LogBasedSettings.default)
       },
       extendedDecoder = auditOutputExtendedDecoder[
         AuditOutputType.SupportedByAllEsVersions,
-        EsAuditCapabilities.SupportedByAllEsVersions
+        AuditingConfig.OutputsSupportedByAllEsVersions
       ] {
         case (c, AuditOutputType.Index, name) => c.as[EsIndexBasedSettings].map(cfg => EsIndexBased(name, cfg))
         case (c, AuditOutputType.Log, name)   => decodeLogOutput(name)(c)
@@ -225,7 +225,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   private def auditOutputExtendedDecoder[
       OUTPUT_TYPE <: AuditOutputType,
-      O >: EsAuditCapabilities.SupportedByAllEsVersions <: AuditOutputConfig
+      O >: AuditingConfig.OutputsSupportedByAllEsVersions <: AuditOutputConfig
   ](
       f: (HCursor, OUTPUT_TYPE, AuditOutputName) => Decoder.Result[O]
   )(
@@ -807,7 +807,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   private object DeprecatedAuditSettingsDecoder {
 
-    def instance: Decoder[AuditOutputs[EsAuditCapabilities.SupportedByAllEsVersions]] = Decoder.instance { c =>
+    def instance: Decoder[AuditOutputs[AuditingConfig.OutputsSupportedByAllEsVersions]] = Decoder.instance { c =>
       whenEnabled(c) {
         for {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)(
