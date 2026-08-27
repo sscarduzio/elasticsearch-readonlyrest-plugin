@@ -226,8 +226,9 @@ Do not put a `docker login` in a workflow. Two mechanisms with different credent
 other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
 
 The script cannot authenticate the `container:` image, because the runner pulls that image before
-step 1 starts. Nothing else authenticates it. That pull is anonymous, and the mirror answers it
-instead of Docker Hub. See [The `container:` image](#the-container-image).
+step 1 starts. Nothing else authenticates it. That pull is anonymous, and the registry that `setup`
+chose answers it: `mirror.gcr.io` on the normal path, Docker Hub on the fallback. See
+[The `container:` image](#the-container-image).
 
 ### Docker Hub pull mirror
 
