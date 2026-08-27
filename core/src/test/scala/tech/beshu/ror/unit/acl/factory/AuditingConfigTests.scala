@@ -1484,6 +1484,23 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 .serializer shouldBe a[QueryAuditLogSerializer]
           }
         }
+        "all outputs are disabled" in {
+          val settings = rorSettingsWithAuditUnsafe(
+            """
+              |  audit:
+              |    enabled: true
+              |    outputs:
+              |    - type: index
+              |      enabled: false
+              |    - type: log
+              |      enabled: false
+              |    - type: data_stream
+              |      enabled: false
+            """.stripMargin
+          )
+
+          assertOutputsDisabled(settings)
+        }
         "default_acl_log_enabled is true by default" should {
           "produce defaultAclLog=true when audit is enabled with outputs and no explicit default_acl_log_enabled" in {
             val settings = rorSettingsWithAuditUnsafe(
