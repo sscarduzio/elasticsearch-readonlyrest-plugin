@@ -2686,7 +2686,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   private def assertInvalidSettings(
       settings: RawRorSettings,
       expectedErrorMessage: String,
-      auditCapabilities: EsAuditCapabilities.Supported = MockedCapabilities.standard
+      auditCapabilities: EsAuditCapabilities = MockedCapabilities.standard
   ): Unit = {
     val core = factory()
       .createCoreFrom(

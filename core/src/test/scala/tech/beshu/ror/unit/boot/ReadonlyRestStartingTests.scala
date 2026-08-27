@@ -282,7 +282,7 @@ class ReadonlyRestStartingTests
                     )
                   new CoreCreationResult(
                     Core(mockEnabledAccessControl, RorDependencies.noOp, auditingConfig),
-                    new CoreCreationResult.AuditSetup(
+                    new CoreCreationResult.AuditSetup.AnyOutput(
                       new IndexOrDataStream(
                         MockIndexBasedAuditOutputServiceCreator,
                         MockDataStreamBasedAuditOutputServiceCreator
@@ -1643,7 +1643,7 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            new CoreCreationResult.AuditSetup(
+            new CoreCreationResult.AuditSetup.AnyOutput(
               capability,
               AuditingConfig(
                 AuditOutputs.Configured(
@@ -1759,7 +1759,7 @@ class ReadonlyRestStartingTests
             Right(
               new CoreCreationResult(
                 Core(accessControl, RorDependencies.noOp, auditingConfig),
-                new CoreCreationResult.AuditSetup(
+                new CoreCreationResult.AuditSetup.AnyOutput(
                   new IndexOrDataStream(
                     MockIndexBasedAuditOutputServiceCreator,
                     MockDataStreamBasedAuditOutputServiceCreator
@@ -1853,7 +1853,7 @@ class ReadonlyRestStartingTests
       loadedMainSettingsResourceFileName: String,
       accessControlMock: AccessControlList = mockEnabledAccessControl,
       dependencies: RorDependencies = RorDependencies.noOp,
-      auditSetup: Option[CoreCreationResult.AuditSetup.Supported] = None
+      auditSetup: Option[CoreCreationResult.AuditSetup] = None
   ): CoreFactory = {
     mockCoreFactory(
       mockedCoreFactory,
@@ -1869,7 +1869,7 @@ class ReadonlyRestStartingTests
       loadedMainSettings: RawRorSettings,
       accessControlMock: AccessControlList,
       dependencies: RorDependencies,
-      auditSetup: Option[CoreCreationResult.AuditSetup.Supported]
+      auditSetup: Option[CoreCreationResult.AuditSetup]
   ): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where { (settings: RawRorSettings, _, _, _, _, _) =>
@@ -1878,7 +1878,7 @@ class ReadonlyRestStartingTests
       .once()
       .returns(Task.now(Right {
         val resolvedAuditSetup = auditSetup.getOrElse(
-          new CoreCreationResult.AuditSetup(
+          new CoreCreationResult.AuditSetup.AnyOutput(
             new IndexOrDataStream(
               MockIndexBasedAuditOutputServiceCreator,
               MockDataStreamBasedAuditOutputServiceCreator

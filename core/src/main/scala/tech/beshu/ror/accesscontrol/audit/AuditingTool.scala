@@ -224,14 +224,13 @@ object AuditingTool extends RequestIdAwareLogging {
   sealed trait AuditOutputConfig
 
   object AuditOutputConfig {
-    sealed trait WithoutDataStream extends AuditOutputConfig
 
-    final case class EsIndexBased(name: AuditOutputName, config: EsIndexBasedSettings) extends WithoutDataStream
+    final case class EsIndexBased(name: AuditOutputName, config: EsIndexBasedSettings) extends AuditOutputConfig
     final case class EsDataStreamBased(name: AuditOutputName, config: EsDataStreamBasedSettings)
-        extends AuditOutputConfig
-    final case class LogBased(name: AuditOutputName, config: LogBasedSettings) extends WithoutDataStream
-    final case class RollingFileBased(name: AuditOutputName, config: RollingFileBasedSettings) extends WithoutDataStream
-    case object Disabled extends WithoutDataStream
+      extends AuditOutputConfig
+    final case class LogBased(name: AuditOutputName, config: LogBasedSettings) extends AuditOutputConfig
+    final case class RollingFileBased(name: AuditOutputName, config: RollingFileBasedSettings) extends AuditOutputConfig
+    case object Disabled extends AuditOutputConfig
 
     final case class EsIndexBasedSettings(
         serializer: JsonAuditSerializer,
@@ -295,21 +294,20 @@ object AuditingTool extends RequestIdAwareLogging {
   )
 
   object AuditingConfig {
-    type IndexOnly = AuditingConfig[AuditOutputConfig.WithoutDataStream]
-    type IndexOrDataStream = AuditingConfig[AuditOutputConfig]
+    type SupportedByAllEsVersions = AuditingConfig[EsAuditCapabilities.SupportedByAllEsVersions]
     type AnyOutput = AuditingConfig[AuditOutputConfig]
   }
 
   final case class CreationError(message: String) extends AnyVal
 
   def create(
-      config: AuditingConfig.IndexOnly,
+      config: AuditingConfig.SupportedByAllEsVersions,
       creator: IndexBasedAuditOutputServiceCreator
   )(
       using Clock,
       LoggingContext
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
-    val effectiveOutputs: List[AuditOutputConfig.WithoutDataStream] =
+    val effectiveOutputs: List[EsAuditCapabilities.SupportedByAllEsVersions] =
       applyDefaults(config.outputs, config.defaultAclLog)
     val outputTasks = effectiveOutputs.flatMap {
       case s: EsIndexBased     => Some(createIndexOutput(s, creator))
@@ -321,7 +319,7 @@ object AuditingTool extends RequestIdAwareLogging {
   }
 
   def create(
-      config: AuditingConfig.IndexOrDataStream,
+      config: AuditingConfig.AnyOutput,
       indexCreator: IndexBasedAuditOutputServiceCreator,
       dataStreamCreator: DataStreamBasedAuditOutputServiceCreator
   )(
@@ -340,7 +338,7 @@ object AuditingTool extends RequestIdAwareLogging {
     createAuditingTool(config.esNodeSettings, outputTasks)
   }
 
-  private def applyDefaults[O >: AuditOutputConfig.WithoutDataStream <: AuditOutputConfig](
+  private def applyDefaults[O >: EsAuditCapabilities.SupportedByAllEsVersions <: AuditOutputConfig](
       settings: AuditOutputs[O],
       defaultAclLog: Boolean
   ): List[O] = {

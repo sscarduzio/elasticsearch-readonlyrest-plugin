@@ -601,7 +601,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         @nowarn("cat=deprecation")
         val auditingTool = AuditingTool
           .create(
-            config = indexOnlyAuditSettings(new DefaultAuditLogSerializer),
+            config = auditSettingsSupportedByAllEsVersions(new DefaultAuditLogSerializer),
             creator = (_: AuditCluster) => indexAuditOutput
           )
           .runSyncUnsafe()
@@ -677,7 +677,9 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
   }
 
-  private def indexOnlyAuditSettings(serializer: AuditLogSerializer): AuditingConfig.IndexOnly = AuditingConfig(
+  private def auditSettingsSupportedByAllEsVersions(
+      serializer: AuditLogSerializer
+  ): AuditingConfig.SupportedByAllEsVersions = AuditingConfig(
     outputs = AuditOutputs.Configured(
       NonEmptyList.of(
         EsIndexBased(
