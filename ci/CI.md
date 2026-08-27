@@ -362,11 +362,19 @@ that Docker Hub keeps. A second run waits instead, because cancelling a four-hou
 A mirrored name needs no login, and a login against `mirror.gcr.io` would fail, so the `credentials:`
 block goes empty then. It goes empty for a fork as well, and the runner skips an empty login.
 
+A fork run gains the most. It has no secrets, so it pulled this image anonymously from Docker Hub,
+where the limit counts against the runner's address and every other anonymous puller shares it. The
+same run now pulls anonymously from `mirror.gcr.io`, which sets no limit. A fork run reads the base
+branch, so it finds the digest that a `develop` rebuild saved.
+
 One limit. The choice is made once, for the whole run. If the mirror stops answering during a run,
 the jobs that already took the mirrored name fail. The runner's pull has no fallback of its own.
 
-Publishing the image to `ghcr.io` would remove the digest bookkeeping, because the pull would no
-longer cross a cache.
+`ghcr.io` is the other direction. It would remove the digest bookkeeping, because the pull would no
+longer cross a cache, and a public package needs no `credentials:` block at all. It costs a tag in
+`image.env`, a `docker login ghcr.io` with `GITHUB_TOKEN`, `packages: write`, and a package the org
+makes public. It would not retire the mirror, which `buildx`, the test suite and the toolchains
+build still need for their own Docker Hub pulls. This change does not settle that question.
 
 ## Coverage: what happened to every Azure stage
 
