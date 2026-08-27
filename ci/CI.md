@@ -344,6 +344,10 @@ The rebuild lives in `build-toolchains-image.yml`, not in `ci.yml`. It takes up 
 no test run waits for it. A rebuild in `ci.yml` would also hold the `develop` concurrency group for
 those hours, and every push to `develop` would queue behind it.
 
+The rebuild keeps a concurrency group of its own, `build-toolchains-image`. Two rebuilds push one
+tag and file two cache entries, and `setup` takes the newest entry, which need not hold the manifest
+that Docker Hub keeps. A second run waits instead, because cancelling a four-hour build wastes it.
+
 A mirrored name needs no login, and a login against `mirror.gcr.io` would fail, so the `credentials:`
 block goes empty then. It goes empty for a fork as well, and the runner skips an empty login.
 

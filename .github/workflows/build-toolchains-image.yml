@@ -14,6 +14,13 @@ on:
     - cron: '0 3 * * 1'   # weekly rebuild
   workflow_dispatch:
 
+# One rebuild at a time. Two rebuilds push the same tag and file two cache entries, and setup takes
+# the newest entry, which need not hold the manifest that Docker Hub keeps. A second run waits: a
+# build takes up to four hours, and cancelling one wastes all of it.
+concurrency:
+  group: build-toolchains-image
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
