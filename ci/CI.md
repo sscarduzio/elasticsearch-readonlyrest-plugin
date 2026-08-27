@@ -303,23 +303,26 @@ share the image, which makes it the most pulled image of a run. Docker Hub answe
 once, and the `&toolchains_container` anchor reads its two outputs: the name to pull, and whether
 that name needs a Docker Hub login.
 
-The mirror is a cache and can serve an old image, and the weekly rebuild pushes the same tag. So
-the rebuild records the digest of its push in the Actions cache, and `setup` compares that digest
-with the one the mirror serves. The comparison sends no request to Docker Hub. When it does not
-agree, the run pulls from Docker Hub instead:
+A mirrored name carries the digest, not the tag: `mirror.gcr.io/beshultd/ror-ci-toolchains@sha256:…`.
+The jobs of one run start hours apart, and a tag can move between the check and a pull. A Docker Hub
+name keeps the tag, because no digest is proven in that case.
+
+So `setup` asks the mirror about the digest, not about the tag. A digest names the bytes, and a
+cache cannot answer it with the wrong image. The rebuild records the digest of its push in the
+Actions cache. `setup` then sends the mirror one HEAD request for that digest. The request downloads
+no image, and it reaches no Docker Hub:
 
 | What the script finds | What the run pulls |
 |---|---|
 | no digest on record | Docker Hub |
-| the mirror has no such tag | Docker Hub |
-| the digests differ | Docker Hub, with a warning |
-| the digests agree | the mirror |
+| the mirror cannot serve the digest | Docker Hub |
+| the mirror serves the digest | the mirror |
 
 Docker Hub is the safe answer, so a miss costs speed only.
 
-A mirrored name carries the digest, not the tag: `mirror.gcr.io/beshultd/ror-ci-toolchains@sha256:…`.
-The jobs of one run start hours apart, and a tag can move between the check and a pull. A Docker Hub
-name keeps the tag, because no digest is proven in that case.
+The mirror fetches a digest it has never held. So a run keeps the mirror in the hours after a
+rebuild, before the mirror knows the new tag. A question about the tag would lose the mirror in that
+window, where the recorded digest is newest.
 
 The cache key holds the tag and the rebuild's run id. A key is write-once, so each rebuild adds an
 entry and `setup` restores the newest by prefix. GitHub drops an entry that nothing reads for 7 days,
