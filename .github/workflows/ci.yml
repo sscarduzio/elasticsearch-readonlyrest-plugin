@@ -74,8 +74,7 @@ jobs:
       it_linux_matrix:   ${{ steps.matrices.outputs.linux }}
       it_windows_matrix: ${{ steps.matrices.outputs.windows }}
       e2e_modules:       ${{ steps.matrices.outputs.e2e }}
-      toolchains_image:    ${{ steps.toolchains.outputs.image }}
-      toolchains_mirrored: ${{ steps.toolchains.outputs.mirrored }}
+      toolchains_image: ${{ steps.toolchains.outputs.image }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -167,16 +166,18 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     # The runner pulls this image before step 1 runs, so ci/configure-docker.sh reaches neither the
-    # mirror nor the login for it. The setup job settles both. See ci/resolve-toolchains-image.sh.
-    # A mirrored name carries the digest, so every job of a run pulls the same bytes. It needs no
-    # login, and a login against mirror.gcr.io would fail, so the credentials go empty then. A fork
-    # also gives empty secrets, and the runner skips an empty login. A read-only token is enough: a
-    # job only pulls this image.
+    # mirror nor the login for it. ci/resolve-toolchains-image.sh settles the name in the setup job.
+    # A mirrored name carries the digest, so every job of a run pulls the same bytes.
+    #
+    # The pull sends no credentials. A Docker Hub login against mirror.gcr.io fails, so the block
+    # must be absent on the mirrored path. An empty value does not remove it. GitHub rejects it with
+    # "Unexpected value ''" and stops the run before step 1. YAML cannot drop a key on a condition,
+    # so the block is absent on both paths.
+    #
+    # Docker Hub then counts the fallback pull against the runner's address, not against our
+    # account. The mirror serves the normal path.
     container: &toolchains_container
       image: ${{ needs.setup.outputs.toolchains_image }}
-      credentials:
-        username: ${{ needs.setup.outputs.toolchains_mirrored != 'true' && secrets.DOCKER_HUB_USER || '' }}
-        password: ${{ needs.setup.outputs.toolchains_mirrored != 'true' && secrets.DOCKER_HUB_RO_TOKEN || '' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

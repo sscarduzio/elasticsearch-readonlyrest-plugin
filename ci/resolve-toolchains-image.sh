@@ -17,8 +17,7 @@
 #                                 Default .toolchains-digest. An absent file means no digest.
 #         ROR_DOCKER_HUB_MIRROR   false skips the mirror
 # OUTPUT  image=<name>            the name to pull. Mirrored names end in @sha256:...
-#         mirrored=true|false     false means a Docker Hub name, which needs a login
-#         Both go to $GITHUB_OUTPUT when it is set, and to stdout otherwise.
+#         It goes to $GITHUB_OUTPUT when it is set, and to stdout otherwise.
 #         The choice also goes to $GITHUB_STEP_SUMMARY, so the run page shows it.
 #
 # A mirror is an optimisation, so no mirror fault stops a run. The script takes Docker Hub and exits
@@ -114,9 +113,9 @@ emit() {
   echo "[CI] Toolchains image: $1"
   summarise "$1" "$2" "${3:-}"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
-    printf 'image=%s\nmirrored=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"
+    printf 'image=%s\n' "$1" >> "$GITHUB_OUTPUT"
   else
-    printf 'image=%s\nmirrored=%s\n' "$1" "$2"
+    printf 'image=%s\n' "$1"
   fi
   exit 0
 }
