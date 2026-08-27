@@ -74,7 +74,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  auditSettings(new DefaultAuditLogSerializer),
+                  configuredAuditOutputs(new DefaultAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -92,7 +92,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  auditSettings(throwingAuditLogSerializer),
+                  configuredAuditOutputs(throwingAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -124,7 +124,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  auditSettings(new DefaultAuditLogSerializer),
+                  configuredAuditOutputs(new DefaultAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -152,7 +152,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  auditSettings(new DefaultAuditLogSerializer),
+                  configuredAuditOutputs(new DefaultAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -205,7 +205,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  auditSettings(new DefaultAuditLogSerializer),
+                  configuredAuditOutputs(new DefaultAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -240,7 +240,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val auditingTool = AuditingTool
               .create(
                 config = AuditingConfig(
-                  auditSettings(new DefaultAuditLogSerializer),
+                  configuredAuditOutputs(new DefaultAuditLogSerializer),
                   defaultAclLog = true,
                   defaultTestEsNodeSettings
                 ),
@@ -268,10 +268,10 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             .create(
               config = AuditingConfig(
                 outputs = AuditOutputs.Configured(
-                  List(
+                  NonEmptyList.of(
                     LogBased(
                       AuditOutputName.random(),
-                      LogBasedSettings(
+                      LogBased.Config(
                         AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                         RorAuditLoggerName.default
                       )
@@ -312,13 +312,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             .create(
               config = AuditingConfig(
                 outputs = AuditOutputs.Configured(
-                  List(
+                  NonEmptyList.of(
                     RollingFileBased(
                       AuditOutputName.random(),
-                      RollingFileBasedSettings(
+                      RollingFileBased.Config(
                         serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                         loggerName = isolatedLoggerName,
-                        fileAppender = RollingFileBasedSettings.FileAppenderConfig(
+                        fileAppender = RollingFileBased.FileAppender(
                           filePath = filePathAuditLog.path,
                           maxFileSize = Megabytes(100),
                           maxFiles = positiveInt(7)
@@ -360,13 +360,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             .create(
               config = AuditingConfig(
                 outputs = AuditOutputs.Configured(
-                  List(
+                  NonEmptyList.of(
                     RollingFileBased(
                       AuditOutputName.random(),
-                      RollingFileBasedSettings(
+                      RollingFileBased.Config(
                         serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                         loggerName = customLoggerName,
-                        fileAppender = RollingFileBasedSettings.FileAppenderConfig(
+                        fileAppender = RollingFileBased.FileAppender(
                           filePath = customLogFile.path,
                           maxFileSize = Megabytes(100),
                           maxFiles = positiveInt(7)
@@ -528,10 +528,10 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           .create(
             config = AuditingConfig(
               AuditOutputs.Configured(
-                List(
+                NonEmptyList.of(
                   EsIndexBased(
                     AuditOutputName.random(),
-                    EsIndexBasedSettings(
+                    EsIndexBased.Config(
                       AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                       RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
                       AuditCluster.LocalAuditCluster
@@ -601,26 +601,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         @nowarn("cat=deprecation")
         val auditingTool = AuditingTool
           .create(
-            config = auditSettingsSupportedByAllEsVersions(new DefaultAuditLogSerializer),
+            config = auditingConfigSupportedByAllEsVersions(new DefaultAuditLogSerializer),
             creator = (_: AuditCluster) => indexAuditOutput
           )
           .runSyncUnsafe()
           .toOption
           .get
         auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.outputs)).runSyncUnsafe()
-      }
-      "create a tool with no active outputs when no output is enabled" in {
-        val creationResult = AuditingTool
-          .create(
-            config = AuditingConfig(
-              AuditOutputs.Configured(List.empty),
-              defaultAclLog = false,
-              defaultTestEsNodeSettings
-            ),
-            creator = (_: AuditCluster) => mock[IndexBasedAuditOutputService]
-          )
-          .runSyncUnsafe()
-        creationResult.map(_.outputs.isEmpty) should be(Right(true))
       }
     }
     "output configuration" should {
@@ -658,7 +645,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val creationResult = AuditingTool
           .create(
             config = AuditingConfig(
-              AuditOutputs.Configured(List.empty),
+              AuditOutputs.Disabled,
               defaultAclLog = true,
               defaultTestEsNodeSettings,
             ),
@@ -671,14 +658,14 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
   }
 
-  private def auditSettingsSupportedByAllEsVersions(
+  private def auditingConfigSupportedByAllEsVersions(
       serializer: AuditLogSerializer
   ): AuditingConfig.SupportedByAllEsVersions = AuditingConfig(
     outputs = AuditOutputs.Configured(
-      List(
+      NonEmptyList.of(
         EsIndexBased(
           AuditOutputName.random(),
-          EsIndexBasedSettings(
+          EsIndexBased.Config(
             AuditSerializer.Delegating(serializer),
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
             AuditCluster.LocalAuditCluster
@@ -690,11 +677,11 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     esNodeSettings = defaultTestEsNodeSettings
   )
 
-  private def auditSettings(serializer: AuditLogSerializer) = AuditOutputs.Configured(
-    outputs = List(
+  private def configuredAuditOutputs(serializer: AuditLogSerializer) = AuditOutputs.Configured(
+    outputs = NonEmptyList.of(
       EsIndexBased(
         AuditOutputName.random(),
-        EsIndexBasedSettings(
+        EsIndexBased.Config(
           AuditSerializer.Delegating(serializer),
           RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
           AuditCluster.LocalAuditCluster
@@ -702,7 +689,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       ),
       EsDataStreamBased(
         AuditOutputName.random(),
-        EsDataStreamBasedSettings(
+        EsDataStreamBased.Config(
           AuditSerializer.Delegating(serializer),
           RorAuditDataStream.from("test_ds").toOption.get,
           AuditCluster.LocalAuditCluster
@@ -745,13 +732,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   @nowarn("cat=deprecation")
   private def rollingFileOutputSettings(filePath: java.nio.file.Path) = AuditOutputs.Configured(
-    List(
+    NonEmptyList.of(
       RollingFileBased(
         AuditOutputName.random(),
-        RollingFileBasedSettings(
+        RollingFileBased.Config(
           serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
           loggerName = RorAuditLoggerName(nes("ror-audit-error-test")),
-          fileAppender = RollingFileBasedSettings.FileAppenderConfig(
+          fileAppender = RollingFileBased.FileAppender(
             filePath = filePath,
             maxFileSize = Megabytes(100),
             maxFiles = positiveInt(7)

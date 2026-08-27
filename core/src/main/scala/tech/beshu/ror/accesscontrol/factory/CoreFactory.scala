@@ -48,7 +48,7 @@ import tech.beshu.ror.accesscontrol.factory.RorDependencies.ImpersonationWarning
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
-import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, GlobalStaticSettingsDecoder}
+import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingConfigDecoder, GlobalStaticSettingsDecoder}
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
@@ -446,7 +446,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       Task.now {
         val configuredOutputNames: scala.collection.Set[AuditOutputName] = auditingConfig.outputs match {
           case AuditOutputs.Configured(outputs) =>
-            outputs.map(_.name).toSet
+            outputs.toList.map(_.name).toSet
           case _ => scala.collection.Set.empty
         }
         val globalOutputNames: scala.collection.Set[AuditOutputName] =
@@ -538,15 +538,15 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
     }
   }
 
-  private def auditSettingsDecoder(
+  private def auditSetupDecoder(
       auditCapabilities: EsAuditCapabilities
   )(esEnv: EsEnv): Decoder[AuditSetup] = auditCapabilities match {
     case cap: EsAuditCapabilities.IndexOnly =>
-      AuditingSettingsDecoder
+      AuditingConfigDecoder
         .supportedByAllEsVersions(esEnv)
         .map(settings => new AuditSetup.SupportedByAllEsVersions(cap, settings))
     case cap: EsAuditCapabilities.IndexOrDataStream =>
-      AuditingSettingsDecoder
+      AuditingConfigDecoder
         .anyOutput(esEnv)
         .map(settings => new AuditSetup.AnyOutput(cap, settings))
   }
@@ -572,7 +572,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
-        auditSetup <- AsyncDecoderCreator.from(auditSettingsDecoder(auditCapabilities)(esEnv))
+        auditSetup <- AsyncDecoderCreator.from(auditSetupDecoder(auditCapabilities)(esEnv))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(
           ExternalAuthenticationServicesDecoder.instance(httpClientFactory)

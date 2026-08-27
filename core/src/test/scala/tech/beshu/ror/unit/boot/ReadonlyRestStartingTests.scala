@@ -1609,7 +1609,7 @@ class ReadonlyRestStartingTests
         }
       }
       "unable to setup data stream audit output" in {
-        val dataStreamOutputConfig1 = EsDataStreamBasedSettings.default
+        val dataStreamOutputConfig1 = EsDataStreamBased.Config.default
         val dataStreamOutputConfig2 = dataStreamOutputConfig1.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
@@ -1647,7 +1647,7 @@ class ReadonlyRestStartingTests
               capability,
               AuditingConfig(
                 AuditOutputs.Configured(
-                  List(
+                  NonEmptyList.of(
                     EsDataStreamBased(AuditOutputName.random(), dataStreamOutputConfig1),
                     EsDataStreamBased(AuditOutputName.random(), dataStreamOutputConfig2)
                   )

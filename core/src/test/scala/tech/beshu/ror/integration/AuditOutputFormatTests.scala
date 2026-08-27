@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration
 
+import cats.data.NonEmptyList
 import cats.effect.Resource
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -187,10 +188,10 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   ) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
     val settings = AuditOutputs.Configured(
-      List(
+      NonEmptyList.of(
         EsIndexBased(
           AuditOutputName.random(),
-          EsIndexBasedSettings(
+          EsIndexBased.Config(
             AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             RorAuditIndexTemplate.default,
             AuditCluster.LocalAuditCluster
@@ -198,7 +199,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         ),
         EsDataStreamBased(
           AuditOutputName.random(),
-          EsDataStreamBasedSettings(
+          EsDataStreamBased.Config(
             AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             RorAuditDataStream.default,
             AuditCluster.LocalAuditCluster

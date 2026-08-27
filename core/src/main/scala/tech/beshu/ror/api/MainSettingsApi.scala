@@ -30,8 +30,8 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.api.MainSettingsApi.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest.Type
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutputConfig
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutputConfig.*
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditConfig.AuditOutputSummary
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditConfig.AuditOutputSummary.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -70,9 +70,9 @@ class MainSettingsApi(
       .executeOn(RorSchedulers.restApiScheduler)
   }
 
-  private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
-    val outputs = rorInstance.auditSettings match {
-      case Some(AuditOutputs.Configured(outputs)) => outputs
+  private def fetchCurrentAuditConfiguration(): Task[ProvideAuditConfig] = Task.delay {
+    val outputs = rorInstance.auditOutputs match {
+      case Some(AuditOutputs.Configured(outputs)) => outputs.toList
       case _                                      => List.empty
     }
     val auditOutputs = outputs.map {
@@ -94,7 +94,7 @@ class MainSettingsApi(
           s"Logger with name [${s.config.loggerName.value.value}] to file [${s.config.fileAppender.filePath}]"
         )
     }
-    ProvideAuditSettings.AuditSettings(auditOutputs)
+    ProvideAuditConfig.AuditConfig(auditOutputs)
   }
 
   private def forceReloadRor()(
@@ -251,20 +251,20 @@ object MainSettingsApi {
       final case class Failure(message: String) extends ProvideIndexMainSettings
     }
 
-    sealed trait ProvideAuditSettings extends MainSettingsResponse
+    sealed trait ProvideAuditConfig extends MainSettingsResponse
 
-    object ProvideAuditSettings {
-      final case class AuditSettings(auditOutputs: List[ProvideAuditSettings.AuditOutputConfig])
-          extends ProvideAuditSettings
-      sealed trait AuditOutputConfig
+    object ProvideAuditConfig {
+      final case class AuditConfig(auditOutputs: List[ProvideAuditConfig.AuditOutputSummary]) extends ProvideAuditConfig
+      sealed trait AuditOutputSummary
 
-      object AuditOutputConfig {
-        final case class LocalAuditIndex(indexPattern: IndexPattern, schema: AuditIndexSchema) extends AuditOutputConfig
-        final case class LocalDataStream(name: DataStreamName.Full, schema: AuditIndexSchema) extends AuditOutputConfig
-        final case class OtherAuditOutput(description: String) extends AuditOutputConfig
+      object AuditOutputSummary {
+        final case class LocalAuditIndex(indexPattern: IndexPattern, schema: AuditIndexSchema)
+            extends AuditOutputSummary
+        final case class LocalDataStream(name: DataStreamName.Full, schema: AuditIndexSchema) extends AuditOutputSummary
+        final case class OtherAuditOutput(description: String) extends AuditOutputSummary
       }
 
-      final case class Failure(message: String) extends ProvideAuditSettings
+      final case class Failure(message: String) extends ProvideAuditConfig
     }
 
     sealed trait ProvideFileMainSettings extends MainSettingsResponse
@@ -296,8 +296,8 @@ object MainSettingsApi {
       case _: ForceReloadMainSettings.Failure               => "ko"
       case _: ProvideIndexMainSettings.MainSettings         => "ok"
       case _: ProvideIndexMainSettings.MainSettingsNotFound => "empty"
-      case _: ProvideAuditSettings.AuditSettings            => "ok"
-      case _: ProvideAuditSettings.Failure                  => "ko"
+      case _: ProvideAuditConfig.AuditConfig                => "ok"
+      case _: ProvideAuditConfig.Failure                    => "ko"
       case _: ProvideIndexMainSettings.Failure              => "ko"
       case _: ProvideFileMainSettings.MainSettings          => "ok"
       case _: ProvideFileMainSettings.Failure               => "ko"
@@ -344,11 +344,11 @@ object MainSettingsApi {
               addResponseJson(builder, response.status, rawSettings)
             case ProvideFileMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
           }
-        case provideAuditSettings: MainSettingsResponse.ProvideAuditSettings =>
-          provideAuditSettings match {
-            case ProvideAuditSettings.AuditSettings(auditOutputs) =>
+        case provideAuditConfig: MainSettingsResponse.ProvideAuditConfig =>
+          provideAuditConfig match {
+            case ProvideAuditConfig.AuditConfig(auditOutputs) =>
               addResponseJson(builder, response.status, auditOutputs)
-            case ProvideAuditSettings.Failure(message) => addResponseJson(builder, response.status, message)
+            case ProvideAuditConfig.Failure(message) => addResponseJson(builder, response.status, message)
           }
         case updateIndexSettings: MainSettingsResponse.UpdateIndexMainSettings =>
           updateIndexSettings match {
@@ -367,7 +367,7 @@ object MainSettingsApi {
         case _: ForceReloadMainSettings  => MainSettingsApiResponseStatus.Ok
         case _: ProvideIndexMainSettings => MainSettingsApiResponseStatus.Ok
         case _: ProvideFileMainSettings  => MainSettingsApiResponseStatus.Ok
-        case _: ProvideAuditSettings     => MainSettingsApiResponseStatus.Ok
+        case _: ProvideAuditConfig       => MainSettingsApiResponseStatus.Ok
         case _: UpdateIndexMainSettings  => MainSettingsApiResponseStatus.Ok
         case failure: Failure            =>
           failure match {
@@ -393,16 +393,16 @@ object MainSettingsApi {
   private def addResponseJson(
       builder: EsXContentBuilder,
       status: String,
-      auditOutputs: List[ProvideAuditSettings.AuditOutputConfig]
+      auditOutputs: List[ProvideAuditConfig.AuditOutputSummary]
   ): Unit = {
-    val localAuditIndexes = auditOutputs.collect { case index: ProvideAuditSettings.AuditOutputConfig.LocalAuditIndex =>
+    val localAuditIndexes = auditOutputs.collect { case index: ProvideAuditConfig.AuditOutputSummary.LocalAuditIndex =>
       index
     }
-    val localDataStreams = auditOutputs.collect { case index: ProvideAuditSettings.AuditOutputConfig.LocalDataStream =>
+    val localDataStreams = auditOutputs.collect { case index: ProvideAuditConfig.AuditOutputSummary.LocalDataStream =>
       index
     }
     val otherAuditOutputs = auditOutputs.collect {
-      case output: ProvideAuditSettings.AuditOutputConfig.OtherAuditOutput =>
+      case output: ProvideAuditConfig.AuditOutputSummary.OtherAuditOutput =>
         output
     }
     builder.build(
