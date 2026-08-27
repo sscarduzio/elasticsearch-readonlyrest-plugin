@@ -176,7 +176,7 @@ every push on such a branch, and made five CI jobs depend on a job that almost a
 |---|---|
 | `ROR_S3_ACCESS_KEY_ID` / `ROR_S3_SECRET_ACCESS_KEY` | the one S3 key pair; writes `builds/`, `libs/` and `e2e_reports/` |
 | `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `configure-docker.sh` reads |
-| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. It pulls the `container:` image, and each job that only pulls maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` as well. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. Each job that only pulls maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` as well. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
 | `ROR_ENT_ACTIVATION_TOKEN` | ROR PRO/Enterprise key the e2e stack boots with. **The secret is renamed; the env var handed to the container stays `ROR_ACTIVATION_KEY`, which is the customer-facing name** |
 | `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, pushes docs |
 | `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |
@@ -226,10 +226,8 @@ Do not put a `docker login` in a workflow. Two mechanisms with different credent
 other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
 
 The script cannot authenticate the `container:` image, because the runner pulls that image before
-step 1 starts. The `&toolchains_container` anchor carries a `credentials:` block for that pull, and
-the ten `container:` blocks share it. A fork supplies empty secrets, and the runner then skips the
-login and pulls anonymously. A mirrored name skips it too — see
-[The `container:` image](#the-container-image).
+step 1 starts. No other mechanism authenticates it either: that pull is anonymous, and the mirror is
+what protects it. See [The `container:` image](#the-container-image).
 
 ### Docker Hub pull mirror
 
@@ -300,8 +298,7 @@ share the image, which makes it the most pulled image of a run. Docker Hub answe
 `429 toomanyrequests` on 2026-08-26.
 
 `container: image:` can read a job output. The `setup` job runs `ci/resolve-toolchains-image.sh`
-once, and the `&toolchains_container` anchor reads its two outputs: the name to pull, and whether
-that name needs a Docker Hub login.
+once, and the `&toolchains_container` anchor reads its output: the name to pull.
 
 A mirrored name carries the digest, not the tag: `mirror.gcr.io/beshultd/ror-ci-toolchains@sha256:…`.
 The jobs of one run start hours apart, and a tag can move between the check and a pull. A Docker Hub
@@ -359,13 +356,22 @@ The rebuild keeps a concurrency group of its own, `build-toolchains-image`. Two 
 tag and file two cache entries, and `setup` takes the newest entry, which need not hold the manifest
 that Docker Hub keeps. A second run waits instead, because cancelling a four-hour build wastes it.
 
-A mirrored name needs no login, and a login against `mirror.gcr.io` would fail, so the `credentials:`
-block goes empty then. It goes empty for a fork as well, and the runner skips an empty login.
+The pull carries no `credentials:` block, so it is anonymous on both paths. `mirror.gcr.io` needs no
+login, and a Docker Hub login against it would fail, so the block would have to empty itself on the
+mirrored path. It cannot: `username:` and `password:` take an expression, but an expression that
+evaluates to nothing gives `Unexpected value ''`, and the job dies in template validation before step
+1. An empty string and `null` both do it.
 
-A fork run gains the most. It has no secrets, so it pulled this image anonymously from Docker Hub,
-where the limit counts against the runner's address and every other anonymous puller shares it. The
-same run now pulls anonymously from `mirror.gcr.io`, which sets no limit. A fork run reads the base
-branch, so it finds the digest that a `develop` rebuild saved.
+This costs the Docker Hub path its account limit. Docker Hub counts an anonymous pull against the
+runner's address, and an authenticated pull against the account. The path is the rare one, so the
+trade is worth it. A tag with no recorded digest takes that path, and the next rebuild closes the
+window.
+
+Every run now pulls this image the way a fork always did. A fork gains the most. It has no secrets,
+so it pulled this image anonymously from Docker Hub, where the limit counts against the runner's
+address and every other anonymous puller shares it. The same run now pulls anonymously from
+`mirror.gcr.io`, which sets no limit. A fork run reads the base branch, so it finds the digest that a
+`develop` rebuild saved.
 
 One limit. The choice is made once, for the whole run. If the mirror stops answering during a run,
 the jobs that already took the mirrored name fail. The runner's pull has no fallback of its own.

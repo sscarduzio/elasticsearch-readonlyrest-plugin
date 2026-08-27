@@ -17,7 +17,7 @@
 #                                 Default .toolchains-digest. An absent file means no digest.
 #         ROR_DOCKER_HUB_MIRROR   false skips the mirror
 # OUTPUT  image=<name>            the name to pull. Mirrored names end in @sha256:...
-#         mirrored=true|false     false means a Docker Hub name, which needs a login
+#         mirrored=true|false     true means a mirrored name, pinned to a digest
 #         Both go to $GITHUB_OUTPUT when it is set, and to stdout otherwise.
 #         The choice also goes to $GITHUB_STEP_SUMMARY, so the run page shows it.
 #
