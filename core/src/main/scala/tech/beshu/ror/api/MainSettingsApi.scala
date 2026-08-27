@@ -72,8 +72,9 @@ class MainSettingsApi(
 
   private def fetchCurrentAuditConfiguration(): Task[ProvideAuditConfig] = Task.delay {
     val outputs = rorInstance.auditOutputs match {
-      case Some(AuditOutputs.Configured(outputs)) => outputs.toList
-      case None | Some(_)                         => List.empty
+      case Some(AuditOutputs.Configured(outputs))              => outputs.toList
+      case Some(AuditOutputs.Defaults | AuditOutputs.Disabled) => List.empty
+      case None                                                => List.empty
     }
     ProvideAuditConfig.AuditConfig(
       outputs.map {
