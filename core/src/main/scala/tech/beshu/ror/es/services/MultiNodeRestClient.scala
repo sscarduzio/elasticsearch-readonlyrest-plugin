@@ -39,7 +39,12 @@ object MultiNodeRestClient {
 
 }
 
-final class RoundRobinClient[Req, Resp](executor: RequestExecutor[Req, Resp]) extends MultiNodeRestClient[Req, Resp] {
+/**
+ * Passes each request to the given executor. The executor holds one client that knows all the cluster nodes, so the
+ * client, not this class, decides which node gets the request.
+ */
+final class DelegatingMultiNodeRestClient[Req, Resp](executor: RequestExecutor[Req, Resp])
+    extends MultiNodeRestClient[Req, Resp] {
 
   override def perform(request: Req)(
       using RequestId

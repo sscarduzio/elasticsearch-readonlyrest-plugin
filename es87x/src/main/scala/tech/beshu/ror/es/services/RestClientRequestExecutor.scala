@@ -44,7 +44,7 @@ object RestClientRequestExecutor {
 
   // one client configured with all hosts - the ES RestClient rotates over them itself
   def roundRobinClient(restClient: RestClient): MultiNodeRestClient[Request, Response] = {
-    new RoundRobinClient(new RestClientRequestExecutor(restClient))
+    new DelegatingMultiNodeRestClient(new RestClientRequestExecutor(restClient))
   }
 
 }
