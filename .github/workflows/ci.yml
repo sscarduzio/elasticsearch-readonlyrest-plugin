@@ -166,19 +166,6 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     # The runner pulls this image before step 1 runs, so ci/configure-docker.sh reaches neither the
-<<<<<<< HEAD
-    # mirror nor the login for it. The setup job settles both. See ci/resolve-toolchains-image.sh.
-    # A mirrored name carries the digest, so every job of a run pulls the same bytes. It needs no
-    # login, and a login against mirror.gcr.io would fail, so the credentials go null then. A fork
-    # also gives null, because its secrets are empty. Null drops the key and the runner pulls with
-    # no login. An empty string does not: the template check rejects it, and the job fails before
-    # step 1. A read-only token is enough: a job only pulls this image.
-    container: &toolchains_container
-      image: ${{ needs.setup.outputs.toolchains_image }}
-      credentials:
-        username: ${{ needs.setup.outputs.toolchains_mirrored != 'true' && secrets.DOCKER_HUB_USER || null }}
-        password: ${{ needs.setup.outputs.toolchains_mirrored != 'true' && secrets.DOCKER_HUB_RO_TOKEN || null }}
-=======
     # mirror nor the login for it. ci/resolve-toolchains-image.sh settles the name in the setup job.
     # A mirrored name carries the digest, so every job of a run pulls the same bytes.
     #
@@ -191,7 +178,6 @@ jobs:
     # account. The mirror serves the normal path.
     container: &toolchains_container
       image: ${{ needs.setup.outputs.toolchains_image }}
->>>>>>> improvement/RORDEV-2183_dockerhub_mirror_fix
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
