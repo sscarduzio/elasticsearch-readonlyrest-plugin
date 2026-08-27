@@ -135,7 +135,7 @@ class RemoteClusterAuditingToolsSuite
 
         // node2 is still down; the round-robin client may attempt it first (connection timeout ~14s),
         // so we probe until an event lands rather than asserting immediately
-        waitUntilAuditSinkIsBackOnline(atMost = 15.seconds)
+        waitUntilAuditOutputIsBackOnline(atMost = 15.seconds)
 
         val id4 = sendTracedRequest("phase-4")
         auditShouldContain(List(id4))
@@ -163,7 +163,7 @@ class RemoteClusterAuditingToolsSuite
 
         // the circuit of node1 stays open for at most ~3.4s after the all-nodes-down phase,
         // so together with the probe interval and the audit index refresh, 15s is a safe bound
-        waitUntilAuditSinkIsBackOnline(atMost = 15.seconds)
+        waitUntilAuditOutputIsBackOnline(atMost = 15.seconds)
 
         val id4 = sendTracedRequest("phase-4")
         auditShouldContain(List(id4))
@@ -232,7 +232,7 @@ class RemoteClusterAuditingToolsSuite
 
   private def forceReloadFreshEngine(config: String): Unit = {
     // the unique comment makes the settings differ from the previously loaded ones, so the reload
-    // always creates a fresh engine (and fresh audit sink clients - no circuit breaker
+    // always creates a fresh engine (and fresh audit output clients - no circuit breaker
     // or dead-host state leaks between tests)
     rorApiManager
       .updateRorInIndexSettings(s"# test-engine-id: ${UUID.randomUUID()}\n$config")
@@ -275,9 +275,9 @@ class RemoteClusterAuditingToolsSuite
     }
   }
 
-  // Sends sacrificial probe events until one lands in audit, proving the sink has recovered.
+  // Sends sacrificial probe events until one lands in audit, proving the output has recovered.
   // A delivered event guarantees events sent afterwards will not be lost.
-  private def waitUntilAuditSinkIsBackOnline(atMost: FiniteDuration): Unit = {
+  private def waitUntilAuditOutputIsBackOnline(atMost: FiniteDuration): Unit = {
     val probeTraceIds = scala.collection.mutable.ListBuffer.empty[String]
     forEachAuditManager { adminAuditManager =>
       eventually(timeout(Span(atMost.toMillis, Millis)), interval(Span(500, Millis))) {

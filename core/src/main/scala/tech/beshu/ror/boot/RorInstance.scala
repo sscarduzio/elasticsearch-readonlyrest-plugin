@@ -127,9 +127,9 @@ class RorInstance private (
   }
 
   def auditSettings: Option[
-    AuditingTool.AuditOutputsConfig[AuditingTool.AuditOutputsConfig.AuditOutput]
+    AuditingTool.AuditOutputs[AuditingTool.AuditOutputConfig]
   ] = {
-    theMainSettingsEngine.engine.map(_.core.auditingConfig.outputsConfig)
+    theMainSettingsEngine.engine.map(_.core.auditingConfig.outputs)
   }
 
   def stop(): Task[Unit] = {

@@ -146,7 +146,7 @@ final class AuditRemoteClusterConnectivityCheck(httpClientsFactory: HttpClientsF
       (),
       s"Configured remote cluster for audit contains ES nodes belonging to different ES clusters " +
         s"(found cluster UUIDs: ${nodesByClusterUuid.keys.mkString("[", ", ", "]")}). " +
-        s"One audit sink can use only nodes from one cluster. " +
+        s"One audit output can use only nodes from one cluster. " +
         s"See https://docs.readonlyrest.com/elasticsearch/audit#custom-audit-cluster"
     )
   }

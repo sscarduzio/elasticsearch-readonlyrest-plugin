@@ -29,9 +29,9 @@ import org.elasticsearch.transport.RemoteClusterService
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
-import tech.beshu.ror.accesscontrol.audit.sink.{
-  DataStreamBasedAuditSinkServiceCreator,
-  IndexBasedAuditSinkServiceCreator
+import tech.beshu.ror.accesscontrol.audit.output.{
+  DataStreamBasedAuditOutputServiceCreator,
+  IndexBasedAuditOutputServiceCreator
 }
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.boot.*
@@ -107,19 +107,21 @@ class IndexLevelActionFilter(
   }
 
   private def auditCapabilities: EsAuditCapabilities.IndexOrDataStream = {
-    val creator = new IndexBasedAuditSinkServiceCreator with DataStreamBasedAuditSinkServiceCreator {
-      override protected def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = createService(cluster)
+    val creator = new IndexBasedAuditOutputServiceCreator with DataStreamBasedAuditOutputServiceCreator {
+      override protected def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService =
+        createService(cluster)
 
-      override protected def index(cluster: AuditCluster): IndexBasedAuditSinkService = createService(cluster)
+      override protected def index(cluster: AuditCluster): IndexBasedAuditOutputService = createService(cluster)
 
-      private def createService(cluster: AuditCluster): IndexBasedAuditSinkService & DataStreamBasedAuditSinkService = {
+      private def createService(cluster: AuditCluster): IndexBasedAuditOutputService &
+        DataStreamBasedAuditOutputService = {
         cluster match {
           case AuditCluster.LocalAuditCluster =>
-            new NodeClientBasedAuditSinkService(client, new XContentJsonParserFactory(xContentRegistry))(
+            new NodeClientBasedAuditOutputService(client, new XContentJsonParserFactory(xContentRegistry))(
               using systemContext.clock
             )
           case remote: AuditCluster.RemoteAuditCluster =>
-            RestClientAuditSinkService.create(remote)(
+            RestClientAuditOutputService.create(remote)(
               using systemContext.clock
             )
         }
