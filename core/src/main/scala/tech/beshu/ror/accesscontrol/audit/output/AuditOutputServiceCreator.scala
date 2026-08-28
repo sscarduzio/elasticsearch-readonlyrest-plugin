@@ -26,9 +26,7 @@ trait IndexBasedAuditOutputServiceCreator extends AuditOutputServiceCreator {
   def index(cluster: AuditCluster): IndexBasedAuditOutputService
 }
 
-trait DataStreamAndIndexBasedAuditOutputServiceCreator
-    extends AuditOutputServiceCreator
-    with IndexBasedAuditOutputServiceCreator {
+trait DataStreamBasedAuditOutputServiceCreator extends AuditOutputServiceCreator {
 
   def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService
 }

@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.es.services
 
+import cats.effect.Resource
+import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
 
@@ -37,5 +39,5 @@ trait DataStreamBasedAuditOutputService extends AuditOutputService {
       implicit requestId: RequestId
   ): Unit
 
-  def dataStreamCreator: AuditDataStreamCreator
+  def dataStreamCreator: Resource[Task, AuditDataStreamCreator]
 }

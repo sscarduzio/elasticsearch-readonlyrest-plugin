@@ -28,9 +28,10 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
 import tech.beshu.ror.accesscontrol.audit.output.{
-  AuditOutputServiceCreator,
-  DataStreamAndIndexBasedAuditOutputServiceCreator
+  DataStreamBasedAuditOutputServiceCreator,
+  IndexBasedAuditOutputServiceCreator
 }
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.boot.*
@@ -76,7 +77,7 @@ class IndexLevelActionFilter(
 
   private val ror = ReadonlyRest.create(
     new EsIndexDocumentManager(client),
-    auditOutputServiceCreator,
+    auditCapabilities,
     esEnv,
   )
 
@@ -105,8 +106,8 @@ class IndexLevelActionFilter(
     startRorInstance()
   }
 
-  private def auditOutputServiceCreator: AuditOutputServiceCreator =
-    new DataStreamAndIndexBasedAuditOutputServiceCreator {
+  private def auditCapabilities: EsAuditCapabilities.IndexOrDataStream = {
+    val creator = new IndexBasedAuditOutputServiceCreator with DataStreamBasedAuditOutputServiceCreator {
       override def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService = createService(cluster)
 
       override def index(cluster: AuditCluster): IndexBasedAuditOutputService = createService(cluster)
@@ -123,6 +124,8 @@ class IndexLevelActionFilter(
         }
       }
     }
+    new EsAuditCapabilities.IndexOrDataStream(creator, creator)
+  }
 
   override def order(): Int = 0
 

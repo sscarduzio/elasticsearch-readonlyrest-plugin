@@ -23,16 +23,15 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.AuditIndexSchema
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditOutputConfig
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditOutputConfig.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputs
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexPattern, RequestId}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.api.MainSettingsApi.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest.Type
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput.*
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditConfig.AuditOutputSummary
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditConfig.AuditOutputSummary.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -71,33 +70,39 @@ class MainSettingsApi(
       .executeOn(RorSchedulers.restApiScheduler)
   }
 
-  private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
-    val outputs = rorInstance.auditSettings match {
-      case Some(AuditOutputsConfig.NoOutputsConfigured)       => List.empty
-      case Some(AuditOutputsConfig.WithOutputs(auditOutputs)) => auditOutputs.toList
-      case None                                               => List.empty
+  private def fetchCurrentAuditConfiguration(): Task[ProvideAuditConfig] = Task.delay {
+    val outputs = rorInstance.auditOutputs match {
+      case Some(AuditOutputs.Configured(outputs))              => outputs.toList
+      case Some(AuditOutputs.Defaults | AuditOutputs.Disabled) => List.empty
+      case None                                                => List.empty
     }
-    val auditOutputs = outputs.flatMap {
-      case AuditOutputConfig.Enabled(_, config) =>
-        config match {
-          case Config.EsIndexBasedOutput(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
-            Some(LocalAuditIndex(rorAuditIndexTemplate.rorAuditIndexPattern, AuditIndexSchema.from(logSerializer)))
-          case Config.EsIndexBasedOutput(_, _, _: AuditCluster.RemoteAuditCluster) =>
-            Some(OtherAuditOutput("Remote audit cluster"))
-          case Config.EsDataStreamBasedOutput(logSerializer, ds, AuditCluster.LocalAuditCluster) =>
-            Some(LocalDataStream(ds.dataStream, AuditIndexSchema.from(logSerializer)))
-          case Config.EsDataStreamBasedOutput(_, ds, _: AuditCluster.RemoteAuditCluster) =>
-            Some(OtherAuditOutput(s"Remote ${ds.dataStream.value.value} data stream"))
-          case s: Config.LogBasedOutput =>
-            Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}]"))
-          case s: Config.RollingFileBasedOutput =>
-            Some(
-              OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}] to file [${s.fileAppender.filePath}]")
-            )
-        }
-      case AuditOutputConfig.Disabled => None
-    }
-    ProvideAuditSettings.AuditSettings(auditOutputs)
+    ProvideAuditConfig.AuditConfig(
+      outputs.map {
+        case s: EsIndexBased =>
+          s.config.auditCluster match {
+            case AuditCluster.LocalAuditCluster =>
+              LocalAuditIndex(
+                s.config.rorAuditIndexTemplate.rorAuditIndexPattern,
+                AuditIndexSchema.from(s.config.serializer)
+              )
+            case _: AuditCluster.RemoteAuditCluster =>
+              OtherAuditOutput("Remote audit cluster")
+          }
+        case s: EsDataStreamBased =>
+          s.config.auditCluster match {
+            case AuditCluster.LocalAuditCluster =>
+              LocalDataStream(s.config.rorAuditDataStream.dataStream, AuditIndexSchema.from(s.config.serializer))
+            case _: AuditCluster.RemoteAuditCluster =>
+              OtherAuditOutput(s"Remote ${s.config.rorAuditDataStream.dataStream.value.value} data stream")
+          }
+        case s: LogBased =>
+          OtherAuditOutput(s"Logger with name [${s.config.loggerName.value.value}]")
+        case s: RollingFileBased =>
+          OtherAuditOutput(
+            s"Logger with name [${s.config.loggerName.value.value}] to file [${s.config.fileAppender.filePath}]"
+          )
+      }
+    )
   }
 
   private def forceReloadRor()(
@@ -254,19 +259,20 @@ object MainSettingsApi {
       final case class Failure(message: String) extends ProvideIndexMainSettings
     }
 
-    sealed trait ProvideAuditSettings extends MainSettingsResponse
+    sealed trait ProvideAuditConfig extends MainSettingsResponse
 
-    object ProvideAuditSettings {
-      final case class AuditSettings(auditOutputs: List[AuditOutput]) extends ProvideAuditSettings
-      sealed trait AuditOutput
+    object ProvideAuditConfig {
+      final case class AuditConfig(auditOutputs: List[ProvideAuditConfig.AuditOutputSummary]) extends ProvideAuditConfig
+      sealed trait AuditOutputSummary
 
-      object AuditOutput {
-        final case class LocalAuditIndex(indexPattern: IndexPattern, schema: AuditIndexSchema) extends AuditOutput
-        final case class LocalDataStream(name: DataStreamName.Full, schema: AuditIndexSchema) extends AuditOutput
-        final case class OtherAuditOutput(description: String) extends AuditOutput
+      object AuditOutputSummary {
+        final case class LocalAuditIndex(indexPattern: IndexPattern, schema: AuditIndexSchema)
+            extends AuditOutputSummary
+        final case class LocalDataStream(name: DataStreamName.Full, schema: AuditIndexSchema) extends AuditOutputSummary
+        final case class OtherAuditOutput(description: String) extends AuditOutputSummary
       }
 
-      final case class Failure(message: String) extends ProvideAuditSettings
+      final case class Failure(message: String) extends ProvideAuditConfig
     }
 
     sealed trait ProvideFileMainSettings extends MainSettingsResponse
@@ -298,8 +304,8 @@ object MainSettingsApi {
       case _: ForceReloadMainSettings.Failure               => "ko"
       case _: ProvideIndexMainSettings.MainSettings         => "ok"
       case _: ProvideIndexMainSettings.MainSettingsNotFound => "empty"
-      case _: ProvideAuditSettings.AuditSettings            => "ok"
-      case _: ProvideAuditSettings.Failure                  => "ko"
+      case _: ProvideAuditConfig.AuditConfig                => "ok"
+      case _: ProvideAuditConfig.Failure                    => "ko"
       case _: ProvideIndexMainSettings.Failure              => "ko"
       case _: ProvideFileMainSettings.MainSettings          => "ok"
       case _: ProvideFileMainSettings.Failure               => "ko"
@@ -346,11 +352,11 @@ object MainSettingsApi {
               addResponseJson(builder, response.status, rawSettings)
             case ProvideFileMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
           }
-        case provideAuditSettings: MainSettingsResponse.ProvideAuditSettings =>
-          provideAuditSettings match {
-            case ProvideAuditSettings.AuditSettings(auditOutputs) =>
+        case provideAuditConfig: MainSettingsResponse.ProvideAuditConfig =>
+          provideAuditConfig match {
+            case ProvideAuditConfig.AuditConfig(auditOutputs) =>
               addResponseJson(builder, response.status, auditOutputs)
-            case ProvideAuditSettings.Failure(message) => addResponseJson(builder, response.status, message)
+            case ProvideAuditConfig.Failure(message) => addResponseJson(builder, response.status, message)
           }
         case updateIndexSettings: MainSettingsResponse.UpdateIndexMainSettings =>
           updateIndexSettings match {
@@ -369,7 +375,7 @@ object MainSettingsApi {
         case _: ForceReloadMainSettings  => MainSettingsApiResponseStatus.Ok
         case _: ProvideIndexMainSettings => MainSettingsApiResponseStatus.Ok
         case _: ProvideFileMainSettings  => MainSettingsApiResponseStatus.Ok
-        case _: ProvideAuditSettings     => MainSettingsApiResponseStatus.Ok
+        case _: ProvideAuditConfig       => MainSettingsApiResponseStatus.Ok
         case _: UpdateIndexMainSettings  => MainSettingsApiResponseStatus.Ok
         case failure: Failure            =>
           failure match {
@@ -392,10 +398,21 @@ object MainSettingsApi {
     )
   }
 
-  private def addResponseJson(builder: EsXContentBuilder, status: String, auditOutputs: List[AuditOutput]): Unit = {
-    val localAuditIndexes = auditOutputs.collect { case index: AuditOutput.LocalAuditIndex => index }
-    val localDataStreams = auditOutputs.collect { case index: AuditOutput.LocalDataStream => index }
-    val otherAuditOutputs = auditOutputs.collect { case output: AuditOutput.OtherAuditOutput => output }
+  private def addResponseJson(
+      builder: EsXContentBuilder,
+      status: String,
+      auditOutputs: List[ProvideAuditConfig.AuditOutputSummary]
+  ): Unit = {
+    val localAuditIndexes = auditOutputs.collect { case index: ProvideAuditConfig.AuditOutputSummary.LocalAuditIndex =>
+      index
+    }
+    val localDataStreams = auditOutputs.collect { case index: ProvideAuditConfig.AuditOutputSummary.LocalDataStream =>
+      index
+    }
+    val otherAuditOutputs = auditOutputs.collect {
+      case output: ProvideAuditConfig.AuditOutputSummary.OtherAuditOutput =>
+        output
+    }
     builder.build(
       Json
         .obj(

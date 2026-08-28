@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
+import cats.data.{EitherT, NonEmptyList}
 import cats.implicits.*
 import eu.timepit.refined.types.numeric.PosInt
 import monix.eval.Task
@@ -25,7 +25,7 @@ import org.json.JSONObject
 import squants.information.Information
 import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditOutputConfig.{Disabled, Enabled}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
 import tech.beshu.ror.accesscontrol.audit.acl.AclAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.output.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit
@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.PrecomputedAuditO
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.*
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -212,213 +213,301 @@ final class AuditingTool private (private[ror] val outputs: List[AuditOutput])(
 
 object AuditingTool extends RequestIdAwareLogging {
 
-  object AuditSettings {
+  sealed trait AuditOutputs[+O <: AuditOutputConfig]
 
-    sealed trait AuditOutputConfig
+  object AuditOutputs {
+    case object Disabled extends AuditOutputs[Nothing]
+    case object Defaults extends AuditOutputs[Nothing]
+    final case class Configured[+O <: AuditOutputConfig](outputs: NonEmptyList[O]) extends AuditOutputs[O]
+  }
 
-    object AuditOutputConfig {
-      final case class Enabled(name: AuditOutputName, config: AuditSettings.AuditOutputConfig.Config)
-          extends AuditOutputConfig
+  sealed trait AuditOutputConfig {
+    def name: AuditOutputName
+  }
 
-      case object Disabled extends AuditOutputConfig
+  object AuditOutputConfig {
 
-      sealed trait Config
+    final case class EsIndexBased(name: AuditOutputName, config: EsIndexBased.Config) extends AuditOutputConfig
+
+    object EsIndexBased {
+
+      final case class Config(
+          serializer: JsonAuditSerializer,
+          rorAuditIndexTemplate: RorAuditIndexTemplate,
+          auditCluster: AuditCluster
+      )
 
       object Config {
 
-        final case class EsIndexBasedOutput(
-            serializer: JsonAuditSerializer,
-            rorAuditIndexTemplate: RorAuditIndexTemplate,
-            auditCluster: AuditCluster
-        ) extends Config
-
-        object EsIndexBasedOutput {
-
-          val default: EsIndexBasedOutput = EsIndexBasedOutput(
-            serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
-            rorAuditIndexTemplate = RorAuditIndexTemplate.default,
-            auditCluster = AuditCluster.LocalAuditCluster,
-          )
-
-        }
-
-        final case class EsDataStreamBasedOutput(
-            serializer: JsonAuditSerializer,
-            rorAuditDataStream: RorAuditDataStream,
-            auditCluster: AuditCluster
-        ) extends Config
-
-        object EsDataStreamBasedOutput {
-
-          val default: EsDataStreamBasedOutput = EsDataStreamBasedOutput(
-            serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
-            rorAuditDataStream = RorAuditDataStream.default,
-            auditCluster = AuditCluster.LocalAuditCluster,
-          )
-
-        }
-
-        final case class LogBasedOutput(serializer: AuditSerializer, loggerName: RorAuditLoggerName) extends Config
-
-        object LogBasedOutput {
-
-          val default: LogBasedOutput = LogBasedOutput(
-            serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
-            loggerName = RorAuditLoggerName.default
-          )
-
-        }
-
-        final case class RollingFileBasedOutput(
-            serializer: AuditSerializer,
-            loggerName: RorAuditLoggerName,
-            fileAppender: RollingFileBasedOutput.FileAppenderConfig
-        ) extends Config
-
-        object RollingFileBasedOutput {
-          final case class FileAppenderConfig(filePath: java.nio.file.Path, maxFileSize: Information, maxFiles: PosInt)
-        }
+        val default: Config = Config(
+          serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
+          rorAuditIndexTemplate = RorAuditIndexTemplate.default,
+          auditCluster = LocalAuditCluster,
+        )
 
       }
 
     }
 
+    final case class EsDataStreamBased(name: AuditOutputName, config: EsDataStreamBased.Config)
+        extends AuditOutputConfig
+
+    object EsDataStreamBased {
+
+      final case class Config(
+          serializer: JsonAuditSerializer,
+          rorAuditDataStream: RorAuditDataStream,
+          auditCluster: AuditCluster
+      )
+
+      object Config {
+
+        val default: Config = Config(
+          serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
+          rorAuditDataStream = RorAuditDataStream.default,
+          auditCluster = LocalAuditCluster,
+        )
+
+      }
+
+    }
+
+    final case class LogBased(name: AuditOutputName, config: LogBased.Config) extends AuditOutputConfig
+
+    object LogBased {
+
+      final case class Config(serializer: AuditSerializer, loggerName: RorAuditLoggerName)
+
+      object Config {
+
+        val default: Config = Config(
+          serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
+          loggerName = RorAuditLoggerName.default
+        )
+
+      }
+
+    }
+
+    final case class RollingFileBased(name: AuditOutputName, config: RollingFileBased.Config) extends AuditOutputConfig
+
+    object RollingFileBased {
+
+      final case class Config(
+          serializer: AuditSerializer,
+          loggerName: RorAuditLoggerName,
+          fileAppender: FileAppender
+      )
+
+      final case class FileAppender(filePath: java.nio.file.Path, maxFileSize: Information, maxFiles: PosInt)
+
+    }
+
   }
 
-  sealed trait AuditOutputsConfig
-
-  object AuditOutputsConfig {
-    case object NoOutputsConfigured extends AuditOutputsConfig
-    final case class WithOutputs(auditOutputs: NonEmptyList[AuditSettings.AuditOutputConfig]) extends AuditOutputsConfig
-  }
-
-  final case class AuditingConfig(
-      outputsConfig: Option[AuditOutputsConfig],
+  final case class AuditingConfig[+O <: AuditOutputConfig](
+      outputs: AuditOutputs[O],
       defaultAclLog: Boolean,
       esNodeSettings: EsNodeSettings
   )
 
-  final case class CreationError(message: String) extends AnyVal
-
-  def create(config: AuditingConfig, auditOutputServiceCreator: AuditOutputServiceCreator)(
-      implicit clock: Clock,
-      loggingContext: LoggingContext
-  ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
-    val effectiveOutputs = applyDefaults(config.outputsConfig, config.defaultAclLog)
-    createAuditOutputs(effectiveOutputs, auditOutputServiceCreator).map {
-      _.map { auditOutputs =>
-        implicit val auditEnvironmentContext: AuditEnvironmentContext =
-          new AuditEnvironmentContextBasedOnEsNodeSettings(config.esNodeSettings)
-        if (auditOutputs.isEmpty) {
-          noRequestIdLogger.info("The audit is disabled because no output is enabled")
-        } else {
-          noRequestIdLogger.info(s"The audit is enabled with the given outputs: [${auditOutputs.show}]")
-        }
-        new AuditingTool(auditOutputs)
-      }.toEither
-        .leftMap { errors =>
-          errors.map(error => CreationError(error.message))
-        }
-    }
+  sealed trait AuditSetup {
+    def config: AuditingConfig[AuditOutputConfig]
   }
 
-  private def applyDefaults(
-      settings: Option[AuditOutputsConfig],
+  object AuditSetup {
+
+    /**
+     * An audit output that all supported ES versions accept. ES older than
+     * [[tech.beshu.ror.constants.EsFeatureVersions.dataStreamSupport]] has no data streams.
+     */
+    type OutputSupportedByAllEsVersions = EsIndexBased | LogBased | RollingFileBased
+
+    final class SupportedByAllEsVersions(
+        val capability: EsAuditCapabilities.IndexOnly,
+        val config: AuditingConfig[OutputSupportedByAllEsVersions]
+    ) extends AuditSetup
+
+    final class AnyOutput(
+        val capability: EsAuditCapabilities.IndexOrDataStream,
+        val config: AuditingConfig[AuditOutputConfig]
+    ) extends AuditSetup
+
+  }
+
+  final case class CreationError(message: String) extends AnyVal
+
+  def create(
+      setup: AuditSetup
+  )(
+      using Clock,
+      LoggingContext
+  ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = setup match {
+    case s: AuditSetup.SupportedByAllEsVersions =>
+      create(config = s.config, creator = s.capability.creator)
+    case s: AuditSetup.AnyOutput =>
+      create(
+        config = s.config,
+        indexCreator = s.capability.indexCreator,
+        dataStreamCreator = s.capability.dataStreamCreator
+      )
+  }
+
+  private def create(
+      config: AuditingConfig[AuditSetup.OutputSupportedByAllEsVersions],
+      creator: IndexBasedAuditOutputServiceCreator
+  )(
+      using Clock,
+      LoggingContext
+  ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
+    val effectiveOutputs: List[AuditSetup.OutputSupportedByAllEsVersions] =
+      applyDefaults(config.outputs, config.defaultAclLog)
+    val outputTasks = effectiveOutputs.map {
+      case s: EsIndexBased     => createIndexOutput(s, creator)
+      case s: LogBased         => createLogOutput(s)
+      case s: RollingFileBased => createRollingFileBaseOutput(s)
+    }
+    createAuditingTool(config.esNodeSettings, outputTasks)
+  }
+
+  private def create(
+      config: AuditingConfig[AuditOutputConfig],
+      indexCreator: IndexBasedAuditOutputServiceCreator,
+      dataStreamCreator: DataStreamBasedAuditOutputServiceCreator
+  )(
+      using Clock,
+      LoggingContext
+  ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
+    val effectiveOutputs: List[AuditOutputConfig] =
+      applyDefaults(config.outputs, config.defaultAclLog)
+    val outputTasks = effectiveOutputs.map {
+      case s: EsIndexBased      => createIndexOutput(s, indexCreator)
+      case s: EsDataStreamBased => createDataStreamOutput(s, dataStreamCreator)
+      case s: LogBased          => createLogOutput(s)
+      case s: RollingFileBased  => createRollingFileBaseOutput(s)
+    }
+    createAuditingTool(config.esNodeSettings, outputTasks)
+  }
+
+  private def applyDefaults[O >: AuditSetup.OutputSupportedByAllEsVersions <: AuditOutputConfig](
+      settings: AuditOutputs[O],
       defaultAclLog: Boolean
-  ): List[AuditSettings.AuditOutputConfig] = {
-    val outputs = settings match {
-      case None                                          => List.empty
-      case Some(AuditOutputsConfig.NoOutputsConfigured)  => List(defaultIndexStorageOutput)
-      case Some(AuditOutputsConfig.WithOutputs(outputs)) => outputs.toList
+  ): List[O] = {
+    val outputs: List[O] = settings match {
+      case AuditOutputs.Disabled            => List.empty
+      case AuditOutputs.Defaults            => List(defaultIndexStorageOutput)
+      case AuditOutputs.Configured(outputs) => outputs.toList
     }
     if (defaultAclLog) defaultAclOutput :: outputs else outputs
   }
 
-  private def defaultAclOutput = AuditSettings.AuditOutputConfig.Enabled(
-    AuditOutputName.defaultAclLog,
-    AuditSettings.AuditOutputConfig.Config.LogBasedOutput(AuditSerializer.Acl, AclAuditLogSerializer.defaultLoggerName)
-  )
+  private def defaultAclOutput: LogBased =
+    LogBased(
+      AuditOutputName.defaultAclLog,
+      LogBased.Config(AuditSerializer.Acl, AclAuditLogSerializer.defaultLoggerName)
+    )
 
-  private def defaultIndexStorageOutput = AuditSettings.AuditOutputConfig.Enabled(
-    AuditOutputName.defaultIndexStorage,
-    AuditSettings.AuditOutputConfig.Config.EsIndexBasedOutput.default
-  )
-
-  private def createAuditOutputs(
-      outputs: List[AuditSettings.AuditOutputConfig],
-      auditOutputServiceCreator: AuditOutputServiceCreator
-  )(
-      using Clock
-  ): Task[ValidatedNel[CreationError, List[SupportedAuditOutput]]] = {
-    outputs
-      .map[Task[Validated[CreationError, Option[SupportedAuditOutput]]]] {
-        case Enabled(name, config: AuditSettings.AuditOutputConfig.Config.EsIndexBasedOutput) =>
-          val serviceCreator: IndexBasedAuditOutputServiceCreator = auditOutputServiceCreator match {
-            case creator: DataStreamAndIndexBasedAuditOutputServiceCreator => creator
-            case creator: IndexBasedAuditOutputServiceCreator              => creator
-          }
-          createIndexOutput(name, config, serviceCreator).map(_.some.valid)
-        case Enabled(name, config: AuditSettings.AuditOutputConfig.Config.EsDataStreamBasedOutput) =>
-          auditOutputServiceCreator match {
-            case creator: DataStreamAndIndexBasedAuditOutputServiceCreator =>
-              createDataStreamOutput(name, config, creator).map(_.map(_.some))
-            case _: IndexBasedAuditOutputServiceCreator =>
-              // todo improvement - make this state impossible
-              Task.raiseError(new IllegalStateException("Data stream audit output is not supported in this version"))
-          }
-        case Enabled(name, config: AuditSettings.AuditOutputConfig.Config.LogBasedOutput) =>
-          Task.delay(new LogBasedAuditOutput(name, config.serializer, config.loggerName).some.valid)
-        case Enabled(name, config: AuditSettings.AuditOutputConfig.Config.RollingFileBasedOutput) =>
-          RollingFileBasedAuditOutput
-            .create(name, config.serializer, config.loggerName, config.fileAppender)
-            .map(_.map(_.some).leftMap(e => CreationError(e.message)).toValidated)
-        case Disabled =>
-          Task.pure(None.valid)
-      }
-      .sequence
-      .map { outputCreationResults =>
-        outputCreationResults.foldLeft[(List[CreationError], List[SupportedAuditOutput])](List.empty, List.empty) {
-          case ((errorsAcc, outputsAcc), result) =>
-            result match {
-              case Validated.Valid(Some(auditOutput)) => (errorsAcc, outputsAcc :+ auditOutput)
-              case Validated.Valid(None)              => (errorsAcc, outputsAcc)
-              case Validated.Invalid(error)           => (errorsAcc :+ error, outputsAcc)
-            }
-        }
-      }
-      .map { case (errors, outputs) =>
-        NonEmptyList.fromList(errors).toInvalid(outputs)
-      }
-  }
+  private def defaultIndexStorageOutput: EsIndexBased =
+    EsIndexBased(AuditOutputName.defaultIndexStorage, EsIndexBased.Config.default)
 
   private def createIndexOutput(
-      name: AuditOutputName,
-      config: AuditSettings.AuditOutputConfig.Config.EsIndexBasedOutput,
-      serviceCreator: IndexBasedAuditOutputServiceCreator
+      output: EsIndexBased,
+      creator: IndexBasedAuditOutputServiceCreator
   )(
       using Clock
-  ): Task[SupportedAuditOutput] = Task.delay {
-    val service = serviceCreator.index(config.auditCluster)
-    EsIndexBasedAuditOutput(
-      outputName = name,
-      serializer = config.serializer,
-      indexTemplate = config.rorAuditIndexTemplate,
-      auditOutputService = service
+  ): Task[Either[CreationError, SupportedAuditOutput]] = Task.delay {
+    Right(
+      EsIndexBasedAuditOutput(
+        outputName = output.name,
+        serializer = output.config.serializer,
+        indexTemplate = output.config.rorAuditIndexTemplate,
+        auditOutputService = creator.index(output.config.auditCluster)
+      )
     )
   }
 
   private def createDataStreamOutput(
-      name: AuditOutputName,
-      config: AuditSettings.AuditOutputConfig.Config.EsDataStreamBasedOutput,
-      serviceCreator: DataStreamAndIndexBasedAuditOutputServiceCreator
-  ): Task[Validated[CreationError, SupportedAuditOutput]] =
-    Task
-      .delay(serviceCreator.dataStream(config.auditCluster))
-      .flatMap { auditOutputService =>
+      output: EsDataStreamBased,
+      creator: DataStreamBasedAuditOutputServiceCreator
+  ): Task[Either[CreationError, SupportedAuditOutput]] = {
+    (for {
+      service <- EitherT.right[CreationError](Task.delay(creator.dataStream(output.config.auditCluster)))
+      auditOutput <- EitherT(
         EsDataStreamBasedAuditOutput
-          .create(name, config.serializer, config.rorAuditDataStream, auditOutputService, config.auditCluster)
-          .map(_.leftMap(error => CreationError(error.message)).toValidated)
+          .create(
+            output.name,
+            output.config.serializer,
+            output.config.rorAuditDataStream,
+            service,
+            output.config.auditCluster
+          )
+          .map(_.leftMap(error => CreationError(error.message)))
+          .redeemWith(
+            recover = ex => Task.delay(service.close()) >> Task.raiseError(ex),
+            bind = {
+              case left @ Left(_) => Task.delay(service.close()).as(left)
+              case right          => Task.pure(right)
+            }
+          )
+      )
+    } yield auditOutput).value
+  }
+
+  private def createLogOutput(
+      output: LogBased
+  ): Task[Either[CreationError, SupportedAuditOutput]] = {
+    Task.delay(Right(new LogBasedAuditOutput(output.name, output.config.serializer, output.config.loggerName)))
+  }
+
+  private def createRollingFileBaseOutput(
+      output: RollingFileBased
+  ): Task[Either[CreationError, SupportedAuditOutput]] = {
+    RollingFileBasedAuditOutput
+      .create(output.name, output.config.serializer, output.config.loggerName, output.config.fileAppender)
+      .map(_.leftMap(e => CreationError(e.message)))
+  }
+
+  private def createAuditingTool(
+      esNodeSettings: EsNodeSettings,
+      outputTasks: List[Task[Either[CreationError, SupportedAuditOutput]]]
+  )(
+      using LoggingContext
+  ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
+    outputTasks
+      .map(_.attempt)
+      .parSequence
+      .flatMap[Either[NonEmptyList[CreationError], List[SupportedAuditOutput]]] { attempts =>
+        val (exceptions, results) = attempts.separate
+        val (creationErrors, outputs) = results.separate
+
+        (NonEmptyList.fromList(exceptions), NonEmptyList.fromList(creationErrors)) match {
+          case (Some(exs), _) =>
+            Task.delay(exs.tail.foreach(logDiscardedOutputCreationError)) >>
+              outputs.parTraverse(_.close().handleError(logOutputCloseError)) >> Task.raiseError(exs.head)
+          case (None, Some(errors)) =>
+            outputs.parTraverse(_.close().handleError(logOutputCloseError)).as(Left(errors))
+          case (None, None) =>
+            Task.pure(Right(outputs))
+        }
       }
+      .map {
+        _.map { auditOutputs =>
+          implicit val auditEnvironmentContext: AuditEnvironmentContext =
+            new AuditEnvironmentContextBasedOnEsNodeSettings(esNodeSettings)
+          if (auditOutputs.nonEmpty)
+            noRequestIdLogger.info(s"The audit is enabled with the given outputs: [${auditOutputs.show}]")
+          else
+            noRequestIdLogger.info("The audit is disabled because no output is enabled")
+          new AuditingTool(auditOutputs)
+        }
+      }
+  }
+
+  private val logOutputCloseError: Throwable => Unit =
+    ex => noRequestIdLogger.warn(s"Failed to close audit output during error recovery: ${ex.getMessage}")
+
+  private val logDiscardedOutputCreationError: Throwable => Unit =
+    ex => noRequestIdLogger.warn(s"Another audit output also failed to be created: ${ex.getMessage}", ex)
 
   private type SupportedAuditOutput = EsIndexBasedAuditOutput | EsDataStreamBasedAuditOutput | LogBasedAuditOutput |
     RollingFileBasedAuditOutput

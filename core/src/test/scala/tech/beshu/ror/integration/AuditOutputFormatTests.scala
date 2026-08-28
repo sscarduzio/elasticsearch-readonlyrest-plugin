@@ -17,20 +17,17 @@
 package tech.beshu.ror.integration
 
 import cats.data.NonEmptyList
+import cats.effect.Resource
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditOutputConfig
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditOutputConfig.Config
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
-import tech.beshu.ror.accesscontrol.audit.output.{
-  AuditDataStreamCreator,
-  DataStreamAndIndexBasedAuditOutputServiceCreator
-}
-import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputConfig.*
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputs, AuditSetup, AuditingConfig}
+import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
+import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
@@ -190,19 +187,19 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       dataStreamBasedAuditOutputService: DataStreamBasedAuditOutputService
   ) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-    val settings = AuditOutputsConfig.WithOutputs(
+    val settings = AuditOutputs.Configured(
       NonEmptyList.of(
-        AuditOutputConfig.Enabled(
+        EsIndexBased(
           AuditOutputName.random(),
-          Config.EsIndexBasedOutput(
+          EsIndexBased.Config(
             AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             RorAuditIndexTemplate.default,
             AuditCluster.LocalAuditCluster
           )
         ),
-        AuditOutputConfig.Enabled(
+        EsDataStreamBased(
           AuditOutputName.random(),
-          Config.EsDataStreamBasedOutput(
+          EsDataStreamBased.Config(
             AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             RorAuditDataStream.default,
             AuditCluster.LocalAuditCluster
@@ -212,13 +209,13 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     )
     val auditingTool = AuditingTool
       .create(
-        config = AuditingConfig(Some(settings), defaultAclLog = true, defaultTestEsNodeSettings),
-        auditOutputServiceCreator = new DataStreamAndIndexBasedAuditOutputServiceCreator {
-          override def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService =
-            dataStreamBasedAuditOutputService
-
-          override def index(cluster: AuditCluster): IndexBasedAuditOutputService = indexBasedAuditOutputService
-        }
+        new AuditSetup.AnyOutput(
+          capability = new EsAuditCapabilities.IndexOrDataStream(
+            indexCreator = (_: AuditCluster) => indexBasedAuditOutputService,
+            dataStreamCreator = (_: AuditCluster) => dataStreamBasedAuditOutputService,
+          ),
+          config = AuditingConfig(settings, defaultAclLog = true, defaultTestEsNodeSettings),
+        )
       )
       .runSyncUnsafe()
       .toOption
@@ -275,9 +272,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       .expects(RorAuditDataStream.default.dataStream)
       .returning(Task.now(true))
 
-    override def dataStreamCreator: AuditDataStreamCreator = AuditDataStreamCreator(
-      NonEmptyList.one(mockedDataStreamService)
-    )
+    override def dataStreamCreator: Resource[Task, AuditDataStreamCreator] = Resource.pure {
+      AuditDataStreamCreator(mockedDataStreamService)
+    }
 
   }
 
