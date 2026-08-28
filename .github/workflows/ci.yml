@@ -202,6 +202,10 @@ jobs:
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     continue-on-error: true
+    # Without this limit, the job uses the GitHub default of 6 hours. dependency-check does not
+    # treat a Sonatype 429 or 5xx as fatal. It sends the OSS Index request again for each
+    # dependency. A Sonatype outage can thus use all 6 hours. A good run takes a few minutes.
+    timeout-minutes: 30
     name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
@@ -210,34 +214,18 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Compute monthly cache key
-        id: month
-        run: echo "ym=$(date +%Y%m)" >> "$GITHUB_OUTPUT"
-      - name: Restore CVE DB cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .dependency-check-data
-          # Immutable entries; a fresh key appears once a month (Azure Cache@2 semantics)
-          key: dependency-check-v2-${{ steps.month.outputs.ym }}
-          restore-keys: dependency-check-v2-
       - name: ${{ matrix.ROR_TASK }}
-        env:
-          ROR_TASK: ${{ matrix.ROR_TASK }}
-          DEPENDENCY_CHECK_DATA_DIR: .dependency-check-data
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-          OSS_INDEX_USERNAME: ${{ secrets.OSS_INDEX_USERNAME }}
-          OSS_INDEX_PASSWORD: ${{ secrets.OSS_INDEX_PASSWORD }}
-        run: |
-          # Fork PRs get EMPTY (not absent) secrets from GitHub. A set-but-empty key makes
-          # dependency-check/oss-index attempt authenticated calls (401) instead of anonymous mode
-          # — Azure only exported these when not a fork. Unset empties to restore that behavior.
-          if [ -z "$NVD_API_KEY" ]; then
-            echo "::warning::NVD_API_KEY secret is not set - dependency-check will likely fail (NVD throttles keyless clients). This job is continue-on-error, so the run is not blocked."
-          fi
-          [ -n "$NVD_API_KEY" ] || unset NVD_API_KEY
-          [ -n "$OSS_INDEX_USERNAME" ] || unset OSS_INDEX_USERNAME
-          [ -n "$OSS_INDEX_PASSWORD" ] || unset OSS_INDEX_PASSWORD
-          ci/run-pipeline.sh
+        uses: ./.github/actions/cve-check
+        with:
+          ror-task: ${{ matrix.ROR_TASK }}
+          # The caller decides who writes the NVD database cache. Pushes to develop and to master
+          # occur often, and thus keep the cache fresh. A PR run only reads the cache.
+          save-nvd-cache: >-
+            ${{ github.event_name == 'push' &&
+                (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master') }}
+          nvd-api-key: ${{ secrets.NVD_API_KEY }}
+          oss-index-username: ${{ secrets.OSS_INDEX_USERNAME }}
+          oss-index-password: ${{ secrets.OSS_INDEX_PASSWORD }}
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
