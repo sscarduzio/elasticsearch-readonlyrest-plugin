@@ -28,7 +28,11 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.sink.{AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
+import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
+import tech.beshu.ror.accesscontrol.audit.output.{
+  DataStreamBasedAuditOutputServiceCreator,
+  IndexBasedAuditOutputServiceCreator
+}
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
@@ -73,7 +77,7 @@ class IndexLevelActionFilter(
 
   private val ror = ReadonlyRest.create(
     new EsIndexDocumentManager(client),
-    auditSinkServiceCreator,
+    auditCapabilities,
     esEnv,
   )
 
@@ -102,21 +106,25 @@ class IndexLevelActionFilter(
     startRorInstance()
   }
 
-  private def auditSinkServiceCreator: AuditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
-    override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = createService(cluster)
+  private def auditCapabilities: EsAuditCapabilities.IndexOrDataStream = {
+    val creator = new IndexBasedAuditOutputServiceCreator with DataStreamBasedAuditOutputServiceCreator {
+      override def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService = createService(cluster)
 
-    override def index(cluster: AuditCluster): IndexBasedAuditSinkService = createService(cluster)
+      override def index(cluster: AuditCluster): IndexBasedAuditOutputService = createService(cluster)
 
-    private def createService(cluster: AuditCluster): IndexBasedAuditSinkService & DataStreamBasedAuditSinkService = {
-      cluster match {
-        case AuditCluster.LocalAuditCluster =>
-          new NodeClientBasedAuditSinkService(client, threadPool, new XContentJsonParserFactory(xContentRegistry))(
-            using systemContext.clock
-          )
-        case remote: AuditCluster.RemoteAuditCluster =>
-          RestClientAuditSinkService.create(remote)
+      private def createService(cluster: AuditCluster): IndexBasedAuditOutputService &
+        DataStreamBasedAuditOutputService = {
+        cluster match {
+          case AuditCluster.LocalAuditCluster =>
+            new NodeClientBasedAuditOutputService(client, threadPool, new XContentJsonParserFactory(xContentRegistry))(
+              using systemContext.clock
+            )
+          case remote: AuditCluster.RemoteAuditCluster =>
+            RestClientAuditOutputService.create(remote)
+        }
       }
     }
+    new EsAuditCapabilities.IndexOrDataStream(creator, creator)
   }
 
   override def order(): Int = 0

@@ -93,7 +93,7 @@ jobs:
         run: |
           set -e
 
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
 
           echo ">>> Publishing pre-build docker images for: $BUILD_ROR_ES_VERSIONS"
           ci/run-pipeline.sh

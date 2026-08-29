@@ -20,10 +20,10 @@ import better.files.*
 import cats.data.NonEmptyList
 import com.typesafe.scalalogging.LazyLogging
 import os.Path
-import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.images.Elasticsearch.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{PluginInstallationStep, PluginInstallationSteps}
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager
+import tech.beshu.ror.utils.containers.{ContainerUtils, DockerHubMirror}
 import tech.beshu.ror.utils.misc.{JDK, Version}
 
 object Elasticsearch {
@@ -267,7 +267,10 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
   private def toUbuntuWithAptEsDockerImageDescription: DockerImageDescription = {
     val esMajorVersion: String = esVersion.split("\\.")(0) + ".x"
     DockerImageDescription
-      .create("ubuntu:24.04", customEntrypoint)
+      // This name becomes a Dockerfile FROM, which testcontainers never rewrites, so the mirror is
+      // applied here. The docker.elastic.co image above needs no such call. It is not a Docker Hub
+      // name, and no Docker Hub mirror can serve it.
+      .create(DockerHubMirror.applyTo("ubuntu:24.04"), customEntrypoint)
       .user("root")
       .run("apt update")
       .run("apt install -y ca-certificates gnupg2 curl apt-transport-https")

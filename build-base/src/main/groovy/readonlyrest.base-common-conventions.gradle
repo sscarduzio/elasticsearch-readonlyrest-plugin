@@ -57,9 +57,10 @@ dependencyCheck {
        Critical 9.0-10.0
      */
     failBuildOnCVSS = 3
-    scanConfigurations = ['runtimeClasspath'] 
+    scanConfigurations = ['runtimeClasspath']
     suppressionFiles = ["${project.rootDir}/suppressions_cve.xml"]
-    
+    formats = ['HTML', 'JSON']
+
     analyzers {
         // We don't need 'exe' or 'dll' files scanning
         assemblyEnabled = false
@@ -76,6 +77,30 @@ dependencyCheck {
             if (System.getenv('OSS_INDEX_PASSWORD')) {
                 password = System.getenv('OSS_INDEX_PASSWORD')
             }
+
+            // OSS Index gives a second opinion after NVD. An OSS Index outage must not stop the
+            // scan. Without this option, OssIndexAnalyzer.analyzeDependency throws each remote
+            // error as an AnalysisException. A remote error is a 401, a 403, a 429, a 5xx, a socket
+            // timeout, or a 402 for exhausted Guide credits. The task then stops with
+            // "Analysis failed." It stops before it writes the reports, and before the
+            // failBuildOnCVSS gate runs. With this option, the analyzer writes
+            // "Sonatype OSS Index / Guide ..." to the log, and the run completes with NVD data only.
+            // This option applies to this analyzer only. Errors from all other analyzers stay fatal.
+            // The CVSS gate runs after this code, and thus a true finding still fails the build.
+            // Do not use dependencyCheck.failOnError = false instead. It also hides the errors from
+            // POM resolution, and from every other analyzer.
+            warnOnlyOnRemoteErrors = true
+
+            // Set ROR_CVE_OSS_INDEX=false for a run with NVD only. If you do not set the
+            // variable, OSS Index stays on.
+            enabled = System.getenv('ROR_CVE_OSS_INDEX') != 'false'
+
+            // How long a cached report in <dataDir>/oss_cache stays valid. ODC measures this time
+            // from the file mtime of each entry. The ODC default is 24 hours. CI restores this
+            // directory from a GitHub Actions cache that uses a weekly key. A value of 168 hours
+            // agrees with that key. Each Package-URL thus costs one Sonatype call each week, for
+            // the full repository. The new key each week also keeps the data recent.
+            validForHours = 168
         }
     }
     data {
@@ -98,7 +123,13 @@ dependencyCheck {
         //      https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz
         // Using ODC's feed as NVD tends to be unreliable.
         datafeedUrl = 'https://dependency-check.github.io/DependencyCheck_Builder/nvd_cache/nvdcve-{0}.json.gz'
-        validForHours = 12
+        // How long the local H2 database stays fresh. After this time, ODC downloads the yearly
+        // datafeeds again. CI refreshes this database on each push to develop and to master. A
+        // value of 24 hours thus lets most PR runs skip the download. If that refresh stops, a PR
+        // run repairs its own copy. That run is slow, but its results are correct. An update
+        // failure is not fatal when a database is already on disk. ODC writes "using local data
+        // instead" to the log, and continues.
+        validForHours = 24
     }
 }
 

@@ -41,7 +41,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.mocks.{
   MockHttpClientsFactory,
   MockHttpClientsFactoryWithFixedHttpClient,
-  MockLdapConnectionPoolProvider
+  MockLdapConnectionPoolProvider,
+  MockedCapabilities
 }
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
@@ -272,6 +273,50 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
               )
             )
           )
+        )
+      }
+      "block audit 'enabled_audit_outputs' is an empty list" in {
+        val settings = rorSettingsFromUnsafe("""
+                                               |readonlyrest:
+                                               |
+                                               |  access_control_rules:
+                                               |
+                                               |  - name: test_block
+                                               |    type: allow
+                                               |    auth_key: admin:container
+                                               |    audit:
+                                               |      enabled_audit_outputs: []
+                                               |
+                                               |""".stripMargin)
+        val acl = createCore(settings)
+        acl should be(
+          Left(
+            NonEmptyList.one(
+              BlocksLevelCreationError(
+                Message(
+                  "'enabled_audit_outputs' cannot be empty; to disable all audit for this block use 'audit: {enabled: false}'"
+                )
+              )
+            )
+          )
+        )
+      }
+      "block audit 'disabled_audit_outputs' is an empty list" in {
+        val settings = rorSettingsFromUnsafe("""
+                                               |readonlyrest:
+                                               |
+                                               |  access_control_rules:
+                                               |
+                                               |  - name: test_block
+                                               |    type: allow
+                                               |    auth_key: admin:container
+                                               |    audit:
+                                               |      disabled_audit_outputs: []
+                                               |
+                                               |""".stripMargin)
+        val acl = createCore(settings)
+        acl should be(
+          Left(NonEmptyList.one(BlocksLevelCreationError(Message("'disabled_audit_outputs' cannot be empty"))))
         )
       }
       "block has unknown policy type" when {
@@ -561,8 +606,10 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
         MockLdapConnectionPoolProvider,
-        NoOpMocksProvider
+        NoOpMocksProvider,
+        MockedCapabilities.indexOrDataStream
       )
+      .map(_.map(_.core))
       .runSyncUnsafe()
   }
 

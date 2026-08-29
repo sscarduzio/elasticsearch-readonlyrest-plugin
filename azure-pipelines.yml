@@ -1,6 +1,6 @@
-# Single source of truth for the CI toolchains image (bump the tag here on a JDK/Gradle change).
-# Declared as a container resource (NOT a variable) because the job-level `container:` property is
-# resolved at compile time and does not expand $(variables).
+# The CI toolchains image. ci/toolchains/image.env holds the tag, and a JDK or Gradle change bumps
+# it there. The copy below must say the same. Azure resolves the job-level `container:` property at
+# compile time and does not expand $(variables), so this one cannot read the file.
 resources:
   containers:
     - container: ror-toolchains
@@ -37,7 +37,7 @@ trigger: none
 
 pr: none
 
-# (weekly toolchains-image rebuild now lives in the GitHub Actions workflow's schedule)
+# (the weekly toolchains-image rebuild now lives in .github/workflows/build-toolchains-image.yml)
 
 parameters:
   - name: actionToPerform
@@ -110,13 +110,17 @@ stages:
               ci/upload-es-artifacts.sh
             continueOnError: true
             env:
-              VAR_ROR_S3_ENDPOINT_URL: $(ROR_S3_ENDPOINT_URL)
-              VAR_ROR_S3_REGION: $(ROR_S3_REGION)
-              VAR_ROR_S3_BUCKET: $(ROR_S3_BUCKET)
-              VAR_ROR_S3_ACCESS_KEY_ID: $(ROR_S3_ACCESS_KEY_ID)
-              VAR_ROR_S3_SECRET_ACCESS_KEY: $(ROR_S3_SECRET_ACCESS_KEY)
-              VAR_ROR_S3_PATH_ARTIFACTS: $(ROR_S3_PATH_ARTIFACTS)
-              VAR_ROR_S3_PATH_LIBS: $(ROR_S3_PATH_LIBS)
+              # The right-hand names are the OLD variables, and they are deliberate: this Azure pipeline still
+              # defines only the pre-#1348 names (ROR_*_STORE_*, DOCKER_REGISTRY_PASSWORD). Azure leaves
+              # $(NAME) literal when a variable does not exist, so the new names reach the scripts as macro
+              # text. Azure gives way to GitHub Actions soon, so map here instead of renaming in Azure.
+              VAR_ROR_S3_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_S3_REGION: $(ROR_LIBS_STORE_REGION)
+              VAR_ROR_S3_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_S3_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_S3_SECRET_ACCESS_KEY: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_S3_PATH_ARTIFACTS: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
+              VAR_ROR_S3_PATH_LIBS: $(ROR_LIBS_STORE_PATH_PREFIX)
 
   # Builds & pushes the CI toolchains image (ci/toolchains/JdkToolchains.Dockerfile). Runs on the
   # weekly schedule (cache refresh) or manually with actionToPerform=build_toolchains_image after a
@@ -145,16 +149,22 @@ stages:
             displayName: 'Free up disk space'
           - script: |
               set -e
-              # The image tag lives in the resources.containers block of this file (single source of truth)
-              IMAGE=$(grep -oE 'beshultd/ror-ci-toolchains:[^ ]+' azure-pipelines.yml | head -1)
+              # ci/toolchains/image.env holds the tag. The resources.containers block at the top of
+              # this file carries a copy, because Azure cannot read the file there.
+              . ci/toolchains/image.env
+              IMAGE="$TOOLCHAINS_IMAGE"
               echo ">>> Building $IMAGE"
               docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$IMAGE" .
               echo "$var_docker_hub_rw_token" | docker login -u "$var_docker_hub_user" --password-stdin
               docker push "$IMAGE"
             displayName: 'docker build & push'
             env:
+              # The right-hand names are the OLD variables, and they are deliberate: this Azure pipeline still
+              # defines only the pre-#1348 names (ROR_*_STORE_*, DOCKER_REGISTRY_PASSWORD). Azure leaves
+              # $(NAME) literal when a variable does not exist, so the new names reach the scripts as macro
+              # text. Azure gives way to GitHub Actions soon, so map here instead of renaming in Azure.
               var_docker_hub_user: $(DOCKER_HUB_USER)
-              var_docker_hub_rw_token: $(DOCKER_HUB_RW_TOKEN)
+              var_docker_hub_rw_token: $(DOCKER_REGISTRY_PASSWORD)
 
   - stage: TOOLCHAINS_VERIFY
     displayName: 'Verify toolchains image'
@@ -263,24 +273,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          # No ROR_S3_* here: this job only READS the ES libs, and Gradle's default public store
+          # (readonlyrest.plugin-common-conventions.gradle) already serves them. Passing the vars in
+          # is a hazard - Azure leaves `$(NAME)` literal when the pipeline variable is undefined, and
+          # Gradle then builds a nonsense repository URL that fails to resolve.
           - script: |
-              export ROR_S3_ENDPOINT_URL=$VAR_ROR_S3_ENDPOINT_URL
-              export ROR_S3_REGION=$VAR_ROR_S3_REGION
-              export ROR_S3_BUCKET=$VAR_ROR_S3_BUCKET
-              export ROR_S3_ACCESS_KEY_ID=$VAR_ROR_S3_ACCESS_KEY_ID
-              export ROR_S3_SECRET_ACCESS_KEY=$VAR_ROR_S3_SECRET_ACCESS_KEY
-              export ROR_S3_PATH_LIBS=$VAR_ROR_S3_PATH_LIBS
-
               echo "[REQUIRED_CHECKS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-              VAR_ROR_S3_ENDPOINT_URL: $(ROR_S3_ENDPOINT_URL)
-              VAR_ROR_S3_REGION: $(ROR_S3_REGION)
-              VAR_ROR_S3_BUCKET: $(ROR_S3_BUCKET)
-              VAR_ROR_S3_ACCESS_KEY_ID: $(ROR_S3_ACCESS_KEY_ID)
-              VAR_ROR_S3_SECRET_ACCESS_KEY: $(ROR_S3_SECRET_ACCESS_KEY)
-              VAR_ROR_S3_PATH_LIBS: $(ROR_S3_PATH_LIBS)
         strategy:
           maxParallel: 99
           matrix:
@@ -327,14 +328,16 @@ stages:
             persistCredentials: true
           - script: |
               # core_tests starts testcontainers too (LDAP/WireMock) — same Docker Hub rate limit as IT.
-              source ci/docker-hub-auth.sh
+              # The first file maps the Azure variables onto the names the second one reads.
+              source ci/azure-templates/docker-credentials.sh
+              source ci/configure-docker.sh
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               ROR_TASK: core_tests
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-              DOCKER_HUB_USER: $(DOCKER_HUB_USER)
-              DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
+              VAR_DOCKER_HUB_USER: $(DOCKER_HUB_USER)
+              VAR_DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
               DOCKER_AUTH_REQUIRED: "false"
           - task: PublishTestResults@2
             condition: failed()
@@ -918,15 +921,19 @@ stages:
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
             timeoutInMinutes: 600
             env:
-              VAR_ROR_S3_ENDPOINT_URL: $(ROR_S3_ENDPOINT_URL)
-              VAR_ROR_S3_REGION: $(ROR_S3_REGION)
-              VAR_ROR_S3_BUCKET: $(ROR_S3_BUCKET)
-              VAR_ROR_S3_ACCESS_KEY_ID: $(ROR_S3_ACCESS_KEY_ID)
-              VAR_ROR_S3_SECRET_ACCESS_KEY: $(ROR_S3_SECRET_ACCESS_KEY)
-              VAR_ROR_S3_PATH_ARTIFACTS: $(ROR_S3_PATH_ARTIFACTS)
-              VAR_ROR_S3_PATH_LIBS: $(ROR_S3_PATH_LIBS)
+              # The right-hand names are the OLD variables, and they are deliberate: this Azure pipeline still
+              # defines only the pre-#1348 names (ROR_*_STORE_*, DOCKER_REGISTRY_PASSWORD). Azure leaves
+              # $(NAME) literal when a variable does not exist, so the new names reach the scripts as macro
+              # text. Azure gives way to GitHub Actions soon, so map here instead of renaming in Azure.
+              VAR_ROR_S3_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_S3_REGION: $(ROR_LIBS_STORE_REGION)
+              VAR_ROR_S3_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_S3_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_S3_SECRET_ACCESS_KEY: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_S3_PATH_ARTIFACTS: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
+              VAR_ROR_S3_PATH_LIBS: $(ROR_LIBS_STORE_PATH_PREFIX)
               var_docker_hub_user: $(DOCKER_HUB_USER)
-              var_docker_hub_rw_token: $(DOCKER_HUB_RW_TOKEN)
+              var_docker_hub_rw_token: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
         strategy:

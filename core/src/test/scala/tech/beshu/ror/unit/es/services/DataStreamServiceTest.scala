@@ -23,8 +23,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
-import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator.ErrorMessage
+import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
+import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator.ErrorMessage
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, RorAuditDataStream, TemplateName}
 import tech.beshu.ror.es.services.DataStreamService
 import tech.beshu.ror.es.services.DataStreamService.CreationResult.*
@@ -602,7 +602,8 @@ class DataStreamServiceTest extends AnyWordSpec with MockFactory {
   }
 
   extension (c: AuditDataStreamCreator.type) {
-    def create(service: DataStreamService): AuditDataStreamCreator = AuditDataStreamCreator(NonEmptyList.of(service))
+    def create(service: DataStreamService): AuditDataStreamCreator =
+      AuditDataStreamCreator(service)
   }
 
   extension (service: MockableDataStreamService) {

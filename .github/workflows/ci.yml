@@ -17,8 +17,6 @@ on:
       - 'docs/**'
       - '.claude/**'
       - '**/*.md'
-  schedule:
-    - cron: '0 3 * * 1'   # weekly toolchains-image rebuild (build_toolchains_image only)
   workflow_dispatch:
     inputs:
       actionToPerform:
@@ -29,7 +27,6 @@ on:
           - run_all_tests_on_linux
           - run_all_tests_on_windows
           - run_e2e_tests
-          - build_toolchains_image
           - release_without_testing
           - run_disk_probe
 
@@ -42,17 +39,15 @@ concurrency:
 permissions:
   contents: read
 
-# Container jobs default run: steps to `sh`, where `source` (docker-hub-auth.sh) fails with 127.
+# Container jobs default run: steps to `sh`, where `source` (configure-docker.sh) fails with 127.
 # Windows jobs are unaffected — their steps declare `shell: pwsh` explicitly.
 defaults:
   run:
     shell: bash
 
 env:
-  # Single source of truth for the toolchains image tag: the &toolchains anchor. Every job's
-  # `container: *toolchains` resolves to it, so a JDK/Gradle bump edits ONE line. Kept per-branch
-  # (not a repo variable) on purpose: the tag is coupled to this commit's baked dependency cache.
-  TOOLCHAINS_IMAGE: &toolchains beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+  # TOOLCHAINS_IMAGE is not here. It lives in ci/toolchains/image.env, which the two jobs that
+  # need it source. One file holds the tag, and every workflow reads that file.
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
   # 4 shards per leg + HeavySuiteGate (max 2 concurrent multi-cluster suites, machine-wide).
@@ -72,15 +67,18 @@ jobs:
   setup:
     runs-on: ubuntu-latest   # trivial job; GH-hosted so it runs even if the Ubicloud app is down
     outputs:
-      is_master:  ${{ steps.f.outputs.is_master }}
-      is_develop: ${{ steps.f.outputs.is_develop }}
-      is_epic:    ${{ steps.f.outputs.is_epic }}
+      is_master:  ${{ steps.flags.outputs.is_master }}
+      is_develop: ${{ steps.flags.outputs.is_develop }}
+      is_epic:    ${{ steps.flags.outputs.is_epic }}
       action:     ${{ github.event.inputs.actionToPerform || 'run_all_tests_on_linux' }}
-      it_linux_matrix:   ${{ steps.m.outputs.linux }}
-      it_windows_matrix: ${{ steps.m.outputs.windows }}
-      e2e_modules:       ${{ steps.m.outputs.e2e }}
+      it_linux_matrix:   ${{ steps.matrices.outputs.linux }}
+      it_windows_matrix: ${{ steps.matrices.outputs.windows }}
+      e2e_modules:       ${{ steps.matrices.outputs.e2e }}
+      toolchains_image: ${{ steps.toolchains.outputs.image }}
     steps:
-      - id: f
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - id: flags
         env:
           REF: ${{ github.head_ref || github.ref_name }}
         run: |
@@ -88,7 +86,7 @@ jobs:
           echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
           # contains() semantics, matching Azure's isEpicBranchOrPr
           case "$REF" in *epic/*)  echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
-      - id: m
+      - id: matrices
         env:
           # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
           IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
@@ -128,39 +126,26 @@ jobs:
           else
             echo "e2e=$E2E_FULL_SET" >> "$GITHUB_OUTPUT"
           fi
-
-  # ── BUILD_TOOLCHAINS_IMAGE (schedule / manual) ────────────────────────────
-  build_toolchains_image:
-    needs: setup
-    # Schedule runs are pinned to develop (Azure pinned the weekly rebuild to develop; GH schedules
-    # fire on the default branch — the ref guard protects us if the default branch ever changes).
-    if: >-
-      (github.event_name == 'schedule' && github.ref == 'refs/heads/develop') ||
-      (github.event_name == 'workflow_dispatch' && needs.setup.outputs.action == 'build_toolchains_image')
-    runs-on: ubicloud-standard-4
-    timeout-minutes: 240
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: docker build & push
-        env:
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+      # The runner pulls the container: image before step 1, so ci/configure-docker.sh cannot reach
+      # it. This job can: container: image: reads a job output. The Build toolchains image workflow
+      # put the digest of the last push in the cache below. The key holds the tag, so a new tag
+      # reads no entry.
+      - name: Read the toolchains image tag
         run: |
-          set -e
-          # Drift guard: every ror-ci-toolchains tag in this workflow (env + all container: lines)
-          # must be identical — a bump that misses some lines would build one tag while jobs run another.
-          if grep -ohE 'beshultd/ror-ci-toolchains:[a-zA-Z0-9._-]+' .github/workflows/ci.yml | grep -vF "$TOOLCHAINS_IMAGE" | grep -q .; then
-            echo "::error::ci.yml container tags do not all match TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE — bump them together"
-            exit 1
-          fi
-          # Authenticate before the build. The Dockerfile pulls five images from Docker Hub in its
-          # FROM lines (four eclipse-temurin JDKs and the docker CLI), and those pulls are anonymous
-          # if the login comes after them.
-          source ci/docker-hub-auth.sh
-          echo ">>> Building $TOOLCHAINS_IMAGE"
-          docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
-          docker push "$TOOLCHAINS_IMAGE"
+          . ci/toolchains/image.env
+          [ -n "${TOOLCHAINS_IMAGE:-}" ] || { echo "::error::ci/toolchains/image.env sets no tag."; exit 1; }
+          echo "TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE" >> "$GITHUB_ENV"
+      - id: digest_key
+        # Two hyphens. One would also match a tag that extends this one, such as -9.2.1-arm64.
+        run: echo "prefix=toolchains-digest-${TOOLCHAINS_IMAGE##*:}--" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .toolchains-digest
+          # An exact key needs the rebuild's run id. The prefix gives its newest entry.
+          key: ${{ steps.digest_key.outputs.prefix }}
+          restore-keys: ${{ steps.digest_key.outputs.prefix }}
+      - id: toolchains
+        run: ci/resolve-toolchains-image.sh
 
   # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
   disk_probe:
@@ -179,16 +164,20 @@ jobs:
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
   toolchains_verify:
     needs: setup
-    if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    # The runner pulls this image before step 1 runs, so ci/docker-hub-auth.sh cannot authenticate
-    # it. These credentials can. A fork supplies empty secrets, and the runner then skips the login
-    # and pulls anonymously. A read-only token is enough here, because a job only pulls this image.
+    # The runner pulls this image before step 1 runs, so ci/configure-docker.sh reaches neither the
+    # mirror nor the login for it. ci/resolve-toolchains-image.sh settles the name in the setup job.
+    # A mirrored name carries the digest, so every job of a run pulls the same bytes.
+    #
+    # The pull sends no credentials. A Docker Hub login against mirror.gcr.io fails, so the block
+    # must be absent on the mirrored path. An empty value does not remove it. GitHub rejects it with
+    # "Unexpected value ''" and stops the run before step 1. YAML cannot drop a key on a condition,
+    # so the block is absent on both paths.
+    #
+    # Docker Hub then counts the fallback pull against the runner's address, not against our
+    # account. The mirror serves the normal path.
     container: &toolchains_container
-      image: *toolchains
-      credentials:
-        username: ${{ secrets.DOCKER_HUB_USER }}
-        password: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+      image: ${{ needs.setup.outputs.toolchains_image }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -209,10 +198,14 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+      github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     continue-on-error: true
+    # Without this limit, the job uses the GitHub default of 6 hours. dependency-check does not
+    # treat a Sonatype 429 or 5xx as fatal. It sends the OSS Index request again for each
+    # dependency. A Sonatype outage can thus use all 6 hours. A good run takes a few minutes.
+    timeout-minutes: 30
     name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
@@ -221,34 +214,18 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Compute monthly cache key
-        id: month
-        run: echo "ym=$(date +%Y%m)" >> "$GITHUB_OUTPUT"
-      - name: Restore CVE DB cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .dependency-check-data
-          # Immutable entries; a fresh key appears once a month (Azure Cache@2 semantics)
-          key: dependency-check-v2-${{ steps.month.outputs.ym }}
-          restore-keys: dependency-check-v2-
       - name: ${{ matrix.ROR_TASK }}
-        env:
-          ROR_TASK: ${{ matrix.ROR_TASK }}
-          DEPENDENCY_CHECK_DATA_DIR: .dependency-check-data
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-          OSS_INDEX_USERNAME: ${{ secrets.OSS_INDEX_USERNAME }}
-          OSS_INDEX_PASSWORD: ${{ secrets.OSS_INDEX_PASSWORD }}
-        run: |
-          # Fork PRs get EMPTY (not absent) secrets from GitHub. A set-but-empty key makes
-          # dependency-check/oss-index attempt authenticated calls (401) instead of anonymous mode
-          # — Azure only exported these when not a fork. Unset empties to restore that behavior.
-          if [ -z "$NVD_API_KEY" ]; then
-            echo "::warning::NVD_API_KEY secret is not set - dependency-check will likely fail (NVD throttles keyless clients). This job is continue-on-error, so the run is not blocked."
-          fi
-          [ -n "$NVD_API_KEY" ] || unset NVD_API_KEY
-          [ -n "$OSS_INDEX_USERNAME" ] || unset OSS_INDEX_USERNAME
-          [ -n "$OSS_INDEX_PASSWORD" ] || unset OSS_INDEX_PASSWORD
-          ci/run-pipeline.sh
+        uses: ./.github/actions/cve-check
+        with:
+          ror-task: ${{ matrix.ROR_TASK }}
+          # The caller decides who writes the NVD database cache. Pushes to develop and to master
+          # occur often, and thus keep the cache fresh. A PR run only reads the cache.
+          save-nvd-cache: >-
+            ${{ github.event_name == 'push' &&
+                (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master') }}
+          nvd-api-key: ${{ secrets.NVD_API_KEY }}
+          oss-index-username: ${{ secrets.OSS_INDEX_USERNAME }}
+          oss-index-password: ${{ secrets.OSS_INDEX_PASSWORD }}
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
@@ -256,7 +233,7 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+      github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     name: ${{ matrix.ROR_TASK }}
@@ -284,7 +261,6 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
@@ -297,9 +273,8 @@ jobs:
           ROR_TASK: core_tests
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
-          DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
       - name: Publish test results
         if: failure()
@@ -317,7 +292,6 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubicloud-standard-4
@@ -361,9 +335,8 @@ jobs:
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
-          DOCKER_AUTH_REQUIRED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
       - name: Publish test results
         # always(): green-run XMLs feed suite-timings.json regeneration (duration-balanced sharding)
@@ -436,7 +409,6 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.it_windows_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')
     runs-on: windows-2025
@@ -574,7 +546,6 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest
@@ -609,7 +580,6 @@ jobs:
       !cancelled() &&
       needs.e2e_prepare.result == 'success' &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubicloud-standard-4
@@ -652,7 +622,7 @@ jobs:
           set -e
            # The e2e repo pins yarn in "packageManager". Corepack reads and uses that.
           corepack enable
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
           ci/run-pipeline.sh
 
@@ -719,7 +689,7 @@ jobs:
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       (
         (
-          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          github.event_name != 'workflow_dispatch' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
@@ -733,11 +703,11 @@ jobs:
       )
     runs-on: ubuntu-latest
     outputs:
-      is_release: ${{ steps.r.outputs.is_release }}
+      is_release: ${{ steps.release_check.outputs.is_release }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - id: r
+      - id: release_check
         run: |
           IS_RELEASE=true
           if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep -- '-pre'; then
@@ -753,7 +723,7 @@ jobs:
       needs.determine_ci_type.result == 'success' &&
       needs.determine_ci_type.outputs.is_release == 'false' &&
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
-      github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+      github.event_name != 'workflow_dispatch'
     runs-on: ubicloud-standard-4
     container: *toolchains_container
     timeout-minutes: 600
@@ -778,7 +748,7 @@ jobs:
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
 
   # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
@@ -793,7 +763,7 @@ jobs:
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       (
         (
-          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          github.event_name != 'workflow_dispatch' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
@@ -832,7 +802,7 @@ jobs:
           TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -e
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
 
   # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
@@ -845,7 +815,7 @@ jobs:
       needs.setup.outputs.is_master == 'true' &&
       (
         (
-          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          github.event_name != 'workflow_dispatch' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&

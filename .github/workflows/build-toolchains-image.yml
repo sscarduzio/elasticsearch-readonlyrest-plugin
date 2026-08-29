@@ -1,0 +1,108 @@
+name: Build toolchains image
+
+# Builds the CI toolchains image and pushes it to Docker Hub. Every container: job of ci.yml pulls
+# that image, and it bakes the JDKs, Gradle and this commit's Gradle dependencies.
+#
+# It is not part of CI. A rebuild takes up to four hours, and no test run waits for it. Run it
+# weekly, and by hand after a JDK or Gradle bump.
+#
+# ci/toolchains/image.env holds the tag. ci.yml sources the same file.
+# See "The container: image" in ci/CI.md.
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # weekly rebuild
+  workflow_dispatch:
+
+# One rebuild at a time. Two rebuilds push the same tag and file two cache entries, and setup takes
+# the newest entry, which need not hold the manifest that Docker Hub keeps. A second run waits: a
+# build takes up to four hours, and cancelling one wastes all of it.
+concurrency:
+  group: build-toolchains-image
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  # ── BUILD ─────────────────────────────────────────────────────────────────
+  build:
+    # A GitHub schedule fires on the default branch. The guard holds if that branch ever changes.
+    # A dispatch stays open to every branch. The image bakes this commit's Gradle dependencies, so a
+    # branch that bumps one needs its own tag and its own build. record_digest warns about the cost.
+    if: github.event_name != 'schedule' || github.ref == 'refs/heads/develop'
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 240
+    # record_digest reads these. A digest is public, so an output carries it safely.
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      key:    ${{ steps.push.outputs.key }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Read the toolchains image tag
+        run: |
+          . ci/toolchains/image.env
+          [ -n "${TOOLCHAINS_IMAGE:-}" ] || { echo "::error::ci/toolchains/image.env sets no tag."; exit 1; }
+          echo "TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE" >> "$GITHUB_ENV"
+      - name: docker build & push
+        id: push
+        env:
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+        run: |
+          set -e
+          # Source before the build. It logs in and it sets ROR_DOCKER_HUB_MIRROR_PREFIX, which the
+          # FROM lines need. The Dockerfile pulls five images from Docker Hub in its FROM lines (four
+          # eclipse-temurin JDKs and the docker CLI), and those pulls are anonymous if the login
+          # comes after them.
+          source ci/configure-docker.sh
+          echo ">>> Building $TOOLCHAINS_IMAGE"
+          # MIRROR puts the pull-through cache in front of those five names. It is empty when the
+          # mirror is off, and the pulls then go to Docker Hub.
+          docker build --build-arg MIRROR="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}" \
+            -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
+          # docker push prints the digest of this push. A run takes the mirror only when the mirror
+          # can serve that digest. See ci/resolve-toolchains-image.sh.
+          PUSH_LOG=$(mktemp)
+          docker push "$TOOLCHAINS_IMAGE" 2>&1 | tee "$PUSH_LOG"
+          DIGEST=$(sed -n 's/.*digest: \(sha256:[0-9a-f]\{64\}\).*/\1/p' "$PUSH_LOG" | head -1)
+          # The push has succeeded here. Without a digest the mirror stays off for every run until
+          # the next rebuild, and nobody sees it. So this fails loudly.
+          [ -n "$DIGEST" ] || { echo "::error::The push of $TOOLCHAINS_IMAGE printed no digest."; exit 1; }
+          echo ">>> Pushed digest: $DIGEST"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          # Two hyphens after the tag. ci.yml restores by prefix, and one hyphen would let a tag
+          # that extends another, such as ...-9.2.1-arm64, answer the prefix of ...-9.2.1.
+          echo "key=toolchains-digest-${TOOLCHAINS_IMAGE##*:}--${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+
+  # ── RECORD_DIGEST ─────────────────────────────────────────────────────────
+  # An Ubicloud runner keeps its own Actions cache. A save there is invisible to a GitHub-hosted
+  # runner, and the setup job of ci.yml is GitHub-hosted. So the save runs here, on a GitHub-hosted
+  # runner, and both ends read one store.
+  record_digest:
+    needs: build          # build fails without a digest, so this job needs no guard of its own
+    runs-on: ubuntu-latest   # GH-hosted, like setup. A different runner means a different store.
+    timeout-minutes: 5
+    steps:
+      - name: Write the digest file
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: echo "$DIGEST" > .toolchains-digest
+      # An entry belongs to the ref that saved it. A develop run reads develop, and a pull request
+      # run reads its merge ref and the base branch, but never the head branch.
+      - name: Warn when no CI run can read this entry
+        if: github.ref != 'refs/heads/develop'
+        run: |
+          echo "::warning::This rebuild ran on ${GITHUB_REF}. A cache entry belongs to the ref that saved it, so a develop run and a pull request run cannot read this one. Those runs pull the toolchains image from Docker Hub. Dispatch this workflow on develop after the merge."
+      # A key is write-once, so the run id gives each rebuild its own entry. GitHub removes an entry
+      # that nothing reads for 7 days, and setup reads this one every run.
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .toolchains-digest
+          key: ${{ needs.build.outputs.key }}
