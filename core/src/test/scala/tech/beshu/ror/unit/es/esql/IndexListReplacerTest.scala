@@ -189,6 +189,48 @@ class IndexListReplacerTest extends AnyWordSpec {
           from("FROM logs-*", "logs-*")
         ) shouldBe "FROM logs-1\n| LIMIT 10"
       }
+      "replace a comma separated list whose entries are triple quoted" in {
+        rewrite(
+          "FROM \"\"\"a\"\"\",\"\"\"b\"\"\" | LIMIT 10",
+          allowed("a"),
+          from("FROM \"\"\"a\"\"\",\"\"\"b\"\"\"", "a,b")
+        ) shouldBe "FROM a | LIMIT 10"
+      }
+      "replace an index list a nested block comment interrupts" in {
+        rewrite(
+          "FROM a, /* and /* even */ this */ b | LIMIT 10",
+          allowed("a"),
+          from("FROM a, /* and /* even */ this */ b", "a,b")
+        ) shouldBe "FROM a | LIMIT 10"
+      }
+      "replace the index list of a source command a block comment precedes" in {
+        rewrite(
+          "/* pick logs */ FROM logs-* | LIMIT 10",
+          allowed("logs-1"),
+          from("FROM logs-*", "logs-*")
+        ) shouldBe "/* pick logs */ FROM logs-1 | LIMIT 10"
+      }
+      "not touch an identifier the index name is only a prefix of" in {
+        rewrite(
+          "FROM book | EVAL x = book_prices",
+          allowed("book-1"),
+          from("FROM book", "book")
+        ) shouldBe "FROM book-1 | EVAL x = book_prices"
+      }
+      "not touch a source command a triple quoted literal spells out" in {
+        rewrite(
+          "FROM logs | WHERE msg == \"\"\"| FROM logs\"\"\"",
+          allowed("logs-1"),
+          from("FROM logs", "logs")
+        ) shouldBe "FROM logs-1 | WHERE msg == \"\"\"| FROM logs\"\"\""
+      }
+      "not touch a source command a backquoted identifier spells out" in {
+        rewrite(
+          "FROM logs | RENAME a AS `| FROM logs`",
+          allowed("logs-1"),
+          from("FROM logs", "logs")
+        ) shouldBe "FROM logs-1 | RENAME a AS `| FROM logs`"
+      }
       "replace the index list of a source command that follows a line the query opens with" in {
         rewrite(
           "// leading comment\nFROM logs-* | LIMIT 10",
@@ -355,6 +397,50 @@ class IndexListReplacerTest extends AnyWordSpec {
           join("lookup_idx", "lookup_idx")
         ) should fullyMatch regex s"FROM $maskedIndex \\| LOOKUP JOIN lookup_idx ON key"
       }
+      "rewrite a target the join keyword is split from by a comment" in {
+        rewrite(
+          "FROM src | LOOKUP /* really */ JOIN secret_idx ON key",
+          allowed("src"),
+          from("FROM src", "src"),
+          join("secret_idx", "secret_idx")
+        ) should fullyMatch regex s"FROM src \\| LOOKUP /\\* really \\*/ JOIN $maskedIndex ON key"
+      }
+      "rewrite both joins naming the same target index" in {
+        rewrite(
+          "FROM src | LOOKUP JOIN prices ON a | LOOKUP JOIN prices ON b",
+          allowed("src"),
+          from("FROM src", "src"),
+          join("prices", "prices"),
+          join("prices", "prices")
+        ) should fullyMatch regex
+          s"FROM src \\| LOOKUP JOIN $maskedIndex ON a \\| LOOKUP JOIN $maskedIndex ON b"
+      }
+      "mask a target and a source command reading the same forbidden index as the same index" in {
+        val rewritten = rewrite(
+          "FROM shared_idx | LOOKUP JOIN shared_idx ON k1 | LOOKUP JOIN decoy ON k2",
+          allowed("decoy"),
+          from("FROM shared_idx", "shared_idx"),
+          join("shared_idx", "shared_idx"),
+          join("decoy", "decoy")
+        )
+        maskedIndex.findAllIn(rewritten).toList.distinct should have size 1
+      }
+      "refuse to read a wildcard target" in {
+        readingFailureFor(
+          "FROM src | LOOKUP JOIN book_* ON key",
+          allowed("src", "book_*"),
+          from("FROM src", "src"),
+          join("book_*", "book_*")
+        ) shouldBe UnsupportedIndexList("book_*")
+      }
+      "refuse to read a remote cluster target" in {
+        readingFailureFor(
+          "FROM src | LOOKUP JOIN remote:prices ON key",
+          allowed("src", "remote:prices"),
+          from("FROM src", "src"),
+          join("remote:prices", "remote:prices")
+        ) shouldBe UnsupportedIndexList("remote:prices")
+      }
       "refuse to read a target that is not a single plain index" in {
         readingFailureFor(
           """FROM src | LOOKUP JOIN "a,b" ON key""",
@@ -423,6 +509,13 @@ class IndexListReplacerTest extends AnyWordSpec {
           from("METRICS metrics-1", "metrics-1")
         ) shouldBe NotWhereEsReportedIt("metrics-1")
       }
+      "refuse to read a source command whose index list is written short of what ES reported" in {
+        readingFailureFor(
+          "FROM book_catalog | LIMIT 100",
+          allowed("book_catalog"),
+          from("FROM book_catalog", "book_catalog,book_prices")
+        ) shouldBe NotWhereEsReportedIt("book_catalog,book_prices")
+      }
       "refuse to read a LOOKUP JOIN target ES points at somewhere it is not written" in {
         readingFailureFor(
           "FROM src | LOOKUP JOIN lookup_idx ON key",
@@ -437,7 +530,7 @@ class IndexListReplacerTest extends AnyWordSpec {
         verify(
           "FROM logs-* | LIMIT 10",
           allowed("logs-1"),
-          esReads = List(IndexListRead.BySourceCommand("logs-1")),
+          esReads = List(IndexListRead.SourceCommand("logs-1")),
           from("FROM logs-*", "logs-*")
         ) shouldBe Right("FROM logs-1 | LIMIT 10")
       }
@@ -445,7 +538,7 @@ class IndexListReplacerTest extends AnyWordSpec {
         verify(
           "FROM a, // and\n b | LIMIT 10",
           allowed("b"),
-          esReads = List(IndexListRead.BySourceCommand("b,b")),
+          esReads = List(IndexListRead.SourceCommand("b,b")),
           from("FROM a, // and\n b", "a,b")
         ) shouldBe Left(Query.Rejection.NotReplacedAsIntended(List("b"), List("b,b")))
       }
@@ -462,8 +555,8 @@ class IndexListReplacerTest extends AnyWordSpec {
           "FROM src | LOOKUP JOIN lookup_idx ON key",
           allowed("src", "lookup_idx"),
           esReads = List(
-            IndexListRead.BySourceCommand("src"),
-            IndexListRead.BySourceCommand("lookup_idx")
+            IndexListRead.SourceCommand("src"),
+            IndexListRead.SourceCommand("lookup_idx")
           ),
           from("FROM src", "src"),
           join("lookup_idx", "lookup_idx")
@@ -525,11 +618,9 @@ class IndexListReplacerTest extends AnyWordSpec {
       reported: Seq[ReportedBy]
   ): Either[ReadingFailure, NonEmptyList[LocatedIndexList]] = {
     val relations = reported.toList
-      .foldLeft((Map.empty[String, Int], List.empty[ReportedIndexList])) { case ((claimedUpTo, relations), relation) =>
-        val offset = relation.forcedOffset.getOrElse {
-          query.indexOf(relation.writtenText, claimedUpTo.getOrElse(relation.writtenText, 0))
-        }
-        (claimedUpTo.updated(relation.writtenText, offset + 1), relations :+ relation.reportedAt(query, offset))
+      .foldLeft((0, List.empty[ReportedIndexList])) { case ((claimedUpTo, relations), relation) =>
+        val offset = relation.forcedOffset.getOrElse(query.indexOf(relation.writtenText, claimedUpTo))
+        (offset + 1, relations :+ relation.reportedAt(query, offset))
       }
       ._2
     IndexListLocator
@@ -538,13 +629,13 @@ class IndexListReplacerTest extends AnyWordSpec {
   }
 
   private def from(writtenText: String, indexList: String): ReportedBy =
-    ReportedBy(writtenText, IndexListRead.BySourceCommand(indexList), forcedOffset = None)
+    ReportedBy(writtenText, IndexListRead.SourceCommand(indexList), forcedOffset = None)
 
   private def join(writtenText: String, indexList: String): ReportedBy =
-    ReportedBy(writtenText, IndexListRead.ByLookupJoin(indexList), forcedOffset = None)
+    ReportedBy(writtenText, IndexListRead.LookupJoin(indexList), forcedOffset = None)
 
   private def at(offset: Int, writtenText: String, indexList: String): ReportedBy =
-    ReportedBy(writtenText, IndexListRead.BySourceCommand(indexList), forcedOffset = Some(offset))
+    ReportedBy(writtenText, IndexListRead.SourceCommand(indexList), forcedOffset = Some(offset))
 
   private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] =
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))

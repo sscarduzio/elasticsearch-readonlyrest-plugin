@@ -45,12 +45,15 @@ object IndexListReplacer {
     val scope =
       if (sourceCommandIndices.sizeIs == 1) SourceCommandScope.TheOnlyOne else SourceCommandScope.OneOfSeveral
 
+    val masked = masksForForbiddenIndexLists(indexLists)
+
     val edits =
       sourceCommandIndices.map { indexList =>
         val allowed = allowedIndicesFor(indexList, allowedIndexNames, reachableOnlyThroughLookupJoin, scope)
-        Edit(indexList.span, IndexListRead.BySourceCommand(indexListOf(allowed)))
+        Edit(indexList.span, IndexListRead.SourceCommand(indexListOf(allowed.getOrElse(masked(indexList)))))
       } ::: lookupJoinTargets.map { indexList =>
-        Edit(indexList.span, IndexListRead.ByLookupJoin(indexListOf(allowedIndicesFor(indexList, allowedIndexNames))))
+        val allowed = allowedIndicesFor(indexList, allowedIndexNames)
+        Edit(indexList.span, IndexListRead.LookupJoin(indexListOf(allowed.getOrElse(masked(indexList)))))
       }
 
     ReplacedQuery(rewritten(query, edits), edits.map(_.intendedRead))
@@ -83,7 +86,7 @@ object IndexListReplacer {
       allowedIndices: Set[ClusterIndexName],
       reachableOnlyThroughLookupJoin: Set[ClusterIndexName],
       scope: SourceCommandScope
-  ): NonEmptyList[ClusterIndexName] = {
+  ): Option[NonEmptyList[ClusterIndexName]] = {
     val namesMatchingWrittenPattern = indexList.writtenPattern.filter(allowedIndices)
     val names = scope match {
       case SourceCommandScope.TheOnlyOne =>
@@ -91,17 +94,31 @@ object IndexListReplacer {
       case SourceCommandScope.OneOfSeveral =>
         namesMatchingWrittenPattern
     }
-    NonEmptyList.fromList(names.toList).getOrElse(maskedAsNonexistent)
+    NonEmptyList.fromList(names.toList)
   }
 
   private def allowedIndicesFor(
       indexList: LookupJoinTarget,
       allowedIndices: Set[ClusterIndexName]
-  ): NonEmptyList[ClusterIndexName] =
-    if (allowedIndices.contains(indexList.index)) NonEmptyList.one(indexList.index) else maskedAsNonexistent
+  ): Option[NonEmptyList[ClusterIndexName]] =
+    Option.when(allowedIndices.contains(indexList.index))(NonEmptyList.one(indexList.index))
 
-  private def maskedAsNonexistent: NonEmptyList[ClusterIndexName] =
-    NonEmptyList.one(ClusterIndexName.Local.randomNonexistentIndex())
+  /**
+   * One nonexistent index per index list left with nothing, so a list the ACL forbade in more than one place -
+   * a source command and a join reading the same index - is masked as the same index in each of them.
+   */
+  private def masksForForbiddenIndexLists(
+      indexLists: NonEmptyList[LocatedIndexList]
+  ): LocatedIndexList => NonEmptyList[ClusterIndexName] = {
+    val masks = indexLists.toList
+      .map(_.requestedIndices)
+      .distinct
+      .map(requestedIndices =>
+        (requestedIndices, NonEmptyList.one[ClusterIndexName](ClusterIndexName.Local.randomNonexistentIndex()))
+      )
+      .toMap
+    indexList => masks(indexList.requestedIndices)
+  }
 
   private def indexListOf(indices: NonEmptyList[ClusterIndexName]): String =
     indices.toList.map(_.stringify).mkString(",")

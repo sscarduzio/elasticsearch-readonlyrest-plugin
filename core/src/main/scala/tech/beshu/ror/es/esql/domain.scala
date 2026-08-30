@@ -18,7 +18,7 @@ package tech.beshu.ror.es.esql
 
 import cats.Show
 import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.esql.Query.SourceLocation
 import tech.beshu.ror.implicits.*
@@ -73,18 +73,18 @@ sealed trait IndexListRead {
   def indexList: String
 
   /** ES reports an empty list for a source command of only subqueries. */
-  def namesNoIndex: Boolean = indexList.isBlank
+  def indexListIsEmpty: Boolean = indexList.isBlank
 }
 
 object IndexListRead {
 
-  final case class BySourceCommand(indexList: String) extends IndexListRead
+  final case class SourceCommand(indexList: String) extends IndexListRead
 
-  final case class ByLookupJoin(indexList: String) extends IndexListRead
+  final case class LookupJoin(indexList: String) extends IndexListRead
 
   implicit val show: Show[IndexListRead] = Show.show {
-    case BySourceCommand(indexList) => indexList
-    case ByLookupJoin(indexList)    => s"LOOKUP JOIN ${indexList}"
+    case SourceCommand(indexList) => indexList
+    case LookupJoin(indexList)    => s"LOOKUP JOIN ${indexList}"
   }
 
 }
@@ -110,7 +110,7 @@ object LocatedIndexList {
   }
 
   object SourceCommandIndices {
-    def parse(span: Query.TextSpan, read: IndexListRead.BySourceCommand): Option[SourceCommandIndices] =
+    def parse(span: Query.TextSpan, read: IndexListRead.SourceCommand): Option[SourceCommandIndices] =
       requestedIndicesIn(read).map(SourceCommandIndices(span, _))
   }
 
@@ -121,9 +121,11 @@ object LocatedIndexList {
 
   object LookupJoinTarget {
 
-    def parse(span: Query.TextSpan, read: IndexListRead.ByLookupJoin): Option[LookupJoinTarget] =
+    /** A join reads one index, named in full: ES resolves neither a wildcard nor a remote cluster here. */
+    def parse(span: Query.TextSpan, read: IndexListRead.LookupJoin): Option[LookupJoinTarget] =
       requestedIndicesIn(read).collect {
-        case NonEmptyList(onlyOne, Nil) if !onlyOne.excluded => LookupJoinTarget(span, onlyOne.name)
+        case NonEmptyList(RequestedIndex(index @ ClusterIndexName.Local(_: IndexName.Full), false), Nil) =>
+          LookupJoinTarget(span, index)
       }
 
   }

@@ -161,7 +161,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
     def indexListReadsIn(query: Query, request: CompositeIndicesRequest): List[IndexListRead] = {
       createStatement(query.value, request)
-        .map(statement => reportedIndexListsIn(planOf(statement)).map(_.read).filterNot(_.namesNoIndex))
+        .map(statement => reportedIndexListsIn(planOf(statement)).map(_.read).filterNot(_.indexListIsEmpty))
         .getOrElse(List.empty)
     }
 
@@ -208,7 +208,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     private def indexListReadOf(relation: Any, indexList: String): IndexListRead = {
       val isLookupJoin = Option(on(relation).call("indexMode").get[AnyRef])
         .exists(indexMode => on(indexMode).call("name").get[String]() == "LOOKUP")
-      if (isLookupJoin) IndexListRead.ByLookupJoin(indexList) else IndexListRead.BySourceCommand(indexList)
+      if (isLookupJoin) IndexListRead.LookupJoin(indexList) else IndexListRead.SourceCommand(indexList)
     }
 
   }

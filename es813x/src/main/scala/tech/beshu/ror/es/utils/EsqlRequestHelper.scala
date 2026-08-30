@@ -122,7 +122,7 @@ object EsqlRequestHelper {
 
     def indexListReadsIn(query: Query, request: CompositeIndicesRequest): List[IndexListRead] = {
       createStatement(query.value, request)
-        .map(statement => reportedIndexListsIn(planOf(statement)).map(_.read).filterNot(_.namesNoIndex))
+        .map(statement => reportedIndexListsIn(planOf(statement)).map(_.read).filterNot(_.indexListIsEmpty))
         .getOrElse(List.empty)
     }
 
@@ -162,7 +162,7 @@ object EsqlRequestHelper {
       val source = on(table).call("source").get[Any]()
       val location = on(source).call("source").get[Any]()
       ReportedIndexList(
-        read = IndexListRead.BySourceCommand(on(table).call("index").get[String]()),
+        read = IndexListRead.SourceCommand(on(table).call("index").get[String]()),
         writtenAt = SourceLocation(
           line = on(location).call("getLineNumber").get[Int](),
           column = on(location).call("getColumnNumber").get[Int]() - 1

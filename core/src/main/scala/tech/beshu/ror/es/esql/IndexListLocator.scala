@@ -41,15 +41,13 @@ object IndexListLocator {
 
   private val promqlCommand: Regex = """(?is)^\s*PROMQL\b.*""".r
 
-  private val comment: Regex = """(?s)/\*.*?(?:\*/|$)|//[^\n]*""".r
-
   private val queryParameter: Regex = """^\s*\?\??[A-Za-z_0-9]*\s*$""".r
 
   def locatedIn(
       query: Query,
       reported: List[ReportedIndexList]
   ): Either[ReadingFailure, List[LocatedIndexList]] =
-    reported.filterNot(_.read.namesNoIndex).traverse(locate(query.value, _))
+    reported.filterNot(_.read.indexListIsEmpty).traverse(locate(query.value, _))
 
   private def locate(
       query: String,
@@ -97,9 +95,9 @@ object IndexListLocator {
       writtenSpan: TextSpan
   ): Either[ReadingFailure, IndexListSpan] = {
     reported.read match {
-      case _: IndexListRead.ByLookupJoin =>
+      case _: IndexListRead.LookupJoin =>
         Right(IndexListSpan(writtenSpan, commandText))
-      case _: IndexListRead.BySourceCommand =>
+      case _: IndexListRead.SourceCommand =>
         sourceCommandIndexList.findFirstMatchIn(commandText) match {
           case Some(indexList) =>
             val span = TextSpan(writtenSpan.start + indexList.start(1), writtenSpan.start + indexList.end(1))
@@ -140,13 +138,44 @@ object IndexListLocator {
     indexList.filterNot(char => char.isWhitespace || char == '"')
 
   /** Blanked, not dropped, so what is left keeps its offsets. */
-  private def withoutComments(commandText: String): String =
-    comment.replaceAllIn(commandText, found => " " * found.matched.length)
+  private def withoutComments(commandText: String): String = {
+    @tailrec
+    def blanked(text: String, at: Int): String = {
+      if (at >= text.length) text
+      else
+        endOfCommentAt(text, at) match {
+          case Some(end) => blanked(text.patch(at, " " * (end - at), end - at), end)
+          case None      => blanked(text, at + 1)
+        }
+    }
+    blanked(commandText, 0)
+  }
+
+  private def endOfCommentAt(text: String, at: Int): Option[Int] = {
+    if (text.startsWith("//", at)) Some(endOfLineComment(text, at))
+    else if (text.startsWith("/*", at)) Some(endOfBlockComment(text, at + 2, depth = 1))
+    else None
+  }
+
+  private def endOfLineComment(text: String, at: Int): Int =
+    text.indexOf('\n', at) match {
+      case -1  => text.length
+      case end => end
+    }
+
+  /** ES lets a block comment nest, so the one opened here closes only where none is left open. */
+  @tailrec
+  private def endOfBlockComment(text: String, at: Int, depth: Int): Int = {
+    if (depth == 0 || at >= text.length) at
+    else if (text.startsWith("*/", at)) endOfBlockComment(text, at + 2, depth - 1)
+    else if (text.startsWith("/*", at)) endOfBlockComment(text, at + 2, depth + 1)
+    else endOfBlockComment(text, at + 1, depth)
+  }
 
   private def indexListAt(span: TextSpan, read: IndexListRead): Either[ReadingFailure, LocatedIndexList] = {
     val indexList = read match {
-      case read: IndexListRead.ByLookupJoin    => LocatedIndexList.LookupJoinTarget.parse(span, read)
-      case read: IndexListRead.BySourceCommand => LocatedIndexList.SourceCommandIndices.parse(span, read)
+      case read: IndexListRead.LookupJoin    => LocatedIndexList.LookupJoinTarget.parse(span, read)
+      case read: IndexListRead.SourceCommand => LocatedIndexList.SourceCommandIndices.parse(span, read)
     }
     indexList.toRight(ReadingFailure.UnsupportedIndexList(read.indexList))
   }
