@@ -18,6 +18,7 @@ package tech.beshu.ror.es.esql
 
 import cats.Show
 import cats.data.NonEmptyList
+import cats.syntax.traverse.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.esql.Query.SourceLocation
@@ -170,10 +171,14 @@ object LocatedIndexList {
   def requestedIndicesOf(indexLists: NonEmptyList[LocatedIndexList]): Set[RequestedIndex[ClusterIndexName]] =
     indexLists.toList.flatMap(_.requestedIndices.toList).toCovariantSet
 
+  /** All of them or none: an entry ROR cannot read is an index it would leave the ACL unaware of. */
   private def requestedIndicesIn(read: IndexListRead): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
-    NonEmptyList.fromList(
-      read.indexList.split(',').asSafeList.filter(_.nonEmpty).flatMap(RequestedIndex.fromString)
-    )
+    read.indexList
+      .split(',')
+      .asSafeList
+      .filter(_.nonEmpty)
+      .traverse(RequestedIndex.fromString)
+      .flatMap(NonEmptyList.fromList)
 
 }
 

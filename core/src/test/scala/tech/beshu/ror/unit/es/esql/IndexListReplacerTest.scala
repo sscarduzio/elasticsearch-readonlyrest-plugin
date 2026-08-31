@@ -238,6 +238,13 @@ class IndexListReplacerTest extends AnyWordSpec {
           from("FROM logs-*", "logs-*")
         ) shouldBe "// leading comment\nFROM logs-1 | LIMIT 10"
       }
+      "refuse to read an index list one entry of which is no index name, rather than pass over that entry" in {
+        readingFailureFor(
+          "FROM logs-1,- | LIMIT 10",
+          allowed("logs-1"),
+          from("FROM logs-1,-", "logs-1,-")
+        ) shouldBe UnsupportedIndexList("logs-1,-")
+      }
     }
     "a source command holds a subquery" should {
       "replace the index list of a subquery, which ES reads as a source command of its own" in {
@@ -566,6 +573,18 @@ class IndexListReplacerTest extends AnyWordSpec {
           esReads = List.empty,
           from("FROM logs-*", "logs-*")
         ) shouldBe Left(Query.Rejection.NotReplacedAsIntended(List("logs-1"), List.empty))
+      }
+      "accept a rewrite ES reads as the join it was meant to be" in {
+        verify(
+          "FROM src | LOOKUP JOIN lookup_idx ON key",
+          allowed("src", "lookup_idx"),
+          esReads = List(
+            IndexListRead.SourceCommand("src"),
+            IndexListRead.LookupJoin("lookup_idx")
+          ),
+          from("FROM src", "src"),
+          join("lookup_idx", "lookup_idx")
+        ) shouldBe Right("FROM src | LOOKUP JOIN lookup_idx ON key")
       }
       "hold a LOOKUP JOIN target to being read as one" in {
         verify(

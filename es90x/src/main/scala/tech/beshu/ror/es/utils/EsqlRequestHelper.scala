@@ -38,13 +38,14 @@ import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.utils.slf4j.Logging
 
 import java.util.List as JList
 import java.util.function.Predicate as JPredicate
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
-object EsqlRequestHelper {
+object EsqlRequestHelper extends Logging {
 
   def modifyIndicesOf(
       request: CompositeIndicesRequest,
@@ -121,9 +122,13 @@ object EsqlRequestHelper {
     }
 
     def indexListReadsIn(query: Query, request: CompositeIndicesRequest): List[IndexListRead] = {
-      createStatement(query.value, request)
-        .map(statement => reportedIndexListsIn(planOf(statement)).map(_.read).filterNot(_.indexListIsEmpty))
-        .getOrElse(List.empty)
+      createStatement(query.value, request) match {
+        case Right(statement) =>
+          reportedIndexListsIn(planOf(statement)).map(_.read).filterNot(_.indexListIsEmpty)
+        case Left(RequestClassification.Error.NotParsable(cause)) =>
+          logger.warn("Elasticsearch cannot parse the ES|QL query ReadonlyREST rewrote", cause)
+          List.empty
+      }
     }
 
     private def planOf(statement: Any): Any = statement
