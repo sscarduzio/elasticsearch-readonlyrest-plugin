@@ -141,6 +141,8 @@ object LocatedIndexList {
 
     case object PromqlLeaningOnDefaultIndex extends ReadingFailure
 
+    case object IndexListInAnonymousParameter extends ReadingFailure
+
     final case class UnsupportedIndexList(reportedIndexList: String) extends ReadingFailure
 
     implicit val show: Show[ReadingFailure] = Show.show {
@@ -155,6 +157,10 @@ object LocatedIndexList {
       case PromqlLeaningOnDefaultIndex =>
         "the PROMQL command names no [index] parameter, so it reads whichever indices Elasticsearch defaults to " +
           "and the query text holds no index list to narrow down. Add [index=...] to have such a query authorized"
+      case IndexListInAnonymousParameter =>
+        "the indices are named by an anonymous query parameter ([?] or [??]), which Elasticsearch binds by the " +
+          "order the parameters are written in - so narrowing it down would rebind every parameter written after " +
+          "it. Name the parameter ([?index]) or number it ([?1]) to have such a query authorized"
       case UnsupportedIndexList(indexList) =>
         s"[${indexList.show}] is not something ReadonlyREST can read as a list of index names"
     }

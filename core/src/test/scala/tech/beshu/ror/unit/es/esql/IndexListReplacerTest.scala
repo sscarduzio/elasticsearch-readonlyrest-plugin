@@ -416,13 +416,16 @@ class IndexListReplacerTest extends AnyWordSpec {
           s"FROM src \\| LOOKUP JOIN $maskedIndex ON a \\| LOOKUP JOIN $maskedIndex ON b"
       }
       "mask a target and a source command reading the same forbidden index as the same index" in {
+        val query = "FROM shared_idx | LOOKUP JOIN shared_idx ON k1 | LOOKUP JOIN decoy ON k2"
         val rewritten = rewrite(
-          "FROM shared_idx | LOOKUP JOIN shared_idx ON k1 | LOOKUP JOIN decoy ON k2",
+          query,
           allowed("decoy"),
           from("FROM shared_idx", "shared_idx"),
-          join("shared_idx", "shared_idx"),
+          joinAt(query.lastIndexOf("shared_idx"), "shared_idx", "shared_idx"),
           join("decoy", "decoy")
         )
+        rewritten should fullyMatch regex
+          s"FROM $maskedIndex \\| LOOKUP JOIN $maskedIndex ON k1 \\| LOOKUP JOIN decoy ON k2"
         maskedIndex.findAllIn(rewritten).toList.distinct should have size 1
       }
       "refuse to read a wildcard target" in {
@@ -475,6 +478,20 @@ class IndexListReplacerTest extends AnyWordSpec {
           allowed("metrics-1"),
           from("?idx", "metrics-*")
         ) shouldBe "PROMQL index=metrics-1 step=1m rate(v)"
+      }
+      "replace an index parameter Elasticsearch binds by its position" in {
+        rewrite(
+          "PROMQL index=?1 step=1m rate(v)",
+          allowed("metrics-1"),
+          from("?1", "metrics-*")
+        ) shouldBe "PROMQL index=metrics-1 step=1m rate(v)"
+      }
+      "refuse to read an index parameter Elasticsearch binds by the order the parameters are written in" in {
+        readingFailureFor(
+          "PROMQL index=? step=1m rate(v)",
+          allowed("metrics-1"),
+          from("?", "metrics-*")
+        ) shouldBe IndexListInAnonymousParameter
       }
     }
     "the ACL left an exclusion in the indices it allowed" should {
@@ -636,6 +653,9 @@ class IndexListReplacerTest extends AnyWordSpec {
 
   private def at(offset: Int, writtenText: String, indexList: String): ReportedBy =
     ReportedBy(writtenText, IndexListRead.SourceCommand(indexList), forcedOffset = Some(offset))
+
+  private def joinAt(offset: Int, writtenText: String, indexList: String): ReportedBy =
+    ReportedBy(writtenText, IndexListRead.LookupJoin(indexList), forcedOffset = Some(offset))
 
   private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] =
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))

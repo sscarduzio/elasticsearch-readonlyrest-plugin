@@ -41,7 +41,11 @@ object IndexListLocator {
 
   private val promqlCommand: Regex = """(?is)^\s*PROMQL\b.*""".r
 
-  private val queryParameter: Regex = """^\s*\?\??[A-Za-z_0-9]*\s*$""".r
+  /** A parameter ES binds by its name (`?index`) or by its position (`?1`) - neither tied to where it is written. */
+  private val boundQueryParameter: Regex = """^\s*\?\??[A-Za-z_0-9]+\s*$""".r
+
+  /** A parameter ES binds by the order the placeholders appear in, so dropping one rebinds every one after it. */
+  private val anonymousQueryParameter: Regex = """^\s*\?\??\s*$""".r
 
   def locatedIn(
       query: Query,
@@ -118,14 +122,13 @@ object IndexListLocator {
 
   /**
    * ES reports the list it read, not the text it read it from, so a span is only safe to rewrite once it reads back
-   * as that list - a parameter excepted, since its value is not written in the query at all.
+   * as that list - a named or positional parameter excepted, since its value is not written in the query at all.
    */
-  private def checkHoldsReportedIndexList(read: IndexListRead, spanText: String): Either[ReadingFailure, Unit] =
-    Either.cond(
-      test = queryParameter.matches(spanText) || sameIndexList(spanText, read.indexList),
-      right = (),
-      left = ReadingFailure.NotWhereEsReportedIt(read.indexList)
-    )
+  private def checkHoldsReportedIndexList(read: IndexListRead, spanText: String): Either[ReadingFailure, Unit] = {
+    if (sameIndexList(spanText, read.indexList) || boundQueryParameter.matches(spanText)) Right(())
+    else if (anonymousQueryParameter.matches(spanText)) Left(ReadingFailure.IndexListInAnonymousParameter)
+    else Left(ReadingFailure.NotWhereEsReportedIt(read.indexList))
+  }
 
   /**
    * Compared with the quoting and the spacing dropped from both sides: ES hides whitespace anywhere inside a source
@@ -140,15 +143,15 @@ object IndexListLocator {
   /** Blanked, not dropped, so what is left keeps its offsets. */
   private def withoutComments(commandText: String): String = {
     @tailrec
-    def blanked(text: String, at: Int): String = {
-      if (at >= text.length) text
+    def blanked(at: Int, acc: StringBuilder): String = {
+      if (at >= commandText.length) acc.result()
       else
-        endOfCommentAt(text, at) match {
-          case Some(end) => blanked(text.patch(at, " " * (end - at), end - at), end)
-          case None      => blanked(text, at + 1)
+        endOfCommentAt(commandText, at) match {
+          case Some(end) => blanked(end, acc.append(" " * (end - at)))
+          case None      => blanked(at + 1, acc.append(commandText.charAt(at)))
         }
     }
-    blanked(commandText, 0)
+    blanked(0, new StringBuilder(commandText.length))
   }
 
   private def endOfCommentAt(text: String, at: Int): Option[Int] = {
