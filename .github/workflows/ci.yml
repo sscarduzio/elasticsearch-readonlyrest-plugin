@@ -54,6 +54,7 @@ env:
   # full-matrix run (es80x/es810x/es818x/es90x, exit 137) — those legs run suites es94x excludes,
   # so their memory peaks are higher. Fleet wall time is set by the slowest leg anyway: k=4.
   IT_PARALLELISM: '4'
+  AGENT_ISSELFHOSTED: '1'
 
 jobs:
 
@@ -289,6 +290,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk (no-op on self-hosted)
+        run: ci/free-host-disk.sh
       - name: Start memory telemetry
         run: ci/mem-telemetry.sh start integration-tests/build/mem-telemetry-${{ matrix.ROR_TASK }}.log > "$RUNNER_TEMP/mem-telemetry.pid"
       - name: integration_${{ matrix.ES_MODULE }}
@@ -574,6 +577,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk (no-op on self-hosted)
+        run: ci/free-host-disk.sh
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
         with: { distribution: temurin, java-version: '17' }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020

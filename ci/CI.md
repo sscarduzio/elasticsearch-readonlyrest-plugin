@@ -31,9 +31,10 @@ Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_li
 Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
 above: `build-toolchains-image.yml` (rebuilds the image every CI job runs in — weekly cron and
 manual; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml` (mirrors ES jars
-into the libs store — see [S3 stores](#s3-stores)), `pr-conventions.yml` (PR title/changelog checks),
-`actionstrings_gen.yml` (regenerates the ES action-string lists in the docs repo),
-`publish-pre-builds.yml` (on-demand ROR+ES dev images).
+into the libs store — see [S3 stores](#s3-stores)), `disk-probe.yml` (manually reports runner and
+Docker disk usage), `pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml`
+(regenerates the ES action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand
+ROR+ES dev images).
 
 Two orchestration rules worth knowing before editing conditions:
 
