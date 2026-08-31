@@ -17,8 +17,6 @@ on:
       - 'docs/**'
       - '.claude/**'
       - '**/*.md'
-  schedule:
-    - cron: '0 3 * * 1'   # weekly toolchains-image rebuild (build_toolchains_image only)
   workflow_dispatch:
     inputs:
       actionToPerform:
@@ -29,7 +27,6 @@ on:
           - run_all_tests_on_linux
           - run_all_tests_on_windows
           - run_e2e_tests
-          - build_toolchains_image
           - release_without_testing
 
 # Cancel superseded PR runs. Branch pushes queue behind the running build so an in-flight release
@@ -41,17 +38,15 @@ concurrency:
 permissions:
   contents: read
 
-# Container jobs default run: steps to `sh`, where `source` (docker-hub-auth.sh) fails with 127.
+# Container jobs default run: steps to `sh`, where `source` (configure-docker.sh) fails with 127.
 # Windows jobs are unaffected — their steps declare `shell: pwsh` explicitly.
 defaults:
   run:
     shell: bash
 
 env:
-  # Single source of truth for the toolchains image tag: the &toolchains anchor. Every job's
-  # `container: *toolchains` resolves to it, so a JDK/Gradle bump edits ONE line. Kept per-branch
-  # (not a repo variable) on purpose: the tag is coupled to this commit's baked dependency cache.
-  TOOLCHAINS_IMAGE: &toolchains beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+  # TOOLCHAINS_IMAGE is not here. It lives in ci/toolchains/image.env, which the two jobs that
+  # need it source. One file holds the tag, and every workflow reads that file.
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
   # 4 shards per leg + HeavySuiteGate (max 2 concurrent multi-cluster suites, machine-wide).
@@ -68,15 +63,18 @@ jobs:
   setup:
     runs-on: ubuntu-latest   # trivial job; GH-hosted so it runs even if the Ubicloud app is down
     outputs:
-      is_master:  ${{ steps.f.outputs.is_master }}
-      is_develop: ${{ steps.f.outputs.is_develop }}
-      is_epic:    ${{ steps.f.outputs.is_epic }}
+      is_master:  ${{ steps.flags.outputs.is_master }}
+      is_develop: ${{ steps.flags.outputs.is_develop }}
+      is_epic:    ${{ steps.flags.outputs.is_epic }}
       action:     ${{ github.event.inputs.actionToPerform || 'run_all_tests_on_linux' }}
-      it_linux_matrix:   ${{ steps.m.outputs.linux }}
-      it_windows_matrix: ${{ steps.m.outputs.windows }}
-      e2e_modules:       ${{ steps.m.outputs.e2e }}
+      it_linux_matrix:   ${{ steps.matrices.outputs.linux }}
+      it_windows_matrix: ${{ steps.matrices.outputs.windows }}
+      e2e_modules:       ${{ steps.matrices.outputs.e2e }}
+      toolchains_image: ${{ steps.toolchains.outputs.image }}
     steps:
-      - id: f
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - id: flags
         env:
           REF: ${{ github.head_ref || github.ref_name }}
         run: |
@@ -84,7 +82,7 @@ jobs:
           echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
           # Treat nested */epic/* branches like top-level epic/* branches.
           case "$REF" in *epic/*)  echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
-      - id: m
+      - id: matrices
         env:
           # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
           IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
@@ -124,43 +122,44 @@ jobs:
           else
             echo "e2e=$E2E_FULL_SET" >> "$GITHUB_OUTPUT"
           fi
-
-  # ── BUILD_TOOLCHAINS_IMAGE (schedule / manual) ────────────────────────────
-  build_toolchains_image:
-    needs: setup
-    # Schedule runs are pinned to develop. GitHub schedules fire on the default branch, so the ref
-    # guard protects us if the default branch ever changes.
-    if: >-
-      (github.event_name == 'schedule' && github.ref == 'refs/heads/develop') ||
-      (github.event_name == 'workflow_dispatch' && needs.setup.outputs.action == 'build_toolchains_image')
-    runs-on: ubicloud-standard-4
-    timeout-minutes: 240
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: docker build & push
-        env:
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+      # The runner pulls the container: image before step 1, so ci/configure-docker.sh cannot reach
+      # it. This job can: container: image: reads a job output. The Build toolchains image workflow
+      # put the digest of the last push in the cache below. The key holds the tag, so a new tag
+      # reads no entry.
+      - name: Read the toolchains image tag
         run: |
-          set -e
-          # Drift guard: every ror-ci-toolchains tag in this workflow (env + all container: lines)
-          # must be identical — a bump that misses some lines would build one tag while jobs run another.
-          if grep -ohE 'beshultd/ror-ci-toolchains:[a-zA-Z0-9._-]+' .github/workflows/ci.yml | grep -vF "$TOOLCHAINS_IMAGE" | grep -q .; then
-            echo "::error::ci.yml container tags do not all match TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE — bump them together"
-            exit 1
-          fi
-          echo ">>> Building $TOOLCHAINS_IMAGE"
-          docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
-          docker push "$TOOLCHAINS_IMAGE"
+          . ci/toolchains/image.env
+          [ -n "${TOOLCHAINS_IMAGE:-}" ] || { echo "::error::ci/toolchains/image.env sets no tag."; exit 1; }
+          echo "TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE" >> "$GITHUB_ENV"
+      - id: digest_key
+        # Two hyphens. One would also match a tag that extends this one, such as -9.2.1-arm64.
+        run: echo "prefix=toolchains-digest-${TOOLCHAINS_IMAGE##*:}--" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .toolchains-digest
+          # An exact key needs the rebuild's run id. The prefix gives its newest entry.
+          key: ${{ steps.digest_key.outputs.prefix }}
+          restore-keys: ${{ steps.digest_key.outputs.prefix }}
+      - id: toolchains
+        run: ci/resolve-toolchains-image.sh
 
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
   toolchains_verify:
     needs: setup
-    if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    # The runner pulls this image before step 1 runs, so ci/configure-docker.sh reaches neither the
+    # mirror nor the login for it. ci/resolve-toolchains-image.sh settles the name in the setup job.
+    # A mirrored name carries the digest, so every job of a run pulls the same bytes.
+    #
+    # The pull sends no credentials. A Docker Hub login against mirror.gcr.io fails, so the block
+    # must be absent on the mirrored path. An empty value does not remove it. GitHub rejects it with
+    # "Unexpected value ''" and stops the run before step 1. YAML cannot drop a key on a condition,
+    # so the block is absent on both paths.
+    #
+    # Docker Hub then counts the fallback pull against the runner's address, not against our
+    # account. The mirror serves the normal path.
+    container: &toolchains_container
+      image: ${{ needs.setup.outputs.toolchains_image }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -180,10 +179,14 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+      github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    container: *toolchains_container
     continue-on-error: true
+    # Without this limit, the job uses the GitHub default of 6 hours. dependency-check does not
+    # treat a Sonatype 429 or 5xx as fatal. It sends the OSS Index request again for each
+    # dependency. A Sonatype outage can thus use all 6 hours. A good run takes a few minutes.
+    timeout-minutes: 30
     name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
@@ -192,34 +195,18 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Compute monthly cache key
-        id: month
-        run: echo "ym=$(date +%Y%m)" >> "$GITHUB_OUTPUT"
-      - name: Restore CVE DB cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .dependency-check-data
-          # Immutable entries; a fresh key appears once a month.
-          key: dependency-check-v2-${{ steps.month.outputs.ym }}
-          restore-keys: dependency-check-v2-
       - name: ${{ matrix.ROR_TASK }}
-        env:
-          ROR_TASK: ${{ matrix.ROR_TASK }}
-          DEPENDENCY_CHECK_DATA_DIR: .dependency-check-data
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-          OSS_INDEX_USERNAME: ${{ secrets.OSS_INDEX_USERNAME }}
-          OSS_INDEX_PASSWORD: ${{ secrets.OSS_INDEX_PASSWORD }}
-        run: |
-          # Fork PRs get EMPTY (not absent) secrets from GitHub. A set-but-empty key makes
-          # dependency-check/oss-index attempt authenticated calls (401) instead of anonymous mode
-          # Unset empty values so dependency-check falls back to anonymous mode.
-          if [ -z "$NVD_API_KEY" ]; then
-            echo "::warning::NVD_API_KEY secret is not set - dependency-check will likely fail (NVD throttles keyless clients). This job is continue-on-error, so the run is not blocked."
-          fi
-          [ -n "$NVD_API_KEY" ] || unset NVD_API_KEY
-          [ -n "$OSS_INDEX_USERNAME" ] || unset OSS_INDEX_USERNAME
-          [ -n "$OSS_INDEX_PASSWORD" ] || unset OSS_INDEX_PASSWORD
-          ci/run-pipeline.sh
+        uses: ./.github/actions/cve-check
+        with:
+          ror-task: ${{ matrix.ROR_TASK }}
+          # The caller decides who writes the NVD database cache. Pushes to develop and to master
+          # occur often, and thus keep the cache fresh. A PR run only reads the cache.
+          save-nvd-cache: >-
+            ${{ github.event_name == 'push' &&
+                (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master') }}
+          nvd-api-key: ${{ secrets.NVD_API_KEY }}
+          oss-index-username: ${{ secrets.OSS_INDEX_USERNAME }}
+          oss-index-password: ${{ secrets.OSS_INDEX_PASSWORD }}
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
@@ -227,9 +214,9 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+      github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    container: *toolchains_container
     name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
@@ -241,12 +228,12 @@ jobs:
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
         run: ci/run-pipeline.sh
 
   # ── TEST: unit (Linux) ────────────────────────────────────────────────────
@@ -255,10 +242,9 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -266,10 +252,10 @@ jobs:
       - name: core_tests
         env:
           ROR_TASK: core_tests
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
         run: |
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
       - name: Publish test results
         if: failure()
@@ -287,11 +273,10 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 120
     # "it_linux_es94x", not the truncated "it_linux (es94x)" composite, in the graph view. Same
     # <leg>_<module> shape as it_win_* and e2e_*, so the three test families sort together.
@@ -321,16 +306,16 @@ jobs:
           ROR_HEAVY_SUITE_PERMITS: '2'
           # the JDWP agent costs ~90MB RSS per ES container and nothing attaches to it in CI
           ROR_ES_JDWP: 'false'
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
         run: |
-          source ci/docker-hub-auth.sh
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
       - name: Publish test results
         # always(): green-run XMLs feed suite-timings.json regeneration (duration-balanced sharding)
@@ -403,7 +388,6 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.it_windows_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')
     runs-on: windows-2025
@@ -446,12 +430,12 @@ jobs:
       - name: ${{ matrix.ES_MODULE }}
         shell: pwsh
         env:
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           ES_MODULE: ${{ matrix.ES_MODULE }}
           # level packing (the random split gave 15/29/23 suites) + memory gate for native-ES spikes
           ROR_BALANCED_SHARDS: 'true'
@@ -541,11 +525,10 @@ jobs:
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 30
     outputs:
       matrix: ${{ steps.prepare.outputs.matrix }}
@@ -564,7 +547,7 @@ jobs:
           ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
           E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-          KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
         run: ci/run-pipeline.sh
 
   # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
@@ -576,7 +559,6 @@ jobs:
       !cancelled() &&
       needs.e2e_prepare.result == 'success' &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'schedule' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubicloud-standard-4
@@ -607,19 +589,17 @@ jobs:
           ROR_KBN_PREBUILD_RUN_ID: ${{ needs.e2e_prepare.outputs.kbn_run_id }}
           ROR_KBN_PREBUILD_RUN_URL: ${{ needs.e2e_prepare.outputs.kbn_run_url }}
           ROR_KBN_WAIT_TIMEOUT_SECONDS: ${{ needs.e2e_prepare.outputs.kbn_wait_timeout_seconds }}
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ACTIVATION_KEY }}
-          KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
           # Do not let corepack ask before it downloads yarn. CI has no operator.
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
           set -e
-          # The e2e repo pins yarn in "packageManager". Corepack reads and uses that.
-          # No fallback needed — trust corepack to manage the version per the e2e repo's package.json.
+           # The e2e repo pins yarn in "packageManager". Corepack reads and uses that.
           corepack enable
-          # Authenticate Docker Hub for docker compose (not for testcontainers).
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          source ci/configure-docker.sh
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
           ci/run-pipeline.sh
 
@@ -628,21 +608,20 @@ jobs:
       - name: Upload Cypress artifacts to S3 on failure
         if: failure()
         continue-on-error: true
-        # Separate credentials limit access to e2e_reports/ only (not to builds/ or libs/).
-        # Store the key pair as a secret; other values may use vars or secrets.
+        # One S3 credential set serves every store; only the path prefix differs per store.
         env:
-          ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID }}
-          ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET }}
-          ROR_E2E_REPORTS_STORE_BUCKET: ${{ vars.ROR_E2E_REPORTS_STORE_BUCKET || secrets.ROR_E2E_REPORTS_STORE_BUCKET }}
-          ROR_E2E_REPORTS_STORE_REGION: ${{ vars.ROR_E2E_REPORTS_STORE_REGION || secrets.ROR_E2E_REPORTS_STORE_REGION }}
-          ROR_E2E_REPORTS_STORE_ENDPOINT_URL: ${{ vars.ROR_E2E_REPORTS_STORE_ENDPOINT_URL || secrets.ROR_E2E_REPORTS_STORE_ENDPOINT_URL }}
-          E2E_REPORTS_PATH_PREFIX: ${{ vars.ROR_E2E_REPORTS_STORE_PATH_PREFIX || secrets.ROR_E2E_REPORTS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_E2E_REPORTS: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
         run: |
           set -e
           # Path layout: <PATH_PREFIX>/YYYY-MM-DD/build_<run id>/<module>_<elk>/<videos|screenshots>
           # Do not hardcode PATH_PREFIX — it is already set. The date sorts reports chronologically.
-          BASE="${E2E_REPORTS_PATH_PREFIX:+${E2E_REPORTS_PATH_PREFIX%/}/}"
-          export ROR_E2E_REPORTS_STORE_PATH_PREFIX="${BASE}$(date -u +%Y-%m-%d)/build_${{ github.run_id }}"
+          BASE="${ROR_S3_PATH_E2E_REPORTS:+${ROR_S3_PATH_E2E_REPORTS%/}/}"
+          export ROR_S3_PATH_E2E_REPORTS="${BASE}$(date -u +%Y-%m-%d)/build_${{ github.run_id }}"
           ci/upload-cypress-artifacts-to-s3.sh \
             "${E2E_TESTS_DIR:?run_e2e_tests did not publish the e2e clone path}/results" \
             "${{ matrix.module }}_${{ matrix.elk }}"
@@ -662,7 +641,7 @@ jobs:
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
       (needs.e2e_tests.result == 'success' || needs.setup.outputs.e2e_modules == '[]')
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 180
     name: ${{ matrix.ROR_TASK }}
     strategy:
@@ -687,7 +666,7 @@ jobs:
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       (
         (
-          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          github.event_name != 'workflow_dispatch' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
@@ -701,11 +680,11 @@ jobs:
       )
     runs-on: ubuntu-latest
     outputs:
-      is_release: ${{ steps.r.outputs.is_release }}
+      is_release: ${{ steps.release_check.outputs.is_release }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - id: r
+      - id: release_check
         run: |
           IS_RELEASE=true
           if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep -- '-pre'; then
@@ -721,9 +700,9 @@ jobs:
       needs.determine_ci_type.result == 'success' &&
       needs.determine_ci_type.outputs.is_release == 'false' &&
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
-      github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+      github.event_name != 'workflow_dispatch'
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 600
     strategy:
       fail-fast: false
@@ -734,24 +713,19 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: false }
       - name: ${{ matrix.ROR_TASK }}
         env:
-          ROR_ARTIFACTS_STORE_ENDPOINT_URL: ${{ vars.ROR_ARTIFACTS_STORE_ENDPOINT_URL }}
-          ROR_ARTIFACTS_STORE_REGION: ${{ vars.ROR_ARTIFACTS_STORE_REGION }}
-          ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_ID }}
-          ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET }}
-          ROR_ARTIFACTS_STORE_BUCKET: ${{ vars.ROR_ARTIFACTS_STORE_BUCKET }}
-          ROR_ARTIFACTS_STORE_PATH_PREFIX: ${{ vars.ROR_ARTIFACTS_STORE_PATH_PREFIX }}
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           ROR_TASK: ${{ matrix.ROR_TASK }}
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
 
   # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
@@ -766,7 +740,7 @@ jobs:
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       (
         (
-          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          github.event_name != 'workflow_dispatch' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
@@ -780,7 +754,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     timeout-minutes: 180
     strategy:
       fail-fast: false
@@ -791,26 +765,21 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: true }
       - name: ${{ matrix.ROR_TASK }}
         env:
-          ROR_ARTIFACTS_STORE_ENDPOINT_URL: ${{ vars.ROR_ARTIFACTS_STORE_ENDPOINT_URL }}
-          ROR_ARTIFACTS_STORE_REGION: ${{ vars.ROR_ARTIFACTS_STORE_REGION }}
-          ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_ID }}
-          ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET }}
-          ROR_ARTIFACTS_STORE_BUCKET: ${{ vars.ROR_ARTIFACTS_STORE_BUCKET }}
-          ROR_ARTIFACTS_STORE_PATH_PREFIX: ${{ vars.ROR_ARTIFACTS_STORE_PATH_PREFIX }}
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           ROR_TASK: ${{ matrix.ROR_TASK }}
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
           # ci-lib.sh still uses this legacy variable name in the release tag message.
           TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -e
-          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          source ci/configure-docker.sh
           ci/run-pipeline.sh
 
   # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
@@ -823,7 +792,7 @@ jobs:
       needs.setup.outputs.is_master == 'true' &&
       (
         (
-          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          github.event_name != 'workflow_dispatch' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
@@ -837,7 +806,7 @@ jobs:
         )
       )
     runs-on: ubicloud-standard-4
-    container: *toolchains
+    container: *toolchains_container
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }

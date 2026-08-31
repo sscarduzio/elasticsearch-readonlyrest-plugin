@@ -47,6 +47,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -725,6 +726,28 @@ trait LogsShowInstances extends cats.instances.AllInstances {
 
   implicit def settingsSavingErrorShow[ERROR: Show]: Show[SettingsSavingError[ERROR]] = Show.show {
     case SettingsSavingError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
+  }
+
+  implicit val auditClusterNodeShow: Show[AuditClusterNode] = Show.show { n =>
+    val url = n.toUrl
+    url.authorityOption match {
+      case Some(authority) =>
+        // the credentials must not reach the logs, so drop the user info part of the authority.
+        // keep the URL's own config, because a fresh one could render the rest of the authority differently
+        url
+          .withAuthority(
+            authority.copy(userInfo = None)(
+              using url.config
+            )
+          )
+          .toUrl
+          .show
+      case None => url.show
+    }
+  }
+
+  implicit val remoteAuditClusterShow: Show[RemoteAuditCluster] = Show.show { cluster =>
+    cluster.nodes.toList.map(_.show).show
   }
 
 }

@@ -11,7 +11,7 @@
 #   Which versions:  ES_VERSIONS_TO_UPLOAD, space- or comma-separated (e.g. "9.5.1 9.4.5 8.19.20").
 #   How to run it:   the "Mirror ES Libs" workflow (.github/workflows/mirror-es-libs.yml) — manual only.
 #   Locally:         ES_VERSIONS_TO_UPLOAD="9.5.1" ci/upload-es-artifacts.sh
-#                    (needs ROR_LIBS_STORE_ACCESS_KEY_ID / _SECRET in the environment)
+#                    (needs ROR_S3_ACCESS_KEY_ID / _SECRET in the environment)
 #
 # An empty list is not an error HERE — see the warning below — because this script is also runnable by
 # hand. The workflow, whose whole reason to exist is mirroring something, rejects it before calling us.

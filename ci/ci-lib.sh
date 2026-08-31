@@ -5,8 +5,131 @@
 # lib is sourced rather than run (`source ci/ci-lib.sh && reap_ci_job_containers` resolved it to ".").
 CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+# Reads one key from gradle.properties, which holds the build's own values. The file sits beside this
+# one, so the caller's working directory does not matter.
+#
+# An absent key fails. An empty value would name a wrong image or a wrong version, and nothing later
+# would show the cause. Every reader of the file goes through here: a second parser drifts.
+#
+# The value is everything after the first `=`, because a value such as `-Dkey=value` holds one too.
+# A key that the file states twice keeps the last line, which is the value gradle itself reads.
+gradle_property() {
+  local key=$1 file=$CI_DIR/../gradle.properties value
+  value=$(awk -F= -v k="$key" '$1==k {line=$0} END {sub(/^[^=]*=/, "", line); print line}' "$file")
+  if [ -z "$value" ]; then
+    echo "$file has no $key" >&2
+    return 1
+  fi
+  printf '%s\n' "$value"
+}
+
 docker_image_exists() {
+  # This answer decides whether we skip an expensive rebuild, so it must come from Docker Hub and
+  # never from a cache: a cache can hold a stale answer for a tag we pushed a moment ago. `docker
+  # manifest inspect` reads the name it is given, and this one carries no mirror, so the answer
+  # comes from Docker Hub. Keep it that way.
   docker manifest inspect "$1" >/dev/null 2>&1
+}
+
+# Runs a command again after a failure. The delay doubles each time.
+#
+#   retry_with_backoff [--retry-if <function>] <command> [arg ...]
+#
+# Without --retry-if it repeats every failure. With it, the function decides. The function gets two
+# arguments: a file that holds the output of the command, and the status of the command. A status
+# of 0 from the function means "repeat this".
+#
+#   retry_with_backoff --retry-if is_docker_registry_error ./gradlew pushRorDockerImage
+#
+# --retry-if also captures the output, so the command then runs in a pipeline, thus in a subshell,
+# and its standard error joins its standard output. Give it an external command. A shell function
+# that sets a variable would lose the value.
+retry_with_backoff() {
+  local attempts=${ROR_RETRY_ATTEMPTS:-3}
+  local delay=${ROR_RETRY_DELAY_SECONDS:-15}
+  local attempt=1
+  local retry_if=""
+  local status log
+
+  while [ "$#" -gt 0 ]; do
+    case $1 in
+      --retry-if)
+        retry_if=$2
+        shift 2
+        ;;
+      --)
+        shift
+        break
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
+  if [ "$#" -eq 0 ]; then
+    echo "[CI] retry_with_backoff needs a command."
+    return 2
+  fi
+  if ! [[ $attempts =~ ^[0-9]+$ ]] || [ "$attempts" -lt 1 ]; then
+    echo "[CI] ROR_RETRY_ATTEMPTS must be a positive integer, got '$attempts'."
+    return 2
+  fi
+  if ! [[ $delay =~ ^[0-9]+$ ]]; then
+    echo "[CI] ROR_RETRY_DELAY_SECONDS must be a non-negative integer, got '$delay'."
+    return 2
+  fi
+  if [ -n "$retry_if" ] && ! declare -F "$retry_if" >/dev/null; then
+    echo "[CI] --retry-if needs the name of a function, got '$retry_if'."
+    return 2
+  fi
+
+  log=""
+  if [ -n "$retry_if" ]; then
+    log=$(mktemp) || return 2
+  fi
+
+  while true; do
+    # Both branches run inside a group followed by `|| true`, so errexit in a caller cannot stop us
+    # at a failure we are about to repeat. The status is read inside the group, where PIPESTATUS
+    # still holds the command's own value.
+    if [ -n "$log" ]; then
+      # tee keeps the output on the console. PIPESTATUS holds the status of the command itself, not
+      # the status of tee.
+      { "$@" 2>&1 | tee "$log"; status=${PIPESTATUS[0]}; } || true
+    else
+      { "$@"; status=$?; } || true
+    fi
+
+    if [ "$status" -eq 0 ]; then
+      [ -n "$log" ] && rm -f "$log"
+      return 0
+    fi
+    if [ -n "$retry_if" ] && ! "$retry_if" "$log" "$status"; then
+      echo "[CI] '$1' failed, and this failure is not one to repeat."
+      rm -f "$log"
+      return "$status"
+    fi
+    if [ "$attempt" -ge "$attempts" ]; then
+      echo "[CI] '$1' failed on all $attempts attempts."
+      [ -n "$log" ] && rm -f "$log"
+      return "$status"
+    fi
+    echo "[CI] '$1' failed (attempt $attempt of $attempts). Next attempt in ${delay}s."
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
+# A --retry-if function for a command that pushes or pulls a Docker image. True when the output
+# holds a registry error, which another attempt can clear. A compile error, a wrong -PesVersion and
+# a broken Dockerfile give the same result every time, and both commands we retry build a
+# multi-arch image before they push, so a repeat of such a failure costs two more full builds.
+is_docker_registry_error() {
+  grep -Eqi \
+    'toomanyrequests|429 Too Many Requests|received unexpected HTTP status: 5[0-9][0-9]|unexpected status: 5[0-9][0-9]|50[0234] (Internal Server Error|Bad Gateway|Service Unavailable|Gateway Time-?out)|TLS handshake timeout|i/o timeout|connection reset by peer|unexpected EOF|net/http: request canceled' \
+    "$1"
 }
 
 # Force-remove every container belonging to THIS CI job, scoped by the ror.ci-job=$ROR_CI_JOB_ID label so we
@@ -20,9 +143,7 @@ reap_ci_job_containers() {
   [ -n "$ids" ] && docker rm -f $ids 2>/dev/null || true
 }
 
-# Repo of the ROR ES pre-build dev image. Must match each module's `preBuildDockerImageVersion` repo in
-# es<ver>x/build.gradle (that is where Gradle actually pushes the canonical <esVersion>-ror-<pluginVersion>).
-ES_DEV_IMAGE_REPO="beshultd/elasticsearch-readonlyrest-dev"
+ES_DEV_IMAGE_REPO="$(gradle_property dockerImageNamespace)/elasticsearch-readonlyrest-dev" || exit 1
 
 # Copies a registry image manifest to a new tag without pulling/rebuilding (multi-platform safe).
 retag_dev_image() {
@@ -70,7 +191,7 @@ publish_ror_es_prebuild_plugin() {
   fi
 
   local ROR_VERSION GIT_SHA
-  ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
+  ROR_VERSION=$(gradle_property pluginVersion) || return 1
   GIT_SHA=$(git rev-parse --short HEAD)
 
   local CANONICAL_TAG="${ES_VERSION}-ror-${ROR_VERSION}"
@@ -86,7 +207,10 @@ publish_ror_es_prebuild_plugin() {
   if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"; then
     echo ">>> Sources unchanged (image for this commit already published), skipping build"
   else
-    if ! ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+    # This build pulls base images and pushes the result, so a registry can answer 429. Only such
+    # a failure is repeated. A broken build fails at once.
+    if ! retry_with_backoff --retry-if is_docker_registry_error \
+         ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
       echo "Failed to publish plugin prebuild Docker image"
       return 4
     fi
@@ -163,19 +287,15 @@ function _upload_to_s3_target {
     return 1
   fi
 
-  # Indirectly resolve the store-specific env vars (e.g. ROR_LIBS_STORE_BUCKET).
-  local ENDPOINT_VAR="ROR_${STORE}_STORE_ENDPOINT_URL"
-  local AK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_ID"
-  local SK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_SECRET"
-  local BUCKET_VAR="ROR_${STORE}_STORE_BUCKET"
-  local REGION_VAR="ROR_${STORE}_STORE_REGION"
-  local PREFIX_VAR="ROR_${STORE}_STORE_PATH_PREFIX"
+  # One credential set serves every store; only the key prefix differs, so the store name
+  # selects a path (ROR_S3_PATH_ARTIFACTS / _LIBS / _E2E_REPORTS) and nothing else.
+  local PREFIX_VAR="ROR_S3_PATH_${STORE}"
 
-  local ENDPOINT="${!ENDPOINT_VAR-}"
-  local AK="${!AK_VAR-}"
-  local SK="${!SK_VAR-}"
-  local REGION="${!REGION_VAR-}"
-  BUCKET="${!BUCKET_VAR-}"; BUCKET="${BUCKET:-beshu}"
+  local ENDPOINT="${ROR_S3_ENDPOINT_URL-}"
+  local AK="${ROR_S3_ACCESS_KEY_ID-}"
+  local SK="${ROR_S3_SECRET_ACCESS_KEY-}"
+  local REGION="${ROR_S3_REGION-}"
+  BUCKET="${ROR_S3_BUCKET-}"; BUCKET="${BUCKET:-beshu}"
   PATH_PREFIX="${!PREFIX_VAR-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
 

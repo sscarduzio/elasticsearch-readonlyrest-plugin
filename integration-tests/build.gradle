@@ -48,24 +48,34 @@ def newestEsVersion = tech.beshu.ror.gradle.utils.EsModuleFinder
 def defaultEsModule = tech.beshu.ror.gradle.utils.EsModuleFinder
         .findEsModuleFor(rootProject, newestEsVersion).orElseThrow().name
 
-test {
-    systemProperty "project.dir", rootProject.projectDir
+def partitionBySharedEsUsage = { org.gradle.api.tasks.testing.Test task, List<String> suiteNames ->
+    def dirs = task.testClassesDirs.files.collect { it.toPath() }
+    def sharedEsSuites = tech.beshu.ror.buildbase.SuiteClassGraph.subtypesOf(
+        'tech.beshu.ror.integration.utils.SingletonPluginTestSupport', dirs, suiteNames)
+    [suiteNames.findAll { sharedEsSuites.contains(it) }, suiteNames.findAll { !sharedEsSuites.contains(it) }]
+}
+
+def configureIntegrationTest = { Test task, boolean sharedEsPhase ->
+    // The java plugin wires these into `test` only; a registered Test task starts without them.
+    task.testClassesDirs = sourceSets.test.output.classesDirs
+    task.classpath = sourceSets.test.runtimeClasspath
+    task.systemProperty "project.dir", rootProject.projectDir
     def module = project.findProperty('esModule') ?: defaultEsModule
     // Skips in bare aggregate builds (build/check); runs when the task is explicitly requested.
     // The module always has a default — no need to detect if -PesModule was passed.
-    def explicitlyRequested = gradle.startParameter.taskNames.any { it.endsWith('integration-tests:test') || it == 'integration-tests:test' }
-    onlyIf { explicitlyRequested }
-    doFirst {
+    def explicitlyRequested = gradle.startParameter.taskNames.any { it.endsWith("integration-tests:${task.name}".toString()) }
+    task.onlyIf { explicitlyRequested }
+    task.doFirst {
         if (!project.hasProperty('esModule')) {
             logger.quiet(">>> no -PesModule given — defaulting to ${defaultEsModule}")
         }
     }
     // Build the singleton ES image once up-front so parallel workers never build concurrently.
     // Redundant K+1 boots are cache hits; kept so a bare local `:test` (no run-pipeline) still works.
-    dependsOn 'warmDockerImageCache'
-    systemProperty "esModule", module
+    task.dependsOn 'warmDockerImageCache'
+    task.systemProperty "esModule", module
     def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
-    if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
+    if (explicitEsVersion != null) { task.systemProperty "esVersion", explicitEsVersion }
 
     // SHARDING: shardCount=1 runs everything; K>1 partitions suites by name-hash mod K (disjoint cover).
     // Forks can't split the scalatest engine (gradle#8632), so parallelism = K sharded invocations.
@@ -75,26 +85,33 @@ test {
     // matched and the guard killed the parent build. No shardIndex → not a shard → full suite filter.
     def shardCount = (project.findProperty('shardCount') ?: '1').toInteger()
     def shardIndex = (project.findProperty('shardIndex') ?: '0').toInteger()
+    def sharded = shardCount > 1 && project.hasProperty('shardIndex')
+    if (sharedEsPhase && !sharded) {
+        // Disable, do not just leave the filter empty: an enabled Test task with no filter runs EVERY suite.
+        task.enabled = false
+        return
+    }
     // Disjoint OUTPUT dirs per shard: sibling shards run concurrently in the SAME workspace, and
     // the Test task's shared result dirs (binary results + junit XML + html) get cross-corrupted —
     // "Could not write XML test results" / truncated TEST-*.xml — killing otherwise-green shards.
     if (project.hasProperty('shardIndex')) {
         // Windows native-ES runs key ports and install dirs off this (see WindowsEsPortProvider /
         // WindowsEsDirectoryManager); harmless on Linux where docker isolates everything.
-        systemProperty 'ror.shard.index', shardIndex
-        reports.junitXml.outputLocation = layout.buildDirectory.dir("test-results/shard-${shardIndex}")
-        reports.html.outputLocation = layout.buildDirectory.dir("reports/tests/shard-${shardIndex}")
-        binaryResultsDirectory.set(layout.buildDirectory.dir("test-results/shard-${shardIndex}-bin"))
+        task.systemProperty 'ror.shard.index', shardIndex
+        def phaseSuffix = sharedEsPhase ? '-shared-es' : ''
+        task.reports.junitXml.outputLocation = layout.buildDirectory.dir("test-results/shard-${shardIndex}${phaseSuffix}")
+        task.reports.html.outputLocation = layout.buildDirectory.dir("reports/tests/shard-${shardIndex}${phaseSuffix}")
+        task.binaryResultsDirectory.set(layout.buildDirectory.dir("test-results/shard-${shardIndex}${phaseSuffix}-bin"))
     }
-    filter {
-        if (shardCount > 1 && project.hasProperty('shardIndex')) {
+    task.filter {
+        if (sharded) {
             // Partitioning lives in build-base's SuiteSharder (pure, unit-tested); this block is
             // only the Gradle I/O around it: walk the class tree, parse suite-timings.json (with
             // -PbalancedShards=true / ROR_BALANCED_SHARDS), include the shard's suites.
             def balanced = (project.findProperty('balancedShards') ?: System.getenv('ROR_BALANCED_SHARDS') ?: 'false').toBoolean()
             def timings = balanced ? tech.beshu.ror.buildbase.SuiteSharder.timingsFrom(file('suite-timings.json')) : [:]
             def suites = []
-            test.testClassesDirs.asFileTree.matching {
+            task.testClassesDirs.asFileTree.matching {
                 // `*Suite*` (not `*Suite`) so classes ending in `Suites` shard too; `base/` traits
                 // excluded so the zero-match guard counts only real suites.
                 include 'tech/beshu/ror/integration/suites/**/*Suite*.class'
@@ -109,14 +126,23 @@ test {
             if (shardSuites.isEmpty()) {
                 throw new GradleException("Shard ${shardIndex}/${shardCount} matched 0 suites — check shardCount/shardIndex.")
             }
-            shardSuites.each { includeTestsMatching it }
-            logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount}: ${shardSuites.size()} suites (${balanced ? 'balanced' : 'hash'} packing)")
+            def (sharedEsSuites, ownClusterSuites) = partitionBySharedEsUsage(task, shardSuites)
+            def phaseSuites = sharedEsPhase ? sharedEsSuites : ownClusterSuites
+            if (phaseSuites.isEmpty()) {
+                // Same trap as above: an empty filter would run every suite.
+                task.enabled = false
+            } else {
+                phaseSuites.each { includeTestsMatching it }
+            }
+            logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount} ${task.name}: " +
+                "${phaseSuites.size()} of ${shardSuites.size()} suites " +
+                "(${sharedEsSuites.size()} shared-ES / ${ownClusterSuites.size()} own-cluster; ${balanced ? 'balanced' : 'hash'} packing)")
         } else {
             includeTestsMatching 'tech.beshu.ror.integration.suites.*'
         }
     }
     // Gradle-native test machinery (replaces maiflai's one-JVM runner); ScalaTest tags map to JUnit tags.
-    useJUnitPlatform {
+    task.useJUnitPlatform {
         includeEngines 'scalatest'
         excludeTags('tech.beshu.tags.ExcludeESModule.' + module, 'tech.beshu.tags.IgnoreOnWindows')
     }
@@ -129,25 +155,38 @@ test {
             "the scalatest engine ignores it and the singleton ES requires serial-within-JVM execution. " +
             "Use -PshardCount/-PshardIndex to parallelise across separate worker JVMs instead.")
     }
-    outputs.upToDateWhen { false }
+    task.outputs.upToDateWhen { false }
     // Live console output — native test execution is silent without this (same block as core's).
-    testLogging {
+    task.testLogging {
         showStandardStreams = true
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
     // maxParallelForks=1 always — forks can't split the scalatest engine (gradle#8632), so a 2nd fork
     // gets no work. Parallelism = sharding (multiple -PshardCount invocations), not forks.
-    maxParallelForks = 1
-    // lifecycle, NOT quiet(): this runs at configuration time, so quiet() pollutes the stdout that
-    // list_es_modules (publish-ror-plugins.sh) parses from `printEsModules --quiet`.
-    logger.lifecycle(">>> integration-tests maxParallelForks=${maxParallelForks} (1 ES/JVM; parallelism via -PshardCount)")
+    task.maxParallelForks = 1
     // Per worker JVM. The JVM only orchestrates (streams small HTTP to ES, no bulk data); measured peak
     // live heap is ~50MB, so 512m is ~10x headroom. Overridable via -PitTestHeap for outlier suites.
-    maxHeapSize = project.findProperty('itTestHeap') ?: '512m'
+    task.maxHeapSize = project.findProperty('itTestHeap') ?: '512m'
     // bounded like every other JVM in the CI leg, so a runaway fails in-process, not via the host OOM killer
-    jvmArgs '-XX:MaxMetaspaceSize=512m'
+    task.jvmArgs '-XX:MaxMetaspaceSize=512m'
 }
+
+// Why this exists: a suite that uses the shared ES keeps it alive until its JVM exits, so a shard
+// that ran those suites first and then went on to the heavy own-cluster suites was still holding an
+// idle ES underneath them. Splitting the shard into two Test tasks makes the JVM boundary release
+// it: `sharedEsSuitesTest` runs everything that uses the shared ES and then exits, taking the ES
+// with it, and `test` runs the rest in a fresh JVM that never starts one. Less memory held at the
+// point in the run where the host needs it most.
+//
+// Unsharded, `test` alone still runs everything.
+tasks.register('sharedEsSuitesTest', Test) { configureIntegrationTest(it, true) }
+test { configureIntegrationTest(it, false) }
+// Ordering must be declared: passing both task names on the command line does not guarantee it.
+test.mustRunAfter 'sharedEsSuitesTest'
+// lifecycle, NOT quiet(): this runs at configuration time, so quiet() pollutes the stdout that
+// list_es_modules (publish-ror-plugins.sh) parses from `printEsModules --quiet`.
+logger.lifecycle(">>> integration-tests maxParallelForks=1 (1 ES/JVM; parallelism via -PshardCount)")
 
 dependencies {
     testImplementation project(':tests-utils')

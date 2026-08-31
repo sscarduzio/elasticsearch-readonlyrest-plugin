@@ -83,11 +83,11 @@ dependencies {
     api group: 'io.netty',                          name: 'netty-handler',                       version: '4.1.137.Final'
     api group: 'io.netty',                          name: 'netty-transport',                     version: '4.1.137.Final'
     api group: 'eu.timepit',                        name: 'refined_3',                           version: '0.11.3'
-    api group: 'org.reflections',                   name: 'reflections',                         version: '0.9.11'
     api group: 'org.mozilla',                       name: 'rhino',                               version: '1.8.1'
     api group: 'com.github.ben-manes.caffeine',     name: 'caffeine',                            version: '3.2.3'
+    // 32.0.1-jre is the CVE-2023-2976 floor — do not go below it.
+    api group: 'com.google.guava',                  name: 'guava',                               version: '32.0.1-jre'
     api group: 'com.github.tototoshi',              name: 'scala-csv_3',                         version: '2.0.0'
-    api group: 'org.scala-lang.modules',            name: 'scala-parallel-collections_3',        version: '1.2.0'
     api group: 'com.indoorvivants',                 name: 'scala-uri_3',                         version: '4.2.0'
     api group: 'org.typelevel',                     name: 'squants_3',                           version: '1.8.3'
     api group: 'com.unboundid',                     name: 'unboundid-ldapsdk',                   version: '7.0.4'
@@ -114,7 +114,6 @@ dependencies {
         api group: 'io.netty',              name: 'netty-transport-native-unix-common', version: '4.1.137.Final'
         api group: 'io.netty',              name: 'netty-transport-native-epoll',       version: '4.1.137.Final'
         api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.137.Final'
-        api group: 'com.google.guava',      name: 'guava',                              version: '32.0.1-jre'
     }
 }
 

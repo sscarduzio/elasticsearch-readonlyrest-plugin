@@ -20,7 +20,7 @@ import cats.Show
 import cats.data.Validated
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
-import io.lemonlabs.uri.Uri
+import io.lemonlabs.uri.{Uri, Url}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
@@ -186,6 +186,8 @@ object AuditCluster {
 
     def scheme: String = uri.schemeOption.getOrElse("http")
 
+    def toUrl: Url = uri.toUrl.withScheme(scheme).withHost(hostname).withPort(port)
+
     def credentials: Option[NodeCredentials] = {
       for {
         username <- uri.toUrl.user.flatMap(NonEmptyString.unapply)
@@ -211,11 +213,11 @@ object RorAuditLoggerName {
   val default: RorAuditLoggerName = RorAuditLoggerName(nes("readonlyrest_audit"))
 }
 
-final case class SinkName(value: String) extends AnyVal
+final case class AuditOutputName(value: String) extends AnyVal
 
-object SinkName {
-  val defaultAclLog: SinkName = SinkName("default_acl_log")
-  val defaultIndexStorage: SinkName = SinkName("default_audit_index")
+object AuditOutputName {
+  val defaultAclLog: AuditOutputName = AuditOutputName("default_acl_log")
+  val defaultIndexStorage: AuditOutputName = AuditOutputName("default_audit_index")
 
-  def random(): SinkName = SinkName(java.util.UUID.randomUUID().toString)
+  def random(): AuditOutputName = AuditOutputName(java.util.UUID.randomUUID().toString)
 }

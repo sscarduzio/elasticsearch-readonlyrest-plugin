@@ -17,8 +17,6 @@
 
 package tech.beshu.ror.utils;
 
-import static org.reflections.ReflectionUtils.getAllFields;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import tech.beshu.ror.constants$;
@@ -29,8 +27,10 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Created by sscarduzio on 24/03/2017.
@@ -116,15 +116,40 @@ public class ReflecUtils {
     return null;
   }
 
+  /**
+   * Declared fields of the class and its superclasses that match the predicate. Instance fields
+   * only: the superclass chain is walked, interfaces are not (their fields are static finals, which
+   * nothing here may write).
+   */
+  private static Set<Field> allFields(Class<?> clazz, Predicate<Field> predicate) {
+    Set<Field> fields = new HashSet<>();
+    for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+      for (Field field : c.getDeclaredFields()) {
+        if (predicate.test(field)) {
+          fields.add(field);
+        }
+      }
+    }
+    return fields;
+  }
+
+  /**
+   * Fields of the given name, of ANY type, anywhere in the class hierarchy. Callers that write a
+   * non-String value (e.g. an ES Index object) need this: {@link #setIndices} only ever matches
+   * String/String[] fields, so routing such a write through it would silently do nothing.
+   */
+  public static Set<Field> fieldsNamed(Class<?> clazz, String fieldName) {
+    return allFields(clazz, field -> field != null && fieldName.equals(field.getName()));
+  }
+
   public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices) {
     if (newIndices.isEmpty()) return false;
     final boolean[] res = {false};
     AccessController.doPrivileged(
         (PrivilegedAction<Void>)
             () -> {
-              @SuppressWarnings("unchecked")
               Set<Field> indexFields =
-                  getAllFields(
+                  allFields(
                       o.getClass(),
                       (Field field) ->
                           field != null
