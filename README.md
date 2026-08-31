@@ -1,6 +1,10 @@
 [![ReadonlyREST](https://img.shields.io/badge/readonlyrest.com-visit-444?style=flat&logo=safari)](https://readonlyrest.com/)
 [![Maven Central](https://maven-badges.sml.io/sonatype-central/tech.beshu.ror/audit_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12)
 
+| Master branch | Develop branch |
+|---|---|
+| [![CI Master](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/actions/workflows/ci.yml?query=branch%3Amaster) | [![CI Develop](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/actions/workflows/ci.yml?query=branch%3Adevelop) |
+
 ## Supporters 
 Thanks **Jeff Saxe** for donating!
 
