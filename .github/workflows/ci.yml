@@ -311,7 +311,7 @@ jobs:
       - name: Free host disk (no-op on self-hosted)
         run: ci/free-host-disk.sh
       - name: Start memory telemetry
-        run: ci/mem-telemetry.sh start integration-tests/build/mem-telemetry-${{ matrix.ROR_TASK }}.log > "$RUNNER_TEMP/mem-telemetry.pid"
+        run: ci/mem-telemetry.sh start integration-tests/build/mem-telemetry-${{ matrix.ES_MODULE }}.log > "$RUNNER_TEMP/mem-telemetry.pid"
       - name: integration_${{ matrix.ES_MODULE }}
         env:
           # The pipeline task name run-pipeline.sh dispatches on — unchanged, only the matrix now
@@ -373,7 +373,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: mem-telemetry-${{ matrix.ROR_TASK }}
+          name: mem-telemetry-${{ matrix.ES_MODULE }}
           path: integration-tests/build/mem-telemetry-*.log
           if-no-files-found: ignore
       # Drift guard for duration-balanced sharding: warns when measured suite times diverge from
