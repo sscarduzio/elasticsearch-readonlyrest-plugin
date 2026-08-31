@@ -24,11 +24,10 @@ directory contain the build logic; the workflow only orchestrates.
 | `build_ror` | builds all plugin zips + bytecode-reuse guard | PRs |
 | `build_toolchains_image` | rebuilds the toolchains image | weekly cron + manual |
 | `determine_ci_type` → `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
-| `disk_probe` | host-disk recon | manual `run_disk_probe` |
 
 Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
 `run_all_tests_on_windows`, `run_e2e_tests`, `build_toolchains_image`,
-`release_without_testing`, `run_disk_probe`.
+`release_without_testing`.
 
 Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
 above: `mirror-es-libs.yml` (mirrors ES jars into the libs store — see [S3 stores](#s3-stores)),
@@ -134,9 +133,7 @@ they cannot name different locations — when they did, the symptom was an unres
 
 Mirroring is manual and one-off per ES version: run **Mirror ES Libs** with `es_versions` set
 (e.g. `9.5.1 9.4.5`), and run it **before** the branch adding that version goes through CI — the
-build cannot compile against jars that are not in the store yet. It used to be a CI job
-(`es_s3_up`) fired by pushing a `newes/*` branch; that coupled a few-times-a-year manual act to
-every push on such a branch, and made five CI jobs depend on a job that almost always did nothing.
+build cannot compile against jars that are not in the store yet.
 
 ## Secrets & variables
 
@@ -165,26 +162,3 @@ unset (or empty, which is what an undefined `vars.X` expands to) falls back to t
 Release tags push via the checkout token (`release_ror` has `permissions: contents: write`)
 — no SSH deploy key. Fork PRs get no secrets (GitHub default); `cve_check` and docker auth
 degrade instead of failing.
-
-## Coverage: what happened to every Azure stage
-
-Everything the Azure pipeline did is ported — nothing was dropped. The mapping:
-
-| Azure stage | GitHub Actions equivalent |
-|---|---|
-| `SUPERSEDE_GUARD` | native `concurrency:` block (auto-cancel stale PR runs; branch pushes queue) |
-| `DETERMINE_CI_TYPE` | `setup` (branch flags, matrices) + `determine_ci_type` (release-type decision) |
-| `DISK_PROBE` | `disk_probe` (manual `run_disk_probe`) |
-| `BUILD_TOOLCHAINS_IMAGE` | `build_toolchains_image` (weekly cron + manual) |
-| `TOOLCHAINS_VERIFY` | `toolchains_verify` |
-| `ES_S3_UP` | the standalone `mirror-es-libs.yml` workflow (manual; was a `newes/*` push trigger) |
-| `REQUIRED_CHECKS` | `required_checks` (same 4-task matrix) |
-| `OPTIONAL_CHECKS` | `optional_checks` (matrix; `continue-on-error` = "warn but pass") |
-| `TEST` (unit + IT + WIN legs) | `unit_tests_linux`, `it_linux`, `it_windows`, `unit_tests_windows` |
-| `BUILD_ROR` | `build_ror` |
-| `UPLOAD_PRE_ROR` | `upload_pre_ror` |
-| `RELEASE_ROR` / `RELEASE_ROR_WITHOUT_TESTING` | `release_ror` (the `release_without_testing` dispatch input selects the no-test path) |
-| `PUBLISH_MVN_ARTIFACTS` / `..._WITHOUT_TESTING` | `publish_mvn` (same dispatch input) |
-| Azure "secure file" `secret.pgp` | `PGP_SECRET_KEY_B64` repo secret, decoded in-step |
-
-The Azure pipeline itself is deleted; this table remains as the historical mapping.

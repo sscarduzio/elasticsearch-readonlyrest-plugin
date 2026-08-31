@@ -24,7 +24,7 @@ Source: `beshu-tech/readonlyrest-internal` (`versioning.md`, `releasing.md`), re
 
 ## CI artifact pipeline
 
-- Committing a `pluginVersion` change triggers the Azure pipeline's artifact stage: one zip per supported ES version, uploaded to S3 `readonlyrest-data/build/<plugin_version>/`.
+- Committing a `pluginVersion` change triggers the GitHub Actions release jobs: one zip per supported ES version, uploaded to the artifacts store under `builds/`.
 - Each uploaded deliverable gets a git tag `v<plugin_version>_es<es_version>` (e.g. `v1.37.0_es7.16.2`). CI **skips builds whose tag already exists** — so to resume a half-failed release, just re-run the pipeline; it is idempotent.
 - Release closeout: update the changelog in `beshu-tech/readonlyrest-docs` (`changelog.md`) and send the Mailchimp campaign.
 
@@ -33,7 +33,7 @@ Source: `beshu-tech/readonlyrest-internal` (`versioning.md`, `releasing.md`), re
 Verified against recent PRs (e.g. #1257). Files touched:
 
 1. `es{NN}x/gradle.properties` — add the version to `supportedEsVersions` in the matching module. **This is the single source of truth**: CI build/test, the default ES module, and the docs action-string sync all derive from it (`EsModuleFinder` / `printAllSupportedEsVersions`). There is no separate version list to update.
-2. Mirror the ES jars into the libs store, for versions Maven Central doesn't carry yet: run the **Mirror ES Libs** workflow (`.github/workflows/mirror-es-libs.yml`) with `es_versions` set to the new versions (e.g. `9.5.1 9.4.5`). Manual, once per version, and **before** the branch adding that version goes through CI — the build resolves ES dependencies from the store, so it cannot compile against jars that aren't there yet. Not what gates CI build/test (that's `supportedEsVersions`, step 1). *(Until 2026-08: uncomment a line in `ci/upload-es-artifacts.sh`, push a `newes/*` branch to fire ci.yml's `es_s3_up` job, re-comment before merge. Both that job and the `newes/*` trigger are gone.)*
+2. Mirror the ES jars into the libs store, for versions Maven Central doesn't carry yet: run the **Mirror ES Libs** workflow (`.github/workflows/mirror-es-libs.yml`) with `es_versions` set to the new versions (e.g. `9.5.1 9.4.5`). Manual, once per version, and **before** the branch adding that version goes through CI — the build resolves ES dependencies from the store, so it cannot compile against jars that aren't there yet. Not what gates CI build/test (that's `supportedEsVersions`, step 1).
 3. Sometimes `ror-tools/build.gradle`.
 
 Test locally first: `./gradlew integration-tests:test '-PesModule=es{NN}x'`.
