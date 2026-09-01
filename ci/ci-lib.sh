@@ -200,7 +200,7 @@ publish_ror_es_prebuild_plugin() {
   echo ""
   echo "PUBLISHING ROR PRE-BUILD for ES $ES_VERSION (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}):"
 
-  # Azure boolean params expand as True/False, so normalize case before comparing.
+  # Normalize workflow and shell inputs before comparing.
   local FORCE_REBUILD_NORM
   FORCE_REBUILD_NORM=$(echo "${FORCE_REBUILD:-false}" | tr '[:upper:]' '[:lower:]')
 

@@ -18,7 +18,7 @@ Source of truth: `beshu-tech/readonlyrest-internal/development_guide.md`. This s
   - `🐞**Fix** (KBN) fix crash in error handling`
 - Pipelines must pass. Set the next pre-version before opening the PR.
 - PRs are squash-and-merged into `develop`; `master` carries stable versions only (mechanics: see the `ror-release` skill; internal architecture: `ror-internals`).
-- New ES version support: PR must come from the main repo (not a fork — `ES_S3_UP` needs S3 credentials). The step that actually gates CI build/test is `supportedEsVersions` in the module's `gradle.properties` — NOT `ci/upload-es-artifacts.sh` (a separate, all-commented manual upload step). Full checklist: `ror-release` skill, "Supporting a new ES version".
+- New ES version support: mirror missing ES artifacts with the main repo's **Mirror ES Libs** workflow, which has the required S3 credentials. The step that gates CI build/test is `supportedEsVersions` in the module's `gradle.properties`, not `ci/upload-es-artifacts.sh`. Full checklist: `ror-release` skill, "Supporting a new ES version".
 
 **CI checks the first two conventions** (`PR Conventions` workflow): the Jira key in the title, and a changelog entry when the PR changes production sources or dependencies. Both changelog forms above are accepted. Run it yourself before opening the PR:
 
