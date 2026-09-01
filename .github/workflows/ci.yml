@@ -28,10 +28,9 @@ on:
           - run_all_tests_on_windows
           - run_e2e_tests
           - release_without_testing
-          - run_disk_probe
 
-# Replaces SUPERSEDE_GUARD. cancel-in-progress ONLY for PRs (Azure pr.autoCancel); branch pushes
-# queue behind the running build (Azure trigger.batch) so an in-flight release is never cancelled.
+# Cancel superseded PR runs. Branch pushes queue behind the running build so an in-flight release
+# is never cancelled.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -55,15 +54,13 @@ env:
   # full-matrix run (es80x/es810x/es818x/es90x, exit 137) — those legs run suites es94x excludes,
   # so their memory peaks are higher. Fleet wall time is set by the slowest leg anyway: k=4.
   IT_PARALLELISM: '4'
-  # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
 
 jobs:
 
   # ── Gate helpers ──────────────────────────────────────────────────────────
-  # Branch/reason booleans + the IT matrices (Azure computed these as pipeline variables and
-  # encoded the PR-vs-branch split as three separate matrix jobs; here one job emits the right
-  # matrix JSON so skipped legs never boot a runner).
+  # Branch/reason booleans + the IT matrices. One job emits the right matrix JSON so skipped legs
+  # never boot a runner.
   setup:
     runs-on: ubuntu-latest   # trivial job; GH-hosted so it runs even if the Ubicloud app is down
     outputs:
@@ -84,7 +81,7 @@ jobs:
         run: |
           echo "is_master=${{ github.ref == 'refs/heads/master' }}"   >> "$GITHUB_OUTPUT"
           echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
-          # contains() semantics, matching Azure's isEpicBranchOrPr
+          # Treat nested */epic/* branches like top-level epic/* branches.
           case "$REF" in *epic/*)  echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
       - id: matrices
         env:
@@ -147,20 +144,6 @@ jobs:
       - id: toolchains
         run: ci/resolve-toolchains-image.sh
 
-  # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
-  disk_probe:
-    needs: setup
-    if: >-
-      github.event_name == 'workflow_dispatch' &&
-      needs.setup.outputs.action == 'run_disk_probe'
-    runs-on: ubicloud-standard-4
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: Probe host disk
-        run: ci/probe-host-disk.sh
-
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
   toolchains_verify:
     needs: setup
@@ -190,9 +173,8 @@ jobs:
           ./gradlew --no-daemon -q help
 
   # ── OPTIONAL_CHECKS: CVE (non-blocking) ───────────────────────────────────
-  # Azure's OPTIONAL_CHECKS stage: failures annotate the run but never block it
-  # (continue-on-error = Azure's "warning, stage passes"). Matrix for symmetry with
-  # required_checks; cve_check is currently its only member.
+  # Failures annotate the run but never block it. Matrix for symmetry with required_checks;
+  # cve_check is currently its only member.
   optional_checks:
     needs: [ setup, toolchains_verify ]
     if: >-
@@ -286,7 +268,7 @@ jobs:
 
   # ── TEST: Linux integration tests (Ubicloud) ──────────────────────────────
   # Matrix comes from setup: full 34-version set on develop/master/epic + manual run, the
-  # 10-version representative subset on plain PRs (same split Azure encoded as separate jobs).
+  # 10-version representative subset on plain PRs.
   it_linux:
     needs: [ setup, toolchains_verify ]
     if: >-
@@ -403,8 +385,8 @@ jobs:
   # Matrix from setup: 6-version subset on develop/master/epic, 3 on ready PRs, none on draft
   # PRs (job skipped), full 33 on manual run_all_tests_on_windows.
   it_windows:
-    # toolchains_verify is in needs even though Windows doesn't use the image: Azure's TEST stage
-    # depended on TOOLCHAINS_VERIFY, so a broken image fails fast instead of running doomed legs.
+    # toolchains_verify is in needs even though Windows doesn't use the image, so a broken image
+    # fails fast instead of running doomed legs.
     needs: [ setup, toolchains_verify ]
     if: >-
       !cancelled() &&
@@ -413,8 +395,8 @@ jobs:
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')
     runs-on: windows-2025
     timeout-minutes: 150
-    # Clear the Linux toolchains-image Gradle settings at JOB scope (Azure did the same): the
-    # workflow-level GRADLE_USER_HOME=/opt/gradle-home would otherwise leak into gradlew here.
+    # Clear the Linux toolchains-image Gradle settings at job scope; the workflow-level
+    # GRADLE_USER_HOME=/opt/gradle-home would otherwise leak into gradlew here.
     env:
       GRADLE_USER_HOME: ''
       GRADLE_OPTS: ''
@@ -680,8 +662,8 @@ jobs:
         run: ci/run-pipeline.sh
 
   # ── DETERMINE_CI_TYPE (develop/master) ────────────────────────────────────
-  # Two arms, like Azure: auto (push with all tests green) OR manual release_without_testing
-  # (tests intentionally skipped — hence the explicit result checks instead of implicit success()).
+  # Two paths: automatic after a push with all tests green, or manual release_without_testing.
+  # The manual path intentionally skips tests, hence the explicit result checks.
   determine_ci_type:
     needs: [ setup, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     if: >-
@@ -798,7 +780,7 @@ jobs:
           ROR_TASK: ${{ matrix.ROR_TASK }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-          # ci-lib.sh interpolates this into the tag message (was the Azure/Travis build number)
+          # ci-lib.sh still uses this legacy variable name in the release tag message.
           TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -e

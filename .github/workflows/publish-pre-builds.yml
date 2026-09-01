@@ -7,7 +7,7 @@ name: ROR ES Publish Pre-Builds
 # tag, the title shows the versions. Then no title stops after the word "pre-build".
 run-name: ROR ES pre-build ${{ inputs.tag || inputs.es_versions }}
 
-# Manual-only: no push/pull_request triggers (Azure's `trigger: none` / `pr: none`).
+# Manual-only: no push/pull_request triggers
 on:
   workflow_dispatch:
     inputs:
