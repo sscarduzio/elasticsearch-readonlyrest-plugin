@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Free preinstalled toolchains on Azure hosted VMs to make room for ES image builds.
-# Runs on the HOST (not in the container) — caller must set target: host in the Azure step.
-# Skipped on self-hosted agents (shared system dirs).
+# Free preinstalled toolchains on ephemeral hosted runners to make room for ES image builds.
+# Skip self-hosted runners because their system directories may be shared or persistent.
 set -euo pipefail
 
 if [ "${AGENT_ISSELFHOSTED:-0}" != "1" ]; then
@@ -15,5 +14,5 @@ if [ "${AGENT_ISSELFHOSTED:-0}" != "1" ]; then
   echo ">>> [host] after reclaim:"
   df -h /
 else
-  echo ">>> self-hosted agent — skipping host toolchain reclaim (shared system dirs)"
+  echo ">>> self-hosted runner - skipping host toolchain reclaim"
 fi
