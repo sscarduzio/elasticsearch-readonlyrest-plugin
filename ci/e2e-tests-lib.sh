@@ -48,7 +48,7 @@ clone_e2e_tests_repo() {
     local GIT_BASIC_AUTH XTRACE_WAS_ENABLED=false
     [[ $- == *x* ]] && XTRACE_WAS_ENABLED=true && set +x
     GIT_BASIC_AUTH=$(printf '%s:%s' x-access-token "$ROR_GH_TOKEN" | base64 | tr -d '\n')
-    [ -n "${GITHUB_ACTIONS:-}" ] && echo "::add-mask::$GIT_BASIC_AUTH"
+    [ -n "${GITHUB_ACTIONS:-}" ] && echo "::add-mask::$GIT_BASIC_AUTH" >&2
     [ "$XTRACE_WAS_ENABLED" = true ] && set -x
     GIT_CONFIG_ARGS=(-c "http.https://github.com/.extraheader=AUTHORIZATION: basic $GIT_BASIC_AUTH")
   fi
