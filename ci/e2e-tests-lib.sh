@@ -29,25 +29,9 @@ e2e_run_tag() {
   echo "run-$1"
 }
 
-# git options that authenticate reads of the e2e repo with ROR_GH_TOKEN. Anonymous git access to
-# github.com is rate-limited per client address, and the test legs run on shared cloud runner
-# addresses, so without the token the clone of every candidate branch can fail there while the
-# container jobs, on GitHub's own addresses, still pass.
-#
-# The token stays out of the URL on purpose: the pipeline runs under `bash -ex`, and both the trace
-# and git's own error messages repeat the URL. The helper below is passed literally, so the token is
-# expanded by git's shell at the moment it is needed and never reaches the log or the clone config.
-e2e_git_auth_opts() {
-  printf '%s\n%s\n' -c 'credential.helper=!f() { echo username=x-access-token; echo password=$ROR_GH_TOKEN; }; f'
-}
-
 # Clones the e2e tests repo into a temp dir and prints the path. Try the target branch first, then
 # the fallback, then `develop`, then `master`. The fallback branch matters: a change based on
 # `develop` must use the `develop` suite, not `master`.
-#
-# Only a missing branch moves on to the next candidate — that is the expected case, as the PR branch
-# usually exists in this repo alone. Every other failure is an infrastructure one: it is printed and
-# retried, because reporting it as a missing branch sends the reader after the wrong thing.
 clone_e2e_tests_repo() {
   if [ "$#" -ne 2 ]; then
     echo "Usage: clone_e2e_tests_repo <target branch> <fallback branch>" >&2
@@ -65,48 +49,19 @@ clone_e2e_tests_repo() {
     [ -n "$BRANCH" ] && ! printf '%s\n' "${CANDIDATES[@]}" | grep -qxF "$BRANCH" && CANDIDATES+=("$BRANCH")
   done
 
-  local ATTEMPT ERR
-  local GIT_AUTH=()
-  # `:+set` and not `:-`: the pipeline runs under `bash -ex`, which would print the expanded value.
-  if [ -n "${ROR_GH_TOKEN:+set}" ]; then
-    # The helper runs as a child of git, so the token has to be in the environment.
-    export ROR_GH_TOKEN
-    mapfile -t GIT_AUTH < <(e2e_git_auth_opts)
-  else
-    echo ">>> ROR_GH_TOKEN is not set; cloning the e2e repo anonymously" >&2
-  fi
-
   echo "" >&2
   for BRANCH in "${CANDIDATES[@]}"; do
-    for ATTEMPT in 1 2 3; do
-      # Clean the temp dir before each attempt (git refuses to clone into a non-empty dir).
-      rm -rf "${E2E_DIR:?}" && mkdir -p "$E2E_DIR" || return 2
-      if ERR=$(git "${GIT_AUTH[@]}" clone --depth 1 --branch "$BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" 2>&1 >/dev/null); then
-        echo ">>> Cloned e2e tests repo (branch: $BRANCH) into $E2E_DIR" >&2
-        echo "$E2E_DIR"
-        return 0
-      fi
-      if printf '%s' "$ERR" | grep -qiE "remote branch .* not found|could not find remote (branch|ref)"; then
-        echo ">>> Branch '$BRANCH' not found in e2e repo" >&2
-        break
-      fi
-      echo ">>> Cloning branch '$BRANCH' of the e2e repo failed (attempt $ATTEMPT/3):" >&2
-      printf '%s\n' "$ERR" >&2
-      if [ "$ATTEMPT" -lt 3 ]; then
-        # Long enough to outlast a refusal by github.com, which lasts tens of seconds, not seconds.
-        sleep $(( ATTEMPT * 20 ))
-        continue
-      fi
-      # The repo itself could not be read, so the remaining candidates would fail the same way.
-      echo "ERROR: could not clone the e2e repo ($E2E_TESTS_REPO); the error of the last attempt is" >&2
-      echo "       above. This is not a missing branch. Every candidate branch failing on one leg" >&2
-      echo "       while the other legs pass is github.com refusing an anonymous read from this" >&2
-      echo "       runner's address: check that ROR_GH_TOKEN reaches this job." >&2
-      return 4
-    done
+    # Clean the temp dir before each attempt (git refuses to clone into a non-empty dir).
+    rm -rf "${E2E_DIR:?}" && mkdir -p "$E2E_DIR" || return 2
+    if git clone --depth 1 --branch "$BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" >/dev/null 2>&1; then
+      echo ">>> Cloned e2e tests repo (branch: $BRANCH) into $E2E_DIR" >&2
+      echo "$E2E_DIR"
+      return 0
+    fi
+    echo ">>> Branch '$BRANCH' not found in e2e repo" >&2
   done
 
-  echo "ERROR: none of the e2e repo branches [${CANDIDATES[*]}] exist" >&2
+  echo "ERROR: none of the e2e repo branches [${CANDIDATES[*]}] could be cloned" >&2
   return 3
 }
 

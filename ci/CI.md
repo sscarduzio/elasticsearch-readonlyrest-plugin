@@ -101,11 +101,7 @@ Read it there, not here. Four obligations fall on this repo:
   makes at the end counts against the ROR account and not against the runner address.
 - **Give the leg a token that can read the runs of the ROR KBN repo.** `ROR_GH_TOKEN` needs
   `actions:read`. A refused read ends the wait with code 8 in seconds, and names the right it
-  needs. Reading it is how the leg follows the run, so there is no way round it. The same token
-  authenticates the clone of the e2e repo: anonymous git access to github.com is rate-limited per
-  client address, and the legs run on shared runner addresses, so an anonymous clone fails on one
-  leg while the others pass — every candidate branch at once, which reads like a repo with no
-  branches. It is one leg and not all of them because each gets its own address.
+  needs. Reading it is how the leg follows the run, so there is no way round it.
 - **Keep the title on our own pre-build run.** `publish-pre-builds.yml` carries
   `run-name: ROR ES pre-build ${{ inputs.tag || inputs.es_versions }}`. Every repo that dispatches it
   — the e2e repo and the ROR KBN repo — finds its run by that title, because a dispatch is told
@@ -125,9 +121,7 @@ images.
 
 Branch resolution — both other repos are asked for the branch of this PR first. The e2e clone then
 tries the base branch, `develop`, `master`; the base branch matters, because a change based on
-`develop` must use the `develop` suite, not `master`. Only a missing branch moves the
-clone on to the next candidate; any other clone failure is retried and then reported as itself, so
-an unreachable repo is never reported as a branch that does not exist. The ROR KBN branch name is passed through as
+`develop` must use the `develop` suite, not `master`. The ROR KBN branch name is passed through as
 it is: if the KBN repo has no such branch, its pre-build workflow falls back to `develop` on its
 own side.
 
@@ -141,7 +135,7 @@ On failure the job uploads the Cypress videos and screenshots to the E2E_REPORTS
 S3, not GitHub artifacts: those count against the metered Actions-storage quota.
 
 Needs `ROR_ENT_ACTIVATION_TOKEN` (the suite refuses to start without it) and `ROR_GH_TOKEN` (to
-clone the e2e repo, dispatch the ROR KBN build and read its status).
+dispatch the ROR KBN build and read its status).
 
 ## S3 stores
 
@@ -182,7 +176,7 @@ build cannot compile against jars that are not in the store yet.
 | `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `configure-docker.sh` reads |
 | `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. `unit_tests_linux` and `it_linux` map it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which authenticates the pulls their steps make. No `container:` pull uses it, because the runner makes that pull before step 1. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
 | `ROR_ENT_ACTIVATION_TOKEN` | ROR PRO/Enterprise key the e2e stack boots with. **The secret is renamed; the env var handed to the container stays `ROR_ACTIVATION_KEY`, which is the customer-facing name** |
-| `ROR_GH_TOKEN` | cross-repo GitHub PAT: clones the e2e repo, dispatches the ROR KBN image build, reads run status, pushes docs |
+| `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, pushes docs |
 | `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |
 | `MAVEN_REPO_USER`, `MAVEN_REPO_PASSWORD`, `MAVEN_STAGING_PROFILE_ID`, `GPG_KEY_ID`, `GPG_PASSPHRASE` | Maven Central publishing |
 | `PGP_SECRET_KEY_B64` | base64 of `secret.pgp`; the publish step decodes it to `.travis/secret.pgp`. Create with `base64 -w0 secret.pgp \| gh secret set PGP_SECRET_KEY_B64` |
