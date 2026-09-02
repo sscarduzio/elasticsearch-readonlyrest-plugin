@@ -43,6 +43,16 @@ clone_e2e_tests_repo() {
   local E2E_DIR
   E2E_DIR=$(mktemp -d) || return 2
 
+  local GIT_CONFIG_ARGS=()
+  if [ -n "${ROR_GH_TOKEN:-}" ]; then
+    local GIT_BASIC_AUTH XTRACE_WAS_ENABLED=false
+    [[ $- == *x* ]] && XTRACE_WAS_ENABLED=true && set +x
+    GIT_BASIC_AUTH=$(printf '%s:%s' x-access-token "$ROR_GH_TOKEN" | base64 | tr -d '\n')
+    [ -n "${GITHUB_ACTIONS:-}" ] && echo "::add-mask::$GIT_BASIC_AUTH"
+    [ "$XTRACE_WAS_ENABLED" = true ] && set -x
+    GIT_CONFIG_ARGS=(-c "http.https://github.com/.extraheader=AUTHORIZATION: basic $GIT_BASIC_AUTH")
+  fi
+
   local CANDIDATES=("$TARGET_BRANCH")
   local BRANCH
   for BRANCH in "$FALLBACK_BRANCH" develop master; do
@@ -53,12 +63,12 @@ clone_e2e_tests_repo() {
   for BRANCH in "${CANDIDATES[@]}"; do
     # Clean the temp dir before each attempt (git refuses to clone into a non-empty dir).
     rm -rf "${E2E_DIR:?}" && mkdir -p "$E2E_DIR" || return 2
-    if git clone --depth 1 --branch "$BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" >/dev/null 2>&1; then
+    if git "${GIT_CONFIG_ARGS[@]}" clone --depth 1 --branch "$BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" >/dev/null; then
       echo ">>> Cloned e2e tests repo (branch: $BRANCH) into $E2E_DIR" >&2
       echo "$E2E_DIR"
       return 0
     fi
-    echo ">>> Branch '$BRANCH' not found in e2e repo" >&2
+    echo ">>> Could not clone e2e tests branch '$BRANCH'" >&2
   done
 
   echo "ERROR: none of the e2e repo branches [${CANDIDATES[*]}] could be cloned" >&2
