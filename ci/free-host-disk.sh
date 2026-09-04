@@ -1,17 +1,32 @@
 #!/usr/bin/env bash
-# Make room for ES image builds. What there is to reclaim depends on the runner:
+# Make room for ES image builds and ES data dirs. What there is to reclaim depends on the runner:
 #
-#   ephemeral hosted VM  the preinstalled toolchains nobody here uses. Delete them; the VM dies
-#                        after the job anyway.
 #   shared self-hosted   the system directories belong to the box, so never touch them. Docker
 #                        garbage from earlier runs is ours to reclaim — but only the parts no
 #                        other repo's runner can be using: dangling layers and build cache, never
-#                        `-a`, never a container we did not start.
+#                        `-a`, never a container we did not start. Selected by ROR_SHARED_DOCKER_HOST=1.
+#   other self-hosted    reclaim nothing. We do not know what else lives on the box.
+#   ephemeral hosted VM  reclaim both levers below. The VM dies after the job anyway.
+#
+# On an ephemeral runner two shapes of job call this, and they need different levers:
+#
+#   * bare runner (e2e_tests, publish-pre-builds): the preinstalled toolchains are visible, so
+#     deleting them is what reclaims space. GitHub's ubuntu image ships ~25 GB of dotnet, android,
+#     ghc, swift and hostedtoolcache that no ROR job uses.
+#   * container: job (it_linux, build_ror): the steps run inside the toolchains image, where those
+#     host directories do not exist. What IS reachable is the runner's Docker daemon, over the
+#     bind-mounted /var/run/docker.sock — and that daemon's storage lives on the host's /, the
+#     same filesystem the ES images and the ES data dirs fill up. Pruning it therefore frees the
+#     disk the job is about to compete for. Images in use by the running job container (the
+#     toolchains image itself) are never removed by a prune.
+#
+# Both levers are attempted unconditionally; each is a no-op where it does not apply.
 #
 # Nothing here fails the job. A reclaim is an optimisation; if the disk is genuinely full the build
 # says so with a better message than this script could.
 set -euo pipefail
 
+# The shared box comes first: it is self-hosted too, so the skip below would otherwise catch it.
 if [ "${ROR_SHARED_DOCKER_HOST:-0}" = "1" ]; then
   echo ">>> [host] shared self-hosted box: reclaiming only our own docker leftovers"
   df -h /
@@ -19,16 +34,43 @@ if [ "${ROR_SHARED_DOCKER_HOST:-0}" = "1" ]; then
   docker builder prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" || true
   echo ">>> [host] after reclaim:"
   df -h /
-elif [ "${AGENT_ISSELFHOSTED:-0}" != "1" ]; then
+  exit 0
+fi
+
+# RUNNER_ENVIRONMENT is set by the runner itself: "github-hosted" on GitHub's runners,
+# "self-hosted" on a registered runner (which is how Ubicloud runners appear). AGENT_ISSELFHOSTED
+# stays supported as an explicit opt-out for jobs that set it at job level.
+if [ "${AGENT_ISSELFHOSTED:-0}" = "1" ] || [ "${RUNNER_ENVIRONMENT:-github-hosted}" = "self-hosted" ]; then
+  echo ">>> self-hosted runner - skipping disk reclaim"
+  exit 0
+fi
+
+echo ">>> [host] disk before reclaim:"
+df -h / || true
+
+# --- lever 1: preinstalled toolchains (bare-runner jobs) ---------------------------------------
+if [ -d /usr/share/dotnet ] || [ -d /usr/local/lib/android ] || [ -d /opt/hostedtoolcache ]; then
   echo ">>> [host] freeing preinstalled toolchains to fit ES image builds"
-  df -h /
   sudo rm -rf \
     /usr/share/dotnet /usr/local/.ghcup /usr/share/swift \
     /usr/local/share/powershell /usr/local/julia* \
     /opt/microsoft /opt/az /usr/share/chromium \
     /usr/local/lib/android /opt/ghc /usr/local/share/boost /opt/hostedtoolcache 2>/dev/null || true
-  echo ">>> [host] after reclaim:"
-  df -h /
 else
-  echo ">>> self-hosted runner - skipping host toolchain reclaim"
+  echo ">>> [host] no preinstalled toolchain dirs visible from here (container: job) - skipping"
 fi
+
+# --- lever 2: the runner's Docker daemon (reachable from both shapes) ---------------------------
+# Volumes are deliberately NOT pruned: testcontainers may already hold one by the time a later
+# call runs, and the space is in the images and the build cache anyway.
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  echo ">>> [docker] pruning unused images, containers, networks and build cache"
+  docker system prune -af >/dev/null 2>&1 || true
+  docker builder prune -af >/dev/null 2>&1 || true
+  docker system df 2>/dev/null || true
+else
+  echo ">>> [docker] no reachable Docker daemon - skipping prune"
+fi
+
+echo ">>> [host] disk after reclaim:"
+df -h / || true
