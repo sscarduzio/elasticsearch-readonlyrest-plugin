@@ -92,6 +92,51 @@ class EsModuleFinderTest {
         "8.19.0", EsModuleFinder.newestEsVersionFor(root.getChildProjects().get("es818x")));
   }
 
+  // --- allSupportedEsMajors ---
+
+  @Test
+  void allSupportedEsMajorsNewestFirst() {
+    Project root = rootWithModules("es67x:6.7.0, 6.8.23", "es717x:7.17.0", "es92x:9.2.0");
+    assertEquals(List.of(9, 7, 6), EsModuleFinder.allSupportedEsMajors(root));
+  }
+
+  @Test
+  void allSupportedEsMajorsHandlesTwoDigitMajors() {
+    Project root = rootWithModules("es92x:9.2.0", "es100x:10.0.0, 10.1.0");
+    // Newest first puts 10 before 9. A string comparison would reverse them.
+    assertEquals(List.of(10, 9), EsModuleFinder.allSupportedEsMajors(root));
+  }
+
+  @Test
+  void allSupportedEsMajorsCountsAMajorOnceForManyModules() {
+    Project root = rootWithModules("es90x:9.0.0", "es91x:9.1.0", "es92x:9.2.0");
+    assertEquals(List.of(9), EsModuleFinder.allSupportedEsMajors(root));
+  }
+
+  @Test
+  void allSupportedEsMajorsUsesTheNewestVersionOfAModule() {
+    // The module lists 8.x versions but delivers a 9.x one, so it belongs to 9.
+    Project root = rootWithModules("es818x:8.18.0, 8.19.0, 9.0.0", "es717x:7.17.0");
+    assertEquals(List.of(9, 7), EsModuleFinder.allSupportedEsMajors(root));
+  }
+
+  @Test
+  void allSupportedEsMajorsIsEmptyWhenNoEsModulesExist() {
+    assertEquals(List.of(), EsModuleFinder.allSupportedEsMajors(ProjectBuilder.builder().build()));
+  }
+
+  // --- majorVersionOf ---
+
+  @Test
+  void majorVersionOfParsesTwoDigitMajors() {
+    assertEquals(10, EsModuleFinder.majorVersionOf("10.1.2"));
+  }
+
+  @Test
+  void majorVersionOfParsesAPreReleaseVersion() {
+    assertEquals(9, EsModuleFinder.majorVersionOf("9.0.0-alpha1"));
+  }
+
   // --- sortedEsModules / newestEsVersionComparator ---
 
   @Test

@@ -186,7 +186,7 @@ fi
 
 build_ror_plugins() {
   if [ "$#" -ne 1 ]; then
-    echo "What ES generation (major: 6|7|8|9) should I verify plugins for?"
+    echo "What ES generation (major) should I verify plugins for?"
     return 1
   fi
 
@@ -195,6 +195,11 @@ build_ror_plugins() {
   # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
   local modules
   modules=$(list_es_modules "$es_major") || { echo "ERROR: cannot list es${es_major}x modules"; return 1; }
+  # An empty list would loop zero times and return 0: a job that built nothing, and reported green.
+  if [ -z "$modules" ]; then
+    echo "ERROR: no es${es_major}x module to build; ES $es_major has no module owning it"
+    return 1
+  fi
 
   local module
   while IFS= read -r module; do
@@ -205,17 +210,14 @@ build_ror_plugins() {
   done <<< "$modules"
 }
 
-# build_es<major>xx / upload_pre_es<major>xx / release_es<major>xx: three families over the same four
-# ES generations, differing only in which function the generation is handed to.
-if [[ $ROR_TASK =~ ^(build|upload_pre|release)_es([6-9])xx$ ]]; then
-  ROR_TASK_FAMILY="${BASH_REMATCH[1]}"
-  ES_MAJOR="${BASH_REMATCH[2]}"
-  case "$ROR_TASK_FAMILY" in
-    build)      build_ror_plugins "$ES_MAJOR" ;;
-    upload_pre) publish_ror_plugins "$ES_MAJOR" "upload_pre" ;;
-    release)    publish_ror_plugins "$ES_MAJOR" "release" ;;
-  esac
-fi
+# Three families over the ES generations. Only the function the generation goes to differs. The
+# caller passes the generation in ES_MAJOR, so the major is any number and ES 10 needs no edit here.
+# The discover job tells the workflow which majors to run.
+case "$ROR_TASK" in
+  build_plugins)      build_ror_plugins   "${ES_MAJOR:?ES_MAJOR is not set}" ;;
+  upload_pre_plugins) publish_ror_plugins "${ES_MAJOR:?ES_MAJOR is not set}" "upload_pre" ;;
+  release_plugins)    publish_ror_plugins "${ES_MAJOR:?ES_MAJOR is not set}" "release" ;;
+esac
 
 check_maven_artifacts_exist() {
   local CURRENT_VERSION="$1"

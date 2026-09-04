@@ -16,6 +16,7 @@
  */
 import tech.beshu.ror.gradle.RorTaskFinder
 import tech.beshu.ror.gradle.PrintEsModulesTask
+import tech.beshu.ror.gradle.PrintTestMatricesTask
 
 plugins {
     id 'base'
@@ -60,6 +61,30 @@ tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
 
 // Usage: ./gradlew printEsModules -PesMajor=8 --quiet
 tasks.register("printEsModules", PrintEsModulesTask)
+
+// Builds every test matrix of ci.yml from the modules that exist, so a new module joins the matrices by
+// itself. The rule is TestMatrixPolicy; ci/CI.md states it in prose.
+// Usage: ./gradlew printTestMatrices --quiet
+tasks.register("printTestMatrices", PrintTestMatricesTask)
+
+// Prints every ES major ROR builds, one per line, newest first. A module counts for the major of its
+// NEWEST supported version, which is the rule `printEsModules` uses. CI builds its build, upload and
+// release matrices from this list, so a new major needs no CI edit.
+// Like `printEsModules`, it also writes build/es-modules/es-majors.txt. Scripts must read that file.
+// Configuration-time logging can pollute stdout even under --quiet.
+// Usage: ./gradlew printEsMajors --quiet
+tasks.register("printEsMajors") {
+    group = 'help'
+    description = 'Prints every supported ES major version (one per line, newest first)'
+    outputs.upToDateWhen { false }
+    doLast {
+        def majors = tech.beshu.ror.gradle.utils.EsModuleFinder.allSupportedEsMajors(rootProject)
+        majors.each { println it }
+        def majorsFile = layout.buildDirectory.file("es-modules/es-majors.txt").get().asFile
+        majorsFile.parentFile.mkdirs()
+        majorsFile.text = majors.collect { "$it\n" }.join()
+    }
+}
 
 // Prints every ES version ROR supports, one per line, oldest first. The versions come from each es module's
 // `supportedEsVersions` (gradle.properties), so scripts that need the full list cannot drift from what CI

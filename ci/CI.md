@@ -12,17 +12,18 @@ directory contain the build logic; the workflow only orchestrates.
 
 | Job | What it does | When |
 |---|---|---|
-| `setup` | computes branch flags + the IT matrices | always |
+| `toolchains_image` | chooses where every `container:` job pulls the toolchains image from | always |
 | `toolchains_verify` | sanity-checks the toolchains image | always (fail-fast gate for tests) |
+| `discover` | derives every matrix: the ES majors and the modules each test family covers; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
 | `unit_tests_linux` | `core:test` and friends | pushes + PRs |
 | `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
-| `it_linux` | integration tests, one job per ES version | 10-version subset on PRs, full 34 on develop/master/epic and manual |
-| `it_windows` | integration tests on native-Windows ES | 3 on PRs, 7 on branches, full 33 on manual |
+| `it_linux` | integration tests, one job per selected ES module | module selection follows the [test matrix policy](#test-matrix-policy) |
+| `it_windows` | integration tests on native-Windows ES | module selection follows the [test matrix policy](#test-matrix-policy) |
 | `unit_tests_windows` | `core:test` on Windows | manual `run_all_tests_on_windows` |
-| `e2e_prepare` | resolves the e2e matrix + starts the ROR KBN image build | pushes + PRs (not drafts) |
-| `e2e_tests` | Cypress e2e suite, one job per ES version | pushes + PRs (not drafts) |
-| `build_ror` | builds all plugin zips + bytecode-reuse guard | PRs |
+| `e2e_prepare` | resolves the e2e matrix and starts the ROR KBN image build | selected runs; see the [test matrix policy](#test-matrix-policy) |
+| `e2e_tests` | Cypress e2e suite, one job per selected ES module | selected runs; see the [test matrix policy](#test-matrix-policy) |
+| `build_ror` | builds all plugin zips + bytecode-reuse guard, one job per ES major | PRs |
 | `determine_ci_type` → `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
 
 Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
@@ -43,6 +44,76 @@ Two orchestration rules worth knowing before editing conditions:
 - GitHub skips a job whose `needs` contains a skipped job. The release jobs therefore use
   `!cancelled()` + explicit `needs.<job>.result` checks — that is what makes the manual
   `release_without_testing` path (tests intentionally skipped) work. Keep that pattern.
+
+## Derived matrices
+
+Every matrix of a run comes from the `discover` job. Nothing is written down twice: the modules
+that exist decide, so a new module or a new ES major joins the matrices by itself.
+
+| Task | Answers | Written to |
+|---|---|---|
+| `printEsMajors` | which ES majors `build_ror`, `upload_pre_ror` and `release_ror` build | `build/es-modules/es-majors.txt` |
+| `printTestMatrices` | which modules each test family covers, per [policy](#test-matrix-policy) | `build/ci-matrices/<name>.json` |
+
+Read those files, not gradle stdout, which configuration-time logging can pollute even under
+`--quiet`.
+
+`discover` publishes one ready matrix per job that fans out, so every consumer reads it the same way:
+
+| Output | Consumed by | Shape |
+|---|---|---|
+| `build_matrix` | `build_ror`, `upload_pre_ror`, `release_ror` | `{"include":[{"ES_MAJOR":"9"},…]}` |
+| `it_linux_matrix` | `it_linux` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
+| `it_windows_matrix` | `it_windows` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
+| `e2e_matrix` | `e2e_prepare` | `{"include":[{"ES_MODULES":"es94x es818x es717x"}]}` |
+
+The `include` form matters. GitHub skips a matrix job whose include list is empty, so a family a run
+does not cover needs no condition of its own: a draft PR emits an empty Windows and e2e matrix, and
+both jobs skip before a runner boots. A bare `KEY: []` would instead stop the run with "Matrix vector
+'KEY' does not contain any values".
+
+`e2e_prepare` runs once for all modules, not once per module, so its matrix holds a single leg that
+carries the whole list, and no leg when the list is empty. That keeps one skip mechanism for every
+family. Two things follow: the job needs an explicit `name: e2e_prepare`, or the leg would appear in
+the rendered name, and its outputs come from that one leg — a second leg would race for them.
+`e2e_tests` then follows `e2e_prepare`, and `build_ror` accepts a skipped `e2e_tests`.
+
+`e2e_tests` keeps its own matrix, from `e2e_prepare`: it pairs each module with an ELK version that
+only a gradle call per module can resolve.
+
+It is the workflow, not the build, that picks which matrix a run takes: only the workflow knows the
+branch and the event. `discover` needs the toolchains image for gradle, so it runs after
+`toolchains_verify`.
+
+Both rules live in `build-base` and are unit-tested: `EsModuleFinder.allSupportedEsMajors` (a module
+counts for the major of its newest supported version, the rule `printEsModules` uses) and
+`TestMatrixPolicy`.
+
+This replaces seven hand-written lists. A missed edit there did not fail. The leg for the missing
+module never ran, and CI stayed green. `run-pipeline.sh` and `publish-ror-plugins.sh` now also
+refuse a major with no module, instead of looping zero times and returning 0.
+
+## Test matrix policy
+
+These rules define which ES modules each automatic test run covers. `TestMatrixPolicy` (build-base)
+implements them and `discover` runs it, so the lists are derived and not written down. The terms
+oldest, middle, and newest apply separately to each ES major version, and **middle** means the
+module in the middle of that major's list, newest first.
+
+| Development stage | Linux integration tests | Windows integration tests | E2E tests |
+|---|---|---|---|
+| Draft PR | Newest module for each ES major version | Not run | Not run |
+| Ready PR | Fewer than 10 modules: oldest and newest. 10 or more modules: oldest, middle, and newest | Newest module for each ES major version | Newest module for each ES major version |
+| `develop`, `master`, or `epic/**` | All modules | Oldest and newest modules for each ES major version | Newest module for each ES major version |
+
+Windows integration tests and E2E tests do not run on ES 6. If a major version has only one module,
+it is selected once. Manual actions can select the full supported Linux or Windows matrix.
+`release_without_testing` skips all test jobs.
+
+To see what a change does to the matrices, run `./gradlew printTestMatrices --quiet`. To change the
+policy, change `TestMatrixPolicy` and this table together. Adding or removing a module changes which
+`it_linux_*`, `it_win_*` and `e2e_*` jobs a run reports, so check branch protection when the policy
+itself changes.
 
 ## Integration-test parallelism
 
@@ -111,7 +182,7 @@ Read it there, not here. Four obligations fall on this repo:
   Remove the line and every dispatch of this workflow fails, because no run can be recognised.
 
 One consequence shapes this side: the wait ends when the ROR KBN run ends, not when one image
-appears, so all three legs reach their suite at about the same time. The Gradle build of the ROR ES
+appears, so all legs reach their suite at about the same time. The Gradle build of the ROR ES
 image runs before the wait and absorbs most of that time.
 
 Both sides address the images by a per-run tag (`run-<build id>`), and the build id is created by
@@ -125,7 +196,7 @@ tries the base branch, `develop`, `master`; the base branch matters, because a c
 it is: if the KBN repo has no such branch, its pre-build workflow falls back to `develop` on its
 own side.
 
-The matrix is three modules (newest 9.x, 8.x, 7.x), empty for draft PRs. Job names are built from
+Module selection follows the [test matrix policy](#test-matrix-policy). Job names are built from
 the module, not the ES version, so branch-protection checks survive a version bump. The same
 `<leg>_<module>` shape is used by all three test families: `it_linux_es94x`, `it_win_es94x`,
 `e2e_es94x`.
@@ -224,8 +295,8 @@ Do not put a `docker login` in a workflow. Two mechanisms with different credent
 other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
 
 The script cannot authenticate the `container:` image, because the runner pulls that image before
-step 1 starts. Nothing else authenticates it. That pull is anonymous, and the registry that `setup`
-chose answers it: `mirror.gcr.io` on the normal path, Docker Hub on the fallback. See
+step 1 starts. Nothing else authenticates it. That pull is anonymous, and the registry that
+`toolchains_image` chose answers it: `mirror.gcr.io` on the normal path, Docker Hub on the fallback. See
 [The `container:` image](#the-container-image).
 
 ### Docker Hub pull mirror
@@ -292,20 +363,21 @@ Two more things stay off the mirror by themselves, and both must remain so:
 ### The `container:` image
 
 The runner pulls the job `container:` image before step 1 starts. `ci/configure-docker.sh` cannot
-reach that pull, so it sets neither the mirror nor the login for it. Ten jobs and their matrices
+reach that pull, so it sets neither the mirror nor the login for it. CI jobs and their matrix legs
 share the image, which makes it the most pulled image of a run. Docker Hub answered a whole run with
 `429 toomanyrequests` on 2026-08-26.
 
-`container: image:` can read a job output. The `setup` job runs `ci/resolve-toolchains-image.sh`
-once, and the `&toolchains_container` anchor reads its output: the name to pull.
+`container: image:` can read a job output. The `toolchains_image` job runs
+`ci/resolve-toolchains-image.sh` once, and the `&toolchains_container` anchor reads its output: the
+name to pull. That job holds no container itself, and it cannot: it is the job that picks one.
 
 A mirrored name carries the digest, not the tag: `mirror.gcr.io/beshultd/ror-ci-toolchains@sha256:…`.
 The jobs of one run start hours apart, and a tag can move between the check and a pull. A Docker Hub
 name keeps the tag, because no digest is proven in that case.
 
-So `setup` asks the mirror about the digest, not about the tag. A digest names the bytes, and a
-cache cannot answer it with the wrong image. The rebuild records the digest of its push in the
-Actions cache. `setup` then sends the mirror one HEAD request for that digest. The request downloads
+So `toolchains_image` asks the mirror about the digest, not about the tag. A digest names the bytes,
+and a cache cannot answer it with the wrong image. The rebuild records the digest of its push in the
+Actions cache. `toolchains_image` then sends the mirror one HEAD request for that digest. The request downloads
 no image, and it reaches no Docker Hub:
 
 | What the script finds | What the run pulls |
@@ -314,7 +386,7 @@ no image, and it reaches no Docker Hub:
 | the mirror cannot serve the digest | Docker Hub |
 | the mirror serves the digest | the mirror |
 
-Docker Hub is the safe answer, so a miss costs speed only. `setup` writes the choice to the step
+Docker Hub is the safe answer, so a miss costs speed only. `toolchains_image` writes the choice to the step
 summary, so the run page shows which registry a run used, and why.
 
 The mirror fetches a digest it has never held. So a run keeps the mirror in the hours after a
@@ -322,8 +394,8 @@ rebuild, before the mirror knows the new tag. A question about the tag would los
 window, where the recorded digest is newest.
 
 The cache key holds the tag and the rebuild's run id. A key is write-once, so each rebuild adds an
-entry and `setup` restores the newest by prefix. GitHub drops an entry that nothing reads for 7 days,
-and `setup` reads this one every run. A new tag matches no entry, so its runs use Docker Hub until
+entry and `toolchains_image` restores the newest by prefix. GitHub drops an entry that nothing reads for 7 days,
+and `toolchains_image` reads this one every run. A new tag matches no entry, so its runs use Docker Hub until
 the next rebuild. The same holds now: run **Build toolchains image** once, on `develop`, to write the
 first digest.
 
@@ -343,7 +415,7 @@ Only the cache entry goes to waste, so `record_digest` raises a `::warning::` in
 Dispatch the workflow again on `develop` after the merge.
 
 The rebuild does not save that entry. It runs on an Ubicloud runner, and an Ubicloud runner keeps
-its own Actions cache. A GitHub-hosted runner cannot read it, and `setup` is GitHub-hosted. So the
+its own Actions cache. A GitHub-hosted runner cannot read it, and `toolchains_image` is GitHub-hosted. So the
 digest travels as a job output to `record_digest`, a small job on `ubuntu-latest`, which saves it.
 Both ends then read one store.
 
@@ -352,7 +424,7 @@ no test run waits for it. A rebuild in `ci.yml` would also hold the `develop` co
 those hours, and every push to `develop` would queue behind it.
 
 The rebuild keeps a concurrency group of its own, `build-toolchains-image`. Two rebuilds push one
-tag and file two cache entries, and `setup` takes the newest entry, which need not hold the manifest
+tag and file two cache entries, and `toolchains_image` takes the newest entry, which need not hold the manifest
 that Docker Hub keeps. A second run waits instead, because cancelling a four-hour build wastes it.
 
 The pull sends no credentials, on either path. `mirror.gcr.io` refuses a Docker Hub login, so the

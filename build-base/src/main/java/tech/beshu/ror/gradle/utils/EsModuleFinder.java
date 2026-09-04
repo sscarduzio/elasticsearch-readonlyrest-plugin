@@ -59,6 +59,42 @@ public final class EsModuleFinder {
         .collect(Collectors.toList());
   }
 
+  /**
+   * Every ES major ROR builds, newest first. A module counts for the major of its NEWEST supported
+   * version, which is the rule {@code printEsModules} uses. A module that spans two majors thus
+   * counts once.
+   *
+   * <p>CI builds its matrices from this list. A second, hand-written list is how a new major once
+   * got no build at all.
+   */
+  public static List<Integer> allSupportedEsMajors(Project rootProject) {
+    return allEsModules(rootProject).stream()
+        .map(module -> majorVersionOf(newestEsVersionFor(module)))
+        .distinct()
+        .sorted(Comparator.reverseOrder())
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * The modules of one ES major, newest first. A module counts for the major of its newest supported
+   * version, so a module that spans two majors appears under one of them only.
+   */
+  public static List<String> esModuleNamesForMajor(Project rootProject, int esMajor) {
+    return sortedEsModules(rootProject, newestEsVersionComparator().reversed()).stream()
+        .filter(module -> majorVersionOf(newestEsVersionFor(module)) == esMajor)
+        .map(Project::getName)
+        .collect(Collectors.toList());
+  }
+
+  /** The major part of an ES version. For {@code 10.0.1} this is 10. */
+  public static int majorVersionOf(String version) {
+    try {
+      return Integer.parseInt(version.split("\\.")[0]);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Cannot parse major version from: " + version, e);
+    }
+  }
+
   public static List<Project> sortedEsModules(Project rootProject, Comparator<Project> comparator) {
     List<Project> esModules = allEsModules(rootProject);
     esModules.sort(comparator);
