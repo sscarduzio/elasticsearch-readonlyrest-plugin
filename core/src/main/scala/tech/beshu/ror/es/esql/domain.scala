@@ -28,7 +28,7 @@ final case class Query(value: String) extends AnyVal
 
 object Query {
 
-  final case class TextSpan(start: Int, end: Int)
+  private[esql] final case class TextSpan(start: Int, end: Int)
 
   /** Where in a query's text something sits, the way ES reports it: a 1-based line and a 0-based column. */
   final case class SourceLocation(line: Int, column: Int)
@@ -93,12 +93,12 @@ object IndexListRead {
 final case class ReportedIndexList(read: IndexListRead, writtenAt: SourceLocation, writtenText: String)
 
 /** An index list found in the query text, so the indices it names can be replaced with the ones the ACL allowed. */
-sealed trait LocatedIndexList {
+private[esql] sealed trait LocatedIndexList {
   def span: Query.TextSpan
   def requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
 }
 
-object LocatedIndexList {
+private[esql] object LocatedIndexList {
 
   final case class SourceCommandIndices private (
       span: Query.TextSpan,
@@ -145,7 +145,7 @@ object LocatedIndexList {
 }
 
 /** A rewritten query, together with what ES has to read out of it for the rewrite to have done its job. */
-final case class ReplacedQuery(query: Query, intendedReads: List[IndexListRead]) {
+private[esql] final case class ReplacedQuery(query: Query, intendedReads: List[IndexListRead]) {
 
   /** Held to what ES reads back out of the rewrite - the only thing saying which indices it will really run against. */
   def checkedAgainst(esReads: List[IndexListRead]): Either[Rejection, Query] = {
@@ -164,7 +164,11 @@ sealed trait RequestClassification
 
 object RequestClassification {
 
-  final case class IndicesRelated(indexLists: NonEmptyList[LocatedIndexList]) extends RequestClassification {
+  final class IndicesRelated private[esql] (
+      private[esql] val query: Query,
+      private[esql] val indexLists: NonEmptyList[LocatedIndexList]
+  ) extends RequestClassification {
+
     lazy val requestedIndices: Set[RequestedIndex[ClusterIndexName]] =
       LocatedIndexList.requestedIndicesOf(indexLists)
   }

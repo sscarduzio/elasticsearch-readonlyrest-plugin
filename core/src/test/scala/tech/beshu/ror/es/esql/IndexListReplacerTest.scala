@@ -14,13 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.es.esql
+package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.esql.*
 import tech.beshu.ror.es.esql.Query.SourceLocation
 import tech.beshu.ror.es.esql.ReadingFailure.*
 

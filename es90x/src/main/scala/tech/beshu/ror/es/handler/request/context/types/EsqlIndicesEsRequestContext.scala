@@ -58,7 +58,7 @@ class EsqlIndicesEsRequestContext private (
       request: ActionRequest with CompositeIndicesRequest
   ): Set[RequestedIndex[ClusterIndexName]] = {
     requestClassification match {
-      case Right(classification @ RequestClassification.IndicesRelated(_)) =>
+      case Right(classification: RequestClassification.IndicesRelated) =>
         classification.requestedIndices
       case Right(RequestClassification.NonIndicesRelated) | Left(_) =>
         allIndices
@@ -93,9 +93,9 @@ class EsqlIndicesEsRequestContext private (
     requestClassification match {
       case Right(RequestClassification.NonIndicesRelated) =>
         Right(())
-      case Right(classification @ RequestClassification.IndicesRelated(indexLists)) =>
+      case Right(classification: RequestClassification.IndicesRelated) =>
         if (aclNarrowedNothing(filteredIndices, classification.requestedIndices)) Right(())
-        else EsqlRequestHelper.modifyIndicesOf(request, indexLists, filteredIndices)
+        else EsqlRequestHelper.modifyIndicesOf(request, classification, filteredIndices)
       case Left(rejection) =>
         if (aclNarrowedNothing(filteredIndices, allIndices)) Right(())
         else Left(rejection)

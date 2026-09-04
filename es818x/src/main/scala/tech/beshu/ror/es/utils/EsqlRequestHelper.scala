@@ -26,11 +26,11 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.esql.Query.SourceLocation
+import tech.beshu.ror.es.esql.RequestClassification.IndicesRelated
 import tech.beshu.ror.es.esql.{
-  IndexListLocator,
+  EsqlIndexListsReader,
+  EsqlQueryNarrower,
   IndexListRead,
-  IndexListReplacer,
-  LocatedIndexList,
   Query,
   Rejection,
   ReportedIndexList,
@@ -52,19 +52,12 @@ class EsqlRequestHelper(esVersion: EsVersion) extends Logging {
 
   def modifyIndicesOf(
       request: CompositeIndicesRequest,
-      indexLists: NonEmptyList[LocatedIndexList],
+      classification: IndicesRelated,
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): Either[Rejection, Unit] = {
-    val replaced = IndexListReplacer.replacing(getQuery(request), indexLists, allowedIndices)
-    replaced
-      .checkedAgainst(indexListReadsIn(request, replaced.query))
+    narrowerFor(request)
+      .narrowedTo(classification, allowedIndices)
       .map(setQuery(request, _))
-  }
-
-  /** What ES reads out of the rewritten query, asked of the same parser it will use to run it. */
-  private def indexListReadsIn(request: CompositeIndicesRequest, query: Query): List[IndexListRead] = {
-    implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-    new EsqlParser().indexListReadsIn(query, request)
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -74,16 +67,15 @@ class EsqlRequestHelper(esVersion: EsVersion) extends Logging {
     new EsqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions).underlyingObject
   }
 
-  import RequestClassification.*
-
   def classifyEsqlRequest(
       request: CompositeIndicesRequest
   ): Either[Rejection, RequestClassification] = {
+    narrowerFor(request).classify(getQuery(request))
+  }
+
+  private def narrowerFor(request: CompositeIndicesRequest): EsqlQueryNarrower = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-    new EsqlParser().indexListsIn(request).map {
-      case Some(indexLists) => IndicesRelated(indexLists)
-      case None             => NonIndicesRelated
-    }
+    new EsqlQueryNarrower(new EsqlParser(request))
   }
 
   private def getQuery(request: CompositeIndicesRequest): Query = {
@@ -119,30 +111,28 @@ class EsqlRequestHelper(esVersion: EsVersion) extends Logging {
   }
 
   private final class EsqlParser(
+      request: CompositeIndicesRequest
+  )(
       implicit classLoader: ClassLoader
-  ) {
+  ) extends EsqlIndexListsReader {
 
     private val underlyingObject =
       onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser"))
         .create()
         .get[Any]()
 
-    def indexListsIn(
-        request: CompositeIndicesRequest
-    ): Either[Rejection, Option[NonEmptyList[LocatedIndexList]]] = {
-      parsedStatementOf(getQuery(request), request)
-        .flatMap(statement => indexListsFrom(request, statement))
-        .map(NonEmptyList.fromList)
+    override def indexListsIn(query: Query): Either[Throwable, List[ReportedIndexList]] = {
+      createStatement(query.value).map(statement => reportedIndexListsIn(planOf(statement)))
     }
 
-    private def createStatement(query: String, request: CompositeIndicesRequest) = {
+    private def createStatement(query: String) = {
       esVersion match {
-        case v if v >= EsVersion(8, 19, 0) => createStatementForEsEqualOrAbove8190(query, request)
-        case _                             => createStatementForEsBelow8190(query, request)
+        case v if v >= EsVersion(8, 19, 0) => createStatementForEsEqualOrAbove8190(query)
+        case _                             => createStatementForEsBelow8190(query)
       }
     }
 
-    private def createStatementForEsBelow8190(query: String, request: CompositeIndicesRequest) = {
+    private def createStatementForEsBelow8190(query: String) = {
       val params = getParams(request)
       Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
         case Success(s)                                                                       => Right(s)
@@ -151,7 +141,7 @@ class EsqlRequestHelper(esVersion: EsVersion) extends Logging {
       }
     }
 
-    private def createStatementForEsEqualOrAbove8190(query: String, request: CompositeIndicesRequest) = {
+    private def createStatementForEsEqualOrAbove8190(query: String) = {
       val params = getParams(request)
       val configuration = createConfiguration(request)
       Try(on(underlyingObject).call("createStatement", query, params, configuration).get[AnyRef]) match {
@@ -161,36 +151,7 @@ class EsqlRequestHelper(esVersion: EsVersion) extends Logging {
       }
     }
 
-    private def parsedStatementOf(
-        query: Query,
-        request: CompositeIndicesRequest
-    ): Either[Rejection, AnyRef] = {
-      createStatement(query.value, request).leftMap { cause =>
-        logger.debug("Cannot parse the ES|QL statement", cause)
-        Rejection.CannotParseQuery
-      }
-    }
-
-    def indexListReadsIn(query: Query, request: CompositeIndicesRequest): List[IndexListRead] = {
-      createStatement(query.value, request) match {
-        case Right(statement) =>
-          reportedIndexListsIn(planOf(statement)).map(_.read).filterNot(_.indexListIsEmpty)
-        case Left(cause) =>
-          logger.warn("Elasticsearch cannot parse the ES|QL query ReadonlyREST rewrote", cause)
-          List.empty
-      }
-    }
-
     private def planOf(statement: Any): Any = statement
-
-    private def indexListsFrom(
-        request: CompositeIndicesRequest,
-        statement: Any
-    ): Either[Rejection, List[LocatedIndexList]] = {
-      IndexListLocator
-        .locatedIn(getQuery(request), reportedIndexListsIn(planOf(statement)))
-        .leftMap(Rejection.CannotExtractIndices.apply)
-    }
 
     /**
      * The very nodes ES reads the query's indices from when it pre-analyzes the plan - except the pre-analysis

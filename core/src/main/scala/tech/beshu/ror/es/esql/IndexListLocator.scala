@@ -28,7 +28,7 @@ import scala.util.matching.Regex
  * a source command is located whole (`FROM a, b METADATA _index`), so its list is picked out of the command text
  * literally - and either way, only once the span reads back as the list ES reported.
  */
-object IndexListLocator {
+private[esql] object IndexListLocator {
 
   /**
    * Everything between the command keyword and a `METADATA` clause, in either the current or the ES 8.x form. The

@@ -23,7 +23,7 @@ import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandI
 import tech.beshu.ror.es.esql.Query.TextSpan
 import tech.beshu.ror.syntax.*
 
-object IndexListReplacer {
+private[esql] object IndexListReplacer {
 
   def replacing(
       query: Query,
