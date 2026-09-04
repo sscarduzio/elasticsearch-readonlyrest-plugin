@@ -4,12 +4,13 @@ CI runs on GitHub Actions: `.github/workflows/ci.yml`. Linux jobs run on **GitHu
 `ubuntu-latest` runners (4 vCPU / 16 GB — the same shape as the `ubicloud-standard-4` they used
 to run on) inside the `beshultd/ror-ci-toolchains` image; Windows jobs run on GitHub-hosted
 `windows-2025`. `ci/toolchains/image.env` holds that image's tag, and every workflow that needs
-it sources that file. The repo is public, so GitHub-hosted runners are free and the concurrency
-limit is 20 jobs; `it_linux` caps its matrix at `max-parallel: 20` for that reason.
+it sources that file. The repo is public, so GitHub-hosted runners are free. The concurrency limit
+is 20 jobs **per account**, shared with `readonlyrest_kbn`; `it_linux` keeps `max-parallel: 20` and
+is allowed to fill that pool, so a 34-module push serialises into waves.
 
 The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standalone
-`mirror-es-libs.yml`, `publish-pre-builds.yml` and `build-toolchains-image.yml` workflows stay on
-`ubicloud-standard-4` — they push images, run for hours, and are moving to a self-hosted runner.
+`mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
+they push images and run for hours. `build-toolchains-image.yml` stays on `ubicloud-standard-4`.
 
 Every Linux job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this
 directory contain the build logic; the workflow only orchestrates.

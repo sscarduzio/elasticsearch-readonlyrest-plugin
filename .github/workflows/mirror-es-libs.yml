@@ -35,6 +35,10 @@ jobs:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
       AGENT_ISSELFHOSTED: '1'
+      # Shared box: let ci/free-host-disk.sh do its conservative prune (dangling layers and build
+      # cache only) instead of skipping entirely, the same as publish-pre-builds.yml. Without this
+      # the Free host disk step below reclaims nothing at all.
+      ROR_SHARED_DOCKER_HOST: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { persist-credentials: false }

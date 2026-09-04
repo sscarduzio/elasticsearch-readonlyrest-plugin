@@ -56,9 +56,11 @@ env:
   IT_PARALLELISM: '4'
   # AGENT_ISSELFHOSTED is deliberately NOT set here any more. Its only reader is
   # ci/free-host-disk.sh, and setting it workflow-wide made that script a no-op in every job of
-  # this workflow. Every Linux job of ci.yml now runs on a GitHub-hosted runner, where the reclaim
-  # is exactly what we want. The two workflows that stay on Ubicloud (mirror-es-libs.yml,
-  # publish-pre-builds.yml) set it at job level, so they are unaffected.
+  # this workflow. Every Linux TEST job of ci.yml now runs on a GitHub-hosted runner, where the
+  # reclaim is what we want. The release jobs below (upload_pre_ror, release_ror, publish_mvn) and
+  # the standalone mirror-es-libs.yml / publish-pre-builds.yml run on the shared self-hosted box
+  # and set their own guards at job level, so they are unaffected. The script itself now fails
+  # closed: it reclaims nothing unless RUNNER_ENVIRONMENT says github-hosted.
 
 jobs:
 
@@ -280,9 +282,11 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    # free for public repos (4cpu/16GB) — the same shape as ubicloud-standard-4, so the shard
-    # count and the heavy-suite gate below carry over unchanged. This is the single biggest line
-    # of the Ubicloud bill (~79k min/month), and it costs nothing here.
+    # free for public repos (4cpu/16GB). Same vCPU and RAM as ubicloud-standard-4, so the shard
+    # count and the heavy-suite gate below carry over unchanged — but NOT the same throughput:
+    # measured on the 10-module PR set, a leg takes 25-35 min here against 21-27 min on Ubicloud.
+    # This is the single biggest line of the Ubicloud bill (~79k min/month), and it costs nothing
+    # here, so the extra minutes are the deliberate trade.
     runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 120
@@ -571,9 +575,10 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    # free for public repos (4cpu/16GB) — same shape as ubicloud-standard-4. This job is not in a
-    # container:, so ci/free-host-disk.sh below reaches GitHub's preinstalled toolchains and
-    # reclaims the ~25 GB the ELK docker stack needs.
+    # free for public repos (4cpu/16GB); same vCPU and RAM as ubicloud-standard-4, and measured
+    # at the same wall time for this job. Not a container: job, so ci/free-host-disk.sh below can
+    # see GitHub's preinstalled toolchains — though on the current 145 GB image there are already
+    # 83-87 GB free, so the script skips the reclaim unless the disk is genuinely tight.
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -655,8 +660,10 @@ jobs:
       needs.it_linux.result == 'success' &&
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
       (needs.e2e_tests.result == 'success' || needs.setup.outputs.e2e_modules == '[]')
-    # free for public repos (4cpu/16GB) — same shape as ubicloud-standard-4. Gradle deps are baked
-    # into the toolchains image, so this job needs no runner-side cache to be fast.
+    # free for public repos (4cpu/16GB); same vCPU and RAM as ubicloud-standard-4. Gradle deps are
+    # baked into the toolchains image, so no runner-side cache is needed — but this host is slower
+    # per core: measured 4.1 / 19.4 / 26.6 / 10.6 min for es6xx / es7xx / es8xx / es9xx against a
+    # 30-day Ubicloud average of 2.9 / 12.3 / 15.5 / 6.3. Free, and off the critical path.
     runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 180
