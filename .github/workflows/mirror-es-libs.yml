@@ -26,7 +26,10 @@ defaults:
 jobs:
   mirror:
     name: Mirroring
-    runs-on: ubicloud-standard-4
+    # Self-hosted: downloads an ES distribution and pushes the jars to the libs store.
+    # Pure IO, run by hand a few times per ES release. Needs a registered self-hosted runner — see
+    # ci/self-hosted-runner.md.
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 120
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
@@ -36,7 +39,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { persist-credentials: false }
 
-      - name: Free host disk (no-op on self-hosted)
+      - name: Free host disk
         run: ci/free-host-disk.sh
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3

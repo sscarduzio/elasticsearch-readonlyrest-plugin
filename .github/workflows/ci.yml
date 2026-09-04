@@ -698,6 +698,9 @@ jobs:
           echo "is_release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
 
   # ── UPLOAD_PRE_ROR (pre-release develop/master, auto only) ────────────────
+  # Self-hosted: gradle assembly plus S3/Docker Hub uploads. Long, IO-bound, low
+  # concurrency — the shape the ryzen box is good at, and the single largest Ubicloud line item
+  # (~3.8k minutes/month). Needs a registered self-hosted runner: see ci/self-hosted-runner.md.
   upload_pre_ror:
     needs: [ setup, determine_ci_type ]
     if: >-
@@ -706,11 +709,19 @@ jobs:
       needs.determine_ci_type.outputs.is_release == 'false' &&
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       github.event_name != 'workflow_dispatch'
-    runs-on: ubicloud-standard-4
+    runs-on: &self_hosted_runner [self-hosted, Linux, X64]
     container: *toolchains_container
     timeout-minutes: 600
+    # The job container gets the HOST docker socket, and that daemon also serves the readonlyrest_kbn
+    # runners on the same box. Tell the pipeline not to use host-wide docker cleanups. See
+    # cleanup_docker_and_build in ci/publish-ror-plugins.sh.
+    env: &shared_docker_host
+      ROR_SHARED_DOCKER_HOST: '1'
     strategy:
       fail-fast: false
+      # At most 2 legs at a time: two runners, ~4 GB each, and the box is shared with other repos.
+      # GitHub queues the rest — this bound is really set by how many self-hosted runners are registered.
+      max-parallel: 2
       matrix:
         ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
     steps:
@@ -734,6 +745,8 @@ jobs:
           ci/run-pipeline.sh
 
   # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
+  # Self-hosted, same reasoning as upload_pre_ror: ~2.2k Ubicloud minutes/month of
+  # assembly and upload. See ci/self-hosted-runner.md.
   release_ror:
     needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     permissions:
@@ -758,11 +771,14 @@ jobs:
           needs.toolchains_verify.result == 'success'
         )
       )
-    runs-on: ubicloud-standard-4
+    runs-on: *self_hosted_runner
     container: *toolchains_container
     timeout-minutes: 180
+    env: *shared_docker_host
     strategy:
       fail-fast: false
+      # Same bound as upload_pre_ror — see the note there.
+      max-parallel: 2
       matrix:
         ROR_TASK: [ release_es9xx, release_es8xx, release_es7xx, release_es6xx ]
     steps:
@@ -810,7 +826,7 @@ jobs:
           needs.toolchains_verify.result == 'success'
         )
       )
-    runs-on: ubicloud-standard-4
+    runs-on: *self_hosted_runner
     container: *toolchains_container
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -820,6 +836,9 @@ jobs:
           PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}
         run: |
           mkdir -p .travis
+          # The workspace outlives the job on a persistent runner, and the next checkout only cleans
+          # it when the next job starts. Keep the private key unreadable to anything else meanwhile.
+          install -m 600 /dev/null .travis/secret.pgp
           echo "$PGP_SECRET_KEY_B64" | base64 -d > .travis/secret.pgp
       - name: publish_maven_artifacts
         env:
@@ -830,3 +849,8 @@ jobs:
           GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: ci/run-pipeline.sh
+      # An ephemeral VM took the key away with it. This runner does not, so remove it here — also
+      # when the publish fails or is cancelled.
+      - name: Remove the PGP signing key
+        if: always()
+        run: rm -f .travis/secret.pgp
