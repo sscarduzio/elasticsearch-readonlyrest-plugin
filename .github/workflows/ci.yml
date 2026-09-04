@@ -698,9 +698,9 @@ jobs:
           echo "is_release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
 
   # ── UPLOAD_PRE_ROR (pre-release develop/master, auto only) ────────────────
-  # Self-hosted (ror-es): gradle assembly plus S3/Docker Hub uploads. Long, IO-bound, low
+  # Self-hosted: gradle assembly plus S3/Docker Hub uploads. Long, IO-bound, low
   # concurrency — the shape the ryzen box is good at, and the single largest Ubicloud line item
-  # (~3.8k minutes/month). Needs a registered ror-es runner: see ci/self-hosted-runner.md.
+  # (~3.8k minutes/month). Needs a registered self-hosted runner: see ci/self-hosted-runner.md.
   upload_pre_ror:
     needs: [ setup, determine_ci_type ]
     if: >-
@@ -709,7 +709,7 @@ jobs:
       needs.determine_ci_type.outputs.is_release == 'false' &&
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       github.event_name != 'workflow_dispatch'
-    runs-on: &ror_es_runner [ self-hosted, Linux, X64, ror-es ]
+    runs-on: &self_hosted_runner [self-hosted, Linux, X64]
     container: *toolchains_container
     timeout-minutes: 600
     # The job container gets the HOST docker socket, and that daemon also serves the readonlyrest_kbn
@@ -720,7 +720,7 @@ jobs:
     strategy:
       fail-fast: false
       # At most 2 legs at a time: two runners, ~4 GB each, and the box is shared with other repos.
-      # GitHub queues the rest — this bound is really set by how many ror-es runners are registered.
+      # GitHub queues the rest — this bound is really set by how many self-hosted runners are registered.
       max-parallel: 2
       matrix:
         ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
@@ -745,7 +745,7 @@ jobs:
           ci/run-pipeline.sh
 
   # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
-  # Self-hosted (ror-es), same reasoning as upload_pre_ror: ~2.2k Ubicloud minutes/month of
+  # Self-hosted, same reasoning as upload_pre_ror: ~2.2k Ubicloud minutes/month of
   # assembly and upload. See ci/self-hosted-runner.md.
   release_ror:
     needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
@@ -771,7 +771,7 @@ jobs:
           needs.toolchains_verify.result == 'success'
         )
       )
-    runs-on: *ror_es_runner
+    runs-on: *self_hosted_runner
     container: *toolchains_container
     timeout-minutes: 180
     env: *shared_docker_host
@@ -826,7 +826,7 @@ jobs:
           needs.toolchains_verify.result == 'success'
         )
       )
-    runs-on: *ror_es_runner
+    runs-on: *self_hosted_runner
     container: *toolchains_container
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

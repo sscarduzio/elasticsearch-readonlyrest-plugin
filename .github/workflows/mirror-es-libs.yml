@@ -26,10 +26,10 @@ defaults:
 jobs:
   mirror:
     name: Mirroring
-    # Self-hosted (ror-es): downloads an ES distribution and pushes the jars to the libs store.
-    # Pure IO, run by hand a few times per ES release. Needs a registered ror-es runner — see
+    # Self-hosted: downloads an ES distribution and pushes the jars to the libs store.
+    # Pure IO, run by hand a few times per ES release. Needs a registered self-hosted runner — see
     # ci/self-hosted-runner.md.
-    runs-on: [ self-hosted, Linux, X64, ror-es ]
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 120
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home

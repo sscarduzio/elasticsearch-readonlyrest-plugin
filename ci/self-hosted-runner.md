@@ -1,107 +1,99 @@
-# The `ror-es` self-hosted runners
+# Self-hosted runners for this repo
 
-The release and upload jobs run on the ryzen box, not on Ubicloud. Until the runners below exist,
-those jobs queue forever — GitHub never reports "no runner", it just waits.
+The release path runs on the ReadonlyREST build host rather than on a paid cloud runner. The jobs
+are long, IO-bound and low-concurrency: gradle assembly plus uploads to S3, Docker Hub and Maven
+Central. They do not benefit from a fast ephemeral VM, and they were ~5.2k Ubicloud minutes/month.
 
-Jobs that need a `ror-es` runner:
+Jobs that need a self-hosted runner:
 
-| Workflow | Job | Ubicloud minutes/month it used |
+| Workflow | Job | Shape |
 |---|---|---|
-| `ci.yml` | `upload_pre_ror` (4 legs) | ~3800 |
-| `ci.yml` | `release_ror` (4 legs) | ~2200 |
-| `ci.yml` | `publish_mvn` | small |
-| `publish-pre-builds.yml` | `publish` | manual, long |
+| `ci.yml` | `upload_pre_ror` | 4-leg matrix, ~45–57 min/leg, pre-release only |
+| `ci.yml` | `release_ror` | 4-leg matrix, ~16 min/leg, release only |
+| `ci.yml` | `publish_mvn` | seconds, after `release_ror` |
+| `publish-pre-builds.yml` | `publish` | manual, long build-and-push |
 | `mirror-es-libs.yml` | `mirror` | manual, short |
 
-Everything else stays where it is.
+## The selector
 
-## Why a `ror-es` label and not the plain `self-hosted, Linux, X64` the kbn repo uses
+`runs-on: [self-hosted, Linux, X64]` — the same generic selector `readonlyrest_kbn` uses. No custom
+label. Runner scope already isolates the pool: a repo-level runner only ever receives jobs from the
+repo it is registered to, so a label adds nothing.
 
-The box already runs two other fleets: `gh-beshu-1..6` for the **beshu-tech org**
-(`self-hosted,Linux,X64,k3s`) and `gh-ror-kbn-1..5` for the **readonlyrest_kbn repo**
-(`self-hosted,Linux,X64,k3s,incus`).
+This repo lives under the `sscarduzio` user account, not the `beshu-tech` organisation, so the
+existing org-level runners (`gh-beshu-1..6`, registered to `https://github.com/beshu-tech`) cannot
+serve it. Registration below creates repo-level runners the same way `gh-ror-kbn-1..6` are
+registered to `https://github.com/sscarduzio/readonlyrest_kbn`.
 
-This repo lives under the `sscarduzio` **user** account, so the org runners cannot serve it. It
-needs its own repo-level runners. The extra `ror-es` label keeps them a separate pool that can be
-resized without touching the kbn fleet, and stops an ES release leg from landing on a runner that
-is busy with a kbn ELK stack.
+## The build host
 
-## Sizing: two runners
+Runners are unprivileged LXC containers under Incus, in the `github-ci` project, one runner per
+container. Everything below runs as root on the host.
 
-The release legs are IO-bound — gradle assembly, then S3, Docker Hub, Maven Central and
-GitHub-release uploads. They are slow because of bytes on the wire, not because of CPU, so more
-parallelism buys little and costs memory.
+Existing containers in that project:
 
-- **2 runners.** The matrices are capped at `max-parallel: 2` to match. A third would compete with
-  the kbn fleet for the same 64 GB.
-- **~4 GB RAM each** is enough: no ES cluster starts in these jobs.
-- **Disk is the real constraint.** Each ES version pulls a ~1.5 GB base image. Keep 100 GB or more
-  free for docker; the jobs prune their own leftovers between versions but never the whole daemon.
-- Give each runner its **own install directory**. One runner runs one job at a time, and each
-  runner keeps its own `_work` tree, which is what stops two release legs from sharing a workspace.
-
-## Register them
-
-Run once per runner, `N` in `1 2`. Each `config.sh` call needs a fresh token — they expire after
-one hour and are single-use.
-
-```bash
-REPO=sscarduzio/elasticsearch-readonlyrest-plugin
-VERSION=2.337.0   # match the version the existing runners on the box report
-
-for N in 1 2; do
-  DIR="$HOME/actions-runners/gh-ror-es-$N"
-  mkdir -p "$DIR" && cd "$DIR"
-
-  curl -fsSL -o actions-runner.tar.gz \
-    "https://github.com/actions/runner/releases/download/v${VERSION}/actions-runner-linux-x64-${VERSION}.tar.gz"
-  tar xzf actions-runner.tar.gz && rm actions-runner.tar.gz
-
-  TOKEN=$(gh api -X POST "repos/${REPO}/actions/runners/registration-token" -q .token)
-
-  ./config.sh \
-    --url "https://github.com/${REPO}" \
-    --token "$TOKEN" \
-    --name "gh-ror-es-$N" \
-    --labels ror-es \
-    --work _work \
-    --unattended --replace
-
-  sudo ./svc.sh install && sudo ./svc.sh start
-done
+```
+gh-base                 STOPPED   template, clone this
+gh-beshu-1 .. gh-beshu-6   RUNNING   org runners  (github.com/beshu-tech)
+gh-ror-kbn-1 .. -6         RUNNING   repo runners (sscarduzio/readonlyrest_kbn)
+sccache-minio              RUNNING   shared cache
 ```
 
-`--labels ror-es` adds to the defaults; the runner still reports `self-hosted`, `Linux` and `X64`,
-so the `[self-hosted, Linux, X64, ror-es]` selector in the workflows matches.
+They share the project's `default` profile: `limits.cpu: 1-15`, `limits.memory: 14GB`,
+`security.nesting: true`, `security.privileged: true`, 40 GB root disk on `home-pool`.
 
-## Before the first run
+### Capacity warning
 
-- The runner user must be in the `docker` group. `upload_pre_ror`, `release_ror` and `publish_mvn`
-  run inside the `beshultd/ror-ci-toolchains` container, which the runner starts on the host
-  daemon and into which it mounts the docker socket.
-- Docker Hub and S3 credentials come from repo secrets, exactly as on Ubicloud. Nothing on the box
-  needs to hold them.
+The host is a Ryzen 7 3700X: 8 cores / 16 threads, 62 GB RAM. Fourteen containers each entitled to
+15 threads and 14 GB is heavy oversubscription, and it is the main reason a Kibana E2E leg takes
+50–56 min here against 15–20 min on an 8-vCPU cloud runner. **Add ES runners only alongside a
+capacity decision**: either cap the Kibana pool (stop 2–3 of `gh-ror-kbn-*`), or lower
+`limits.cpu` per container so the pools cannot all claim the whole machine.
 
-## Check
+Two ES runners is the right number: the release matrices are capped at `max-parallel: 2`.
+
+## Registering a runner
+
+Repeat for `N` in `1 2`, from the host:
+
+```bash
+# 1. clone the template
+incus copy --project github-ci gh-base gh-ror-es-$N
+incus start --project github-ci gh-ror-es-$N
+
+# 2. a registration token is single-use and expires in an hour — get a fresh one per runner
+TOKEN=$(gh api -X POST \
+  repos/sscarduzio/elasticsearch-readonlyrest-plugin/actions/runners/registration-token \
+  -q .token)
+
+# 3. configure and install the service inside the container
+incus exec --project github-ci gh-ror-es-$N -- sudo -u runner bash -lc "
+  cd /home/runner/actions-runner &&
+  ./config.sh \
+    --url https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin \
+    --token $TOKEN \
+    --name gh-ror-es-$N \
+    --work _work \
+    --unattended --replace"
+incus exec --project github-ci gh-ror-es-$N -- bash -lc \
+  "cd /home/runner/actions-runner && ./svc.sh install runner && ./svc.sh start"
+```
+
+`config.sh` adds `self-hosted`, `Linux` and `X64` on its own, which is the whole selector the
+workflows use. Pass no `--labels`.
+
+Verify:
 
 ```bash
 gh api repos/sscarduzio/elasticsearch-readonlyrest-plugin/actions/runners \
-  -q '.runners[] | "\(.name)  \(.status)  \([.labels[].name] | join(","))"'
+  -q '.runners[] | "\(.name)\t\(.status)\t\([.labels[].name]|join(","))"'
 ```
 
-Two `gh-ror-es-*` rows, `online`, carrying `ror-es`, means the jobs can be scheduled.
+## Requirements inside the container
 
-## Remove one
-
-```bash
-TOKEN=$(gh api -X POST repos/sscarduzio/elasticsearch-readonlyrest-plugin/actions/runners/remove-token -q .token)
-cd "$HOME/actions-runners/gh-ror-es-1"
-sudo ./svc.sh stop && sudo ./svc.sh uninstall
-./config.sh remove --token "$TOKEN"
-```
-
-## Rollback
-
-Put `ubicloud-standard-4` back in the five `runs-on:` lines. Nothing else in this change depends on
-the runner: `ROR_SHARED_DOCKER_HOST` simply goes unset, and every guarded cleanup falls back to the
-host-wide sweep it did before.
+- The `runner` user must be in the `docker` group; the release jobs build and push images.
+- Disk is the binding constraint, roughly 1.5 GB of base image per ES version. The 40 GB root disk
+  in the profile is enough for two runners only because `ci/free-host-disk.sh` prunes between legs.
+- Shared host, so the release scripts must not sweep the whole Docker daemon. `ROR_SHARED_DOCKER_HOST=1`
+  is set on these jobs and downgrades `docker system prune -af --volumes` to dangling layers and
+  build cache only. Without it, a retry would kill the Kibana runners' in-flight ELK stacks.
