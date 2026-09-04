@@ -31,6 +31,7 @@ import tech.beshu.ror.es.esql.{
   IndexListReplacer,
   LocatedIndexList,
   Query,
+  Rejection,
   ReportedIndexList,
   RequestClassification
 }
@@ -52,7 +53,7 @@ object EsqlRequestHelper extends Logging {
       request: CompositeIndicesRequest,
       indexLists: NonEmptyList[LocatedIndexList],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Either[Query.Rejection, Unit] = {
+  ): Either[Rejection, Unit] = {
     val replaced = IndexListReplacer.replacing(getQuery(request), indexLists, allowedIndices)
     replaced
       .checkedAgainst(indexListReadsIn(request, replaced.query))
@@ -76,7 +77,7 @@ object EsqlRequestHelper extends Logging {
 
   def classifyEsqlRequest(
       request: CompositeIndicesRequest
-  ): Either[RequestClassification.Error, RequestClassification] = {
+  ): Either[Rejection, RequestClassification] = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
     new EsqlParser().indexListsIn(request).map {
       case Some(indexLists) => IndicesRelated(indexLists)
@@ -127,8 +128,8 @@ object EsqlRequestHelper extends Logging {
 
     def indexListsIn(
         request: CompositeIndicesRequest
-    ): Either[RequestClassification.Error, Option[NonEmptyList[LocatedIndexList]]] = {
-      createStatement(getQuery(request).value, request)
+    ): Either[Rejection, Option[NonEmptyList[LocatedIndexList]]] = {
+      parsedStatementOf(getQuery(request), request)
         .flatMap(statement => indexListsFrom(request, statement))
         .map(NonEmptyList.fromList)
     }
@@ -139,7 +140,17 @@ object EsqlRequestHelper extends Logging {
       Try(on(underlyingObject).call("createStatement", query, params, configuration).get[AnyRef]) match {
         case Success(s)                                                                       => Right(s)
         case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
-        case Failure(ex) => Left(RequestClassification.Error.NotParsable(ex))
+        case Failure(ex)                                                                      => Left(ex)
+      }
+    }
+
+    private def parsedStatementOf(
+        query: Query,
+        request: CompositeIndicesRequest
+    ): Either[Rejection, AnyRef] = {
+      createStatement(query.value, request).leftMap { cause =>
+        logger.debug("Cannot parse the ES|QL statement", cause)
+        Rejection.CannotParseQuery
       }
     }
 
@@ -147,7 +158,7 @@ object EsqlRequestHelper extends Logging {
       createStatement(query.value, request) match {
         case Right(statement) =>
           reportedIndexListsIn(planOf(statement)).map(_.read).filterNot(_.indexListIsEmpty)
-        case Left(RequestClassification.Error.NotParsable(cause)) =>
+        case Left(cause) =>
           logger.warn("Elasticsearch cannot parse the ES|QL query ReadonlyREST rewrote", cause)
           List.empty
       }
@@ -158,10 +169,10 @@ object EsqlRequestHelper extends Logging {
     private def indexListsFrom(
         request: CompositeIndicesRequest,
         statement: Any
-    ): Either[RequestClassification.Error, List[LocatedIndexList]] = {
+    ): Either[Rejection, List[LocatedIndexList]] = {
       IndexListLocator
         .locatedIn(getQuery(request), reportedIndexListsIn(planOf(statement)))
-        .leftMap(RequestClassification.Error.CannotReadIndexList.apply)
+        .leftMap(Rejection.CannotExtractIndices.apply)
     }
 
     /**

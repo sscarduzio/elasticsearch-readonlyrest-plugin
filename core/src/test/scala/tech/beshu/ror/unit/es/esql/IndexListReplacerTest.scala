@@ -21,18 +21,9 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.*
-import tech.beshu.ror.es.esql.LocatedIndexList.ReadingFailure
-import tech.beshu.ror.es.esql.LocatedIndexList.ReadingFailure.*
 import tech.beshu.ror.es.esql.Query.SourceLocation
+import tech.beshu.ror.es.esql.ReadingFailure.*
 
-/**
- * Covers reading the index lists ES reported out of the query text and replacing them in one go, because that is
- * the contract: what ES hands ROR has to come back out of the query text as the same list, or the query is left
- * alone entirely.
- *
- * A reported relation is written the way ES's parser builds it - the raw text of the node it read the index list
- * from, plus that list normalized (`FROM a, b` reported as `a,b`).
- */
 class IndexListReplacerTest extends AnyWordSpec {
 
   private val maskedIndex = """ROR_[A-Za-z0-9]{10}""".r
@@ -564,7 +555,7 @@ class IndexListReplacerTest extends AnyWordSpec {
           allowed("b"),
           esReads = List(IndexListRead.SourceCommand("b,b")),
           from("FROM a, // and\n b", "a,b")
-        ) shouldBe Left(Query.Rejection.NotReplacedAsIntended(List("b"), List("b,b")))
+        ) shouldBe Left(Rejection.SubstitutionNotConfirmed(List("b"), List("b,b")))
       }
       "reject a rewrite ES cannot parse at all, which it reads nothing out of" in {
         verify(
@@ -572,7 +563,7 @@ class IndexListReplacerTest extends AnyWordSpec {
           allowed("logs-1"),
           esReads = List.empty,
           from("FROM logs-*", "logs-*")
-        ) shouldBe Left(Query.Rejection.NotReplacedAsIntended(List("logs-1"), List.empty))
+        ) shouldBe Left(Rejection.SubstitutionNotConfirmed(List("logs-1"), List.empty))
       }
       "accept a rewrite ES reads as the join it was meant to be" in {
         verify(
@@ -597,7 +588,7 @@ class IndexListReplacerTest extends AnyWordSpec {
           from("FROM src", "src"),
           join("lookup_idx", "lookup_idx")
         ) shouldBe Left(
-          Query.Rejection.NotReplacedAsIntended(
+          Rejection.SubstitutionNotConfirmed(
             List("LOOKUP JOIN lookup_idx", "src"),
             List("lookup_idx", "src")
           )
@@ -642,7 +633,7 @@ class IndexListReplacerTest extends AnyWordSpec {
       allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
       esReads: List[IndexListRead],
       reported: ReportedBy*
-  ): Either[Query.Rejection, String] = {
+  ): Either[Rejection, String] = {
     val indexLists = indexListsIn(query, reported)
       .fold(failure => fail(s"index lists were not read: ${failure.toString}"), identity)
     val replaced = IndexListReplacer.replacing(Query(query), indexLists, allowed)
@@ -664,6 +655,7 @@ class IndexListReplacerTest extends AnyWordSpec {
       .map(lists => NonEmptyList.fromListUnsafe(lists))
   }
 
+  /** The second argument is the index list as ES normalizes it: `FROM a, b` is reported as `a,b`. */
   private def from(writtenText: String, indexList: String): ReportedBy =
     ReportedBy(writtenText, IndexListRead.SourceCommand(indexList), forcedOffset = None)
 
@@ -679,7 +671,6 @@ class IndexListReplacerTest extends AnyWordSpec {
   private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] =
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))
 
-  /** Written the way ES's parser builds it: the raw text of the node, and where in the query that text sits. */
   private final case class ReportedBy(writtenText: String, read: IndexListRead, forcedOffset: Option[Int]) {
 
     def reportedAt(query: String, offset: Int): ReportedIndexList = {

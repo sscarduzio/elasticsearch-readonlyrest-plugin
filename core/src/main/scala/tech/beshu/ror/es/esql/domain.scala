@@ -16,13 +16,11 @@
  */
 package tech.beshu.ror.es.esql
 
-import cats.Show
 import cats.data.NonEmptyList
 import cats.syntax.traverse.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.esql.Query.SourceLocation
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -30,41 +28,41 @@ final case class Query(value: String) extends AnyVal
 
 object Query {
 
-  /** Where in a query's text something sits, as a half-open range of characters. */
   final case class TextSpan(start: Int, end: Int)
 
   /** Where in a query's text something sits, the way ES reports it: a 1-based line and a 0-based column. */
   final case class SourceLocation(line: Int, column: Int)
 
-  /** Why a query cannot be run at all, once ROR knows it cannot hold it to the indices the ACL allowed. */
-  sealed trait Rejection
+}
 
-  object Rejection {
+/** Why ReadonlyREST cannot run an ES|QL query holding it to the indices the ACL allowed. */
+sealed trait Rejection
 
-    case object CannotParse extends Rejection
+object Rejection {
 
-    final case class CannotReadIndexList(failure: LocatedIndexList.ReadingFailure) extends Rejection
+  case object CannotParseQuery extends Rejection
 
-    final case class NotReplacedAsIntended(intendedIndexLists: List[String], readIndexLists: List[String])
-        extends Rejection
+  final case class CannotExtractIndices(failure: ReadingFailure) extends Rejection
 
-    implicit val show: Show[Rejection] = Show.show {
-      case CannotParse =>
-        "The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
-          "indices the user is allowed to, and it could not read the query at all - so it cannot tell which indices " +
-          "the query would run against. If the query is valid ES|QL, please report it to the ReadonlyREST team."
-      case CannotReadIndexList(failure) =>
-        s"The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
-          s"indices the user is allowed to, and running it as written would have let the user read the indices " +
-          s"they asked for, unchecked. It could not be rewritten, because ${failure.show}."
-      case NotReplacedAsIntended(intended, read) =>
-        s"The ES|QL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
-          s"the indices the user is allowed to, but Elasticsearch reads the rewritten query as reading " +
-          s"[${read.mkString(", ")}] instead. Since the two disagree, ReadonlyREST cannot tell which indices the " +
-          s"query would really read, so it does not run it. Please report this query to the ReadonlyREST team."
-    }
+  final case class SubstitutionNotConfirmed(intendedIndexLists: List[String], readIndexLists: List[String])
+      extends Rejection
 
-  }
+}
+
+/** Why an index list ES reported could not be found in the query text, or read as indices once found. */
+sealed trait ReadingFailure
+
+object ReadingFailure {
+
+  final case class NotWhereEsReportedIt(reportedIndexList: String) extends ReadingFailure
+
+  final case class SubqueryInSourceCommand(reportedIndexList: String) extends ReadingFailure
+
+  case object PromqlLeaningOnDefaultIndex extends ReadingFailure
+
+  case object IndexListInAnonymousParameter extends ReadingFailure
+
+  final case class UnsupportedIndexList(reportedIndexList: String) extends ReadingFailure
 
 }
 
@@ -75,6 +73,12 @@ sealed trait IndexListRead {
 
   /** ES reports an empty list for a source command of only subqueries. */
   def indexListIsEmpty: Boolean = indexList.isBlank
+
+  def stringify: String = this match {
+    case IndexListRead.SourceCommand(indexList) => indexList
+    case IndexListRead.LookupJoin(indexList)    => s"LOOKUP JOIN ${indexList}"
+  }
+
 }
 
 object IndexListRead {
@@ -82,11 +86,6 @@ object IndexListRead {
   final case class SourceCommand(indexList: String) extends IndexListRead
 
   final case class LookupJoin(indexList: String) extends IndexListRead
-
-  implicit val show: Show[IndexListRead] = Show.show {
-    case SourceCommand(indexList) => indexList
-    case LookupJoin(indexList)    => s"LOOKUP JOIN ${indexList}"
-  }
 
 }
 
@@ -131,43 +130,6 @@ object LocatedIndexList {
 
   }
 
-  /** Why an index list ES reported could not be found in the query text, or read as indices once found. */
-  sealed trait ReadingFailure
-
-  object ReadingFailure {
-
-    final case class NotWhereEsReportedIt(reportedIndexList: String) extends ReadingFailure
-
-    final case class SubqueryInSourceCommand(reportedIndexList: String) extends ReadingFailure
-
-    case object PromqlLeaningOnDefaultIndex extends ReadingFailure
-
-    case object IndexListInAnonymousParameter extends ReadingFailure
-
-    final case class UnsupportedIndexList(reportedIndexList: String) extends ReadingFailure
-
-    implicit val show: Show[ReadingFailure] = Show.show {
-      case NotWhereEsReportedIt(indexList) =>
-        s"Elasticsearch says the query reads [${indexList.show}], but points at a place in the query text where " +
-          s"that is not what is written - so there is nothing ReadonlyREST can safely rewrite. Please report " +
-          s"this query to the ReadonlyREST team"
-      case SubqueryInSourceCommand(indexList) =>
-        s"the indices [${indexList.show}] are read by a command that also holds a subquery, and Elasticsearch " +
-          s"reports the two merged into a single list - so ReadonlyREST cannot tell which part of the query " +
-          s"text to narrow down. Write the subquery as a separate command to have such a query authorized"
-      case PromqlLeaningOnDefaultIndex =>
-        "the PROMQL command names no [index] parameter, so it reads whichever indices Elasticsearch defaults to " +
-          "and the query text holds no index list to narrow down. Add [index=...] to have such a query authorized"
-      case IndexListInAnonymousParameter =>
-        "the indices are named by an anonymous query parameter ([?] or [??]), which Elasticsearch binds by the " +
-          "order the parameters are written in - so narrowing it down would rebind every parameter written after " +
-          "it. Name the parameter ([?index]) or number it ([?1]) to have such a query authorized"
-      case UnsupportedIndexList(indexList) =>
-        s"[${indexList.show}] is not something ReadonlyREST can read as a list of index names"
-    }
-
-  }
-
   def requestedIndicesOf(indexLists: NonEmptyList[LocatedIndexList]): Set[RequestedIndex[ClusterIndexName]] =
     indexLists.toList.flatMap(_.requestedIndices.toList).toCovariantSet
 
@@ -186,19 +148,18 @@ object LocatedIndexList {
 final case class ReplacedQuery(query: Query, intendedReads: List[IndexListRead]) {
 
   /** Held to what ES reads back out of the rewrite - the only thing saying which indices it will really run against. */
-  def checkedAgainst(esReads: List[IndexListRead]): Either[Query.Rejection, Query] = {
-    val intended = intendedReads.sortBy(_.show)
-    val read = esReads.sortBy(_.show)
+  def checkedAgainst(esReads: List[IndexListRead]): Either[Rejection, Query] = {
+    val intended = intendedReads.map(_.stringify).sorted
+    val read = esReads.map(_.stringify).sorted
     Either.cond(
       test = intended == read,
       right = query,
-      left = Query.Rejection.NotReplacedAsIntended(intended.map(_.show), read.map(_.show))
+      left = Rejection.SubstitutionNotConfirmed(intended, read)
     )
   }
 
 }
 
-/** What ROR made of a query: the index lists it names, or nothing it has to hold to the ACL. */
 sealed trait RequestClassification
 
 object RequestClassification {
@@ -209,16 +170,5 @@ object RequestClassification {
   }
 
   case object NonIndicesRelated extends RequestClassification
-
-  /** Why ROR could not read a query into the index lists it names. */
-  sealed trait Error
-
-  object Error {
-
-    /** ES rejects such a query on its own, so ROR can let it through rather than answer for a syntax error. */
-    final case class NotParsable(cause: Throwable) extends Error
-
-    final case class CannotReadIndexList(failure: LocatedIndexList.ReadingFailure) extends Error
-  }
 
 }

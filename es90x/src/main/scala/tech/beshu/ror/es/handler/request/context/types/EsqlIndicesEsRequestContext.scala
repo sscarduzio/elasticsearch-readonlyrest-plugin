@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.esql.{Query, RequestClassification}
+import tech.beshu.ror.es.esql.{Rejection, RequestClassification}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
@@ -89,20 +89,16 @@ class EsqlIndicesEsRequestContext private (
   private def modifyRequestIndices(
       request: ActionRequest with CompositeIndicesRequest,
       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Either[Query.Rejection, Unit] = {
+  ): Either[Rejection, Unit] = {
     requestClassification match {
       case Right(RequestClassification.NonIndicesRelated) =>
         Right(())
       case Right(classification @ RequestClassification.IndicesRelated(indexLists)) =>
         if (aclNarrowedNothing(filteredIndices, classification.requestedIndices)) Right(())
         else EsqlRequestHelper.modifyIndicesOf(request, indexLists, filteredIndices)
-      case Left(RequestClassification.Error.NotParsable(cause)) =>
-        logger.debug("Cannot parse the ES|QL statement", cause)
+      case Left(rejection) =>
         if (aclNarrowedNothing(filteredIndices, allIndices)) Right(())
-        else Left(Query.Rejection.CannotParse)
-      case Left(RequestClassification.Error.CannotReadIndexList(failure)) =>
-        if (aclNarrowedNothing(filteredIndices, allIndices)) Right(())
-        else Left(Query.Rejection.CannotReadIndexList(failure))
+        else Left(rejection)
     }
   }
 

@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.esql
 
 import cats.implicits.*
-import tech.beshu.ror.es.esql.LocatedIndexList.ReadingFailure
 import tech.beshu.ror.es.esql.Query.{SourceLocation, TextSpan}
 
 import scala.annotation.tailrec
