@@ -1,11 +1,44 @@
 readonlyrest:
 
+  ssl:
+    enable: true
+    keystore_file:  "ror-keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  ssl_internode:
+    enable: true
+    keystore_file: "ror-keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
   access_control_rules:
 
     # ES container initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       type: allow
       auth_key: admin:container
+
+    - name: "admin esql"
+      verbosity: error
+      type: allow
+      indices: ["bookstore", "library", "bookshop"]
+      auth_key: sqladmin:pass
+
+    - name: "dev1 esql"
+      auth_key: dev1sql:test
+      indices: ["bookstore"]
+      fields: ["~price"]
+
+    - name: "dev2 esql"
+      auth_key: dev2sql:test
+      indices: ["library"]
+      fields: ["~internal_id"]
+
+    - name: "dev3 esql"
+      auth_key: dev3sql:test
+      indices: ["bookstore"]
+      filter: '{"query_string":{"query":"name:(Dune)"}}'
 
     - name: "Catalog only - the LOOKUP JOIN target is out of reach"
       auth_key: catalog:test

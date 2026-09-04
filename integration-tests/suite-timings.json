@@ -24,6 +24,8 @@
     "tech.beshu.ror.integration.suites.DuplicatedResponseHeadersIssueSuite": 19,
     "tech.beshu.ror.integration.suites.DynamicVariablesSuite": 111,
     "tech.beshu.ror.integration.suites.EnabledPromptForBasicAuthSettingAllSuites": 6,
+    "tech.beshu.ror.integration.suites.EsqlApiWithRorWithDisabledXpackSecuritySuite": 120,
+    "tech.beshu.ror.integration.suites.EsqlApiWithRorWithEnabledXpackSecuritySuite": 120,
     "tech.beshu.ror.integration.suites.ExternalAuthenticationSuite": 15,
     "tech.beshu.ror.integration.suites.FilterRuleSuite": 7,
     "tech.beshu.ror.integration.suites.FiltersAndFieldsSecuritySuite": 11,
