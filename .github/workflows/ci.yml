@@ -21,8 +21,6 @@ on:
     inputs:
       actionToPerform:
         description: '(Manual) action to perform'
-        # A choice input with a default always carries one of the options, even when a dispatch omits
-        # it. So the job conditions read it directly, and none of them needs a fallback.
         type: choice
         default: run_all_tests_on_linux
         options:
