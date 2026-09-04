@@ -29,17 +29,12 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.EsqlIndexTable
+import tech.beshu.ror.es.esql.{Query, RequestClassification}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.EsqlRequestHelper
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{
-  ClassificationError,
-  EsqlRequestClassification,
-  IndicesModificationResult
-}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -63,12 +58,16 @@ class EsqlIndicesEsRequestContext private (
       request: ActionRequest with CompositeIndicesRequest
   ): Set[RequestedIndex[ClusterIndexName]] = {
     requestClassification match {
-      case Right(r @ EsqlRequestClassification.IndicesRelated(_)) =>
-        r.requestedIndices
-      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(_) =>
-        Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
+      case Right(classification @ RequestClassification.IndicesRelated(_)) =>
+        classification.requestedIndices
+      case Right(RequestClassification.NonIndicesRelated) | Left(_) =>
+        allIndices
     }
   }
+
+  /** What a query ROR cannot read the index lists of has to be taken to ask for. */
+  private def allIndices: Set[RequestedIndex[ClusterIndexName]] =
+    Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def update(
       request: ActionRequest with CompositeIndicesRequest,
@@ -76,56 +75,42 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    requestClassification match {
-      case Right(r @ EsqlRequestClassification.IndicesRelated(tables))
-          if filteredRequestedIndices.toList.toCovariantSet != r.requestedIndices =>
-        updatedRequestWithIndicesNarrowedTo(request, tables, filteredRequestedIndices, filter, fieldLevelSecurity)
+    modifyRequestIndices(request, filteredRequestedIndices) match {
       case Right(_) =>
-        updatedRequest(request, filter, fieldLevelSecurity)
-      case Left(ClassificationError.ParsingException(ex)) =>
-        logger.debug(
-          s"Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:",
-          ex
-        )
-        updatedRequest(request, filter, fieldLevelSecurity)
-      case Left(ClassificationError.IndicesExtractionException(ex)) =>
-        logger.warn(
-          s"[${id.show}] Cannot read the tables of the parsed ESQL statement - the indices it touches are " +
-            "unknown. The request will be rejected. Cause:",
-          ex
-        )
+        applyFieldLevelSecurityTo(request, fieldLevelSecurity)
+        applyFilterTo(request, filter)
+        UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
+      case Left(rejection) =>
+        logger.warn(rejection.show)
         ModificationResult.ShouldBeInterrupted
     }
   }
 
-  private def updatedRequestWithIndicesNarrowedTo(
+  private def modifyRequestIndices(
       request: ActionRequest with CompositeIndicesRequest,
-      tables: NonEmptyList[EsqlIndexTable],
-      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      filter: Option[Filter],
-      fieldLevelSecurity: Option[FieldLevelSecurity]
-  ): ModificationResult = {
-    EsqlRequestHelper.modifyIndicesOf(request, tables, filteredRequestedIndices) match {
-      case IndicesModificationResult.IndicesModified =>
-        updatedRequest(request, filter, fieldLevelSecurity)
-      case IndicesModificationResult.CannotModifyIndices(reason) =>
-        logger.warn(
-          s"[${id.show}] The ESQL query cannot be narrowed down to [${filteredRequestedIndices.show}], because " +
-            s"$reason. The request will be rejected."
-        )
-        ModificationResult.ShouldBeInterrupted
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ): Either[Query.Rejection, Unit] = {
+    requestClassification match {
+      case Right(RequestClassification.NonIndicesRelated) =>
+        Right(())
+      case Right(classification @ RequestClassification.IndicesRelated(indexLists)) =>
+        if (aclNarrowedNothing(filteredIndices, classification.requestedIndices)) Right(())
+        else EsqlRequestHelper.modifyIndicesOf(request, indexLists, filteredIndices)
+      case Left(RequestClassification.Error.NotParsable(cause)) =>
+        logger.debug("Cannot parse the ES|QL statement", cause)
+        if (aclNarrowedNothing(filteredIndices, allIndices)) Right(())
+        else Left(Query.Rejection.CannotParse)
+      case Left(RequestClassification.Error.CannotReadIndexList(failure)) =>
+        if (aclNarrowedNothing(filteredIndices, allIndices)) Right(())
+        else Left(Query.Rejection.CannotReadIndexList(failure))
     }
   }
 
-  private def updatedRequest(
-      request: ActionRequest with CompositeIndicesRequest,
-      filter: Option[Filter],
-      fieldLevelSecurity: Option[FieldLevelSecurity]
-  ): ModificationResult = {
-    applyFieldLevelSecurityTo(request, fieldLevelSecurity)
-    applyFilterTo(request, filter)
-    UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
-  }
+  /** When the ACL allows exactly what the query asked for, there is nothing to narrow down and nothing to rewrite. */
+  private def aclNarrowedNothing(
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      requestedIndices: Set[RequestedIndex[ClusterIndexName]]
+  ): Boolean = filteredIndices.toList.toCovariantSet == requestedIndices
 
   private def applyFieldLevelSecurityTo(
       request: ActionRequest with CompositeIndicesRequest,
