@@ -12,7 +12,7 @@ directory contain the build logic; the workflow only orchestrates.
 
 | Job | What it does | When |
 |---|---|---|
-| `toolchains_image` | chooses where every `container:` job pulls the toolchains image from | always |
+| `ci_setup` | chooses where every `container:` job pulls the toolchains image from, and publishes the run flags the later `if:` conditions read | always |
 | `toolchains_verify` | sanity-checks the toolchains image | always (fail-fast gate for tests) |
 | `discover` | derives every matrix: the ES majors and the modules each test family covers; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
@@ -44,11 +44,53 @@ Two orchestration rules worth knowing before editing conditions:
 - GitHub skips a job whose `needs` contains a skipped job. The release jobs therefore use
   `!cancelled()` + explicit `needs.<job>.result` checks — that is what makes the manual
   `release_without_testing` path (tests intentionally skipped) work. Keep that pattern.
+- A job-level `if:` cannot read the `env` context, so a predicate that more than one job asks
+  about has to be a job output. `ci_setup` publishes the three, and they are not the same
+  question — do not collapse them:
+
+  | Output | True for | Gates |
+  |---|---|---|
+  | `is_full_matrix` | develop, master, `epic/**` | the full test matrices in `discover` |
+  | `is_release_branch` | develop, master | `determine_ci_type`, `upload_pre_ror`, `release_ror`, the NVD cache write |
+  | `is_master` | master | `publish_mvn` |
+  | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks`, `upload_pre_ror`, the auto branch of the release conditions |
+  | `runs_linux_tests` | automatic runs + manual `run_all_tests_on_linux` | `discover`, `unit_tests_linux` |
+  | `runs_windows_tests` | automatic runs + manual `run_all_tests_on_windows` | `discover` |
+  | `runs_e2e_tests` | automatic runs + manual `run_e2e_tests` | `discover` |
+  | `is_manual_windows_run` | manual `run_all_tests_on_windows` only | `unit_tests_windows` |
+  | `is_release_without_testing` | manual `release_without_testing` only | the manual branch of `determine_ci_type`, `release_ror`, `publish_mvn` |
+  | `manual_action` | — the chosen action, `''` on an automatic run | `discover` |
+
+  Every job `if:` reads one of these and compares it against `'true'`. `manual_action` is the one
+  exception, and it is not read by any `if:`: `discover` picks a matrix by name, so it needs the
+  value.
+
+  Mind the pair that looks alike. `runs_windows_tests` covers automatic runs as well, and gates the
+  Windows integration matrix. `is_manual_windows_run` covers the manual action alone, and gates the
+  Windows unit tests, which no automatic run may start.
+
+  A test family runs on every automatic run, and on a manual run only when the operator asked for
+  that family. The three `runs_*` flags say so. `discover` reads them and empties the matrix of
+  every family the run does not cover, so no test job carries a condition of its own — see
+  [Derived matrices](#derived-matrices). `unit_tests_linux` is the exception, because it has no
+  matrix to empty. `manual_action` serves the jobs that only a manual action may start.
+
+  Always compare against the string `'true'`. An output is a string, so a bare
+  `needs.ci_setup.outputs.is_release_branch` is truthy even when it holds `"false"`.
+
+  Adding a flag: `${{ A && B }}` yields the string `"false"` when `A` is false, not `''`. That is
+  why `manual_action` ends in `|| ''` — without it an automatic run would carry the word "false".
 
 ## Derived matrices
 
-Every matrix of a run comes from the `discover` job. Nothing is written down twice: the modules
-that exist decide, so a new module or a new ES major joins the matrices by itself.
+Every matrix of a run comes from the `discover` job, and so does every decision about which test
+families the run covers. Nothing is written down twice: the modules that exist decide, so a new
+module or a new ES major joins the matrices by itself.
+
+A test job therefore carries no condition about the kind of run. An empty matrix skips its job, and
+that is the single mechanism: a draft PR gets no Windows and no e2e leg, and a manual
+`run_e2e_tests` gets neither a Linux nor a Windows one. Keep it that way — a second gate in a job's
+`if:` would state the same rule in a second place, and the two would drift.
 
 | Task | Answers | Written to |
 |---|---|---|
@@ -296,7 +338,7 @@ other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priorit
 
 The script cannot authenticate the `container:` image, because the runner pulls that image before
 step 1 starts. Nothing else authenticates it. That pull is anonymous, and the registry that
-`toolchains_image` chose answers it: `mirror.gcr.io` on the normal path, Docker Hub on the fallback. See
+`ci_setup` chose answers it: `mirror.gcr.io` on the normal path, Docker Hub on the fallback. See
 [The `container:` image](#the-container-image).
 
 ### Docker Hub pull mirror
@@ -367,7 +409,7 @@ reach that pull, so it sets neither the mirror nor the login for it. CI jobs and
 share the image, which makes it the most pulled image of a run. Docker Hub answered a whole run with
 `429 toomanyrequests` on 2026-08-26.
 
-`container: image:` can read a job output. The `toolchains_image` job runs
+`container: image:` can read a job output. The `ci_setup` job runs
 `ci/resolve-toolchains-image.sh` once, and the `&toolchains_container` anchor reads its output: the
 name to pull. That job holds no container itself, and it cannot: it is the job that picks one.
 
@@ -375,9 +417,9 @@ A mirrored name carries the digest, not the tag: `mirror.gcr.io/beshultd/ror-ci-
 The jobs of one run start hours apart, and a tag can move between the check and a pull. A Docker Hub
 name keeps the tag, because no digest is proven in that case.
 
-So `toolchains_image` asks the mirror about the digest, not about the tag. A digest names the bytes,
+So `ci_setup` asks the mirror about the digest, not about the tag. A digest names the bytes,
 and a cache cannot answer it with the wrong image. The rebuild records the digest of its push in the
-Actions cache. `toolchains_image` then sends the mirror one HEAD request for that digest. The request downloads
+Actions cache. `ci_setup` then sends the mirror one HEAD request for that digest. The request downloads
 no image, and it reaches no Docker Hub:
 
 | What the script finds | What the run pulls |
@@ -386,7 +428,7 @@ no image, and it reaches no Docker Hub:
 | the mirror cannot serve the digest | Docker Hub |
 | the mirror serves the digest | the mirror |
 
-Docker Hub is the safe answer, so a miss costs speed only. `toolchains_image` writes the choice to the step
+Docker Hub is the safe answer, so a miss costs speed only. `ci_setup` writes the choice to the step
 summary, so the run page shows which registry a run used, and why.
 
 The mirror fetches a digest it has never held. So a run keeps the mirror in the hours after a
@@ -394,8 +436,8 @@ rebuild, before the mirror knows the new tag. A question about the tag would los
 window, where the recorded digest is newest.
 
 The cache key holds the tag and the rebuild's run id. A key is write-once, so each rebuild adds an
-entry and `toolchains_image` restores the newest by prefix. GitHub drops an entry that nothing reads for 7 days,
-and `toolchains_image` reads this one every run. A new tag matches no entry, so its runs use Docker Hub until
+entry and `ci_setup` restores the newest by prefix. GitHub drops an entry that nothing reads for 7 days,
+and `ci_setup` reads this one every run. A new tag matches no entry, so its runs use Docker Hub until
 the next rebuild. The same holds now: run **Build toolchains image** once, on `develop`, to write the
 first digest.
 
@@ -415,7 +457,7 @@ Only the cache entry goes to waste, so `record_digest` raises a `::warning::` in
 Dispatch the workflow again on `develop` after the merge.
 
 The rebuild does not save that entry. It runs on an Ubicloud runner, and an Ubicloud runner keeps
-its own Actions cache. A GitHub-hosted runner cannot read it, and `toolchains_image` is GitHub-hosted. So the
+its own Actions cache. A GitHub-hosted runner cannot read it, and `ci_setup` is GitHub-hosted. So the
 digest travels as a job output to `record_digest`, a small job on `ubuntu-latest`, which saves it.
 Both ends then read one store.
 
@@ -424,7 +466,7 @@ no test run waits for it. A rebuild in `ci.yml` would also hold the `develop` co
 those hours, and every push to `develop` would queue behind it.
 
 The rebuild keeps a concurrency group of its own, `build-toolchains-image`. Two rebuilds push one
-tag and file two cache entries, and `toolchains_image` takes the newest entry, which need not hold the manifest
+tag and file two cache entries, and `ci_setup` takes the newest entry, which need not hold the manifest
 that Docker Hub keeps. A second run waits instead, because cancelling a four-hour build wastes it.
 
 The pull sends no credentials, on either path. `mirror.gcr.io` refuses a Docker Hub login, so the

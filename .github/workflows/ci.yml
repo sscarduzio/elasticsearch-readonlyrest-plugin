@@ -58,16 +58,41 @@ env:
 
 jobs:
 
-  # ── TOOLCHAINS_IMAGE ──────────────────────────────────────────────────────
-  # Which image every container: job pulls. ci/resolve-toolchains-image.sh chooses between the mirror
-  # and Docker Hub, so the name is not a constant.
+  # ── CI_SETUP ──────────────────────────────────────────────────────────────
+  # The two facts every later job asks for: which image to pull, and what kind of run this is.
   #
-  # This job holds no container, and it cannot hold one: it is the job that picks it. The runner pulls
-  # a container: image before step 1, so a job cannot resolve its own image.
-  toolchains_image:
+  # The image. ci/resolve-toolchains-image.sh chooses between the mirror and Docker Hub, so the name
+  # is not a constant. This job holds no container, and it cannot hold one: it is the job that picks
+  # it. The runner pulls a container: image before step 1, so a job cannot resolve its own image.
+  #
+  # The run flags. A job-level `if:` cannot read the `env` context, so a predicate that more than one
+  # job asks about has to be a job output. Each is named for what it gates, and none of them is a
+  # synonym of another: the full matrix also covers epic/**, a release covers develop and master,
+  # and Maven publishing covers master alone; a test family runs on every automatic run plus the one
+  # manual action that asks for it, while a manual-only job matches no automatic run at all.
+  # ci/CI.md holds the table.
+  #
+  # Every job `if:` reads one of these and compares it against the string 'true'. An output is a
+  # string, so the bare value is also truthy when it holds "false".
+  ci_setup:
     runs-on: ubuntu-latest   # trivial job; GH-hosted so it runs even if the Ubicloud app is down
     outputs:
-      image: ${{ steps.toolchains.outputs.image }}
+      image:                      ${{ steps.toolchains.outputs.image }}
+      # Which branch this is.
+      is_full_matrix:             ${{ steps.flags.outputs.is_full_matrix }}
+      is_release_branch:          ${{ steps.flags.outputs.is_release_branch }}
+      is_master:                  ${{ steps.flags.outputs.is_master }}
+      # What kind of run this is.
+      is_automatic_run:           ${{ steps.flags.outputs.is_automatic_run }}
+      runs_linux_tests:           ${{ steps.flags.outputs.runs_linux_tests }}
+      runs_windows_tests:         ${{ steps.flags.outputs.runs_windows_tests }}
+      runs_e2e_tests:             ${{ steps.flags.outputs.runs_e2e_tests }}
+      # A manual action, and nothing else, starts these two. Note the contrast with the `runs_*`
+      # flags above, which an automatic run also sets.
+      is_manual_windows_run:      ${{ steps.flags.outputs.is_manual_windows_run }}
+      is_release_without_testing: ${{ steps.flags.outputs.is_release_without_testing }}
+      # The action itself. `discover` picks a matrix by name, so it needs the value, not a yes or no.
+      manual_action:              ${{ steps.flags.outputs.manual_action }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -89,13 +114,43 @@ jobs:
           restore-keys: ${{ steps.digest_key.outputs.prefix }}
       - id: toolchains
         run: ci/resolve-toolchains-image.sh
+      - id: flags
+        env:
+          # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
+          IS_FULL_MATRIX: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
+          IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}
+          IS_MASTER: ${{ github.ref == 'refs/heads/master' }}
+          # The action the operator chose, and '' on every automatic run. Mind the second operand:
+          # `A && B` yields the string "false" when A is false, so the `|| ''` is what makes an
+          # automatic run empty rather than the word "false".
+          MANUAL_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.actionToPerform || '' }}
+        run: |
+          # A test family runs on every automatic run, and on a manual run only when the operator
+          # asked for that family.
+          runs_family() {
+            if [ -z "$MANUAL_ACTION" ] || [ "$MANUAL_ACTION" = "$1" ]; then echo true; else echo false; fi
+          }
+          # A job that only a manual action may start. An automatic run must not match.
+          chose() { if [ "$MANUAL_ACTION" = "$1" ]; then echo true; else echo false; fi; }
+          {
+            echo "is_full_matrix=$IS_FULL_MATRIX"
+            echo "is_release_branch=$IS_RELEASE_BRANCH"
+            echo "is_master=$IS_MASTER"
+            echo "manual_action=$MANUAL_ACTION"
+            echo "is_automatic_run=$([ -z "$MANUAL_ACTION" ] && echo true || echo false)"
+            echo "runs_linux_tests=$(runs_family run_all_tests_on_linux)"
+            echo "runs_windows_tests=$(runs_family run_all_tests_on_windows)"
+            echo "runs_e2e_tests=$(runs_family run_e2e_tests)"
+            echo "is_manual_windows_run=$(chose run_all_tests_on_windows)"
+            echo "is_release_without_testing=$(chose release_without_testing)"
+          } >> "$GITHUB_OUTPUT"
 
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
   toolchains_verify:
-    needs: toolchains_image
+    needs: ci_setup
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     # The runner pulls this image before step 1 runs, so ci/configure-docker.sh reaches neither the
-    # mirror nor the login for it. The toolchains_image job settles the name.
+    # mirror nor the login for it. The ci_setup job settles the name.
     # A mirrored name carries the digest, so every job of a run pulls the same bytes.
     #
     # The pull sends no credentials. A Docker Hub login against mirror.gcr.io fails, so the block
@@ -106,7 +161,7 @@ jobs:
     # Docker Hub then counts the fallback pull against the runner's address, not against our
     # account. The mirror serves the normal path.
     container: &toolchains_container
-      image: ${{ needs.toolchains_image.outputs.image }}
+      image: ${{ needs.ci_setup.outputs.image }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -126,7 +181,7 @@ jobs:
   #
   # It emits one ready matrix per fan-out job, so a leg a run does not cover never boots a runner.
   discover:
-    needs: [ toolchains_image, toolchains_verify ]
+    needs: [ ci_setup, toolchains_verify ]
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     timeout-minutes: 10
@@ -146,10 +201,12 @@ jobs:
         run: ./gradlew --no-daemon -q printEsMajors printTestMatrices
       - id: matrices
         env:
-          # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
-          IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
+          IS_FULL_MATRIX: ${{ needs.ci_setup.outputs.is_full_matrix }}
           IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
-          MANUAL_RUN_ACTION: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.actionToPerform || '') }}
+          MANUAL_RUN_ACTION: ${{ needs.ci_setup.outputs.manual_action }}
+          RUNS_LINUX_TESTS: ${{ needs.ci_setup.outputs.runs_linux_tests }}
+          RUNS_WINDOWS_TESTS: ${{ needs.ci_setup.outputs.runs_windows_tests }}
+          RUNS_E2E_TESTS: ${{ needs.ci_setup.outputs.runs_e2e_tests }}
         # Assign first, echo second. `echo "x=$(...)"` keeps the status of echo, so a missing matrix
         # would publish an empty one, skip every leg that reads it, and leave the run green.
         run: |
@@ -179,26 +236,30 @@ jobs:
           [ -s "$MAJORS_FILE" ] || { echo "::error::printEsMajors wrote no ES major."; exit 1; }
           MAJORS=$(awk 'BEGIN { printf "[" } { printf "%s\"%s\"", (NR > 1 ? "," : ""), $0 } END { print "]" }' "$MAJORS_FILE")
 
-          if [ "$IS_PR_DRAFT" = "true" ]; then
+          # An empty list is how a family is skipped. Each family starts from the question "does
+          # this run cover it at all?", so a manual run of one family leaves the others empty.
+          if [ "$RUNS_LINUX_TESTS" != "true" ]; then
+            LINUX='[]'
+          elif [ "$IS_PR_DRAFT" = "true" ]; then
             LINUX=$(read_modules linux_it_pr_draft)
-          elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_linux" ] || [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
+          elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_linux" ] || [ "$IS_FULL_MATRIX" = "true" ]; then
             LINUX=$(read_modules linux_it_full)
           else
             LINUX=$(read_modules linux_it_pr_ready)
           fi
 
           # A draft PR runs no Windows and no e2e leg at all.
-          if [ "$IS_PR_DRAFT" = "true" ]; then
+          if [ "$RUNS_WINDOWS_TESTS" != "true" ] || [ "$IS_PR_DRAFT" = "true" ]; then
             WINDOWS='[]'
           elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_windows" ]; then
             WINDOWS=$(read_modules win_it_full)
-          elif [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
+          elif [ "$IS_FULL_MATRIX" = "true" ]; then
             WINDOWS=$(read_modules win_it_master_or_develop)
           else
             WINDOWS=$(read_modules win_it_pr_ready)
           fi
 
-          if [ "$IS_PR_DRAFT" = "true" ]; then
+          if [ "$RUNS_E2E_TESTS" != "true" ] || [ "$IS_PR_DRAFT" = "true" ]; then
             E2E='[]'
           else
             E2E=$(read_modules e2e_full)
@@ -222,11 +283,11 @@ jobs:
   # Failures annotate the run but never block it. Matrix for symmetry with required_checks;
   # cve_check is currently its only member.
   optional_checks:
-    needs: [ toolchains_image, toolchains_verify ]
+    needs: [ ci_setup, toolchains_verify ]
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'workflow_dispatch'
+      needs.ci_setup.outputs.is_automatic_run == 'true'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     continue-on-error: true
@@ -249,18 +310,18 @@ jobs:
           # occur often, and thus keep the cache fresh. A PR run only reads the cache.
           save-nvd-cache: >-
             ${{ github.event_name == 'push' &&
-                (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master') }}
+                needs.ci_setup.outputs.is_release_branch == 'true' }}
           nvd-api-key: ${{ secrets.NVD_API_KEY }}
           oss-index-username: ${{ secrets.OSS_INDEX_USERNAME }}
           oss-index-password: ${{ secrets.OSS_INDEX_PASSWORD }}
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
-    needs: [ toolchains_image, toolchains_verify ]
+    needs: [ ci_setup, toolchains_verify ]
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'workflow_dispatch'
+      needs.ci_setup.outputs.is_automatic_run == 'true'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     name: ${{ matrix.REQUIRED_CHECK }}
@@ -284,11 +345,11 @@ jobs:
 
   # ── TEST: unit (Linux) ────────────────────────────────────────────────────
   unit_tests_linux:
-    needs: [ toolchains_image, toolchains_verify ]
+    needs: [ ci_setup, toolchains_verify ]
     if: >-
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
-      (github.event_name != 'workflow_dispatch' || github.event.inputs.actionToPerform == 'run_all_tests_on_linux')
+      needs.ci_setup.outputs.runs_linux_tests == 'true'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     timeout-minutes: 30
@@ -315,16 +376,13 @@ jobs:
   # Matrix comes from discover: full 34-version set on develop/master/epic + manual run, the
   # 10-version representative subset on plain PRs.
   it_linux:
-    needs: [ discover, toolchains_image, toolchains_verify ]
+    needs: [ discover, ci_setup, toolchains_verify ]
     if: >-
       !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      (github.event_name != 'workflow_dispatch' || github.event.inputs.actionToPerform == 'run_all_tests_on_linux')
+      needs.toolchains_verify.result == 'success'
     runs-on: ubicloud-standard-4
     container: *toolchains_container
     timeout-minutes: 120
-    # "it_linux_es94x", not the truncated "it_linux (es94x)" composite, in the graph view. Same
-    # <leg>_<module> shape as it_win_* and e2e_*, so the three test families sort together.
     name: it_linux_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
@@ -432,9 +490,7 @@ jobs:
     # fails fast instead of running doomed legs.
     needs: [ discover, toolchains_verify ]
     if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      (github.event_name != 'workflow_dispatch' || github.event.inputs.actionToPerform == 'run_all_tests_on_windows')
+      !cancelled() && needs.toolchains_verify.result == 'success'
     runs-on: windows-2025
     timeout-minutes: 150
     # Clear the Linux toolchains-image Gradle settings at job scope; the workflow-level
@@ -528,9 +584,10 @@ jobs:
 
   # ── TEST: unit tests on Windows (manual run_all_tests_on_windows only) ────
   unit_tests_windows:
+    # ci_setup is in needs only to read its flags; this job uses no toolchains image.
+    needs: ci_setup
     if: >-
-      github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.actionToPerform == 'run_all_tests_on_windows'
+      needs.ci_setup.outputs.is_manual_windows_run == 'true'
     runs-on: windows-2025
     timeout-minutes: 150
     env:
@@ -564,11 +621,10 @@ jobs:
   # KBN dev image for all of them. Outputs those versions as the matrix the e2e_tests jobs run on,
   # plus the build's run id so they know which build to wait for.
   e2e_prepare:
-    needs: [ discover, toolchains_image, toolchains_verify ]
+    needs: [ discover, ci_setup, toolchains_verify ]
     if: >-
       !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      (github.event_name != 'workflow_dispatch' || github.event.inputs.actionToPerform == 'run_e2e_tests')
+      needs.toolchains_verify.result == 'success'
     runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 30
@@ -606,8 +662,7 @@ jobs:
     if: >-
       !cancelled() &&
       needs.e2e_prepare.result == 'success' &&
-      needs.toolchains_verify.result == 'success' &&
-      (github.event_name != 'workflow_dispatch' || github.event.inputs.actionToPerform == 'run_e2e_tests')
+      needs.toolchains_verify.result == 'success'
     runs-on: ubicloud-standard-4
     timeout-minutes: 120
     env:
@@ -680,7 +735,7 @@ jobs:
   # empty matrix skips the job. e2e is tolerated on a skipped e2e_prepare, not on a skipped
   # e2e_tests. A FAILED e2e_prepare also leaves e2e_tests 'skipped', and that must still block.
   build_ror:
-    needs: [ toolchains_image, discover, required_checks, unit_tests_linux, it_linux, it_windows, e2e_prepare, e2e_tests ]
+    needs: [ ci_setup, discover, required_checks, unit_tests_linux, it_linux, it_windows, e2e_prepare, e2e_tests ]
     if: >-
       !cancelled() &&
       github.event_name == 'pull_request' &&
@@ -711,13 +766,13 @@ jobs:
   # Two paths: automatic after a push with all tests green, or manual release_without_testing.
   # The manual path intentionally skips tests, hence the explicit result checks.
   determine_ci_type:
-    needs: [ required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
+    needs: [ ci_setup, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     if: >-
       !cancelled() &&
-      (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master') &&
+      needs.ci_setup.outputs.is_release_branch == 'true' &&
       (
         (
-          github.event_name != 'workflow_dispatch' &&
+          needs.ci_setup.outputs.is_automatic_run == 'true' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
@@ -725,8 +780,7 @@ jobs:
           needs.e2e_tests.result == 'success'
         ) ||
         (
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.actionToPerform == 'release_without_testing'
+          needs.ci_setup.outputs.is_release_without_testing == 'true'
         )
       )
     runs-on: ubuntu-latest
@@ -748,13 +802,13 @@ jobs:
   # concurrency — the shape the ryzen box is good at, and the single largest Ubicloud line item
   # (~3.8k minutes/month). Needs a registered self-hosted runner: see ci/self-hosted-runner.md.
   upload_pre_ror:
-    needs: [ toolchains_image, discover, determine_ci_type ]
+    needs: [ ci_setup, discover, determine_ci_type ]
     if: >-
       !cancelled() &&
       needs.determine_ci_type.result == 'success' &&
       needs.determine_ci_type.outputs.is_release == 'false' &&
-      (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master') &&
-      github.event_name != 'workflow_dispatch'
+      needs.ci_setup.outputs.is_release_branch == 'true' &&
+      needs.ci_setup.outputs.is_automatic_run == 'true'
     runs-on: &self_hosted_runner [self-hosted, Linux, X64]
     container: *toolchains_container
     timeout-minutes: 600
@@ -787,17 +841,17 @@ jobs:
   # Self-hosted, same reasoning as upload_pre_ror: ~2.2k Ubicloud minutes/month of
   # assembly and upload. See ci/self-hosted-runner.md.
   release_ror:
-    needs: [ toolchains_image, discover, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
+    needs: [ ci_setup, discover, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     permissions:
       contents: write   # ci-lib.sh tags the release and pushes the tag via the checkout token
     if: >-
       !cancelled() &&
       needs.determine_ci_type.result == 'success' &&
       needs.determine_ci_type.outputs.is_release == 'true' &&
-      (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master') &&
+      needs.ci_setup.outputs.is_release_branch == 'true' &&
       (
         (
-          github.event_name != 'workflow_dispatch' &&
+          needs.ci_setup.outputs.is_automatic_run == 'true' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
@@ -805,8 +859,7 @@ jobs:
           needs.e2e_tests.result == 'success'
         ) ||
         (
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.actionToPerform == 'release_without_testing' &&
+          needs.ci_setup.outputs.is_release_without_testing == 'true' &&
           needs.toolchains_verify.result == 'success'
         )
       )
@@ -842,15 +895,15 @@ jobs:
 
   # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
   publish_mvn:
-    needs: [ toolchains_image, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
+    needs: [ ci_setup, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     if: >-
       !cancelled() &&
       needs.determine_ci_type.result == 'success' &&
       needs.determine_ci_type.outputs.is_release == 'true' &&
-      github.ref == 'refs/heads/master' &&
+      needs.ci_setup.outputs.is_master == 'true' &&
       (
         (
-          github.event_name != 'workflow_dispatch' &&
+          needs.ci_setup.outputs.is_automatic_run == 'true' &&
           needs.required_checks.result == 'success' &&
           needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
@@ -858,8 +911,7 @@ jobs:
           needs.e2e_tests.result == 'success'
         ) ||
         (
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.actionToPerform == 'release_without_testing' &&
+          needs.ci_setup.outputs.is_release_without_testing == 'true' &&
           needs.toolchains_verify.result == 'success'
         )
       )
