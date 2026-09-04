@@ -96,10 +96,17 @@ jobs:
           IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
           MANUAL_RUN_ACTION: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.actionToPerform || '') }}
         run: |
-          LINUX_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x","es67x"]'
+          # Five ES series carry no CI leg any more: 7.3, 7.4, 7.9, 7.11 and 7.14. The customer
+          # portal's downloads table shows ZERO downloads of their plugin builds in the last two
+          # years, and the full Linux matrix has to fit the account's 40 concurrent-job budget
+          # alongside 6 Windows legs and 3 e2e legs. 34 + 6 + 3 did not fit; 29 + 6 + 3 does.
+          # The plugin is still BUILT and published for those series (build_ror groups by major,
+          # not by minor) — only the integration test coverage is gone, so a regression that is
+          # specific to one of them would now ship unnoticed. Revisit if a customer appears.
+          LINUX_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es710x","es78x","es77x","es72x","es70x","es67x"]'
           LINUX_IT_PR_READY_SET='["es94x","es90x","es818x","es816x","es810x","es80x","es717x","es710x","es70x","es67x"]'
           LINUX_IT_PR_DRAFT_SET='["es94x","es818x","es717x","es67x"]'
-          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
+          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es710x","es78x","es77x","es72x","es70x"]'
           WIN_IT_MASTER_OR_DEVELOP_SET='["es94x","es90x","es818x","es80x","es717x","es70x"]'
           WIN_IT_PR_READY_SET='["es94x","es818x","es717x"]'
           WIN_IT_PR_DRAFT_SET='[]'
@@ -295,7 +302,11 @@ jobs:
     name: it_linux_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
-      max-parallel: 20
+      # 29 = the full Linux matrix, so every leg starts in one wave. The account allows 40
+      # concurrent jobs (Pro); the other long jobs of a develop push are 6 it_windows and 3
+      # e2e, so 29 + 6 + 3 = 38 fits with two slots left for the ROR KBN pre-build that
+      # e2e_prepare dispatches into readonlyrest_kbn on this same account.
+      max-parallel: 29
       matrix:
         ES_MODULE: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
     steps:

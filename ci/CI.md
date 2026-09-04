@@ -5,8 +5,17 @@ CI runs on GitHub Actions: `.github/workflows/ci.yml`. Linux jobs run on **GitHu
 to run on) inside the `beshultd/ror-ci-toolchains` image; Windows jobs run on GitHub-hosted
 `windows-2025`. `ci/toolchains/image.env` holds that image's tag, and every workflow that needs
 it sources that file. The repo is public, so GitHub-hosted runners are free. The concurrency limit
-is 20 jobs **per account**, shared with `readonlyrest_kbn`; `it_linux` keeps `max-parallel: 20` and
-is allowed to fill that pool, so a 34-module push serialises into waves.
+is 40 jobs **per account** (GitHub Pro), shared with `readonlyrest_kbn`. A develop push has 29
+`it_linux` legs, 6 `it_windows` legs and 3 `e2e` legs — 38 long jobs — so `it_linux` sets
+`max-parallel: 29` and the whole matrix starts in one wave, leaving two slots for the ROR KBN
+pre-build that `e2e_prepare` dispatches.
+
+**Five ES series have no test leg**: 7.3, 7.4, 7.9, 7.11 and 7.14. The customer portal's downloads
+table shows zero downloads of their plugin builds in the last two years, and dropping them is what
+makes the matrix fit. They are still **built and published** on every release: `build_es7xx` and
+`release_es7xx` enumerate modules with the `printEsModules` Gradle task, which reads
+`settings.gradle`, not the CI matrix. Only integration-test coverage is gone, so a regression
+specific to one of those series would ship unnoticed.
 
 The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standalone
 `mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
@@ -24,7 +33,7 @@ directory contain the build logic; the workflow only orchestrates.
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
 | `unit_tests_linux` | `core:test` and friends | pushes + PRs |
 | `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
-| `it_linux` | integration tests, one job per ES version | 10-version subset on PRs, full 34 on develop/master/epic and manual |
+| `it_linux` | integration tests, one job per ES version | 10-version subset on PRs, full 29 on develop/master/epic and manual |
 | `it_windows` | integration tests on native-Windows ES | 3 on PRs, 7 on branches, full 33 on manual |
 | `unit_tests_windows` | `core:test` on Windows | manual `run_all_tests_on_windows` |
 | `e2e_prepare` | resolves the e2e matrix + starts the ROR KBN image build | pushes + PRs (not drafts) |
