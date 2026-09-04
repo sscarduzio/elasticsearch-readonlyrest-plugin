@@ -82,6 +82,10 @@ jobs:
       is_full_matrix:             ${{ steps.flags.outputs.is_full_matrix }}
       is_release_branch:          ${{ steps.flags.outputs.is_release_branch }}
       is_master:                  ${{ steps.flags.outputs.is_master }}
+      # What this commit would publish. `-pre` in pluginVersion means a pre-release build.
+      # This is a property of the commit. Whether the run MAY publish is a separate question, and
+      # each publishing job answers it from the test results.
+      is_release_version:         ${{ steps.flags.outputs.is_release_version }}
       # What kind of run this is.
       is_automatic_run:           ${{ steps.flags.outputs.is_automatic_run }}
       runs_linux_tests:           ${{ steps.flags.outputs.runs_linux_tests }}
@@ -125,6 +129,14 @@ jobs:
           # automatic run empty rather than the word "false".
           MANUAL_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.actionToPerform || '' }}
         run: |
+          # No `-pre` in pluginVersion means this commit releases. ci/CI.md explains the two
+          # version fields.
+          if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep -q -- '-pre'; then
+            IS_RELEASE_VERSION=false
+          else
+            IS_RELEASE_VERSION=true
+          fi
+
           # A test family runs on every automatic run, and on a manual run only when the operator
           # asked for that family.
           runs_family() {
@@ -136,6 +148,7 @@ jobs:
             echo "is_full_matrix=$IS_FULL_MATRIX"
             echo "is_release_branch=$IS_RELEASE_BRANCH"
             echo "is_master=$IS_MASTER"
+            echo "is_release_version=$IS_RELEASE_VERSION"
             echo "manual_action=$MANUAL_ACTION"
             echo "is_automatic_run=$([ -z "$MANUAL_ACTION" ] && echo true || echo false)"
             echo "runs_linux_tests=$(runs_family run_all_tests_on_linux)"
@@ -284,10 +297,8 @@ jobs:
   # cve_check is currently its only member.
   optional_checks:
     needs: [ ci_setup, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      needs.ci_setup.outputs.is_automatic_run == 'true'
+    # No status check function here, so the default still applies: every `needs` job must succeed.
+    if: needs.ci_setup.outputs.is_automatic_run == 'true'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     continue-on-error: true
@@ -318,10 +329,8 @@ jobs:
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
     needs: [ ci_setup, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      needs.ci_setup.outputs.is_automatic_run == 'true'
+    # No status check function here, so the default still applies: every `needs` job must succeed.
+    if: needs.ci_setup.outputs.is_automatic_run == 'true'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     name: ${{ matrix.REQUIRED_CHECK }}
@@ -346,10 +355,8 @@ jobs:
   # ── TEST: unit (Linux) ────────────────────────────────────────────────────
   unit_tests_linux:
     needs: [ ci_setup, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      needs.ci_setup.outputs.runs_linux_tests == 'true'
+    # No status check function here, so the default still applies: every `needs` job must succeed.
+    if: needs.ci_setup.outputs.runs_linux_tests == 'true'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: *toolchains_container
     timeout-minutes: 30
@@ -377,9 +384,6 @@ jobs:
   # 10-version representative subset on plain PRs.
   it_linux:
     needs: [ discover, ci_setup, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success'
     runs-on: ubicloud-standard-4
     container: *toolchains_container
     timeout-minutes: 120
@@ -489,8 +493,6 @@ jobs:
     # toolchains_verify is in needs even though Windows doesn't use the image, so a broken image
     # fails fast instead of running doomed legs.
     needs: [ discover, toolchains_verify ]
-    if: >-
-      !cancelled() && needs.toolchains_verify.result == 'success'
     runs-on: windows-2025
     timeout-minutes: 150
     # Clear the Linux toolchains-image Gradle settings at job scope; the workflow-level
@@ -622,9 +624,6 @@ jobs:
   # plus the build's run id so they know which build to wait for.
   e2e_prepare:
     needs: [ discover, ci_setup, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success'
     runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 30
@@ -659,10 +658,6 @@ jobs:
   # version, waits for the ROR KBN image, then runs the test suite against both (see ci/e2e-tests-lib.sh).
   e2e_tests:
     needs: [ toolchains_verify, e2e_prepare ]
-    if: >-
-      !cancelled() &&
-      needs.e2e_prepare.result == 'success' &&
-      needs.toolchains_verify.result == 'success'
     runs-on: ubicloud-standard-4
     timeout-minutes: 120
     env:
@@ -762,51 +757,18 @@ jobs:
           ES_MAJOR: ${{ matrix.ES_MAJOR }}
         run: ci/run-pipeline.sh
 
-  # ── DETERMINE_CI_TYPE (develop/master) ────────────────────────────────────
-  # Two paths: automatic after a push with all tests green, or manual release_without_testing.
-  # The manual path intentionally skips tests, hence the explicit result checks.
-  determine_ci_type:
-    needs: [ ci_setup, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
-    if: >-
-      !cancelled() &&
-      needs.ci_setup.outputs.is_release_branch == 'true' &&
-      (
-        (
-          needs.ci_setup.outputs.is_automatic_run == 'true' &&
-          needs.required_checks.result == 'success' &&
-          needs.unit_tests_linux.result == 'success' &&
-          needs.it_linux.result == 'success' &&
-          needs.it_windows.result == 'success' &&
-          needs.e2e_tests.result == 'success'
-        ) ||
-        (
-          needs.ci_setup.outputs.is_release_without_testing == 'true'
-        )
-      )
-    runs-on: ubuntu-latest
-    outputs:
-      is_release: ${{ steps.release_check.outputs.is_release }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - id: release_check
-        run: |
-          IS_RELEASE=true
-          if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep -- '-pre'; then
-            IS_RELEASE=false
-          fi
-          echo "is_release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
-
   # ── UPLOAD_PRE_ROR (pre-release develop/master, auto only) ────────────────
   # Self-hosted: gradle assembly plus S3/Docker Hub uploads. Long, IO-bound, low
   # concurrency — the shape the ryzen box is good at, and the single largest Ubicloud line item
   # (~3.8k minutes/month). Needs a registered self-hosted runner: see ci/self-hosted-runner.md.
   upload_pre_ror:
-    needs: [ ci_setup, discover, determine_ci_type ]
+    needs: [ ci_setup, discover, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
+    # This job runs on automatic pushes only, where no test job is ever skipped. So the default
+    # rule — every `needs` job must succeed — already is the test gate, and no status check function
+    # appears below that would switch it off. Contrast release_ror, which must survive the manual
+    # path where the test jobs are skipped on purpose.
     if: >-
-      !cancelled() &&
-      needs.determine_ci_type.result == 'success' &&
-      needs.determine_ci_type.outputs.is_release == 'false' &&
+      needs.ci_setup.outputs.is_release_version == 'false' &&
       needs.ci_setup.outputs.is_release_branch == 'true' &&
       needs.ci_setup.outputs.is_automatic_run == 'true'
     runs-on: &self_hosted_runner [self-hosted, Linux, X64]
@@ -841,13 +803,14 @@ jobs:
   # Self-hosted, same reasoning as upload_pre_ror: ~2.2k Ubicloud minutes/month of
   # assembly and upload. See ci/self-hosted-runner.md.
   release_ror:
-    needs: [ ci_setup, discover, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
+    needs: [ ci_setup, discover, toolchains_verify, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     permissions:
       contents: write   # ci-lib.sh tags the release and pushes the tag via the checkout token
+    # `!cancelled()` drops the implicit success() gate that `needs` would otherwise apply, so every
+    # test result is checked by hand below. See ci/CI.md.
     if: >-
       !cancelled() &&
-      needs.determine_ci_type.result == 'success' &&
-      needs.determine_ci_type.outputs.is_release == 'true' &&
+      needs.ci_setup.outputs.is_release_version == 'true' &&
       needs.ci_setup.outputs.is_release_branch == 'true' &&
       (
         (
@@ -895,11 +858,12 @@ jobs:
 
   # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
   publish_mvn:
-    needs: [ ci_setup, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
+    needs: [ ci_setup, toolchains_verify, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
+    # `!cancelled()` drops the implicit success() gate that `needs` would otherwise apply, so every
+    # test result is checked by hand below. See ci/CI.md.
     if: >-
       !cancelled() &&
-      needs.determine_ci_type.result == 'success' &&
-      needs.determine_ci_type.outputs.is_release == 'true' &&
+      needs.ci_setup.outputs.is_release_version == 'true' &&
       needs.ci_setup.outputs.is_master == 'true' &&
       (
         (

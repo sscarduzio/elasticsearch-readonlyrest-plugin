@@ -24,7 +24,7 @@ directory contain the build logic; the workflow only orchestrates.
 | `e2e_prepare` | resolves the e2e matrix and starts the ROR KBN image build | selected runs; see the [test matrix policy](#test-matrix-policy) |
 | `e2e_tests` | Cypress e2e suite, one job per selected ES module | selected runs; see the [test matrix policy](#test-matrix-policy) |
 | `build_ror` | builds all plugin zips + bytecode-reuse guard, one job per ES major | PRs |
-| `determine_ci_type` → `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
+| `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
 
 Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
 `run_all_tests_on_windows`, `run_e2e_tests`, `release_without_testing`.
@@ -41,9 +41,24 @@ Two orchestration rules worth knowing before editing conditions:
 
 - `concurrency` auto-cancels superseded **PR** runs only; branch pushes queue, so a push
   during a release run can never kill the release.
-- GitHub skips a job whose `needs` contains a skipped job. The release jobs therefore use
-  `!cancelled()` + explicit `needs.<job>.result` checks — that is what makes the manual
-  `release_without_testing` path (tests intentionally skipped) work. Keep that pattern.
+- GitHub skips a job whose `needs` contains a failed **or skipped** job. That gate is implicit, and
+  an `if:` only switches it off when the expression holds a status check function — `success()`,
+  `failure()`, `cancelled()` or `always()`. An `if:` of plain conditions keeps it.
+
+  So `!cancelled() && needs.<X>.result == 'success'`, where `X` is already in `needs`, is the
+  implicit rule spelled out, and buys nothing. Write it only when the job must survive some *other*
+  dependency being skipped. Two jobs must: `release_ror` and `publish_mvn`, whose manual
+  `release_without_testing` path skips the test jobs on purpose. There `!cancelled()` lets the
+  skipped ones through, and the explicit `== 'success'` checks are what still stop a failed one.
+  Delete those checks and a red test suite would publish a release.
+
+  Everywhere else, let the implicit rule do the work. `build_ror` is the third exception: it accepts
+  `skipped` from the Windows and e2e families by name, because a draft PR runs neither.
+- Two questions, two answers. **What would this commit publish?** depends on `pluginVersion` alone,
+  so `ci_setup` answers it up front as `is_release_version`. **May this run publish it?** depends on
+  how the tests went, which no early job can know, so each publishing job checks the test results in
+  its own `if:`. The three checks are deliberate copies. Change one and change all three, or a job
+  will publish without a test the others still demand.
 - A job-level `if:` cannot read the `env` context, so a predicate that more than one job asks
   about has to be a job output. `ci_setup` publishes the three, and they are not the same
   question — do not collapse them:
@@ -51,14 +66,15 @@ Two orchestration rules worth knowing before editing conditions:
   | Output | True for | Gates |
   |---|---|---|
   | `is_full_matrix` | develop, master, `epic/**` | the full test matrices in `discover` |
-  | `is_release_branch` | develop, master | `determine_ci_type`, `upload_pre_ror`, `release_ror`, the NVD cache write |
+  | `is_release_branch` | develop, master | `upload_pre_ror`, `release_ror`, the NVD cache write |
   | `is_master` | master | `publish_mvn` |
-  | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks`, `upload_pre_ror`, the auto branch of the release conditions |
+  | `is_release_version` | `pluginVersion` carries no `-pre` | `upload_pre_ror` (false) vs `release_ror` / `publish_mvn` (true) |
+  | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks`, the auto branch of the three publishing jobs |
   | `runs_linux_tests` | automatic runs + manual `run_all_tests_on_linux` | `discover`, `unit_tests_linux` |
   | `runs_windows_tests` | automatic runs + manual `run_all_tests_on_windows` | `discover` |
   | `runs_e2e_tests` | automatic runs + manual `run_e2e_tests` | `discover` |
   | `is_manual_windows_run` | manual `run_all_tests_on_windows` only | `unit_tests_windows` |
-  | `is_release_without_testing` | manual `release_without_testing` only | the manual branch of `determine_ci_type`, `release_ror`, `publish_mvn` |
+  | `is_release_without_testing` | manual `release_without_testing` only | the manual branch of `release_ror` and `publish_mvn` |
   | `manual_action` | — the chosen action, `''` on an automatic run | `discover` |
 
   Every job `if:` reads one of these and compares it against `'true'`. `manual_action` is the one
