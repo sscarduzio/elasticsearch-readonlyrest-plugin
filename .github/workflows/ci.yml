@@ -71,6 +71,7 @@ jobs:
       it_linux_matrix:   ${{ steps.matrices.outputs.linux }}
       it_windows_matrix: ${{ steps.matrices.outputs.windows }}
       e2e_modules:       ${{ steps.matrices.outputs.e2e }}
+      is_merge_back:     ${{ steps.merge_back.outputs.value }}
       toolchains_image: ${{ steps.toolchains.outputs.image }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -83,8 +84,38 @@ jobs:
           echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
           # Treat nested */epic/* branches like top-level epic/* branches.
           case "$REF" in *epic/*)  echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
+      # A PR merged into master is pushed to master, and the merge-back into develop is pushed a
+      # minute later. Both are `push` events on a protected branch, so both run the FULL matrix -
+      # 34 Linux legs, 6 Windows legs and 3 e2e legs each - over a byte-identical tree. Between
+      # 1 Aug and 4 Sep that happened 4 times, and 3 of those pairs started less than 60 s apart,
+      # so the two runs compete for the same account-wide job slots and one of them waits.
+      #
+      # Detect the merge-back by comparing trees, not commit ids: the two commits are different
+      # objects (master gets the squash, develop gets a merge commit) but they carry the same tree.
+      # A develop push whose tree already IS master's tip adds no code of its own.
+      #
+      # This does not skip the run. It gives the merge-back the same reduced matrix a ready PR
+      # gets, so develop keeps an independent signal and its release gate still needs every job to
+      # pass. Waiting for master's run instead would couple the two runs and buy little: master is
+      # covering the full matrix at that moment anyway.
+      - id: merge_back
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MASTER_SHA=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" -q .object.sha)
+          MASTER_TREE=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$MASTER_SHA" -q .tree.sha)
+          HERE_TREE=$(git rev-parse "HEAD^{tree}")
+          echo ">>> develop tree $HERE_TREE, master tree $MASTER_TREE"
+          if [ "$HERE_TREE" = "$MASTER_TREE" ]; then
+            echo ">>> this push is a merge-back of master and adds no code - reduced matrix"
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
       - id: matrices
         env:
+          IS_MERGE_BACK: ${{ steps.merge_back.outputs.value }}
           # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
           IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
           IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
@@ -102,6 +133,8 @@ jobs:
 
           if [ "$IS_PR_DRAFT" = "true" ]; then
             echo "linux=$LINUX_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          elif [ "${IS_MERGE_BACK:-false}" = "true" ]; then
+            echo "linux=$LINUX_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_linux" ] || [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
             echo "linux=$LINUX_IT_FULL_SET" >> "$GITHUB_OUTPUT"
           else
@@ -110,6 +143,8 @@ jobs:
 
           if [ "$IS_PR_DRAFT" = "true" ]; then
             echo "windows=$WIN_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          elif [ "${IS_MERGE_BACK:-false}" = "true" ]; then
+            echo "windows=$WIN_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_windows" ]; then
             echo "windows=$WIN_IT_FULL_SET" >> "$GITHUB_OUTPUT"
           elif [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
