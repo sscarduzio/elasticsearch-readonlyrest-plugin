@@ -41,18 +41,26 @@ defaults:
 jobs:
   publish:
     name: Publishing
-    # Self-hosted: a long build-and-push job, IO-bound, one at a time. Needs a registered
-    # self-hosted runner — see ci/self-hosted-runner.md.
-    runs-on: [self-hosted, Linux, X64]
+    # NOT self-hosted, even though this is a long IO-bound build. Two paid jobs in other runs wait
+    # on this workflow: the e2e legs of readonlyrest_kbn's pipeline (ubicloud-standard-8) and this
+    # repo's own e2e_prepare. They hold their runner for as long as the pre-build takes to FINISH,
+    # queue time included. The self-hosted pool is two slots on one box, so a release or upload job
+    # occupying both puts this workflow behind them and the waiters pay for the queue:
+    #
+    #   created 17:23:41, started 18:45:19  ->  81.6 min queued, 0.3 min of work
+    #
+    # Measured over the runs on either side of #1369: 0.0-0.6 min queued on ubicloud, and 0.0, 0.0,
+    # 18.2, 19.4, 81.6 min queued self-hosted. The minutes this workflow itself costs are small - it
+    # is 1-13 min of work per run - so moving it back buys the waiters far more than it spends.
+    # readonlyrest_kbn's twin of this workflow runs on ubuntu-latest for the same reason.
+    #
+    # The rest of what #1369 moved stays self-hosted: nothing waits on release_ror, upload_pre_ror,
+    # publish_mvn or mirror-es-libs.
+    runs-on: ubuntu-latest
     timeout-minutes: 600
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
-      AGENT_ISSELFHOSTED: '1'
-      # This job talks to the box's docker daemon directly, and that daemon also serves the
-      # readonlyrest_kbn runners. No host-wide `docker system prune -a`, no removing containers that
-      # are not ours. See ci/run-pipeline.sh and ci/publish-ror-plugins.sh.
-      ROR_SHARED_DOCKER_HOST: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 0, persist-credentials: false }
