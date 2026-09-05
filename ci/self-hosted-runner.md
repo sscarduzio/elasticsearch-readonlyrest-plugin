@@ -17,8 +17,17 @@ Jobs that need a self-hosted runner:
 Those are measured, not estimates: n=10 release legs and n=26 upload legs from the 1 Aug - 4 Sep
 window. Size the pool on the **slowest** leg, not the median - `release_es8xx` reaches 152 min on a
 good day, and one run hit the 180-minute job bound and was killed, which is what PR #1370 raises.
-A two-slot pool means the four release legs run two at a time, so a release occupies the box for
-roughly `es8xx + es7xx` back to back.
+
+For how long a release occupies the box, use the observed end-to-end time of the four `release_ror`
+legs rather than adding legs together. `max-parallel: 2` does not create fixed pairs - Actions
+starts a queued leg as soon as a slot frees - so the pairing depends on completion order. Measured
+over the last five develop releases, first leg start to last leg finish:
+
+```text
+118.4  127.7  144.4  151.8  207.1 min
+```
+
+The 207.1 is the run where `release_es8xx` was killed at the 180-minute bound.
 
 ## The selector
 
