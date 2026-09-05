@@ -280,7 +280,7 @@ jobs:
           if-no-files-found: ignore
 
   # ── TEST: Linux integration tests (GitHub-hosted) ─────────────────────────
-  # Matrix comes from setup: full 34-version set on develop/master/epic + manual run, the
+  # Matrix comes from setup: full 29-version set on develop/master/epic + manual run, the
   # 10-version representative subset on plain PRs.
   it_linux:
     needs: [ setup, toolchains_verify ]
@@ -405,7 +405,7 @@ jobs:
 
   # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
   # Matrix from setup: 6-version subset on develop/master/epic, 3 on ready PRs, none on draft
-  # PRs (job skipped), full 33 on manual run_all_tests_on_windows.
+  # PRs (job skipped), full 28 on manual run_all_tests_on_windows.
   it_windows:
     # toolchains_verify is in needs even though Windows doesn't use the image, so a broken image
     # fails fast instead of running doomed legs.

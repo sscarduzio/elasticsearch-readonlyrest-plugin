@@ -54,10 +54,21 @@ if [ "${RUNNER_ENVIRONMENT:-}" != "github-hosted" ] || [ "${AGENT_ISSELFHOSTED:-
   exit 0
 fi
 
-avail_gb=$(df --output=avail -BG / 2>/dev/null | tail -1 | tr -dc '0-9' || echo 0)
-echo ">>> [host] disk before reclaim: ${avail_gb}GB free (threshold ${ROR_DISK_RECLAIM_THRESHOLD_GB}GB)"
+avail_gb=$(df --output=avail -BG / 2>/dev/null | tail -1 | tr -dc '0-9' || true)
+echo ">>> [host] disk before reclaim: ${avail_gb:-<unreadable>}GB free (threshold ${ROR_DISK_RECLAIM_THRESHOLD_GB}GB)"
 df -h / || true
-if [ "${avail_gb:-0}" -ge "$ROR_DISK_RECLAIM_THRESHOLD_GB" ]; then
+
+# The measurement fails closed too, for the same reason the runner guard above does. An unreadable
+# df left avail_gb empty and a malformed threshold made the numeric test error; both fell through
+# to the levers, so the script would delete system directories and prune a Docker daemon without
+# ever proving the disk was tight. Skipping is the safe half: the reclaim is an optimisation, and
+# a genuinely full disk fails the build with a better message than this script could write.
+if ! [[ $avail_gb =~ ^[0-9]+$ ]] || ! [[ $ROR_DISK_RECLAIM_THRESHOLD_GB =~ ^[0-9]+$ ]]; then
+  echo ">>> [host] cannot trust the free-space check (avail='${avail_gb:-}', threshold='$ROR_DISK_RECLAIM_THRESHOLD_GB') - skipping reclaim"
+  exit 0
+fi
+
+if [ "$avail_gb" -ge "$ROR_DISK_RECLAIM_THRESHOLD_GB" ]; then
   echo ">>> [host] enough free space - skipping reclaim"
   exit 0
 fi
