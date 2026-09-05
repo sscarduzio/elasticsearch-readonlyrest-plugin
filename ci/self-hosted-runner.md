@@ -11,7 +11,6 @@ Jobs that need a self-hosted runner:
 | `ci.yml` | `upload_pre_ror` | 4-leg matrix, ~45–57 min/leg, pre-release only |
 | `ci.yml` | `release_ror` | 4-leg matrix, ~16 min/leg, release only |
 | `ci.yml` | `publish_mvn` | seconds, after `release_ror` |
-| `publish-pre-builds.yml` | `publish` | manual, long build-and-push |
 | `mirror-es-libs.yml` | `mirror` | manual, short |
 
 ## The selector
@@ -95,8 +94,10 @@ gh api repos/sscarduzio/elasticsearch-readonlyrest-plugin/actions/runners \
 - Disk is the binding constraint, roughly 1.5 GB of base image per ES version. The 40 GB root disk
   in the profile is enough for two runners only because `ci/free-host-disk.sh` prunes between legs.
 - Shared host, so the release scripts must not sweep the whole Docker daemon. `ROR_SHARED_DOCKER_HOST=1`
-  is set on these jobs and downgrades `docker system prune -af --volumes` to dangling layers and
-  build cache only. Without it, a retry would kill the Kibana runners' in-flight ELK stacks.
+  is set on the `ci.yml` jobs above and downgrades `docker system prune -af --volumes` to dangling
+  layers and build cache only. Without it, a retry would kill the Kibana runners' in-flight ELK
+  stacks. `publish-pre-builds.yml` no longer sets it, because it runs on an ephemeral hosted VM
+  where the aggressive prune is what makes a multi-version build fit.
 
 ## Required: the job-started hook
 
@@ -127,22 +128,31 @@ EOS
 chmod 0755 /usr/local/sbin/reclaim-runner-workspace
 
 # The runner user has no sudo. Grant exactly this one command, nothing else.
-echo 'runner ALL=(root) NOPASSWD: /usr/local/sbin/reclaim-runner-workspace' \
-  > /etc/sudoers.d/50-runner-workspace
-chmod 0440 /etc/sudoers.d/50-runner-workspace
-visudo -c -q
+# Validate BEFORE installing: a bad line in /etc/sudoers.d breaks sudo for everyone in the
+# container, and under `set -e` a validate-after would abort with the broken file already in place.
+printf '%s\n' 'runner ALL=(root) NOPASSWD: /usr/local/sbin/reclaim-runner-workspace' \
+  > /tmp/50-runner-workspace
+visudo -c -q -f /tmp/50-runner-workspace
+install -o root -g root -m 0440 /tmp/50-runner-workspace /etc/sudoers.d/50-runner-workspace
+rm -f /tmp/50-runner-workspace
 
-cat > /home/runner/actions-runner/job-started-hook.sh <<'EOS'
+# Outside the runner application directory on purpose: GitHub requires it, `./svc.sh` self-update
+# rewrites that directory, and a script the `runner` user can edit is a foothold that survives
+# between jobs. Root-owned in /usr/local/sbin, like the command it calls.
+cat > /usr/local/sbin/job-started-hook.sh <<'EOS'
 #!/bin/bash
 set -euo pipefail
 sudo -n /usr/local/sbin/reclaim-runner-workspace
 echo ">>> workspace ownership reclaimed for the runner user"
 EOS
-chown runner:runner /home/runner/actions-runner/job-started-hook.sh
-chmod 0755 /home/runner/actions-runner/job-started-hook.sh
+chown root:root /usr/local/sbin/job-started-hook.sh
+chmod 0755 /usr/local/sbin/job-started-hook.sh
 
-echo 'ACTIONS_RUNNER_HOOK_JOB_STARTED=/home/runner/actions-runner/job-started-hook.sh' \
-  >> /home/runner/actions-runner/.env
+# .env itself must stay in the runner directory - that is where the runner reads it. Guarded, so
+# re-running this block on a runner that already has the hook does not add a second line.
+grep -q ACTIONS_RUNNER_HOOK_JOB_STARTED /home/runner/actions-runner/.env || \
+  echo 'ACTIONS_RUNNER_HOOK_JOB_STARTED=/usr/local/sbin/job-started-hook.sh' \
+    >> /home/runner/actions-runner/.env
 INNER
 # .env is read at start-up, so the service has to be restarted.
 incus exec --project github-ci gh-ror-es-$N -- bash -lc \
@@ -150,8 +160,15 @@ incus exec --project github-ci gh-ror-es-$N -- bash -lc \
 ```
 
 The sudoers entry names a root-owned script rather than `chown` with arguments, so the grant
-cannot be widened by passing different paths. It adds no real privilege either way: `runner` is
-already in the `docker` group, which is root-equivalent on this box.
+cannot be widened by passing different paths.
+
+It grants nothing the `runner` user does not already have: `runner` is in the `docker` group, and
+these containers run with `security.privileged: true` and no uid map, so container root is host
+root. Read that as the risk it is, not as a reason the grant is harmless. Anyone who can open a PR
+against a repo whose runners live on this box can run code here, and the same box holds the ES
+release secrets - `PGP_SECRET_KEY_B64`, `MAVEN_REPO_PASSWORD`, `DOCKER_HUB_RW_TOKEN` and the
+`ROR_S3_*` pair. The isolation is between this box and everything else, not between the pools on
+it. Sizing or splitting the pools is the lever if that stops being acceptable.
 
 If a runner starts failing every job at `actions/checkout`, check this first:
 
