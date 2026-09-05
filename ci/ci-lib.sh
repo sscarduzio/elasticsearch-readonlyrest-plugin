@@ -132,6 +132,28 @@ is_docker_registry_error() {
     "$1"
 }
 
+# A --retry-if function for `./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository`.
+# True only when the run died in initializeSonatypeStagingRepository's create-staging-repository
+# call AND the status is a transient one. That task is the FIRST of the chain: it asks
+# ossrh-staging-api for a staging repository and nothing has been uploaded yet, so repeating from
+# there cannot leave a second staging repository behind or half-release a version.
+#
+# Not every failure of that task is repeated, deliberately. `No response body` and the profile
+# lookup ("Failed to find staging profile for package group") do not match the second grep, so they
+# fail on the first attempt - a wrong MAVEN_STAGING_PROFILE_ID answers the same way every time, and
+# waiting three more times to say so helps nobody.
+#
+# Every later failure - an upload, the close, the release - is deliberately not repeated. Those run
+# against a staging repository that already exists, so a second attempt would open another one.
+#
+# 401 is in the list because it is measured, not assumed: the same three secrets produced three
+# 401s (runs 33210133390, 33724419080, 33725765043) and one clean publish (33854480199). An
+# expired credential answers the same way every time, so a retry still fails and still reports it.
+is_sonatype_staging_init_error() {
+  grep -Fq "Execution failed for task ':initializeSonatypeStagingRepository'" "$1" &&
+    grep -Eq 'Failed to create staging repository.*status code (401|408|429|5[0-9][0-9])' "$1"
+}
+
 # Force-remove every container belonging to THIS CI job, scoped by the ror.ci-job=$ROR_CI_JOB_ID label so we
 # never touch a sibling CI job sharing the self-hosted Docker daemon. Single source of truth for "kill
 # this CI job's containers" — used by run-pipeline.sh's SIGTERM trap, the pipeline's always() cleanup
