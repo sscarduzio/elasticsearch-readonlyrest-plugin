@@ -4,7 +4,7 @@ CI runs on GitHub Actions: `.github/workflows/ci.yml`. The Linux **test and buil
 **GitHub-hosted** `ubuntu-latest` runners inside the `beshultd/ror-ci-toolchains` image; Windows
 jobs run on GitHub-hosted `windows-2025`. The **release** jobs are the exception and stay on the
 shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` here, plus the standalone
-`mirror-es-libs.yml`. (`publish-pre-builds.yml` moved back to `ubuntu-latest` — see PR #1372.)
+`mirror-es-libs.yml` and `publish-pre-builds.yml`.
 
 `ubuntu-latest` is 4 vCPU / 16 GB, the same shape as the `ubicloud-standard-4` these jobs used to
 run on, but **not the same throughput**: measured on the 10-module PR set, an `it_linux` leg takes
