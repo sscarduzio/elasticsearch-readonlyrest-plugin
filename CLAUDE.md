@@ -46,8 +46,8 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 ## Module Architecture
 
 - **`core/`** — Shared security logic (Scala 3). Contains access control rules, settings parsing, API endpoints, field-level security, and boot/engine initialization. All ES modules depend on this.
-- **`es{version}x/`** — ES version-specific adapter modules (e.g., `es818x`, `es92x`). Each adapts core logic to a specific ES version's internal APIs. Each module's `gradle.properties` defines `supportedEsVersions` (CSV of the ES versions it publishes) — the single source of truth from which the module's newest/default ES version and exact-match lookup (`EsModuleFinder`) are derived. Everything else follows one rule: **the major's base holds the common file and a module may override any of it** — sources, `Dockerfile`, and the build script (`es{N}-base/module.gradle`, applied by the module's `build.gradle`). See `ES_MODULE_LAYOUT.md`.
-- **`es7-base/` / `es8-base/` / `es9-base/`** — One shared-source base per ES major. Each `es*x` module compiles its major's base plus its own `src/main/scala`; a local file with the same relative path always wins (an "override"). A file is in the base only when every module of that major has it. Completed majors (6–8) use the most common shape; the active major (9) uses the newest. `es67x` has no base (only ES 6 module). See `ES_MODULE_LAYOUT.md`.
+- **`es{version}x/`** — ES version-specific adapter modules (e.g., `es818x`, `es92x`). Each adapts core logic to one ES version range. The module's `gradle.properties` (`supportedEsVersions`) is the single source of truth for the versions it publishes.
+- **`es7-base/` / `es8-base/` / `es9-base/`** — one shared-source base per ES major; a module overrides any base file (sources, `Dockerfile`, build script) with its own copy. Layout, rules, and how to change or port files: `docs/architecture/ES_MODULE_LAYOUT.md`.
 - **`audit/`** — Audit event module, cross-compiled for Scala 2.11/2.12/2.13/3.3. Published to Maven Central separately.
 - **`ror-shadowed-libs/`** — Shaded dependencies (auto-relocated to `tech.beshu.ror` prefix via Shadow plugin to avoid classpath conflicts with ES internals).
 - **`integration-tests/`** — Docker-based integration tests using TestContainers. Execution model, knobs and sharding: `integration-tests/README.md`.
@@ -91,11 +91,7 @@ ES module entry point pattern: `es{version}x/src/main/scala/tech/beshu/ror/es/Re
 
 ## When Porting Changes Across ES Modules
 
-Shared code lives once per ES major in `es7-base/`, `es8-base/`, `es9-base/` — edit it there and the change applies to every module of that major (verify each still compiles; ES APIs differ between minors). Only touch a module's own `src/` when its ES API genuinely differs; that copy is an override and shadows the base file. When an override becomes identical to the base, delete it. A change that spans majors must be applied to each major's base. `es67x` has no base and is a full copy. See `ES_MODULE_LAYOUT.md`.
-
-## Configuration Loading
-
-Settings can be loaded from a local file (`FileSettingsSource`) or from an ES index (`IndexSettingsSource`). Dynamic reloading is triggered via `POST /_readonlyrest/admin/refreshconfig`. Test-mode config injection is available via `/_readonlyrest/admin/config/test`.
+See `docs/architecture/ES_MODULE_LAYOUT.md` ("How to change a file").
 
 ## Git Workflow
 
