@@ -46,7 +46,8 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 ## Module Architecture
 
 - **`core/`** — Shared security logic (Scala 3). Contains access control rules, settings parsing, API endpoints, field-level security, and boot/engine initialization. All ES modules depend on this.
-- **`es{version}x/`** — ES version-specific adapter modules (e.g., `es818x`, `es92x`). Each adapts core logic to a specific ES version's internal APIs. Each module's `gradle.properties` defines `supportedEsVersions` (CSV of the ES versions it publishes) — the single source of truth from which the module's newest/default ES version and exact-match lookup (`EsModuleFinder`) are derived.
+- **`es{version}x/`** — ES version-specific adapter modules (e.g., `es818x`, `es92x`). Each adapts core logic to one ES version range. The module's `gradle.properties` (`supportedEsVersions`) is the single source of truth for the versions it publishes.
+- **`es7-base/` / `es8-base/` / `es9-base/`** — one shared-source base per ES major; a module overrides any base file (sources, `Dockerfile`, build script) with its own copy. Layout, rules, and how to change or port files: `docs/architecture/ES_MODULE_LAYOUT.md`.
 - **`audit/`** — Audit event module, cross-compiled for Scala 2.11/2.12/2.13/3.3. Published to Maven Central separately.
 - **`ror-shadowed-libs/`** — Shaded dependencies (auto-relocated to `tech.beshu.ror` prefix via Shadow plugin to avoid classpath conflicts with ES internals).
 - **`integration-tests/`** — Docker-based integration tests using TestContainers. Execution model, knobs and sharding: `integration-tests/README.md`.
@@ -90,11 +91,7 @@ ES module entry point pattern: `es{version}x/src/main/scala/tech/beshu/ror/es/Re
 
 ## When Porting Changes Across ES Modules
 
-Many ES modules share near-identical code. When changing an ES-specific module, check whether the same change applies to other `es{version}x` modules. Divergence is intentional when ES internal APIs differ between versions — porting is not always 1:1.
-
-## Configuration Loading
-
-Settings can be loaded from a local file (`FileSettingsSource`) or from an ES index (`IndexSettingsSource`). Dynamic reloading is triggered via `POST /_readonlyrest/admin/refreshconfig`. Test-mode config injection is available via `/_readonlyrest/admin/config/test`.
+See `docs/architecture/ES_MODULE_LAYOUT.md` ("How to change a file").
 
 ## Git Workflow
 
