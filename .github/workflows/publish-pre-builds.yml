@@ -34,6 +34,20 @@ on:
 permissions:
   contents: read
 
+# The self-hosted pool this workflow used to run on had two slots, and that was the only thing
+# serialising it. On ubuntu-latest it is unbounded, and the publish is not safe to run twice at
+# once: publishEsRorPreBuildDockerImage pushes the SHARED tag <esVersion>-ror-<pluginVersion>, and
+# retag_dev_image then freezes "this commit's image" FROM that shared tag (ci/ci-lib.sh:207-230).
+# Interleave A-push, B-push, A-retag and <esVersion>-ror-<shaA> points at B's image, so an e2e leg
+# tests the wrong build while believing it is commit-pinned.
+#
+# Keyed on the versions and the branch actually built, not on github.ref: two dispatches for the
+# same branch and the same ES versions are the pair that collides. cancel-in-progress is false -
+# the loser waits, because cancelling a half-finished push is what leaves the shared tag dangling.
+concurrency:
+  group: publish-pre-builds-${{ inputs.target_branch || github.ref }}-${{ inputs.es_versions }}
+  cancel-in-progress: false
+
 defaults:
   run:
     shell: bash
@@ -57,7 +71,8 @@ jobs:
     # The rest of what #1369 moved stays self-hosted: nothing waits on release_ror, upload_pre_ror,
     # publish_mvn or mirror-es-libs.
     runs-on: ubuntu-latest
-    timeout-minutes: 600
+    # ubuntu-latest is capped at 6 h, so this is the real ceiling, not a choice.
+    timeout-minutes: 360
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
@@ -112,9 +127,10 @@ jobs:
           echo ">>> Publishing pre-build docker images for: $BUILD_ROR_ES_VERSIONS"
           ci/run-pipeline.sh
 
-      # configure-docker.sh logs in with the Docker Hub RW token. On an ephemeral VM that credential
-      # died with the VM; here it would stay in the runner user's ~/.docker/config.json, where every
-      # later job on the box can read it.
+      # configure-docker.sh logs in with the Docker Hub RW token. The VM is ephemeral again, so the
+      # credential dies with it either way. The step stays: it costs nothing, and it is what keeps
+      # this job correct if it ever moves back to a shared host, where the token would otherwise sit
+      # in the runner user's ~/.docker/config.json for every later job on the box to read.
       - name: Log out of Docker Hub
         if: always()
         run: docker logout || true
