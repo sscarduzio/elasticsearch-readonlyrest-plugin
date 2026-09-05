@@ -32,9 +32,13 @@ This holds for the Scala and Java sources, for the `Dockerfile`, and for the mod
 
 1. A file goes into the base only when **every** module of that major has it. If one module does not
    have the file, the base would add it to that module.
-2. For a **completed** major (ES 6, 7 and 8), the base holds the most common shape of the file.
-3. For the **active** major (ES 9), the base holds the newest shape. A new module of this major then
-   needs the smallest number of overrides.
+2. For a **completed** major (ES 7 and 8), the base holds the shape of the **oldest** ES version of
+   the major -- the major's original shape. That shape never changes again, and it is the one shape a
+   single ES version can resolve in full, so the base project pins its IDE classpath to exactly that
+   version. Every later module that is incompatible overrides the file.
+3. For the **active** major (ES 9), the base holds the **newest** shape, and the base project pins its
+   IDE classpath to the newest supported version. A new module of this major then needs the smallest
+   number of overrides.
 
 There is one base per major, and not one base for all versions, because a base that follows the newest
 ES version is never complete. Each new ES version pushes the previous shape down into the older
@@ -48,6 +52,8 @@ cannot break an ES 7 module.
 
 - To change all modules of one major: change the file in that major's base. Make sure that each module
   of the major still compiles. The ES APIs are different between versions.
+- A change that spans majors must be applied to each major's base. `es67x` has no base and is a full
+  copy.
 - To change one module only: copy the base file into the module, at the same relative path. Then change
   the module copy. For the build script, add the change to the module's `build.gradle`, after the
   `apply from:` line.
