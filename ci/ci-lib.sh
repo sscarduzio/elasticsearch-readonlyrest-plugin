@@ -190,11 +190,13 @@ publish_ror_es_prebuild_plugin() {
     return 3
   fi
 
-  local GIT_SHA
+  local ROR_VERSION GIT_SHA
+  ROR_VERSION=$(gradle_property pluginVersion) || return 1
   GIT_SHA=$(git rev-parse --short HEAD)
 
-  # The shared <esVersion>-ror-<pluginVersion> tag is gradle's business now: it builds it from the
-  # same dockerImageNamespace and pushes it alongside this one. Nothing here needs to name it.
+  # Gradle pushes both of these in one buildx invocation. The shell still names the shared one for
+  # the skip check below - it does not build it.
+  local SHARED_TAG="${ES_VERSION}-ror-${ROR_VERSION}"
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 
   echo ""
@@ -204,8 +206,17 @@ publish_ror_es_prebuild_plugin() {
   local FORCE_REBUILD_NORM
   FORCE_REBUILD_NORM=$(echo "${FORCE_REBUILD:-false}" | tr '[:upper:]' '[:lower:]')
 
-  if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"; then
-    echo ">>> Sources unchanged (image for this commit already published), skipping build"
+  # BOTH tags, not just the source one. `buildx --push -t A -t B` is one build but two registry
+  # writes, and it can publish one and fail on the other. Checking only the source tag would then
+  # skip the rebuild on the next run and leave the shared tag stale or missing for good.
+  #
+  # The old code did not need this: it pushed the shared tag first and copied it to the source tag
+  # afterwards, so the source tag was the LAST write and its presence implied both. Pushing them
+  # together removes that ordering, so the check has to ask for both.
+  if [ "$FORCE_REBUILD_NORM" != "true" ] &&
+     docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" &&
+     docker_image_exists "${ES_DEV_IMAGE_REPO}:${SHARED_TAG}"; then
+    echo ">>> Sources unchanged (both images for this commit already published), skipping build"
   else
     # This build pulls base images and pushes the result, so a registry can answer 429. Only such
     # a failure is repeated. A broken build fails at once.
