@@ -20,6 +20,7 @@ import better.files.File
 import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.implicits.*
+import com.dimafeng.testcontainers.{Container, ForAllTestContainer}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
 import io.lemonlabs.uri.Uri
@@ -87,6 +88,7 @@ import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.RetryPolicy
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.containers.Wiremock
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -103,6 +105,7 @@ class ReadonlyRestStartingTests
     with Inside
     with OptionValues
     with EitherValues
+    with ForAllTestContainer
     with MockFactory
     with Eventually {
 
@@ -112,6 +115,16 @@ class ReadonlyRestStartingTests
   private implicit val testClock: Clock = Clock.systemUTC()
 
   private implicit val requestId: RequestId = RequestId(UUID.randomUUID().toString)
+
+  private val wiremock = Wiremock.create(
+    List(
+      "/ror_starting_ror_audit_tests/wiremock_es_info_cluster1_node1.json",
+      "/ror_starting_ror_audit_tests/wiremock_es_info_cluster1_node2.json",
+      "/ror_starting_ror_audit_tests/wiremock_es_info_cluster2_node1.json",
+    )
+  )
+
+  override val container: Container = wiremock.container
 
   "A ReadonlyREST core" should {
     "support the main engine" should {
@@ -1611,11 +1624,12 @@ class ReadonlyRestStartingTests
         val dataStreamOutputConfig2 = dataStreamOutputConfig1.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
-              AuditClusterNode(Uri.parse("http://1.1.1.1:9200")),
-              AuditClusterNode(Uri.parse("http://2.2.2.2:9200")),
+              AuditClusterNode(Uri.parse(s"http://${wiremock.host}:${wiremock.portProvider.providePort()}/c1n1")),
+              AuditClusterNode(Uri.parse(s"http://${wiremock.host}:${wiremock.portProvider.providePort()}/c1n2")),
             ),
             mode = ClusterMode.RoundRobin,
-            credentials = Some(NodeCredentials("admin", "pass"))
+            credentials = Some(NodeCredentials("admin", "pass")),
+            ignoreClusterConnectivityProblems = false
           )
         )
 
@@ -1672,9 +1686,249 @@ class ReadonlyRestStartingTests
           val expectedMessage =
             s"""Errors:
                  |Unable to configure audit output using a data stream in local cluster. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if the index lifecycle policy with ID 'readonlyrest_audit-lifecycle-policy' has been created]
-                 |Unable to configure audit output using a data stream in remote cluster http://1.1.1.1:9200, http://2.2.2.2:9200. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created]""".stripMarginAndReplaceWindowsLineBreak
+                 |Unable to configure audit output using a data stream in remote cluster http://$wiremockHost/c1n1, http://$wiremockHost/c1n2. Details: [Failed to setup ROR audit data stream readonlyrest_audit. Reason: Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created]""".stripMarginAndReplaceWindowsLineBreak
           message should be(expectedMessage)
         }
+      }
+      "audit remote clusters are mixed" in {
+        val dataStreamOutputConfig = EsDataStreamBased.Config.default.copy(
+          auditCluster = AuditCluster.RemoteAuditCluster(
+            nodes = UniqueNonEmptyList.of(
+              AuditClusterNode(Uri.parse(s"http://$wiremockHost/c1n1")),
+              AuditClusterNode(Uri.parse(s"http://$wiremockHost/c2n1")),
+            ),
+            mode = ClusterMode.RoundRobin,
+            credentials = Some(NodeCredentials("admin", "pass")),
+            ignoreClusterConnectivityProblems = false
+          )
+        )
+
+        val coreFactory = mockCoreFactory(
+          mockedCoreFactory = mock[CoreFactory],
+          "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
+          mockEnabledAccessControl,
+          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          Some(
+            new AuditSetup.AnyOutput(
+              new IndexOrDataStream(
+                mock[IndexBasedAuditOutputServiceCreator],
+                mock[DataStreamBasedAuditOutputServiceCreator]
+              ),
+              AuditingConfig(
+                AuditOutputs.Configured(
+                  NonEmptyList.of(EsDataStreamBased(AuditOutputName.random(), dataStreamOutputConfig))
+                ),
+                defaultAclLog = true,
+                defaultTestEsNodeSettings
+              )
+            )
+          )
+        )
+
+        implicit val systemContext: SystemContext = createSystemContext()
+        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager])
+        val esConfigBasedRorSettings =
+          forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_with_audit/")
+
+        val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+        inside(result) { case Left(StartingFailure(message, _)) =>
+          val expectedMessage =
+            s"""Errors:
+                 |Audit cluster healthcheck failed for remote cluster http://$wiremockHost/c1n1, http://$wiremockHost/c2n1. Details: Configured remote cluster for audit contains ES nodes belonging to different ES clusters (found cluster UUIDs: [1AU0JjWGTyeUBi-6-cnW8g, FsCx9_26TnGqsw7Qp_ClrA]). One audit output can use only nodes from one cluster. See https://docs.readonlyrest.com/elasticsearch/audit#custom-audit-cluster""".stripMarginAndReplaceWindowsLineBreak
+          message should be(expectedMessage)
+        }
+      }
+      "audit remote clusters are mixed even when ignore_es_connectivity_problems is enabled" in {
+        val dataStreamOutputConfig = EsDataStreamBased.Config.default.copy(
+          auditCluster = AuditCluster.RemoteAuditCluster(
+            nodes = UniqueNonEmptyList.of(
+              AuditClusterNode(Uri.parse(s"http://$wiremockHost/c1n1")),
+              AuditClusterNode(Uri.parse(s"http://$wiremockHost/c2n1")),
+            ),
+            mode = ClusterMode.RoundRobin,
+            credentials = Some(NodeCredentials("admin", "pass")),
+            ignoreClusterConnectivityProblems = true
+          )
+        )
+
+        val coreFactory = mockCoreFactory(
+          mockedCoreFactory = mock[CoreFactory],
+          "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
+          mockEnabledAccessControl,
+          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          Some(
+            new AuditSetup.AnyOutput(
+              new IndexOrDataStream(
+                mock[IndexBasedAuditOutputServiceCreator],
+                mock[DataStreamBasedAuditOutputServiceCreator]
+              ),
+              AuditingConfig(
+                AuditOutputs.Configured(
+                  NonEmptyList.of(EsDataStreamBased(AuditOutputName.random(), dataStreamOutputConfig))
+                ),
+                defaultAclLog = true,
+                defaultTestEsNodeSettings
+              )
+            )
+          )
+        )
+
+        implicit val systemContext: SystemContext = createSystemContext()
+        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager])
+        val esConfigBasedRorSettings =
+          forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_with_audit/")
+
+        val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+        inside(result) { case Left(StartingFailure(message, _)) =>
+          val expectedMessage =
+            s"""Errors:
+                 |Audit cluster healthcheck failed for remote cluster http://$wiremockHost/c1n1, http://$wiremockHost/c2n1. Details: Configured remote cluster for audit contains ES nodes belonging to different ES clusters (found cluster UUIDs: [1AU0JjWGTyeUBi-6-cnW8g, FsCx9_26TnGqsw7Qp_ClrA]). One audit output can use only nodes from one cluster. See https://docs.readonlyrest.com/elasticsearch/audit#custom-audit-cluster""".stripMarginAndReplaceWindowsLineBreak
+          message should be(expectedMessage)
+        }
+      }
+      "all remote audit cluster nodes are unreachable" in {
+        val outputConfig = EsIndexBased.Config.default.copy(
+          auditCluster = AuditCluster.RemoteAuditCluster(
+            nodes = UniqueNonEmptyList.of(
+              AuditClusterNode(Uri.parse("http://127.0.0.1:1"))
+            ),
+            mode = ClusterMode.RoundRobin,
+            credentials = None,
+            ignoreClusterConnectivityProblems = false
+          )
+        )
+
+        val coreFactory = mockCoreFactory(
+          mockedCoreFactory = mock[CoreFactory],
+          "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
+          mockEnabledAccessControl,
+          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          Some(
+            new AuditSetup.AnyOutput(
+              new IndexOrDataStream(
+                mock[IndexBasedAuditOutputServiceCreator],
+                mock[DataStreamBasedAuditOutputServiceCreator]
+              ),
+              AuditingConfig(
+                AuditOutputs.Configured(NonEmptyList.of(EsIndexBased(AuditOutputName.random(), outputConfig))),
+                defaultAclLog = true,
+                defaultTestEsNodeSettings
+              )
+            )
+          )
+        )
+
+        implicit val systemContext: SystemContext = createSystemContext()
+        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager])
+        val esConfigBasedRorSettings =
+          forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_with_audit/")
+
+        val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+        inside(result) { case Left(StartingFailure(message, _)) =>
+          val expectedMessage =
+            s"""Errors:
+                 |Audit cluster healthcheck failed for remote cluster http://127.0.0.1:1. Details: No health node detected in remote cluster. Unexpected connection error from audit node: http://127.0.0.1:1. You can disable this check by setting 'ignore_es_connectivity_problems: true' in the audit cluster configuration""".stripMarginAndReplaceWindowsLineBreak
+          message should be(expectedMessage)
+        }
+      }
+    }
+    "be able to be loaded despite remote audit connectivity warnings" when {
+      "all remote audit cluster nodes are unreachable but ignore_es_connectivity_problems is enabled" in withReadonlyRest({
+        val outputConfig = EsIndexBased.Config.default.copy(
+          auditCluster = AuditCluster.RemoteAuditCluster(
+            nodes = UniqueNonEmptyList.of(
+              AuditClusterNode(Uri.parse("http://127.0.0.1:1"))
+            ),
+            mode = ClusterMode.RoundRobin,
+            credentials = None,
+            ignoreClusterConnectivityProblems = true
+          )
+        )
+
+        val noopIndexService = new IndexBasedAuditOutputService {
+          override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+              implicit requestId: RequestId
+          ): Unit = ()
+          override def close(): Unit = ()
+        }
+        val indexCreator: IndexBasedAuditOutputServiceCreator = (_: AuditCluster) => noopIndexService
+
+        val coreFactory = mockCoreFactory(
+          mockedCoreFactory = mock[CoreFactory],
+          "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
+          mockEnabledAccessControl,
+          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          Some(
+            new AuditSetup.AnyOutput(
+              new IndexOrDataStream(
+                indexCreator,
+                mock[DataStreamBasedAuditOutputServiceCreator]
+              ),
+              AuditingConfig(
+                AuditOutputs.Configured(NonEmptyList.of(EsIndexBased(AuditOutputName.random(), outputConfig))),
+                defaultAclLog = true,
+                defaultTestEsNodeSettings
+              )
+            )
+          )
+        )
+
+        implicit val systemContext: SystemContext = createSystemContext()
+        (
+          readonlyRestBoot(coreFactory, mock[IndexDocumentManager], indexCreator = indexCreator),
+          forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_with_audit/")
+        )
+      }) { rorInstance =>
+        rorInstance.engines.value.mainEngine.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
+      }
+      "some remote audit cluster nodes are unreachable but the remaining ones belong to the same cluster" in withReadonlyRest({
+        val outputConfig = EsIndexBased.Config.default.copy(
+          auditCluster = AuditCluster.RemoteAuditCluster(
+            nodes = UniqueNonEmptyList.of(
+              AuditClusterNode(Uri.parse(s"http://$wiremockHost/c1n1")),
+              AuditClusterNode(Uri.parse("http://127.0.0.1:1"))
+            ),
+            mode = ClusterMode.RoundRobin,
+            credentials = Some(NodeCredentials("admin", "pass")),
+            ignoreClusterConnectivityProblems = false
+          )
+        )
+
+        val noopIndexService = new IndexBasedAuditOutputService {
+          override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+              implicit requestId: RequestId
+          ): Unit = ()
+          override def close(): Unit = ()
+        }
+        val indexCreator: IndexBasedAuditOutputServiceCreator = (_: AuditCluster) => noopIndexService
+
+        val coreFactory = mockCoreFactory(
+          mockedCoreFactory = mock[CoreFactory],
+          "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
+          mockEnabledAccessControl,
+          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          Some(
+            new AuditSetup.AnyOutput(
+              new IndexOrDataStream(
+                indexCreator,
+                mock[DataStreamBasedAuditOutputServiceCreator]
+              ),
+              AuditingConfig(
+                AuditOutputs.Configured(NonEmptyList.of(EsIndexBased(AuditOutputName.random(), outputConfig))),
+                defaultAclLog = true,
+                defaultTestEsNodeSettings
+              )
+            )
+          )
+        )
+
+        implicit val systemContext: SystemContext = createSystemContext()
+        (
+          readonlyRestBoot(coreFactory, mock[IndexDocumentManager], indexCreator = indexCreator),
+          forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_with_audit/")
+        )
+      }) { rorInstance =>
+        rorInstance.engines.value.mainEngine.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
       }
     }
     "be started with audit outputs supported by all ES versions" when {
@@ -1682,7 +1936,7 @@ class ReadonlyRestStartingTests
         val usedAuditClusters = new AtomicReference[Vector[AuditCluster]](Vector.empty)
         val indexCreator: IndexBasedAuditOutputServiceCreator = (cluster: AuditCluster) => {
           usedAuditClusters.updateAndGet(_ :+ cluster)
-          MockIndexBasedAuditOutputServiceCreator.index(cluster)
+          MockIndexBasedAuditOutputServiceCreator.indexService
         }
         val capability = new IndexOnly(indexCreator)
 
@@ -2213,6 +2467,8 @@ class ReadonlyRestStartingTests
       .returns(returnsResponse)
     mockedManager
   }
+
+  private def wiremockHost: String = s"${wiremock.host}:${wiremock.portProvider.providePort()}"
 
   private sealed trait AttemptCount
 

@@ -33,6 +33,7 @@ import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.security.cert.X509Certificate
+import java.time.Clock
 import java.util.concurrent.Semaphore
 
 final class RestClientAuditOutputService private (
@@ -92,7 +93,9 @@ final class RestClientAuditOutputService private (
 
 object RestClientAuditOutputService extends RequestIdAwareLogging {
 
-  def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditOutputService = {
+  def create(remoteCluster: AuditCluster.RemoteAuditCluster)(
+      implicit clock: Clock
+  ): RestClientAuditOutputService = {
     val hosts = remoteCluster.nodes.toNonEmptyList.map(toHttpHost)
     createService(remoteCluster, createClusterAwareClient(remoteCluster, hosts))
   }
@@ -100,10 +103,16 @@ object RestClientAuditOutputService extends RequestIdAwareLogging {
   private def createClusterAwareClient(
       remoteCluster: AuditCluster.RemoteAuditCluster,
       hosts: NonEmptyList[HttpHost]
+  )(
+      implicit clock: Clock
   ): MultiNodeRestClient[Request, Response] = {
     remoteCluster.mode match {
       case ClusterMode.RoundRobin =>
         RestClientRequestExecutor.roundRobinClient(createRestClient(remoteCluster, hosts))
+      case ClusterMode.Failover =>
+        RestClientRequestExecutor.failoverClient(
+          hosts.map(host => createRestClient(remoteCluster, NonEmptyList.one(host)))
+        )
     }
   }
 
