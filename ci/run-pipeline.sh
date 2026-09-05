@@ -248,7 +248,15 @@ if [[ $ROR_TASK == "publish_maven_artifacts" ]]; then
       echo ">>> Skipping publishing audit module artifacts"
     else
       echo ">>> Publishing audit module artifacts to sonatype repo"
-      ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
+      # ossrh-staging-api answers the staging-repository request with 401 intermittently, on
+      # credentials that work minutes later: 3 of the last 4 real publishes died that way, each
+      # after 19 s. See is_sonatype_staging_init_error for why only that first task is repeated.
+      # Longer gaps than the default 15 s: this is a release, and the service needs time to settle.
+      (
+        export ROR_RETRY_ATTEMPTS=4 ROR_RETRY_DELAY_SECONDS=30
+        retry_with_backoff --retry-if is_sonatype_staging_init_error \
+          ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
+      )
     fi
   else
     echo ">>> Version mismatch: current=$CURRENT_PLUGIN_VER, published=$PUBLISHED_PLUGIN_VER"
