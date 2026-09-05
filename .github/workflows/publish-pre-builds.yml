@@ -34,6 +34,22 @@ on:
 permissions:
   contents: read
 
+# NO concurrency group here, deliberately. Why, and what that leaves open:
+#
+# The obvious guard would be `concurrency: {group: ..., cancel-in-progress: false}`, and it is a
+# trap. GitHub keeps ONE pending run per group and cancels any previously pending one, so a third
+# dispatch cancels the second. Two repos wait on this workflow by run id
+# (wait_for_es_prebuild_images), and its `*)` branch treats `cancelled` exactly like `failure`:
+# "its images will never be published", exit 6. A group would turn a queued dispatch into a hard
+# failure for a waiter that did nothing wrong - the failure mode this PR exists to remove.
+#
+# That leaves a real, PRE-EXISTING race: publishEsRorPreBuildDockerImage pushes the shared tag
+# <esVersion>-ror-<pluginVersion>, and retag_dev_image then freezes "this commit's image" from it
+# (ci/ci-lib.sh:207-230). Interleave A-push, B-push, A-retag and <esVersion>-ror-<shaA> points at
+# B's image. Two self-hosted slots already allowed that; hosted runners widen the window.
+# The fix belongs in ci-lib.sh - push the immutable source tag directly instead of pushing a shared
+# tag and copying it - not in a workflow-level queue that breaks the callers.
+
 defaults:
   run:
     shell: bash
@@ -41,18 +57,27 @@ defaults:
 jobs:
   publish:
     name: Publishing
-    # Self-hosted: a long build-and-push job, IO-bound, one at a time. Needs a registered
-    # self-hosted runner — see ci/self-hosted-runner.md.
-    runs-on: [self-hosted, Linux, X64]
-    timeout-minutes: 600
+    # NOT self-hosted, even though this is a long IO-bound build. Two paid jobs in other runs wait
+    # on this workflow: the e2e legs of readonlyrest_kbn's pipeline (ubicloud-standard-8) and this
+    # repo's own e2e_prepare. They hold their runner for as long as the pre-build takes to FINISH,
+    # queue time included. The self-hosted pool is two slots on one box, so a release or upload job
+    # occupying both puts this workflow behind them and the waiters pay for the queue:
+    #
+    #   created 17:23:41, started 18:45:19  ->  81.6 min queued, 0.3 min of work
+    #
+    # Measured over the runs on either side of #1369: 0.0-0.6 min queued on ubicloud, and 0.0, 0.0,
+    # 18.2, 19.4, 81.6 min queued self-hosted. The minutes this workflow itself costs are small - it
+    # is 1-13 min of work per run - so moving it back buys the waiters far more than it spends.
+    # readonlyrest_kbn's twin of this workflow runs on ubuntu-latest for the same reason.
+    #
+    # The rest of what #1369 moved stays self-hosted: nothing waits on release_ror, upload_pre_ror,
+    # publish_mvn or mirror-es-libs.
+    runs-on: ubuntu-latest
+    # ubuntu-latest is capped at 6 h, so this is the real ceiling, not a choice.
+    timeout-minutes: 360
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
-      AGENT_ISSELFHOSTED: '1'
-      # This job talks to the box's docker daemon directly, and that daemon also serves the
-      # readonlyrest_kbn runners. No host-wide `docker system prune -a`, no removing containers that
-      # are not ours. See ci/run-pipeline.sh and ci/publish-ror-plugins.sh.
-      ROR_SHARED_DOCKER_HOST: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 0, persist-credentials: false }
@@ -104,9 +129,10 @@ jobs:
           echo ">>> Publishing pre-build docker images for: $BUILD_ROR_ES_VERSIONS"
           ci/run-pipeline.sh
 
-      # configure-docker.sh logs in with the Docker Hub RW token. On an ephemeral VM that credential
-      # died with the VM; here it would stay in the runner user's ~/.docker/config.json, where every
-      # later job on the box can read it.
+      # configure-docker.sh logs in with the Docker Hub RW token. The VM is ephemeral again, so the
+      # credential dies with it either way. The step stays: it costs nothing, and it is what keeps
+      # this job correct if it ever moves back to a shared host, where the token would otherwise sit
+      # in the runner user's ~/.docker/config.json for every later job on the box to read.
       - name: Log out of Docker Hub
         if: always()
         run: docker logout || true
