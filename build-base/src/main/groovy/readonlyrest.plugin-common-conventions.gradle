@@ -15,7 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 import tech.beshu.ror.gradle.utils.EsVersions
-import tech.beshu.ror.gradle.utils.LibsStore
 import tech.beshu.ror.gradle.utils.PluginArtifact
 
 plugins {
@@ -23,8 +22,7 @@ plugins {
     id "readonlyrest.verify-repackage-bytecode"
     id "readonlyrest.scala-compile-conventions"
     id "readonlyrest.docker-image-conventions"
-    // for the IDE-only base-project dependency below; contributes no task to a normal build
-    id "idea"
+    id "readonlyrest.es-libs-repository"
 }
 
 project.ext {
@@ -68,22 +66,6 @@ ext.assemblePluginZip = { File contentsDir, esVer, File outputDir = distribution
     return zip
 }
 
-// The libs store: ES versions Elastic has released but not yet published to Maven Central resolve from here.
-// It is declared after mavenCentral(), so Central still answers for every version it has. mavenPom() reads
-// the POMs ror-tools publishes next to the jars; artifact() covers the jars stored without one.
-//
-// The address comes from LibsStore, which the WRITE side (ror-tools:uploadArtifactsFromEsBinaries) reads too —
-// the two must name the same location, and did not when each carried its own copy of the defaults.
-repositories {
-    maven {
-        url = uri(LibsStore.fromEnv().repositoryUrl())
-        metadataSources {
-            mavenPom()
-            artifact()
-        }
-    }
-}
-
 // Shared-source overlay, one base per ES major: a module compiles /es<major>-base plus its own sources.
 // A local file with the same relative path always wins over the base one (it is an "override").
 //
@@ -113,17 +95,16 @@ if (esBaseDir.exists()) {
         inputs.files(fileTree(overridesDir)).withPropertyName('moduleOverrides')
     }
 
-    // IDE ONLY -- nothing below is on any configuration the build compiles, packages or publishes.
-    // The IDE derives a module's classpath from its source sets, and the base sources reach this module
-    // through the compile TASK instead, so without this every base class an override touches would show
-    // as unresolved. A dependency on the base project gives the IDE the symbols the compiler already has.
-    // A shared source DIRECTORY cannot do the job: IntelliJ allows a directory in one module only, and
-    // this one is shared by every module of the major.
-    idea.module {
-        scopes.PROVIDED.plus += [
-                configurations.detachedConfiguration(
-                        dependencies.project(path: ":es${esMajorForBase}-base"))
-        ]
+    // IDE ONLY in effect -- the build gets the base sources through the compile TASK above, so no
+    // bytecode needs this. But the IDE builds its model from source sets and real configurations, so
+    // without a dependency it can see, every base class an override touches shows as unresolved and
+    // navigation into the base is dead. compileOnly gives it one at no cost to the build: the base
+    // compiles no bytecode (its compile tasks are disabled), so its jar is manifest-only, and
+    // compileOnly keeps it off runtimeClasspath and out of distJars -- the plugin zip is unchanged.
+    // A shared source DIRECTORY cannot do the job: IntelliJ allows a directory in one module only,
+    // and this one is shared by every module of the major.
+    dependencies {
+        compileOnly project(path: ":es${esMajorForBase}-base")
     }
 }
 
