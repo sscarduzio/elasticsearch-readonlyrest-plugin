@@ -34,7 +34,7 @@ on:
 permissions:
   contents: read
 
-# NO concurrency group here, deliberately. See the note in ci/self-hosted-runner.md.
+# NO concurrency group here, deliberately. Why, and what that leaves open:
 #
 # The obvious guard would be `concurrency: {group: ..., cancel-in-progress: false}`, and it is a
 # trap. GitHub keeps ONE pending run per group and cancels any previously pending one, so a third
