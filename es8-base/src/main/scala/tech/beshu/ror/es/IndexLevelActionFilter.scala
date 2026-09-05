@@ -19,7 +19,7 @@ package tech.beshu.ror.es
 import monix.execution.atomic.Atomic
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
-import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.env.Environment
 import org.elasticsearch.repositories.RepositoriesService
@@ -116,7 +116,7 @@ class IndexLevelActionFilter(
         DataStreamBasedAuditOutputService = {
         cluster match {
           case AuditCluster.LocalAuditCluster =>
-            new NodeClientBasedAuditOutputService(client, new XContentJsonParserFactory(xContentRegistry))(
+            new NodeClientBasedAuditOutputService(client, threadPool, new XContentJsonParserFactory(xContentRegistry))(
               using systemContext.clock
             )
           case remote: AuditCluster.RemoteAuditCluster =>

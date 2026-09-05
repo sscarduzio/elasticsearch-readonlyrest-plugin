@@ -18,25 +18,21 @@ package tech.beshu.ror.es.actions.rrmetadata.rest
 
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest.Method.GET
 import org.elasticsearch.rest.action.RestToXContentListener
-import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
+import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestController, RestHandler, RestRequest}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
 
-import java.util
-import scala.jdk.CollectionConverters.*
-
 @Inject
-class RestRRUserMetadataAction extends BaseRestHandler with RestHandler {
+class RestRRUserMetadataAction(settings: Settings, controller: RestController)
+    extends BaseRestHandler(settings)
+    with RestHandler {
 
-  override def routes(): util.List[Route] = List(
-    new Route(GET, constants.USER_METADATA_PATH)
-  ).asJava
+  register("GET", constants.USER_METADATA_PATH)
 
   override val getName: String = "ror-user-metadata-handler"
 
@@ -48,6 +44,9 @@ class RestRRUserMetadataAction extends BaseRestHandler with RestHandler {
         new RestToXContentListener[RRUserMetadataResponse](channel)
       )
     }
+
+  private def register(method: String, path: String): Unit =
+    controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
 
   private def rorKbnLicenseTypeHeaderFrom(request: RestRequest) = {
     findHeader(Header.Name.rorKbnLicenseType, in = request.getHeaders)

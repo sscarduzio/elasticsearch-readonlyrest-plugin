@@ -27,13 +27,12 @@ import org.elasticsearch.action.admin.indices.template.put.{
   PutComponentTemplateAction,
   PutComposableIndexTemplateAction
 }
-import org.elasticsearch.action.datastreams.{CreateDataStreamAction, GetDataStreamAction}
 import org.elasticsearch.action.support.TransportAction
 import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.action.{ActionRequest, ActionResponse, ActionType}
-import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.ComposableIndexTemplate.DataStreamTemplate
-import org.elasticsearch.cluster.metadata.{ComponentTemplate, ComposableIndexTemplate, Template}
+import org.elasticsearch.cluster.metadata.{ComponentTemplate, ComposableIndexTemplate, DataStream, Template}
 import org.elasticsearch.common.compress.CompressedXContent
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.IndexNotFoundException
@@ -55,12 +54,23 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     with RequestIdAwareLogging {
 
   override def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean] = execute {
-    val request = new GetDataStreamAction.Request(List(dataStreamName.value.value).toArray)
-    val action = GetDataStreamAction.INSTANCE
+    val enhancedActionType = client.findActionUnsafe[ActionResponse]("indices:admin/data_stream/get")
+    val request =
+      onClass("org.elasticsearch.xpack.core.action.GetDataStreamAction$Request", enhancedActionType.classLoader)
+        .create(Array(dataStreamName.value.value)) // varargs
+        .get[ActionRequest]
+
     client
-      .executeT(action, request)
+      .executeT(enhancedActionType.action, request)
       .map { response =>
-        response.getDataStreams.asScala.exists(_.getDataStream.getName == dataStreamName.value.value)
+        val dataStreams =
+          on(response)
+            .call("getDataStreams")
+            .get[java.util.List[Object]]
+            .asScala
+            .map(obj => on(obj).call("getDataStream").get[DataStream])
+
+        dataStreams.exists(dataStream => dataStream.getName == dataStreamName.value.value)
       }
       .onErrorRecoverWith { case _: IndexNotFoundException =>
         Task.pure(false)
@@ -68,9 +78,13 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
   }
 
   override protected def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult] = execute {
-    val request = new CreateDataStreamAction.Request(dataStreamName.value.value)
-    val actionType = CreateDataStreamAction.INSTANCE
-    client.executeAck(actionType, request).map(_.isAcknowledged).map(CreationResult.apply)
+    val enhancedActionType = client.findActionUnsafe[AcknowledgedResponse]("indices:admin/data_stream/create")
+    val request =
+      onClass("org.elasticsearch.xpack.core.action.CreateDataStreamAction$Request", enhancedActionType.classLoader)
+        .create(dataStreamName.value.value)
+        .get[ActionRequest]
+
+    client.executeAck(enhancedActionType.action, request).map(_.isAcknowledged).map(CreationResult.apply)
   }
 
   override protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean] = execute {

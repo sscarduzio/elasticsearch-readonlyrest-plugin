@@ -29,6 +29,10 @@ class RRAuthMockRequest(authMockApiRequest: AuthMockApi.AuthMockRequest, esRestR
     extends ActionRequest
     with RorActionRequest {
 
+  def this() = {
+    this(null, null)
+  }
+
   val getAuthMockRequest: AuthMockApi.AuthMockRequest = authMockApiRequest
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 

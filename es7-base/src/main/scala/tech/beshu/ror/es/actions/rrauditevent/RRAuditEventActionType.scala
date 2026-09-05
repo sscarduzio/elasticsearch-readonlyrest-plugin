@@ -16,21 +16,14 @@
  */
 package tech.beshu.ror.es.actions.rrauditevent
 
-import org.elasticsearch.action.ActionType
-import org.elasticsearch.common.io.stream.Writeable
+import org.elasticsearch.action.Action
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
-class RRAuditEventActionType
-    extends ActionType[RRAuditEventResponse](
-      RRAuditEventActionType.name,
-      RRAuditEventActionType.exceptionReader
-    )
+class RRAuditEventActionType extends Action[RRAuditEventResponse](RRAuditEventActionType.name) {
+  override def newResponse(): RRAuditEventResponse = new RRAuditEventResponse()
+}
 
 object RRAuditEventActionType {
   val name: String = RorAction.RorAuditEventAction.value
   val instance = new RRAuditEventActionType()
-
-  case object RRAuditEventActionTypeBeTransported extends Exception
-
-  private[rrauditevent] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAuditEventActionTypeBeTransported
 }

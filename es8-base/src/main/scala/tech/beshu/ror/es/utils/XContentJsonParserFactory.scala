@@ -18,18 +18,14 @@ package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
 import org.elasticsearch.xcontent.json.JsonXContent
-import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentParser, XContentParserConfiguration}
+import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentParser}
 
 final class XContentJsonParserFactory(xContent: NamedXContentRegistry) {
 
-  private val parserConfig =
-    XContentParserConfiguration.EMPTY
-      .withDeprecationHandler(LoggingDeprecationHandler.INSTANCE)
-      .withRegistry(xContent)
-
   def create(json: ujson.Value): XContentParser = {
     JsonXContent.jsonXContent.createParser(
-      parserConfig,
+      xContent,
+      LoggingDeprecationHandler.INSTANCE,
       ujson.write(json)
     )
   }

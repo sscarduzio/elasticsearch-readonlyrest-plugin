@@ -35,7 +35,7 @@ class RolloverEsRequestContext(
 ) extends BaseIndicesEsRequestContext[RolloverRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: RolloverRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    (Option(request.getNewIndexName).toCovariantSet ++ Set(request.getRolloverTarget))
+    (Option(request.getNewIndexName).toCovariantSet ++ Set(request.getAlias))
       .flatMap(RequestedIndex.fromString)
   }
 

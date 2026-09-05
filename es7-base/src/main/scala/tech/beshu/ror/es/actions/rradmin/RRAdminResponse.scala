@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.actions.rradmin
 
 import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{StatusToXContentObject, ToXContent, XContentBuilder}
 import org.elasticsearch.rest.RestStatus
 import tech.beshu.ror.api.MainSettingsApi
@@ -27,12 +26,14 @@ class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
     extends ActionResponse
     with StatusToXContentObject {
 
+  def this() = {
+    this(null)
+  }
+
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response.buildJson(builder.map)
     builder
   }
-
-  override def writeTo(out: StreamOutput): Unit = ()
 
   override def status(): RestStatus = RestStatus.fromCode(response.httpStatus.code())
 

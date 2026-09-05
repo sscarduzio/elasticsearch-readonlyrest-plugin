@@ -16,14 +16,10 @@
  */
 package tech.beshu.ror.es.handler.response
 
-import org.elasticsearch.common.document.DocumentField
 import org.elasticsearch.search.SearchHit
-import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 
-import java.util
 import scala.jdk.CollectionConverters.*
-import scala.util.Try
 
 object SearchHitOps {
 
@@ -40,24 +36,25 @@ object SearchHitOps {
     }
 
     def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions): SearchHit = {
-      val documentFields = extractDocumentFields(searchHit)
+      val (metadataFields, documentFields) = splitMetadataAndNotMetadataFields(searchHit)
 
       Option(documentFields)
-        .map(fields => FieldsFiltering.NonMetadataDocumentFields(fields.asScala.toMap))
+        .map(fields => FieldsFiltering.NonMetadataDocumentFields(fields.toMap))
         .filter(_.value.nonEmpty)
         .map(fields => FieldsFiltering.filterNonMetadataDocumentFields(fields, fieldsRestrictions))
         .map(_.value)
         .foreach { newDocumentFields =>
-          on(searchHit).set("documentFields", newDocumentFields.asJava)
+          val allFields = metadataFields ++ newDocumentFields
+          searchHit.fields(allFields.asJava)
         }
       searchHit
     }
 
   }
 
-  private def extractDocumentFields(searchHit: SearchHit) = {
-    Try(on(searchHit).get[util.Map[String, DocumentField]]("documentFields"))
-      .getOrElse(throw new IllegalStateException("Could not access document fields in search hit."))
+  private def splitMetadataAndNotMetadataFields(searchHit: SearchHit) = {
+    searchHit.getFields.asScala
+      .partition { case (_, value) => value.isMetadataField }
   }
 
 }

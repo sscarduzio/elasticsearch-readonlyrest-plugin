@@ -19,7 +19,7 @@ package org.elasticsearch.transport.netty4
 import io.netty.channel.*
 import io.netty.handler.ssl.*
 import javax.net.ssl.SNIHostName
-import org.elasticsearch.TransportVersion
+import org.elasticsearch.Version
 import org.elasticsearch.cluster.node.DiscoveryNode
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
@@ -27,7 +27,6 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.util.PageCacheRecycler
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.ConnectionProfile
 import org.elasticsearch.transport.netty4.{Netty4Transport, SharedGroupFactory}
 import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
 import tech.beshu.ror.settings.es.SslSettings.InternodeSslSettings
@@ -48,7 +47,7 @@ class SSLNetty4InternodeServerTransport(
     sharedGroupFactory: SharedGroupFactory
 ) extends Netty4Transport(
       settings,
-      TransportVersion.current(),
+      Version.CURRENT,
       threadPool,
       networkService,
       pageCacheRecycler,
@@ -64,46 +63,45 @@ class SSLNetty4InternodeServerTransport(
     SSLCertHelper.prepareServerSSLContext(ssl, clientAuthenticationEnabled = false)
   }
 
-  override def getClientChannelInitializer(node: DiscoveryNode, connectionProfile: ConnectionProfile): ChannelHandler =
-    new ClientChannelInitializer {
-      override def initChannel(ch: Channel): Unit = {
-        super.initChannel(ch)
+  override def getClientChannelInitializer(node: DiscoveryNode): ChannelHandler = new ClientChannelInitializer {
+    override def initChannel(ch: Channel): Unit = {
+      super.initChannel(ch)
 
-        ch.pipeline()
-          .addFirst(new ChannelOutboundHandlerAdapter {
-            override def connect(
-                ctx: ChannelHandlerContext,
-                remoteAddress: SocketAddress,
-                localAddress: SocketAddress,
-                promise: ChannelPromise
-            ): Unit = {
-              val inet = remoteAddress.asInstanceOf[InetSocketAddress]
-              val sslEngine = SSLCertHelper.prepareSSLEngine(
-                sslContext = clientSslContext,
-                hostAndPort = HostAndPort(inet.getHostString, inet.getPort),
-                channelHandlerContext = ctx,
-                serverName = Option(node.getAttributes.get("server_name")).map(new SNIHostName(_)),
-                enableHostnameVerification = ssl.hostnameVerificationEnabled,
-                fipsCompliant = ssl.fipsMode.isSslFipsCompliant
-              )
-              ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
-              super.connect(ctx, remoteAddress, localAddress, promise)
-            }
-          })
-      }
+      ch.pipeline()
+        .addFirst(new ChannelOutboundHandlerAdapter {
+          override def connect(
+              ctx: ChannelHandlerContext,
+              remoteAddress: SocketAddress,
+              localAddress: SocketAddress,
+              promise: ChannelPromise
+          ): Unit = {
+            val inet = remoteAddress.asInstanceOf[InetSocketAddress]
+            val sslEngine = SSLCertHelper.prepareSSLEngine(
+              sslContext = clientSslContext,
+              hostAndPort = HostAndPort(inet.getHostString, inet.getPort),
+              channelHandlerContext = ctx,
+              serverName = Option(node.getAttributes.get("server_name")).map(new SNIHostName(_)),
+              enableHostnameVerification = ssl.hostnameVerificationEnabled,
+              fipsCompliant = ssl.fipsMode.isSslFipsCompliant
+            )
+            ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
+            super.connect(ctx, remoteAddress, localAddress, promise)
+          }
+        })
+    }
 
-      override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
-        if (cause.isInstanceOf[NotSslRecordException] || (cause.getCause != null && cause.getCause
-            .isInstanceOf[NotSslRecordException])) {
-          noRequestIdLogger.error(
-            "Receiving non-SSL connections from: (" + ctx.channel.remoteAddress + "). Will disconnect"
-          )
-          ctx.channel.close
-        } else {
-          super.exceptionCaught(ctx, cause)
-        }
+    override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
+      if (cause.isInstanceOf[NotSslRecordException] || (cause.getCause != null && cause.getCause
+          .isInstanceOf[NotSslRecordException])) {
+        noRequestIdLogger.error(
+          "Receiving non-SSL connections from: (" + ctx.channel.remoteAddress + "). Will disconnect"
+        )
+        ctx.channel.close
+      } else {
+        super.exceptionCaught(ctx, cause)
       }
     }
+  }
 
   override def getServerChannelInitializer(name: String): ChannelHandler = new ServerChannelInitializer(name) {
 

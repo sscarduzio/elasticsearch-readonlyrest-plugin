@@ -17,14 +17,15 @@
 package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
+import monix.eval.Task
+import monix.execution.{CancelablePromise, Scheduler}
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
-import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
-import org.elasticsearch.search.builder.SearchSourceBuilder
+import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, CompositeIndicesRequest}
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -37,7 +38,10 @@ class SearchTemplateEsRequestContext private (
     actionRequest: ActionRequest with CompositeIndicesRequest,
     esContext: EsContext,
     aclContext: AccessControlStaticContext,
+    nodeClient: NodeClient,
     override implicit val threadPool: ThreadPool
+)(
+    implicit scheduler: Scheduler
 ) extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](
       actionRequest,
       esContext,
@@ -64,44 +68,83 @@ class SearchTemplateEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    searchTemplateRequest.setRequest(
-      searchRequest,
-      filteredRequestedIndices,
-      filter,
-      fieldLevelSecurity
-    )
-    ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(fieldLevelSecurity))
+    searchRequest.indices(filteredRequestedIndices.stringify: _*)
+    if (searchTemplateRequest.isSimulate)
+      ModificationResult.UpdateResponse.sync { resp =>
+        filterFieldsFromResponse(fieldLevelSecurity)(new ReflectionBasedSearchTemplateResponse(resp))
+      }
+    else
+      ModificationResult.UpdateResponse.async(callSearchOnceAgain(filter, fieldLevelSecurity))
+  }
+
+  /*
+   * this is a hack, because in old version there is no way to extend ES SearchRequest and provide different behaviour
+   * of `source(...)` method. We have to do that, because in method `convert` of `TransportSearchTemplateAction` search
+   * source is created from params and script and applied to current search request. In the next step we have to apply
+   * out filter and field level security. It is easy to overcome in new ES versions, but in old ones, due to mentioned
+   * final modifier, we are forced to do it in the other way - by calling search again when we get the response. This
+   * solution is obviously less efficient, but at least it works.
+   */
+  private def callSearchOnceAgain(
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ActionResponse => Task[ActionResponse] = { searchTemplateResponse =>
+    {
+      val updatedSearchRequest = searchRequest
+        .applyFilterToQuery(filter)
+        .applyFieldLevelSecurity(fieldLevelSecurity)
+      search(updatedSearchRequest)
+        .map { searchResponse =>
+          val reflectionBasedSearchTemplateResponse = new ReflectionBasedSearchTemplateResponse(searchTemplateResponse)
+          reflectionBasedSearchTemplateResponse.setResponse(searchResponse)
+          filterFieldsFromResponse(fieldLevelSecurity)(reflectionBasedSearchTemplateResponse)
+        }
+    }
   }
 
   private def filterFieldsFromResponse(
       fieldLevelSecurity: Option[FieldLevelSecurity]
-  )(actionResponse: ActionResponse): ActionResponse = {
-    val searchTemplateResponse = new ReflectionBasedSearchTemplateResponse(actionResponse)
-    (searchTemplateResponse.getResponse, fieldLevelSecurity) match {
-      case (Some(response), Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
-        response.getHits.getHits
+  )(response: ReflectionBasedSearchTemplateResponse): ActionResponse = {
+    (response.getResponse, fieldLevelSecurity) match {
+      case (Some(r), Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
+        r.getHits.getHits
           .foreach { hit =>
             hit
               .filterSourceFieldsUsing(restrictions)
               .filterDocumentFieldsUsing(restrictions)
           }
-        actionResponse
+        response.underlying
       case _ =>
-        actionResponse
+        response.underlying
     }
+  }
+
+  private def search(request: SearchRequest): Task[SearchResponse] = {
+    val promise = CancelablePromise[SearchResponse]()
+    nodeClient.search(
+      request,
+      new ActionListener[SearchResponse]() {
+        override def onResponse(response: SearchResponse): Unit = promise.trySuccess(response)
+        override def onFailure(e: Exception): Unit = promise.tryFailure(e)
+      }
+    )
+    Task.fromCancelablePromise(promise)
   }
 
 }
 
 object SearchTemplateEsRequestContext {
 
-  def unapply(arg: ReflectionBasedActionRequest): Option[SearchTemplateEsRequestContext] = {
+  def unapply(arg: ReflectionBasedActionRequest)(
+      implicit scheduler: Scheduler
+  ): Option[SearchTemplateEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("SearchTemplateRequest")) {
       Some(
         new SearchTemplateEsRequestContext(
           arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
           arg.esContext,
           arg.aclContext,
+          arg.nodeClient,
           arg.threadPool
         )
       )
@@ -112,16 +155,17 @@ object SearchTemplateEsRequestContext {
 
 }
 
-final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)(
-    implicit threadPool: ThreadPool,
-    requestId: RequestContext.Id
-) {
+final class ReflectionBasedSearchTemplateRequest(underlying: ActionRequest) {
 
   import org.joor.Reflect.on
 
+  def isSimulate: Boolean = {
+    on(underlying).call("isSimulate").get[Boolean]
+  }
+
   def getRequest: SearchRequest = {
     Option(
-      on(actionRequest)
+      on(underlying)
         .call("getRequest")
         .get[SearchRequest]
     ) match {
@@ -133,52 +177,26 @@ final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)(
     }
   }
 
-  def setRequest(
-      searchRequest: SearchRequest,
-      indices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      filter: Option[Filter],
-      fieldLevelSecurity: Option[FieldLevelSecurity]
-  ): Unit = {
-    setSearchRequest(new EnhancedSearchRequest(searchRequest, indices, filter, fieldLevelSecurity))
-  }
-
   private def setSearchRequest(searchRequest: SearchRequest) = {
-    on(actionRequest).call("setRequest", searchRequest)
-  }
-
-  private class EnhancedSearchRequest(
-      request: SearchRequest,
-      indices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      filter: Option[Filter],
-      fieldLevelSecurity: Option[FieldLevelSecurity]
-  )(
-      implicit threadPool: ThreadPool,
-      requestId: RequestContext.Id
-  ) extends SearchRequest(request) {
-
-    this.indices(indices.stringify: _*)
-
-    override def source(sourceBuilder: SearchSourceBuilder): SearchRequest = {
-      super
-        .source(sourceBuilder)
-        .applyFilterToQuery(filter)
-        .applyFieldLevelSecurity(fieldLevelSecurity)
-    }
-
+    on(underlying).call("setRequest", searchRequest)
   }
 
 }
 
-final class ReflectionBasedSearchTemplateResponse(actionResponse: ActionResponse) {
+final class ReflectionBasedSearchTemplateResponse(val underlying: ActionResponse) {
 
   import org.joor.Reflect.on
 
   def getResponse: Option[SearchResponse] = {
     Option(
-      on(actionResponse)
+      on(underlying)
         .call("getResponse")
         .get[SearchResponse]
     )
+  }
+
+  def setResponse(response: SearchResponse): Unit = {
+    on(underlying).call("setResponse", response)
   }
 
 }

@@ -81,6 +81,7 @@ import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.*
+import tech.beshu.ror.es.handler.request.ActionRequestOps.*
 import tech.beshu.ror.es.handler.request.context.types.*
 import tech.beshu.ror.es.handler.request.context.types.datastreams.*
 import tech.beshu.ror.es.handler.request.context.types.repositories.*
@@ -187,20 +188,8 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
       case request: IndicesAliasesRequest =>
         regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, threadPool))
       // data streams
-      case request: CreateDataStreamAction.Request =>
-        regularRequestHandler.handle(new CreateDataStreamEsRequestContext(request, esContext, threadPool))
-      case request: DataStreamsStatsAction.Request =>
-        regularRequestHandler.handle(new DataStreamsStatsEsRequestContext(request, esContext, threadPool))
-      case request: DeleteDataStreamAction.Request =>
-        regularRequestHandler.handle(new DeleteDataStreamEsRequestContext(request, esContext, threadPool))
-      case request: GetDataStreamAction.Request =>
-        regularRequestHandler.handle(new GetDataStreamEsRequestContext(request, esContext, threadPool))
-      case request: MigrateToDataStreamAction.Request =>
-        regularRequestHandler.handle(new MigrateToDataStreamEsRequestContext(request, esContext, threadPool))
       case request: ModifyDataStreamsAction.Request =>
         regularRequestHandler.handle(new ModifyDataStreamsEsRequestContext(request, esContext, threadPool))
-      case request: PromoteDataStreamAction.Request =>
-        regularRequestHandler.handle(new PromoteDataStreamEsRequestContext(request, esContext, threadPool))
       // indices
       case request: GetIndexRequest =>
         regularRequestHandler.handle(new GetIndexEsRequestContext(request, esContext, aclContext, threadPool))
@@ -243,7 +232,8 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
         regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ResolveIndexAction.Request =>
         regularRequestHandler.handle(new ResolveIndexEsRequestContext(request, esContext, aclContext, threadPool))
-      case request: IndicesRequest.Replaceable if esContext.action != Action.EsAction.termsEnumAction =>
+      case request: IndicesRequest.Replaceable
+          if request.notDataStreamRelated && esContext.action != Action.EsAction.termsEnumAction =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ReindexRequest =>
         regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, aclContext, threadPool))
@@ -271,6 +261,8 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
           // rollup
           case PutRollupJobEsRequestContext(request)  => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
+          // data streams
+          case ReflectionBasedDataStreamsEsRequestContext(request) => regularRequestHandler.handle(request)
           // terms enum
           case TermsEnumEsRequestContext(request) => regularRequestHandler.handle(request)
           // indices based

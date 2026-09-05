@@ -29,6 +29,10 @@ class RRTestSettingsRequest(request: TestSettingsApi.TestSettingsRequest, esRest
     extends ActionRequest
     with RorActionRequest {
 
+  def this() = {
+    this(null, null)
+  }
+
   def getTestSettingsRequest: RorApiRequest[TestSettingsApi.TestSettingsRequest] =
     RorApiRequest(request, loggerUser)
 

@@ -16,41 +16,28 @@
  */
 package tech.beshu.ror.es.services
 
-import cats.effect.Resource
-import monix.eval.Task
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.constants.{
   AUDIT_OUTPUT_MAX_ITEMS,
   AUDIT_OUTPUT_MAX_KB,
   AUDIT_OUTPUT_MAX_RETRIES,
   AUDIT_OUTPUT_MAX_SECONDS
 }
-import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.time.Clock
-
-final class NodeClientBasedAuditOutputService(
-    client: NodeClient,
-    threadPool: ThreadPool,
-    jsonParserFactory: XContentJsonParserFactory
-)(
-    using Clock
-) extends IndexBasedAuditOutputService
-    with DataStreamBasedAuditOutputService
+final class NodeClientBasedAuditOutputService(client: NodeClient)
+    extends IndexBasedAuditOutputService
     with RequestIdAwareLogging {
 
   private val bulkProcessor =
     BulkProcessor
-      .builder(client, new AuditOutputBulkProcessorListener, threadPool, threadPool, () => ())
+      .builder(client, new AuditOutputBulkProcessorListener)
       .setBulkActions(AUDIT_OUTPUT_MAX_ITEMS)
       .setBulkSize(new ByteSizeValue(AUDIT_OUTPUT_MAX_KB, ByteSizeUnit.KB))
       .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_OUTPUT_MAX_SECONDS))
@@ -62,12 +49,6 @@ final class NodeClientBasedAuditOutputService(
       implicit requestId: RequestId
   ): Unit = {
     submitDocument(indexName.name.value, documentId, jsonRecord)
-  }
-
-  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
-      implicit requestId: RequestId
-  ): Unit = {
-    submitDocument(dataStreamName.value.value, documentId, jsonRecord)
   }
 
   override def close(): Unit = {
@@ -107,12 +88,6 @@ final class NodeClientBasedAuditOutputService(
       noRequestIdLogger.error(s"Failed flushing the BulkProcessor: ${failure.getMessage}", failure)
     }
 
-  }
-
-  override val dataStreamCreator: Resource[Task, AuditDataStreamCreator] = {
-    Resource
-      .pure[Task, DataStreamService](new EsDataStreamService(client, jsonParserFactory))
-      .map(AuditDataStreamCreator.apply)
   }
 
 }

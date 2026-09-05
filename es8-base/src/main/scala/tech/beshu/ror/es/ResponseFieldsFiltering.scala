@@ -18,14 +18,12 @@ package tech.beshu.ror.es
 
 import monix.execution.atomic.Atomic
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
-import org.elasticsearch.rest.RestResponse
-import org.elasticsearch.transport.BytesRefRecycler
-import org.elasticsearch.transport.netty4.Netty4WriteThrottlingHandler
+import org.elasticsearch.rest.{BytesRestResponse, RestResponse}
 import org.elasticsearch.xcontent.cbor.CborXContent
 import org.elasticsearch.xcontent.json.JsonXContent
 import org.elasticsearch.xcontent.smile.SmileXContent
 import org.elasticsearch.xcontent.yaml.YamlXContent
-import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentParserConfiguration, XContentType}
+import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentType}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -45,16 +43,22 @@ trait ResponseFieldsFiltering {
   protected def filterRestResponse(response: RestResponse): RestResponse = {
     responseFieldsRestrictions.get() match {
       case Some(fieldsRestrictions) =>
-        filterRestResponse(response, fieldsRestrictions)
+        response match {
+          case bytesRestResponse: BytesRestResponse =>
+            filterBytesRestResponse(bytesRestResponse, fieldsRestrictions)
+          case otherResponse =>
+            noRequestIdLogger.warn("ResponseFields filtering is unavailable for this type of request")
+            otherResponse
+        }
       case None =>
         response
     }
   }
 
-  private def filterRestResponse(
-      response: RestResponse,
+  private def filterBytesRestResponse(
+      response: BytesRestResponse,
       fieldsRestrictions: ResponseFieldsRestrictions
-  ): RestResponse = {
+  ): BytesRestResponse = {
     val (includes, excludes) = fieldsRestrictions.mode match {
       case AccessMode.Whitelist =>
         (fieldsRestrictions.responseFields.toSet.map(_.value.value), Set.empty[String])
@@ -71,30 +75,15 @@ trait ResponseFieldsFiltering {
         SmileXContent.smileXContent
       else throw new IllegalStateException("Unknown response content type")
 
-    val contentStreamInput = (Option(response.content()), Option(response.chunkedContent())) match {
-      case (Some(content), None) =>
-        content.streamInput()
-      case (None, Some(chunkedContent)) =>
-        chunkedContent
-          .encodeChunk(Netty4WriteThrottlingHandler.MAX_BYTES_PER_WRITE, BytesRefRecycler.NON_RECYCLING_INSTANCE)
-          .streamInput()
-      case (Some(_), Some(_)) =>
-        throw new IllegalStateException("Content and ChunkedContent should not be Some at the same time")
-      case (None, None) =>
-        throw new IllegalStateException("Content and ChunkedContent should not be None at the same time")
-    }
-
     val parser = xContent.createParser(
-      XContentParserConfiguration.EMPTY
-        .withDeprecationHandler(LoggingDeprecationHandler.INSTANCE)
-        .withRegistry(NamedXContentRegistry.EMPTY),
-      contentStreamInput
+      NamedXContentRegistry.EMPTY,
+      LoggingDeprecationHandler.INSTANCE,
+      response.content().streamInput()
     )
-
     val contentBuilder = XContentBuilder.builder(xContent.`type`(), includes.asJava, excludes.asJava)
     contentBuilder.copyCurrentStructure(parser)
     contentBuilder.flush()
-    new RestResponse(response.status(), contentBuilder)
+    new BytesRestResponse(response.status(), contentBuilder)
   }
 
 }

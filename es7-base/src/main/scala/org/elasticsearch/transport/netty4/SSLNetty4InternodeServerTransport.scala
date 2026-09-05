@@ -27,7 +27,6 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.util.PageCacheRecycler
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.SharedGroupFactory
 import org.elasticsearch.transport.netty4.Netty4Transport
 import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
 import tech.beshu.ror.settings.es.SslSettings.InternodeSslSettings
@@ -44,8 +43,7 @@ class SSLNetty4InternodeServerTransport(
     circuitBreakerService: CircuitBreakerService,
     namedWriteableRegistry: NamedWriteableRegistry,
     networkService: NetworkService,
-    ssl: InternodeSslSettings,
-    sharedGroupFactory: SharedGroupFactory
+    ssl: InternodeSslSettings
 ) extends Netty4Transport(
       settings,
       Version.CURRENT,
@@ -53,8 +51,7 @@ class SSLNetty4InternodeServerTransport(
       networkService,
       pageCacheRecycler,
       namedWriteableRegistry,
-      circuitBreakerService,
-      sharedGroupFactory
+      circuitBreakerService
     )
     with RequestIdAwareLogging {
 

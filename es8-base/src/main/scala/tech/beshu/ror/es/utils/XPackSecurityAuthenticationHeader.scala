@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.TransportVersion
+import org.elasticsearch.Version
 import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.io.stream.BytesStreamOutput
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -40,9 +40,9 @@ object XPackSecurityAuthenticationHeader {
 
   private def getAuthenticationHeaderValue(nodeName: String, userName: String, isInternal: Boolean): NonEmptyString = {
     val output = new BytesStreamOutput()
-    val currentVersion = TransportVersion.current()
-    output.setTransportVersion(currentVersion)
-    TransportVersion.writeVersion(currentVersion, output)
+    val currentVersion = Version.CURRENT
+    output.setVersion(currentVersion)
+    Version.writeVersion(currentVersion, output)
     // Internal user flag
     output.writeBoolean(isInternal)
     if (isInternal) {
@@ -52,7 +52,7 @@ object XPackSecurityAuthenticationHeader {
       // Regular User.writeUser format: name, roles, metadata, fullName, email, enabled, runAs
       output.writeString(userName)
       output.writeStringArray(Array("superuser"))
-      output.writeGenericMap(Map.empty[String, AnyRef].asJava)
+      output.writeMap(Map.empty[String, AnyRef].asJava)
       output.writeOptionalString(null)
       output.writeOptionalString(null)
       output.writeBoolean(true)
@@ -62,14 +62,12 @@ object XPackSecurityAuthenticationHeader {
     output.writeString(nodeName)
     output.writeString("__attach")
     output.writeString("__attach")
-    // Realm domain flag (ES 8.2.0+)
-    output.writeBoolean(false)
     // Lookup realm present flag
     output.writeBoolean(false)
     // Authentication type: INTERNAL = 4
     output.writeVInt(4)
     // Metadata: empty map
-    output.writeVInt(0)
+    output.writeMap(Map.empty[String, AnyRef].asJava)
     NonEmptyString.unsafeFrom {
       Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
     }

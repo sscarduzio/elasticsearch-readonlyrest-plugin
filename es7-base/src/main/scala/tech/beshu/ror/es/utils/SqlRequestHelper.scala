@@ -30,7 +30,6 @@ import tech.beshu.ror.es.utils.SqlRequestHelper.IndicesError
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-import java.time.ZoneId
 import java.util.List as JList
 import java.util.regex.Pattern
 import scala.jdk.CollectionConverters.*
@@ -160,7 +159,7 @@ final class SqlParser(
   private val underlyingObject = aClass.getConstructor().newInstance()
 
   def createStatement(query: String, params: AnyRef): Either[IndicesError.ParsingException, Statement] = {
-    Try(on(underlyingObject).call("createStatement", query, params, ZoneId.systemDefault()).get[AnyRef]) match {
+    Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
       case Success(s) if Command.isClassOf(s) => Right(new Command(s))
       case Success(s)                         => Right(new SimpleStatement(s))
       case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
@@ -183,12 +182,11 @@ final class SimpleStatement(val underlyingObject: AnyRef)(
 ) extends Statement {
 
   lazy val indices: SqlIndices = {
-    val tableInfoList = tableInfosFrom {
+    val tableIdentifiersList = tableIdentifiersFrom {
       doPreAnalyze(newPreAnalyzer, underlyingObject)
     }
     SqlIndices.SqlTableRelated {
-      tableInfoList
-        .map(tableIdentifierFrom)
+      tableIdentifiersList
         .map(indicesStringFrom)
         .map { tableString =>
           IndexSqlTable(tableString, splitToIndicesPatterns(tableString))
@@ -207,15 +205,11 @@ final class SimpleStatement(val underlyingObject: AnyRef)(
     on(preAnalyzer).call("preAnalyze", statement).get[Any]()
   }
 
-  private def tableInfosFrom(preAnalysis: Any) = {
+  private def tableIdentifiersFrom(preAnalysis: Any) = {
     on(preAnalysis)
       .get[java.util.List[AnyRef]]("indices")
       .asScala
       .toList
-  }
-
-  private def tableIdentifierFrom(tableInfo: Any) = {
-    on(tableInfo).get[AnyRef]("id")
   }
 
   private def indicesStringFrom(tableIdentifier: Any) = {

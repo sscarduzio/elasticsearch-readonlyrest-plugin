@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
-import cats.effect.Resource
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import monix.eval.Task
 import org.apache.http.HttpHost
@@ -28,9 +27,8 @@ import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.elasticsearch.client.*
 import org.elasticsearch.client.RestClient.FailureListener
-import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RequestId}
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -39,22 +37,14 @@ import java.util.concurrent.Semaphore
 
 final class RestClientAuditOutputService private (
     client: MultiNodeRestClient[Request, Response],
-    inFlightRequestSemaphore: Semaphore,
-    override val dataStreamCreator: Resource[Task, AuditDataStreamCreator]
+    inFlightRequestSemaphore: Semaphore
 ) extends IndexBasedAuditOutputService
-    with DataStreamBasedAuditOutputService
     with RequestIdAwareLogging {
 
   override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
       implicit requestId: RequestId
   ): Unit = {
     submitDocument(indexName.name.value, documentId, jsonRecord)
-  }
-
-  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
-      implicit requestId: RequestId
-  ): Unit = {
-    submitDocument(dataStreamName.value.value, documentId, jsonRecord)
   }
 
   override def close(): Unit = {
@@ -104,34 +94,27 @@ object RestClientAuditOutputService extends RequestIdAwareLogging {
 
   def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditOutputService = {
     val hosts = remoteCluster.nodes.toNonEmptyList.map(toHttpHost)
-    val restClient = createRestClient(remoteCluster, hosts)
-    createService(remoteCluster, restClient)
+    createService(remoteCluster, createClusterAwareClient(remoteCluster, hosts))
   }
 
   private def createClusterAwareClient(
       remoteCluster: AuditCluster.RemoteAuditCluster,
-      restClient: RestClient
+      hosts: NonEmptyList[HttpHost]
   ): MultiNodeRestClient[Request, Response] = {
     remoteCluster.mode match {
       case ClusterMode.RoundRobin =>
-        RestClientRequestExecutor.roundRobinClient(restClient)
+        RestClientRequestExecutor.roundRobinClient(createRestClient(remoteCluster, hosts))
     }
   }
 
   private def createService(
       remoteCluster: AuditCluster.RemoteAuditCluster,
-      restClient: RestClient
+      client: MultiNodeRestClient[Request, Response]
   ) = {
     new RestClientAuditOutputService(
-      client = createClusterAwareClient(remoteCluster, restClient),
+      client = client,
       inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
-      dataStreamCreator = createAuditOutputCreator(restClient)
     )
-  }
-
-  // the same client submits the audit events, so the resource must not close it. The service closes it.
-  private def createAuditOutputCreator(restClient: RestClient) = {
-    Resource.eval(Task.delay(AuditDataStreamCreator(new RestClientDataStreamService(restClient))))
   }
 
   private def createRestClient(

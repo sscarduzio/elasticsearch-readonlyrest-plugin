@@ -18,14 +18,15 @@ package tech.beshu.ror.es.services
 
 import monix.eval.Task
 import org.elasticsearch.ElasticsearchSecurityException
-import org.elasticsearch.common.settings.SecureString
+import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
 import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 import tech.beshu.ror.utils.{AccessControllerHelper, RequestIdAwareLogging}
 
-import scala.util.{Failure, Success, Try, Using}
+import scala.util.{Failure, Success, Try}
 
 class ReflectionBasedApiKeyService(threadPool: ThreadPool) extends ApiKeyService {
 
@@ -45,15 +46,6 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any, threadPool: Threa
     extends ApiKeyService
     with RequestIdAwareLogging {
 
-  private val apiKeyType: Try[AnyRef] = Try {
-    val classLoader = apiKeyServiceRef.getClass.getClassLoader
-    val apiKeyTypeClass =
-      Class.forName("org.elasticsearch.xpack.core.security.action.apikey.ApiKey$Type", true, classLoader)
-    onClass(apiKeyTypeClass)
-      .call("valueOf", "REST")
-      .get[AnyRef]
-  }
-
   override def validateToken(token: AuthorizationToken)(
       implicit requestId: RequestId
   ): Task[Boolean] = {
@@ -69,13 +61,11 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any, threadPool: Threa
     }
   }
 
-  private def parseApiKey(token: AuthorizationToken): Try[Option[AnyRef]] =
-    Using(new SecureString(token.value.value.toArray)) { secureString =>
-      apiKeyType
-        .flatMap { `type` =>
-          Try(Option(on(apiKeyServiceRef).call("parseApiKey", secureString, `type`).get[AnyRef]))
-        }
-    }.flatten
+  private def parseApiKey(token: AuthorizationToken): Try[Option[AnyRef]] = Try {
+    val tempContext = new ThreadContext(Settings.EMPTY)
+    tempContext.putHeader("Authorization", token.stringify)
+    Option(on(apiKeyServiceRef).call("getCredentialsFromHeader", tempContext).get[AnyRef])
+  }
 
   private def authenticateApiKey(apiKeyCredentials: AnyRef): Task[Boolean] = {
     val listener = new ActionListenerToTaskAdapter[AnyRef]

@@ -18,24 +18,20 @@ package tech.beshu.ror.es.actions.rrauthmock.rest
 
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
+import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.rest.*
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
-import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, RRAuthMockRequest, RRAuthMockResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
-import java.util
-import scala.jdk.CollectionConverters.*
-
 @Inject
-class RestRRAuthMockAction extends BaseRestHandler with RestHandler {
+class RestRRAuthMockAction(settings: Settings, controller: RestController)
+    extends BaseRestHandler(settings)
+    with RestHandler {
 
-  override def routes(): util.List[Route] = List(
-    new Route(GET, constants.PROVIDE_AUTH_MOCK_PATH),
-    new Route(POST, constants.CONFIGURE_AUTH_MOCK_PATH)
-  ).asJava
+  register("GET", constants.PROVIDE_AUTH_MOCK_PATH)
+  register("POST", constants.CONFIGURE_AUTH_MOCK_PATH)
 
   override val getName: String = "ror-auth-mock-handler"
 
@@ -49,6 +45,10 @@ class RestRRAuthMockAction extends BaseRestHandler with RestHandler {
         new RestToXContentWithStatusListener[RRAuthMockResponse](channel)
       )
     }
+  }
+
+  private def register(method: String, path: String): Unit = {
+    controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
   }
 
 }

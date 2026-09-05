@@ -22,30 +22,32 @@ import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
-import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.client.Client
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
+import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.*
 import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
-import org.elasticsearch.env.Environment
-import org.elasticsearch.features.NodeFeature
-import org.elasticsearch.http.{HttpPreRequest, HttpServerTransport}
+import org.elasticsearch.env.{Environment, NodeEnvironment}
+import org.elasticsearch.http.HttpServerTransport
 import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.IgnoredFieldMapper
 import org.elasticsearch.indices.breaker.CircuitBreakerService
-import org.elasticsearch.injection.guice.Inject
 import org.elasticsearch.plugins.*
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestController, RestHandler}
-import org.elasticsearch.telemetry.tracing.Tracer
+import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.{Netty4Utils, SharedGroupFactory}
 import org.elasticsearch.transport.netty4.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import org.elasticsearch.transport.{Transport, TransportInterceptor}
+import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
@@ -76,14 +78,12 @@ import tech.beshu.ror.{SystemContext, constants}
 
 import java.nio.file.Path
 import java.util
-import java.util.function.{BiConsumer, Predicate, Supplier}
-import scala.annotation.nowarn
+import java.util.function.Supplier
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
 @Inject
-@nowarn("cat=deprecation")
 class ReadonlyRestPlugin(s: Settings, p: Path)
     extends Plugin
     with ScriptPlugin
@@ -101,7 +101,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
   // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception
   doPrivileged {
-    Netty4Utils.setAvailableProcessors(EsExecutors.NODE_PROCESSORS_SETTING.get(s).roundDown())
+    Netty4Utils.setAvailableProcessors(EsExecutors.NODE_PROCESSORS_SETTING.get(s))
   }
 
   private implicit val systemContext: SystemContext = SystemContext.default
@@ -121,19 +121,27 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   esConfigBasedRorSettings.ssl.foreach(SecurityProviderConfiguratorForFips.configureIfRequired)
 
-  override def createComponents(services: Plugin.PluginServices): util.Collection[_] = {
+  override def createComponents(
+      client: Client,
+      clusterService: ClusterService,
+      threadPool: ThreadPool,
+      resourceWatcherService: ResourceWatcherService,
+      scriptService: ScriptService,
+      xContentRegistry: NamedXContentRegistry,
+      environment: Environment,
+      nodeEnvironment: NodeEnvironment,
+      namedWriteableRegistry: NamedWriteableRegistry,
+      indexNameExpressionResolver: IndexNameExpressionResolver,
+      repositoriesServiceSupplier: Supplier[RepositoriesService]
+  ): util.Collection[AnyRef] = {
     doPrivileged {
-      val client = services.client().asInstanceOf[NodeClient]
-      val repositoriesServiceSupplier = new Supplier[RepositoriesService] {
-        override def get(): RepositoriesService = services.repositoriesService()
-      }
       ilaf = new IndexLevelActionFilter(
-        services.clusterService(),
-        client,
-        services.threadPool(),
-        services.xContentRegistry(),
+        clusterService,
+        client.asInstanceOf[NodeClient],
+        threadPool,
+        xContentRegistry,
         environment,
-        new RemoteClusterServiceSupplier(client),
+        new RemoteClusterServiceSupplier(repositoriesServiceSupplier),
         () => Some(repositoriesServiceSupplier.get()),
         esInitListener,
         esConfigBasedRorSettings
@@ -168,9 +176,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       xContentRegistry: NamedXContentRegistry,
       networkService: NetworkService,
       dispatcher: HttpServerTransport.Dispatcher,
-      perRequestThreadContext: BiConsumer[HttpPreRequest, ThreadContext],
-      clusterSettings: ClusterSettings,
-      tracer: Tracer
+      clusterSettings: ClusterSettings
   ): util.Map[String, Supplier[HttpServerTransport]] = {
     esConfigBasedRorSettings.ssl
       .flatMap(_.externalSsl)
@@ -179,13 +185,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
           override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(
             settings,
             networkService,
+            bigArrays,
             threadPool,
             xContentRegistry,
             dispatcher,
             ssl,
             clusterSettings,
-            getSharedGroupFactory(settings),
-            tracer
+            getSharedGroupFactory(settings)
           )
         }
       }
@@ -246,15 +252,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def getRestHandlers(
       settings: Settings,
-      namedWriteableRegistry: NamedWriteableRegistry,
       restController: RestController,
       clusterSettings: ClusterSettings,
       indexScopedSettings: IndexScopedSettings,
       settingsFilter: SettingsFilter,
       indexNameExpressionResolver: IndexNameExpressionResolver,
-      nodesInCluster: Supplier[DiscoveryNodes],
-      clusterSupportsFeature: Predicate[NodeFeature]
-  ): util.Collection[RestHandler] = {
+      nodesInCluster: Supplier[DiscoveryNodes]
+  ): util.List[RestHandler] = {
     import tech.beshu.ror.es.utils.RestControllerOps.*
     restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
     List[RestHandler](

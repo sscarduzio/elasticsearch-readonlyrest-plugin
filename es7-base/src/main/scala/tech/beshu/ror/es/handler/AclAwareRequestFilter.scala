@@ -21,7 +21,6 @@ import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
-import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
 import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest
 import org.elasticsearch.action.admin.cluster.repositories.put.PutRepositoryRequest
@@ -36,28 +35,14 @@ import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.get.GetIndexRequest
-import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.rollover.RolloverRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.action.admin.indices.shrink.ResizeRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
-import org.elasticsearch.action.admin.indices.template.delete.{
-  DeleteComponentTemplateAction,
-  DeleteComposableIndexTemplateAction,
-  DeleteIndexTemplateRequest
-}
-import org.elasticsearch.action.admin.indices.template.get.{
-  GetComponentTemplateAction,
-  GetComposableIndexTemplateAction,
-  GetIndexTemplatesRequest
-}
-import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateRequest, SimulateTemplateAction}
-import org.elasticsearch.action.admin.indices.template.put.{
-  PutComponentTemplateAction,
-  PutComposableIndexTemplateAction,
-  PutIndexTemplateRequest
-}
+import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
+import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
+import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
@@ -65,6 +50,7 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.tasks.Task as EsTask
@@ -80,9 +66,7 @@ import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.*
-import tech.beshu.ror.es.handler.request.ActionRequestOps.*
 import tech.beshu.ror.es.handler.request.context.types.*
-import tech.beshu.ror.es.handler.request.context.types.datastreams.*
 import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
@@ -93,7 +77,7 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import java.time.Instant
 import scala.reflect.ClassTag
 
-class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
+class AclAwareRequestFilter(settings: Settings, nodeClient: NodeClient, threadPool: ThreadPool)(
     implicit systemContext: SystemContext
 ) extends RequestIdAwareLogging {
 
@@ -154,8 +138,6 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
         regularRequestHandler.handle(new DeleteRepositoryEsRequestContext(request, esContext, threadPool))
       case request: VerifyRepositoryRequest =>
         regularRequestHandler.handle(new VerifyRepositoryEsRequestContext(request, esContext, threadPool))
-      case request: CleanupRepositoryRequest =>
-        regularRequestHandler.handle(new CleanupRepositoryEsRequestContext(request, esContext, threadPool))
       // templates
       case request: GetIndexTemplatesRequest =>
         regularRequestHandler.handle(new GetTemplatesEsRequestContext(request, esContext, threadPool))
@@ -163,24 +145,6 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
         regularRequestHandler.handle(new PutTemplateEsRequestContext(request, esContext, threadPool))
       case request: DeleteIndexTemplateRequest =>
         regularRequestHandler.handle(new DeleteTemplateEsRequestContext(request, esContext, threadPool))
-      case request: GetComposableIndexTemplateAction.Request =>
-        regularRequestHandler.handle(new GetComposableIndexTemplateEsRequestContext(request, esContext, threadPool))
-      case request: PutComposableIndexTemplateAction.Request =>
-        regularRequestHandler.handle(new PutComposableIndexTemplateEsRequestContext(request, esContext, threadPool))
-      case request: DeleteComposableIndexTemplateAction.Request =>
-        regularRequestHandler.handle(new DeleteComposableIndexTemplateEsRequestContext(request, esContext, threadPool))
-      case request: GetComponentTemplateAction.Request =>
-        regularRequestHandler.handle(new GetComponentTemplateEsRequestContext(request, esContext, threadPool))
-      case request: PutComponentTemplateAction.Request =>
-        regularRequestHandler.handle(new PutComponentTemplateEsRequestContext(request, esContext, threadPool))
-      case request: DeleteComponentTemplateAction.Request =>
-        regularRequestHandler.handle(new DeleteComponentTemplateEsRequestContext(request, esContext, threadPool))
-      case request: SimulateIndexTemplateRequest =>
-        regularRequestHandler.handle(
-          new SimulateIndexTemplateRequestEsRequestContext(request, esContext, aclContext, threadPool)
-        )
-      case request: SimulateTemplateAction.Request =>
-        regularRequestHandler.handle(SimulateTemplateRequestEsRequestContext.from(request, esContext, threadPool))
       // aliases
       case request: GetAliasesRequest =>
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, threadPool))
@@ -226,9 +190,7 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
         )
       case request: RolloverRequest =>
         regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, threadPool))
-      case request: ResolveIndexAction.Request =>
-        regularRequestHandler.handle(new ResolveIndexEsRequestContext(request, esContext, aclContext, threadPool))
-      case request: IndicesRequest.Replaceable if request.notDataStreamRelated =>
+      case request: IndicesRequest.Replaceable =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ReindexRequest =>
         regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, aclContext, threadPool))
@@ -237,7 +199,7 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
       case request: ClusterRerouteRequest =>
         regularRequestHandler.handle(new ClusterRerouteEsRequestContext(request, esContext, aclContext, threadPool))
       case request: CompositeIndicesRequest =>
-        ReflectionBasedActionRequest(esContext, aclContext, threadPool) match {
+        ReflectionBasedActionRequest(esContext, aclContext, nodeClient, threadPool) match {
           case SqlIndicesEsRequestContext(r)          => regularRequestHandler.handle(r)
           case SearchTemplateEsRequestContext(r)      => regularRequestHandler.handle(r)
           case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
@@ -251,13 +213,10 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
         }
       // rest
       case _ =>
-        ReflectionBasedActionRequest(esContext, aclContext, threadPool) match {
-          case XpackAsyncSearchRequestContext(request) => regularRequestHandler.handle(request)
+        ReflectionBasedActionRequest(esContext, aclContext, nodeClient, threadPool) match {
           // rollup
           case PutRollupJobEsRequestContext(request)  => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
-          // data streams
-          case ReflectionBasedDataStreamsEsRequestContext(request) => regularRequestHandler.handle(request)
           // indices based
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
           // rest

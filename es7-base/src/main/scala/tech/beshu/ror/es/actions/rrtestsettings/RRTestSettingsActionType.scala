@@ -16,21 +16,15 @@
  */
 package tech.beshu.ror.es.actions.rrtestsettings
 
-import org.elasticsearch.action.ActionType
-import org.elasticsearch.common.io.stream.Writeable
+import org.elasticsearch.action.Action
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
-class RRTestSettingsActionType
-    extends ActionType[RRTestSettingsResponse](
-      RRTestSettingsActionType.name,
-      RRTestSettingsActionType.exceptionReader
-    )
+class RRTestSettingsActionType extends Action[RRTestSettingsResponse](RRTestSettingsActionType.name) {
+  override def newResponse(): RRTestSettingsResponse =
+    new RRTestSettingsResponse()
+}
 
 object RRTestSettingsActionType {
   val name: String = RorAction.RorTestSettingsAction.value
   val instance = new RRTestSettingsActionType()
-
-  case object RRAdminActionCannotBeTransported extends Exception
-
-  def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAdminActionCannotBeTransported
 }

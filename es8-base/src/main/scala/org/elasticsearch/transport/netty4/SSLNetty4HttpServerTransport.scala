@@ -20,11 +20,11 @@ import io.netty.channel.Channel
 import io.netty.handler.ssl.NotSslRecordException
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.{ClusterSettings, Settings}
+import org.elasticsearch.common.util.BigArrays
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport
 import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
-import org.elasticsearch.telemetry.tracing.Tracer
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.{SharedGroupFactory, TLSConfig}
+import org.elasticsearch.transport.netty4.SharedGroupFactory
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
@@ -34,25 +34,22 @@ import tech.beshu.ror.utils.SSLCertHelper
 class SSLNetty4HttpServerTransport(
     settings: Settings,
     networkService: NetworkService,
+    bigArrays: BigArrays,
     threadPool: ThreadPool,
     xContentRegistry: NamedXContentRegistry,
     dispatcher: HttpServerTransport.Dispatcher,
     ssl: ExternalSslSettings,
     clusterSettings: ClusterSettings,
-    sharedGroupFactory: SharedGroupFactory,
-    tracer: Tracer
+    sharedGroupFactory: SharedGroupFactory
 ) extends Netty4HttpServerTransport(
       settings,
       networkService,
+      bigArrays,
       threadPool,
       xContentRegistry,
       dispatcher,
       clusterSettings,
-      sharedGroupFactory,
-      tracer,
-      TLSConfig.noTLS(),
-      null,
-      null
+      sharedGroupFactory
     )
     with RequestIdAwareLogging {
 
@@ -71,7 +68,7 @@ class SSLNetty4HttpServerTransport(
   }
 
   final class SSLHandler(transport: Netty4HttpServerTransport)
-      extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings, TLSConfig.noTLS(), null, null) {
+      extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings) {
 
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)

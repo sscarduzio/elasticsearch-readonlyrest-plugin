@@ -32,7 +32,7 @@ class TransportRRTestSettingsAction(
       RRTestSettingsActionType.name,
       transportService,
       actionFilters,
-      RRTestSettingsActionType.exceptionReader
+      () => new RRTestSettingsRequest()
     ) {
 
   @Inject

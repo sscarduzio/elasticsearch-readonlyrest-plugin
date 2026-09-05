@@ -18,27 +18,23 @@ package tech.beshu.ror.es.actions.rradmin.rest
 
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.*
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest.Method.*
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
-import java.util
-import scala.jdk.CollectionConverters.*
-
 @Inject
-class RestRRAdminAction extends BaseRestHandler with RestHandler {
+class RestRRAdminAction(settings: Settings, controller: RestController)
+    extends BaseRestHandler(settings)
+    with RestHandler {
 
-  override def routes(): util.List[Route] = List(
-    new Route(POST, constants.FORCE_RELOAD_SETTINGS_PATH),
-    new Route(GET, constants.PROVIDE_FILE_SETTINGS_PATH),
-    new Route(GET, constants.PROVIDE_INDEX_SETTINGS_PATH),
-    new Route(GET, constants.FETCH_CURRENT_AUDIT_CONFIGURATION_PATH),
-    new Route(POST, constants.UPDATE_INDEX_SETTINGS_PATH),
-  ).asJava
+  register("POST", constants.FORCE_RELOAD_SETTINGS_PATH)
+  register("GET", constants.PROVIDE_INDEX_SETTINGS_PATH)
+  register("GET", constants.FETCH_CURRENT_AUDIT_CONFIGURATION_PATH)
+  register("POST", constants.UPDATE_INDEX_SETTINGS_PATH)
+  register("GET", constants.PROVIDE_FILE_SETTINGS_PATH)
 
   override val getName: String = "ror-admin-handler"
 
@@ -52,6 +48,10 @@ class RestRRAdminAction extends BaseRestHandler with RestHandler {
         new RestToXContentWithStatusListener[RRAdminResponse](channel)
       )
     }
+  }
+
+  private def register(method: String, path: String): Unit = {
+    controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
   }
 
 }

@@ -29,6 +29,10 @@ class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
     extends ActionResponse
     with StatusToXContentObject {
 
+  def this() = {
+    this(null)
+  }
+
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response match {
       case provideSettingsResponse: ProvideTestSettings =>

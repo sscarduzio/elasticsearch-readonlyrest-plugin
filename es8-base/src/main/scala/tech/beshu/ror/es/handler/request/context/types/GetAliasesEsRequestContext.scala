@@ -36,11 +36,13 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.*
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.List as JList
+import scala.jdk.CollectionConverters.*
 
 class GetAliasesEsRequestContext(
     actionRequest: GetAliasesRequest,
@@ -166,8 +168,8 @@ class GetAliasesEsRequestContext(
           s"${id.show} Unexpected response type - expected: [${classOf[GetAliasesResponse].show}], was: [${other.getClass.show}]"
         )
         (
-          Map.asEmptyJavaMap[String, JList[AliasMetadata]],
-          Map.asEmptyJavaMap[String, JList[DataStreamAlias]]
+          ImmutableOpenMapOps.empty[String, JList[AliasMetadata]],
+          Map.empty[String, JList[DataStreamAlias]].asJava
         )
     }
     new GetAliasesResponse(aliases, streams)

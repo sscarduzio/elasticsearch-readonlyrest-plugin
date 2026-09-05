@@ -32,7 +32,7 @@ class TransportRRAuthMockAction(
       RRAuthMockActionType.name,
       transportService,
       actionFilters,
-      RRAuthMockActionType.exceptionReader
+      () => new RRAuthMockRequest
     ) {
 
   @Inject
