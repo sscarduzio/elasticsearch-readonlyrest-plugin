@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest, GetIndexTemplatesResponse}
-import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexTemplateMetadata}
+import org.elasticsearch.cluster.metadata.{AliasMetaData, IndexTemplateMetaData}
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
@@ -107,9 +107,9 @@ class GetTemplatesEsRequestContext(
 
 private[templates] object GetTemplatesEsRequestContext extends RequestIdAwareLogging {
 
-  def filter(templates: Iterable[IndexTemplateMetadata], usingTemplate: Set[Template] => Set[Template])(
+  def filter(templates: Iterable[IndexTemplateMetaData], usingTemplate: Set[Template] => Set[Template])(
       implicit requestContextId: RequestContext.Id
-  ): List[IndexTemplateMetadata] = {
+  ): List[IndexTemplateMetaData] = {
     val templatesMap = templates.flatMap { metadata =>
       toLegacyTemplate(metadata) match {
         case Right(template) =>
@@ -138,8 +138,8 @@ private[templates] object GetTemplatesEsRequestContext extends RequestIdAwareLog
     }.toList
   }
 
-  private def filterMetadataData(metadata: IndexTemplateMetadata, basedOn: LegacyTemplate) = {
-    new IndexTemplateMetadata(
+  private def filterMetadataData(metadata: IndexTemplateMetaData, basedOn: LegacyTemplate) = {
+    new IndexTemplateMetaData(
       metadata.name(),
       metadata.order(),
       metadata.version(),
@@ -150,7 +150,7 @@ private[templates] object GetTemplatesEsRequestContext extends RequestIdAwareLog
     )
   }
 
-  private def filterAliases(metadata: IndexTemplateMetadata, template: LegacyTemplate) = {
+  private def filterAliases(metadata: IndexTemplateMetaData, template: LegacyTemplate) = {
     val aliasesStrings = template.aliases.stringify
     val filteredAliasesMap =
       metadata
@@ -159,12 +159,12 @@ private[templates] object GetTemplatesEsRequestContext extends RequestIdAwareLog
         .filter { a => aliasesStrings.contains(a.alias()) }
         .map(a => (a.alias(), a))
         .toMap
-    new ImmutableOpenMap.Builder[String, AliasMetadata]()
+    new ImmutableOpenMap.Builder[String, AliasMetaData]()
       .putAll(filteredAliasesMap.asJava)
       .build()
   }
 
-  private def toLegacyTemplate(metadata: IndexTemplateMetadata) = {
+  private def toLegacyTemplate(metadata: IndexTemplateMetaData) = {
     for {
       name <- TemplateName
         .fromString(metadata.getName)

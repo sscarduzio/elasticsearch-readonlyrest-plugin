@@ -17,18 +17,19 @@
 package tech.beshu.ror.es.actions.wrappers._cat.rest
 
 import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.common.inject.Inject
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.action.RestActionListener
 import org.elasticsearch.rest.action.cat.RestCatAction
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, RorWrappedCatRequest, RorWrappedCatResponse}
 
-import java.util
-
-class RorWrappedRestCatAction(catAction: RestCatAction) extends BaseRestHandler {
+@Inject
+class RorWrappedRestCatAction(settings: Settings, catAction: RestCatAction)
+    extends BaseRestHandler(settings)
+    with RestHandler {
 
   override val getName: String = catAction.getName
-
-  override def routes(): util.List[RestHandler.Route] = catAction.routes()
 
   override def prepareRequest(request: RestRequest, client: NodeClient): BaseRestHandler.RestChannelConsumer = {
     (channel: RestChannel) =>

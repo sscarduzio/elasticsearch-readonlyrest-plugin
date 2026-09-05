@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
@@ -149,7 +150,7 @@ private[templates] object GetTemplatesEsRequestContext extends RequestIdAwareLog
       metadata.version(),
       basedOn.patterns.map(_.value).stringify.asJava,
       metadata.settings(),
-      Map(metadata.mappings().string() -> metadata.mappings()).asJava,
+      ImmutableOpenMapOps.from(Map(metadata.mappings().string() -> metadata.mappings())),
       filterAliases(metadata, basedOn)
     )
   }
@@ -163,9 +164,8 @@ private[templates] object GetTemplatesEsRequestContext extends RequestIdAwareLog
         .filter { a => aliasesStrings.contains(a.alias()) }
         .map(a => (a.alias(), a))
         .toMap
-    ImmutableOpenMap
-      .builder[String, AliasMetadata]()
-      .putAllFromMap(filteredAliasesMap.asJava)
+    new ImmutableOpenMap.Builder[String, AliasMetadata]()
+      .putAll(filteredAliasesMap.asJava)
       .build()
   }
 

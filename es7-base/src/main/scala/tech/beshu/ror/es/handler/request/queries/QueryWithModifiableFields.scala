@@ -177,7 +177,6 @@ object QueryWithModifiableFields {
     }
 
     // full text
-    @nowarn("cat=deprecation")
     implicit val commonTermsQueryHandler: ModifiableLeafQuery[CommonTermsQueryBuilder] = ModifiableLeafQuery.instance {
       (query, notAllowedFields) =>
         QueryBuilders
@@ -190,22 +189,6 @@ object QueryWithModifiableFields {
           .lowFreqOperator(query.lowFreqOperator())
           .boost(query.boost())
     }
-
-    implicit val matchBoolPrefixQueryHandler: ModifiableLeafQuery[MatchBoolPrefixQueryBuilder] =
-      ModifiableLeafQuery.instance { (query, notAllowedFields) =>
-        val newQuery = new MatchBoolPrefixQueryBuilder(notAllowedFields.head.obfuscate.value, query.value())
-          .analyzer(query.analyzer())
-          .minimumShouldMatch(query.minimumShouldMatch())
-          .fuzzyRewrite(query.fuzzyRewrite())
-          .fuzzyTranspositions(query.fuzzyTranspositions())
-          .maxExpansions(query.maxExpansions())
-          .operator(query.operator())
-          .prefixLength(query.prefixLength())
-          .boost(query.boost())
-
-        Option(query.fuzziness()).foreach(newQuery.fuzziness)
-        newQuery
-      }
 
     implicit val matchQueryHandler: ModifiableLeafQuery[MatchQueryBuilder] = ModifiableLeafQuery.instance {
       (query, notAllowedFields) =>
@@ -296,7 +279,6 @@ object QueryWithModifiableFields {
           .boost(query.tieBreaker())
       }
 
-    @nowarn("cat=deprecation")
     implicit val rootQueryHandler: QueryWithModifiableFields[QueryBuilder] =
       (query: QueryBuilder, notAllowedFields: NonEmptyList[SpecificField]) =>
         query match {
@@ -307,7 +289,6 @@ object QueryWithModifiableFields {
 
           // fulltext
           case builder: CommonTermsQueryBuilder       => handleLeafQuery(builder, notAllowedFields)
-          case builder: MatchBoolPrefixQueryBuilder   => handleLeafQuery(builder, notAllowedFields)
           case builder: MatchQueryBuilder             => handleLeafQuery(builder, notAllowedFields)
           case builder: MatchPhraseQueryBuilder       => handleLeafQuery(builder, notAllowedFields)
           case builder: MatchPhrasePrefixQueryBuilder => handleLeafQuery(builder, notAllowedFields)

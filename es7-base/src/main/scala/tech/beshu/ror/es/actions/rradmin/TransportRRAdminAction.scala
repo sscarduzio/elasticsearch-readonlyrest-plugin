@@ -32,7 +32,7 @@ class TransportRRAdminAction(
       RRAdminActionType.name,
       transportService,
       actionFilters,
-      RRAdminActionType.exceptionReader
+      () => new RRAdminRequest
     ) {
 
   @Inject

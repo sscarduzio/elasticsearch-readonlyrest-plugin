@@ -19,10 +19,11 @@ package tech.beshu.ror.es.utils
 import cats.Show
 import cats.implicits.*
 import org.elasticsearch.ElasticsearchException
-import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.rest.*
 import org.elasticsearch.rest.action.admin.indices.RestUpgradeActionDeprecated
 import org.elasticsearch.rest.action.cat.RestCatAction
+import org.elasticsearch.xcontent.{MediaType, MediaTypeRegistry}
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.es.RorRestChannel
@@ -54,7 +55,9 @@ class ChannelInterceptingRestHandlerDecorator private (val underlying: RestHandl
       case Left(error) =>
         logError(error)
         implicit val show: Show[AuthorizationValueError] = authorizationValueErrorSanitizedShow
-        channel.sendResponse(new RestResponse(channel, RestStatus.BAD_REQUEST, new ElasticsearchException(error.show)))
+        channel.sendResponse(
+          new BytesRestResponse(channel, RestStatus.BAD_REQUEST, new ElasticsearchException(error.show))
+        )
     }
   }
 
@@ -62,17 +65,13 @@ class ChannelInterceptingRestHandlerDecorator private (val underlying: RestHandl
 
   override def supportsContentStream(): Boolean = underlying.supportsContentStream()
 
-  override def getConcreteRestHandler: RestHandler = underlying.getConcreteRestHandler
-
-  override def getServerlessScope: Scope = underlying.getServerlessScope
-
   override def allowsUnsafeBuffers(): Boolean = underlying.allowsUnsafeBuffers()
 
   override def routes(): util.List[RestHandler.Route] = underlying.routes()
 
   override def allowSystemIndexAccessByDefault(): Boolean = underlying.allowSystemIndexAccessByDefault()
 
-  override def mediaTypesValid(request: RestRequest): Boolean = underlying.mediaTypesValid(request)
+  override def validAcceptMediaTypes(): MediaTypeRegistry[_ <: MediaType] = underlying.validAcceptMediaTypes()
 
   private def wrapSomeActions(ofHandler: RestHandler) = {
     unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
@@ -85,11 +84,15 @@ class ChannelInterceptingRestHandlerDecorator private (val underlying: RestHandl
   private def unwrapWithSecurityRestFilterIfNeeded(restHandler: RestHandler) = {
     restHandler match {
       case action if action.getClass.getName.contains("SecurityRestFilter") =>
-        Try(on(restHandler).get[RestHandler]("delegate"))
+        tryToGetUnderlyingRestHandler(action, "restHandler")
           .getOrElse(action)
       case _ =>
         restHandler
     }
+  }
+
+  private def tryToGetUnderlyingRestHandler(restHandler: RestHandler, fieldName: String) = {
+    Try(on(restHandler).get[RestHandler](fieldName))
   }
 
   private def addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(

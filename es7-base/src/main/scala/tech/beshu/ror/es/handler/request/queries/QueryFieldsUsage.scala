@@ -31,8 +31,6 @@ import tech.beshu.ror.es.handler.request.queries.QueryType.instances.*
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import scala.annotation.nowarn
-
 trait QueryFieldsUsage[QUERY <: QueryBuilder] {
   def fieldsIn(query: QUERY): RequestFieldsUsage
 }
@@ -55,10 +53,7 @@ object QueryFieldsUsage extends RequestIdAwareLogging {
   object instances {
     implicit val idsQueryFields: QueryFieldsUsage[IdsQueryBuilder] = QueryFieldsUsage.notUsing
 
-    @nowarn("cat=deprecation")
     implicit val commonTermsQueryFields: QueryFieldsUsage[CommonTermsQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
-    implicit val matchBoolPrefixQueryFields: QueryFieldsUsage[MatchBoolPrefixQueryBuilder] =
-      QueryFieldsUsage.one(_.fieldName())
     implicit val matchQueryFields: QueryFieldsUsage[MatchQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
     implicit val matchPhraseQueryFields: QueryFieldsUsage[MatchPhraseQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
     implicit val matchPhrasePrefixQueryFields: QueryFieldsUsage[MatchPhrasePrefixQueryBuilder] =
@@ -81,7 +76,6 @@ object QueryFieldsUsage extends RequestIdAwareLogging {
       }
     }
 
-    @nowarn("cat=deprecation")
     implicit val rootQueryFields: QueryFieldsUsage[QueryBuilder] = {
       // compound
       case builder: BoolQueryBuilder          => resolveFieldsUsageForCompoundQuery(builder)
@@ -91,7 +85,6 @@ object QueryFieldsUsage extends RequestIdAwareLogging {
 
       // leaf
       case builder: CommonTermsQueryBuilder       => resolveFieldsUsageForLeafQuery(builder)
-      case builder: MatchBoolPrefixQueryBuilder   => resolveFieldsUsageForLeafQuery(builder)
       case builder: MatchQueryBuilder             => resolveFieldsUsageForLeafQuery(builder)
       case builder: MatchPhraseQueryBuilder       => resolveFieldsUsageForLeafQuery(builder)
       case builder: MatchPhrasePrefixQueryBuilder => resolveFieldsUsageForLeafQuery(builder)

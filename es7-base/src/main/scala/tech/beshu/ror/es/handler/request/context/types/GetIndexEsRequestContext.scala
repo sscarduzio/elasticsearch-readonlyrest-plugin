@@ -67,8 +67,7 @@ class GetIndexEsRequestContext(
           getIndexResponse.mappings(),
           getIndexResponse.aliases().filterOutNotAllowedAliases(allowedAliases = allAllowedAliases.toList),
           getIndexResponse.settings(),
-          getIndexResponse.defaultSettings(),
-          getIndexResponse.dataStreams()
+          getIndexResponse.defaultSettings()
         )
       case other =>
         logger.error(
@@ -76,7 +75,6 @@ class GetIndexEsRequestContext(
         )
         new GetIndexResponse(
           Array.empty,
-          ImmutableOpenMapOps.empty,
           ImmutableOpenMapOps.empty,
           ImmutableOpenMapOps.empty,
           ImmutableOpenMapOps.empty,

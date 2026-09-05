@@ -38,17 +38,15 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry
 import org.elasticsearch.env.{Environment, NodeEnvironment}
 import org.elasticsearch.http.HttpServerTransport
 import org.elasticsearch.index.IndexModule
-import org.elasticsearch.index.mapper.IgnoredFieldMapper
+import org.elasticsearch.index.mapper.MapperService
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.*
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
-import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.Netty4Utils
-import org.elasticsearch.transport.netty4.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import org.elasticsearch.transport.{SharedGroupFactory, Transport, TransportInterceptor}
+import org.elasticsearch.transport.netty4.{Netty4Utils, SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
+import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
@@ -68,7 +66,6 @@ import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsEnvPr
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.SetOnce
 import tech.beshu.ror.{SystemContext, constants}
 
 import java.nio.file.Path
@@ -90,7 +87,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   LogPluginBuildInfoMessage()
   EsPatchVerifier.verify(s)
 
-  constants.FIELDS_ALWAYS_ALLOW.add(IgnoredFieldMapper.NAME)
+  constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toSet)
 
   // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
   // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
@@ -110,7 +107,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
 
   private val esInitListener = new EsInitListener
-  private val groupFactory = new SetOnce[SharedGroupFactory]
 
   private var ilaf: IndexLevelActionFilter = _
 
@@ -125,19 +121,16 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       xContentRegistry: NamedXContentRegistry,
       environment: Environment,
       nodeEnvironment: NodeEnvironment,
-      namedWriteableRegistry: NamedWriteableRegistry,
-      indexNameExpressionResolver: IndexNameExpressionResolver,
-      repositoriesServiceSupplier: Supplier[RepositoriesService]
+      namedWriteableRegistry: NamedWriteableRegistry
   ): util.Collection[AnyRef] = {
     doPrivileged {
       ilaf = new IndexLevelActionFilter(
         clusterService,
         client.asInstanceOf[NodeClient],
         threadPool,
-        xContentRegistry,
         environment,
         TransportServiceInterceptor.remoteClusterServiceSupplier,
-        RepositoriesServiceInterceptor.repositoriesServiceSupplier,
+        SnapshotsServiceInterceptor.snapshotsServiceSupplier,
         esInitListener,
         esConfigBasedRorSettings
       )
@@ -148,7 +141,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
     List[Class[_ <: LifecycleComponent]](
       classOf[TransportServiceInterceptor],
-      classOf[RepositoriesServiceInterceptor]
+      classOf[SnapshotsServiceInterceptor]
     ).asJava
   }
 
@@ -162,7 +155,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
     import tech.beshu.ror.es.utils.IndexModuleOps.*
-    indexModule.overwrite(RoleIndexSearcherWrapper.instance)
+    indexModule.overwrite(new RoleIndexSearcherWrapper(_))
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -177,8 +170,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       circuitBreakerService: CircuitBreakerService,
       xContentRegistry: NamedXContentRegistry,
       networkService: NetworkService,
-      dispatcher: HttpServerTransport.Dispatcher,
-      clusterSettings: ClusterSettings
+      dispatcher: HttpServerTransport.Dispatcher
   ): util.Map[String, Supplier[HttpServerTransport]] = {
     esConfigBasedRorSettings.ssl
       .flatMap(_.externalSsl)
@@ -191,9 +183,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
             threadPool,
             xContentRegistry,
             dispatcher,
-            ssl,
-            clusterSettings,
-            getSharedGroupFactory(settings)
+            ssl
           )
         }
       }
@@ -220,19 +210,12 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
             circuitBreakerService,
             namedWriteableRegistry,
             networkService,
-            ssl,
-            getSharedGroupFactory(settings)
+            ssl
           )
         }
       }
       .toMap
       .asJava
-  }
-
-  private def getSharedGroupFactory(settings: Settings): SharedGroupFactory = {
-    this.groupFactory
-      .getOrElse(new SharedGroupFactory(settings))
-      .ensuring(_.getSettings == settings, "Different settings than originally provided")
   }
 
   override def close(): Unit = {
@@ -261,13 +244,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       nodesInCluster: Supplier[DiscoveryNodes]
   ): util.List[RestHandler] = {
     import tech.beshu.ror.es.utils.RestControllerOps.*
-    restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
+    restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create(_, settings))
     List[RestHandler](
-      new RestRRAdminAction(),
-      new RestRRAuthMockAction(),
-      new RestRRTestSettingsAction(),
-      new RestRRUserMetadataAction(),
-      new RestRRAuditEventAction()
+      new RestRRAdminAction(settings, restController),
+      new RestRRAuthMockAction(settings, restController),
+      new RestRRTestSettingsAction(settings, restController),
+      new RestRRUserMetadataAction(settings, restController),
+      new RestRRAuditEventAction(settings, restController)
     ).asJava
   }
 

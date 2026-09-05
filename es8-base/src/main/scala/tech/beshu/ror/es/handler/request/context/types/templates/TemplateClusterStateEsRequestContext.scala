@@ -132,7 +132,7 @@ class TemplateClusterStateEsRequestContext private (
     val oldMetadata = response.getState.metadata()
     val filteredTemplates = GetTemplatesEsRequestContext
       .filter(
-        oldMetadata.templates().values().asScala.toList,
+        oldMetadata.templates().valuesIt().asScala.toList,
         transformation
       )
       .filter { t =>
@@ -146,7 +146,7 @@ class TemplateClusterStateEsRequestContext private (
 
     val newMetadataWithFilteredTemplates = oldMetadata
       .templates()
-      .keySet()
+      .keysIt()
       .asScala
       .foldLeft(Metadata.builder(oldMetadata)) {
         case (acc, templateName) if filteredTemplates.contains(templateName) => acc

@@ -26,8 +26,8 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
-import org.elasticsearch.client.internal.Client
-import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.client.Client
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.ClusterChangedEvent
 import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, RepositoriesMetadata}
 import org.elasticsearch.cluster.service.ClusterService
@@ -47,6 +47,7 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.services.EsClusterService.*
 import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -164,7 +165,7 @@ class EsNodeClusterService(
   ): Set[Template.LegacyTemplate] = {
     val templates = clusterService.state.metadata().templates()
     templates
-      .keySet()
+      .keysIt()
       .asScala
       .flatMap { templateNameString =>
         val templateMetaData = templates.get(templateNameString)
@@ -173,7 +174,11 @@ class EsNodeClusterService(
           indexPatterns <- UniqueNonEmptyList.from(
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString)
           )
-          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
+          aliases = templateMetaData
+            .aliases()
+            .asSafeValues
+            .flatMap(a => ClusterIndexName.fromString(a.alias()))
+            .toCovariantSet
         } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
       .toCovariantSet
@@ -556,14 +561,14 @@ object EsNodeClusterService {
     private def extractIndicesAndAliasesFrom(metadata: Metadata) = {
       val indices = metadata.getIndices
       indices
-        .keySet()
+        .keysIt()
         .asScala
         .flatMap { index =>
           val indexMetaData = indices.get(index)
           IndexName.Full
             .fromString(indexMetaData.getIndex.getName)
             .map { indexName =>
-              val aliases = indexMetaData.getAliases.asSafeMap.keys.flatMap(IndexName.Full.fromString).toCovariantSet
+              val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
               new FullLocalIndexWithAliases(
                 indexName,
                 indexMetaData.getState match {

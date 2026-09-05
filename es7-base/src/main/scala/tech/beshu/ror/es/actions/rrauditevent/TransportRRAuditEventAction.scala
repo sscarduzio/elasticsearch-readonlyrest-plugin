@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.actions.rrauditevent
 
 import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
+import org.elasticsearch.action.support.{ActionFilters, TransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
@@ -28,11 +28,10 @@ class TransportRRAuditEventAction(
     transportService: TransportService,
     actionFilters: ActionFilters,
     @unused constructorDiscriminator: Unit
-) extends HandledTransportAction[RRAuditEventRequest, RRAuditEventResponse](
+) extends TransportAction[RRAuditEventRequest, RRAuditEventResponse](
       RRAuditEventActionType.name,
-      transportService,
       actionFilters,
-      RRAuditEventActionType.exceptionReader
+      transportService.getTaskManager
     ) {
 
   @Inject

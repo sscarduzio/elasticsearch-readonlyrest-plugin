@@ -19,26 +19,23 @@ package tech.beshu.ror.es.actions.rrauditevent.rest
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.xcontent.XContentHelper
 import org.elasticsearch.rest.*
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest.Method.POST
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, RRAuditEventRequest}
 
-import java.util
-import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 @Inject
-class RestRRAuditEventAction extends BaseRestHandler with RestHandler {
+class RestRRAuditEventAction(settings: Settings, controller: RestController)
+    extends BaseRestHandler(settings)
+    with RestHandler {
 
-  override def routes(): util.List[Route] = List(
-    new Route(POST, constants.AUDIT_EVENT_COLLECTOR_PATH)
-  ).asJava
+  register("POST", constants.AUDIT_EVENT_COLLECTOR_PATH)
 
   override val getName: String = "ror-audit-event-collector-handler"
 
@@ -58,6 +55,9 @@ class RestRRAuditEventAction extends BaseRestHandler with RestHandler {
       }
     }
   }
+
+  private def register(method: String, path: String): Unit =
+    controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
 
   private def validateContentSize(request: RestRequest) = {
     Either.cond(

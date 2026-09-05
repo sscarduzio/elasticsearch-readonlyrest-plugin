@@ -32,7 +32,7 @@ class TransportRorWrappedCatAction(
       RorWrappedCatActionType.name,
       transportService,
       actionFilters,
-      RorWrappedCatActionType.exceptionReader
+      () => new RorWrappedCatRequest(() => ())
     ) {
 
   @Inject

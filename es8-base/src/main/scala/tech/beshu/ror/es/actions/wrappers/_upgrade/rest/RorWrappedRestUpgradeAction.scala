@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.actions.wrappers._upgrade.rest
 
-import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.rest.action.RestActionListener
 import org.elasticsearch.rest.action.admin.indices.RestUpgradeActionDeprecated
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}

@@ -19,10 +19,10 @@ package tech.beshu.ror.es.handler.response
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.index.get.GetResult
-import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DocumentId, DocumentWithIndex}
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.handler.response.FieldsFiltering.{MetadataDocumentFields, NewFilteredDocumentFields}
 
 import scala.jdk.CollectionConverters.*
 
@@ -43,7 +43,6 @@ object DocumentApiOps {
         original.getVersion,
         exists,
         source,
-        java.util.Collections.emptyMap(),
         java.util.Collections.emptyMap()
       )
       new GetResponse(result)
@@ -65,8 +64,7 @@ object DocumentApiOps {
           response.getVersion,
           true,
           newSource,
-          newFields.nonMetadataDocumentFields.value.asJava,
-          newFields.metadataDocumentFields.value.asJava
+          (newFields.nonMetadataDocumentFields.value ++ newFields.metadataDocumentFields.value).asJava
         )
         new GetResponse(newResult)
       }
@@ -82,21 +80,16 @@ object DocumentApiOps {
       }
 
       private def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
-        Option(on(response).get[AnyRef]("getResult"))
-          .collect { case getResult: GetResult =>
-            getResult
-          }
-          .map { getResult =>
-            val originalNonMetadataFields =
-              FieldsFiltering.NonMetadataDocumentFields(getResult.getDocumentFields.asScala.toMap)
-            val originalMetadataFields =
-              FieldsFiltering.MetadataDocumentFields(getResult.getMetadataFields.asScala.toMap)
+        val (originalMetadataFields, originalNonMetadataFields) =
+          response.getFields.asScala.toMap
+            .partition(_._2.isMetadataField)
 
-            val filteredNonMetadataFields =
-              FieldsFiltering.filterNonMetadataDocumentFields(originalNonMetadataFields, fieldsRestrictions)
-            FieldsFiltering.NewFilteredDocumentFields(filteredNonMetadataFields, originalMetadataFields)
-          }
-          .getOrElse(throw new IllegalStateException("Could not access get result in get response."))
+        val filteredNonMetadataFields = FieldsFiltering.filterNonMetadataDocumentFields(
+          FieldsFiltering.NonMetadataDocumentFields(originalNonMetadataFields),
+          fieldsRestrictions
+        )
+
+        NewFilteredDocumentFields(filteredNonMetadataFields, MetadataDocumentFields(originalMetadataFields))
       }
 
     }

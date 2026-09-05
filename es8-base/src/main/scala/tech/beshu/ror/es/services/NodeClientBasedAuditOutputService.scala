@@ -18,12 +18,13 @@ package tech.beshu.ror.es.services
 
 import cats.effect.Resource
 import monix.eval.Task
+import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.action.{ActionListener, DocWriteRequest}
-import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue}
 import org.elasticsearch.core.TimeValue
+import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
@@ -37,9 +38,12 @@ import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Clock
-import java.util.function.BiConsumer
 
-final class NodeClientBasedAuditOutputService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)(
+final class NodeClientBasedAuditOutputService(
+    client: NodeClient,
+    threadPool: ThreadPool,
+    jsonParserFactory: XContentJsonParserFactory
+)(
     using Clock
 ) extends IndexBasedAuditOutputService
     with DataStreamBasedAuditOutputService
@@ -47,7 +51,7 @@ final class NodeClientBasedAuditOutputService(client: NodeClient, jsonParserFact
 
   private val bulkProcessor =
     BulkProcessor
-      .builder(BulkRequestHandler, new AuditOutputBulkProcessorListener, "ror-audit-bulk-processor")
+      .builder(client, new AuditOutputBulkProcessorListener, threadPool, threadPool, () => ())
       .setBulkActions(AUDIT_OUTPUT_MAX_ITEMS)
       .setBulkSize(new ByteSizeValue(AUDIT_OUTPUT_MAX_KB, ByteSizeUnit.KB))
       .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_OUTPUT_MAX_SECONDS))
@@ -78,10 +82,6 @@ final class NodeClientBasedAuditOutputService(client: NodeClient, jsonParserFact
         .source(jsonRecord, XContentType.JSON)
         .opType(DocWriteRequest.OpType.CREATE)
     )
-  }
-
-  private object BulkRequestHandler extends BiConsumer[BulkRequest, ActionListener[BulkResponse]] {
-    override def accept(t: BulkRequest, u: ActionListener[BulkResponse]): Unit = client.bulk(t, u)
   }
 
   private class AuditOutputBulkProcessorListener extends BulkProcessor.Listener {

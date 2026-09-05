@@ -16,33 +16,51 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
-import org.elasticsearch.action.datastreams.PromoteDataStreamAction
+import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
+import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 import tech.beshu.ror.syntax.*
 
-class PromoteDataStreamEsRequestContext(
-    actionRequest: PromoteDataStreamAction.Request,
+private[datastreams] class PromoteDataStreamEsRequestContext private (
+    actionRequest: ActionRequest,
+    dataStreams: Set[DataStreamName],
     esContext: EsContext,
     override val threadPool: ThreadPool
 ) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
-  private lazy val originDataStreams =
-    Option(actionRequest.getName)
-      .flatMap(DataStreamName.fromString)
-      .toCovariantSet
+  override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
-  override protected def dataStreamsFrom(request: PromoteDataStreamAction.Request): Set[DataStreamName] =
-    originDataStreams
+  override protected def backingIndicesFrom(request: ActionRequest): BackingIndices = BackingIndices.IndicesNotInvolved
 
-  override def backingIndicesFrom(request: PromoteDataStreamAction.Request): BackingIndices =
-    BackingIndices.IndicesNotInvolved
-
-  override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult =
+  override protected def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     ModificationResult.Modified // data stream already processed by ACL
+  }
+
+}
+
+object PromoteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
+
+  override val actionRequestClass: ClassCanonicalName =
+    ClassCanonicalName("org.elasticsearch.xpack.core.action.PromoteDataStreamAction.Request")
+
+  override def unapply(arg: ReflectionBasedActionRequest): Option[PromoteDataStreamEsRequestContext] = {
+    tryMatchActionRequestWithDataStreams(
+      actionRequest = arg.esContext.actionRequest,
+      getDataStreamsMethodName = "indices"
+    ) match {
+      case MatchResult.Matched(dataStreams) =>
+        Some(
+          new PromoteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool)
+        )
+      case MatchResult.NotMatched() =>
+        None
+    }
+  }
+
 }

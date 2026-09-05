@@ -191,7 +191,8 @@ object SearchRequestOps extends RequestIdAwareLogging {
           val aggregatorFactoryBuilder = new AggregatorFactories.Builder()
           aggregations.getAggregatorFactories.asScala
             .foreach {
-              case f: ValuesSourceAggregationBuilder[_] if notAllowedFields.find(s => s.value == f.field()).isDefined =>
+              case f: ValuesSourceAggregationBuilder[_, _]
+                  if notAllowedFields.find(s => s.value == f.field()).isDefined =>
                 aggregatorFactoryBuilder.addAggregator(f.field(s"${f.field()}_${UUID.randomUUID().toString}"))
               case f =>
                 aggregatorFactoryBuilder.addAggregator(f)
@@ -218,8 +219,8 @@ object SearchRequestOps extends RequestIdAwareLogging {
             .fromList {
               aggregations.getAggregatorFactories.asScala
                 .flatMap {
-                  case builder: ValuesSourceAggregationBuilder[_] => Option(builder.field()) :: Nil
-                  case _                                          => Nil
+                  case builder: ValuesSourceAggregationBuilder[_, _] => Option(builder.field()) :: Nil
+                  case _                                             => Nil
                 }
                 .flatten
                 .map(UsedField.apply)

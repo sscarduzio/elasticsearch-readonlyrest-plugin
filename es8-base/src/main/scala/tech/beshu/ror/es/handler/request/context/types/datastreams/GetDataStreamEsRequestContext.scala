@@ -16,92 +16,133 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
-import org.elasticsearch.action.datastreams.GetDataStreamAction
-import org.elasticsearch.action.datastreams.GetDataStreamAction.Response
-import org.elasticsearch.index.Index
+import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
+import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
-class GetDataStreamEsRequestContext(
-    actionRequest: GetDataStreamAction.Request,
+private[datastreams] class GetDataStreamEsRequestContext(
+    actionRequest: ActionRequest,
+    dataStreams: Set[DataStreamName],
     esContext: EsContext,
     override val threadPool: ThreadPool
 ) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
-  private lazy val originDataStreams =
-    actionRequest.getNames.asSafeSet
-      .flatMap(DataStreamName.fromString)
+  override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
-  override protected def dataStreamsFrom(request: GetDataStreamAction.Request): Set[DataStreamName] =
-    originDataStreams
-
-  override protected def backingIndicesFrom(request: GetDataStreamAction.Request): BackingIndices =
+  override protected def backingIndicesFrom(request: ActionRequest): BackingIndices =
     BackingIndices.IndicesInvolved(
       filteredIndices = Set.empty,
       allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
     )
 
   override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
-    setDataStreamNames(blockContext.dataStreams)
-    ModificationResult.UpdateResponse.sync {
-      case r: GetDataStreamAction.Response =>
-        blockContext.backingIndices match {
-          case BackingIndices.IndicesInvolved(_, allAllowedIndices) =>
-            updateGetDataStreamResponse(r, extendAllowedIndicesSet(allAllowedIndices))
-          case BackingIndices.IndicesNotInvolved =>
-            r
-        }
-      case r =>
-        r
+    if (modifyActionRequest(blockContext)) {
+      ModificationResult.UpdateResponse.sync {
+        case r: ActionResponse if isGetDataStreamActionResponse(r) =>
+          blockContext.backingIndices match {
+            case BackingIndices.IndicesInvolved(_, allAllowedIndices) =>
+              updateActionResponse(r, extendAllowedIndicesSet(allAllowedIndices))
+            case BackingIndices.IndicesNotInvolved =>
+              r
+          }
+        case r =>
+          r
+      }
+    } else {
+      logger.error(
+        s"Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue."
+      )
+      ModificationResult.ShouldBeInterrupted
     }
   }
 
   private def extendAllowedIndicesSet(allowedIndices: Iterable[ClusterIndexName]) = {
-    (allowedIndices.map(_.formatAsDataStreamBackingIndexName) ++ allowedIndices).toCovariantSet
+    allowedIndices.toList.map(_.formatAsDataStreamBackingIndexName).toCovariantSet ++ allowedIndices.toCovariantSet
   }
 
-  private def setDataStreamNames(dataStreams: Set[DataStreamName]): Unit = {
-    actionRequest.indices(dataStreams.map(_.stringify).toList: _*) // method is named indices but it sets data streams
+  private def modifyActionRequest(blockContext: BlockContext.DataStreamRequestBlockContext): Boolean = {
+    tryUpdateDataStreams(
+      actionRequest = actionRequest,
+      dataStreamsFieldName = "names",
+      dataStreams = blockContext.dataStreams
+    )
   }
 
-  private def updateGetDataStreamResponse(
-      response: GetDataStreamAction.Response,
+  private def isGetDataStreamActionResponse(r: ActionResponse) = {
+    r.getClass.getCanonicalName == "org.elasticsearch.xpack.core.action.GetDataStreamAction.Response"
+  }
+
+  private def updateActionResponse(
+      response: ActionResponse,
       allAllowedIndices: Iterable[ClusterIndexName]
-  ): GetDataStreamAction.Response = {
+  ): ActionResponse = {
     val allowedIndicesMatcher = PatternsMatcher.create(allAllowedIndices)
-    val filteredStreams =
-      response.getDataStreams.asSafeList
-        .filter { (dataStreamInfo: Response.DataStreamInfo) =>
-          backingIndiesMatchesAllowedIndices(dataStreamInfo, allowedIndicesMatcher)
-        }
-    new GetDataStreamAction.Response(filteredStreams.asJava)
+    val filteredDataStreams = on(response)
+      .call("getDataStreams")
+      .get[java.util.List[Object]]()
+      .asScala
+      .filter { dataStreamInfo =>
+        backingIndiesMatchesAllowedIndices(dataStreamInfo, allowedIndicesMatcher)
+      }
+
+    on(response).set("dataStreams", filteredDataStreams.asJava)
+    response
   }
 
   private def backingIndiesMatchesAllowedIndices(
-      info: Response.DataStreamInfo,
+      info: Object,
       allowedIndicesMatcher: PatternsMatcher[ClusterIndexName]
-  ) = {
-    val dataStreamIndices: Set[ClusterIndexName] = indicesFrom(info).keySet.toCovariantSet
+  ): Boolean = {
+    val dataStreamIndices = indicesFromDataStreamInfo(info).get
     val allowedBackingIndices = allowedIndicesMatcher.filter(dataStreamIndices)
     dataStreamIndices.diff(allowedBackingIndices).isEmpty
   }
 
-  private def indicesFrom(response: Response.DataStreamInfo): Map[ClusterIndexName, Index] = {
-    response.getDataStream.getIndices.asSafeList.flatMap { index =>
-      Option(index.getName)
-        .flatMap(ClusterIndexName.fromString)
-        .map(clusterIndexName => (clusterIndexName, index))
-    }.toMap
+  private def indicesFromDataStreamInfo(info: Object): Try[Set[ClusterIndexName]] = {
+    for {
+      dataStream <- Try(on(info).call("getDataStream").get[AnyVal]())
+      backingIndices <- Try(on(dataStream).call("getIndices").get[java.util.List[Object]]().asSafeList)
+      indices <- Try {
+        backingIndices
+          .flatMap(backingIndex => Option(on(backingIndex).call("getName").get[String]))
+          .flatMap(ClusterIndexName.fromString)
+          .toCovariantSet
+      }
+    } yield indices
+
+  }
+
+}
+
+object GetDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
+
+  override val actionRequestClass: ClassCanonicalName =
+    ClassCanonicalName("org.elasticsearch.xpack.core.action.GetDataStreamAction.Request")
+
+  override def unapply(arg: ReflectionBasedActionRequest): Option[GetDataStreamEsRequestContext] = {
+    tryMatchActionRequestWithDataStreams(
+      actionRequest = arg.esContext.actionRequest,
+      getDataStreamsMethodName = "getNames"
+    ) match {
+      case MatchResult.Matched(dataStreams) =>
+        Some(new GetDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool))
+      case MatchResult.NotMatched() =>
+        None
+    }
   }
 
 }

@@ -20,6 +20,7 @@ import cats.Show
 import cats.implicits.*
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.*
 import org.elasticsearch.rest.action.cat.RestCatAction
 import org.joor.Reflect.on
@@ -31,10 +32,9 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.util
 import scala.util.Try
 
-class ChannelInterceptingRestHandlerDecorator private (val underlying: RestHandler)
+class ChannelInterceptingRestHandlerDecorator private (val underlying: RestHandler, settings: Settings)
     extends RestHandler
     with RequestIdAwareLogging {
 
@@ -62,15 +62,9 @@ class ChannelInterceptingRestHandlerDecorator private (val underlying: RestHandl
 
   override def supportsContentStream(): Boolean = underlying.supportsContentStream()
 
-  override def allowsUnsafeBuffers(): Boolean = underlying.allowsUnsafeBuffers()
-
-  override def routes(): util.List[RestHandler.Route] = underlying.routes()
-
-  override def allowSystemIndexAccessByDefault(): Boolean = underlying.allowSystemIndexAccessByDefault()
-
   private def wrapSomeActions(ofHandler: RestHandler) = {
     unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
-      case action: RestCatAction => new RorWrappedRestCatAction(action)
+      case action: RestCatAction => new RorWrappedRestCatAction(settings, action)
       case action                => action
     }
   }
@@ -116,9 +110,10 @@ class ChannelInterceptingRestHandlerDecorator private (val underlying: RestHandl
 
 object ChannelInterceptingRestHandlerDecorator {
 
-  def create(restHandler: RestHandler): ChannelInterceptingRestHandlerDecorator = restHandler match {
-    case alreadyDecoratedHandler: ChannelInterceptingRestHandlerDecorator => alreadyDecoratedHandler
-    case handler => new ChannelInterceptingRestHandlerDecorator(handler)
-  }
+  def create(restHandler: RestHandler, settings: Settings): ChannelInterceptingRestHandlerDecorator =
+    restHandler match {
+      case alreadyDecoratedHandler: ChannelInterceptingRestHandlerDecorator => alreadyDecoratedHandler
+      case handler => new ChannelInterceptingRestHandlerDecorator(handler, settings)
+    }
 
 }

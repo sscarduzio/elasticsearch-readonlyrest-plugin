@@ -34,8 +34,8 @@ public class StoredFieldsReaderForScalaHelper extends StoredFieldsReader {
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    underlying.document(docID, visitor);
+  public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
+    underlying.visitDocument(docID, visitor);
   }
 
   @Override

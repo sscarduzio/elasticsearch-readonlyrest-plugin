@@ -22,7 +22,7 @@ import io.circe.parser.*
 import monix.eval.Task
 import org.elasticsearch.ResourceNotFoundException
 import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
-import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.index.IndexNotFoundException
 import org.elasticsearch.xcontent.XContentType

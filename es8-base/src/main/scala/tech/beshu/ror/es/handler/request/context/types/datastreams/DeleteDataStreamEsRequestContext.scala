@@ -16,40 +16,67 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
-import org.elasticsearch.action.datastreams.DeleteDataStreamAction
+import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
+import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ScalaOps.*
 
-class DeleteDataStreamEsRequestContext(
-    actionRequest: DeleteDataStreamAction.Request,
+private[datastreams] class DeleteDataStreamEsRequestContext private (
+    actionRequest: ActionRequest,
+    dataStreams: Set[DataStreamName],
     esContext: EsContext,
     override val threadPool: ThreadPool
 ) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
-  private lazy val originDataStreams =
-    actionRequest.getNames.asSafeSet
-      .flatMap(DataStreamName.fromString)
+  override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
-  override protected def dataStreamsFrom(request: DeleteDataStreamAction.Request): Set[DataStreamName] =
-    originDataStreams
+  override protected def backingIndicesFrom(request: ActionRequest): BackingIndices = BackingIndices.IndicesNotInvolved
 
-  override protected def backingIndicesFrom(request: DeleteDataStreamAction.Request): BackingIndices =
-    BackingIndices.IndicesNotInvolved
-
-  override protected def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
-    setDataStreamNames(blockContext.dataStreams)
-    ModificationResult.Modified
+  override def modifyRequest(blockContext: DataStreamRequestBlockContext): ModificationResult = {
+    if (modifyActionRequest(blockContext)) {
+      ModificationResult.Modified
+    } else {
+      logger.error(
+        s"Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue."
+      )
+      ModificationResult.ShouldBeInterrupted
+    }
   }
 
-  private def setDataStreamNames(dataStreams: Set[DataStreamName]): Unit = {
-    actionRequest.indices(dataStreams.map(_.stringify).toList: _*) // method is named indices but it sets data streams
+  private def modifyActionRequest(blockContext: DataStreamRequestBlockContext): Boolean = {
+    tryUpdateDataStreams(
+      actionRequest = actionRequest,
+      dataStreamsFieldName = "names",
+      dataStreams = blockContext.dataStreams
+    )
+  }
+
+}
+
+object DeleteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
+
+  override val actionRequestClass: ClassCanonicalName =
+    ClassCanonicalName("org.elasticsearch.xpack.core.action.DeleteDataStreamAction.Request")
+
+  override def unapply(arg: ReflectionBasedActionRequest): Option[DeleteDataStreamEsRequestContext] = {
+    tryMatchActionRequestWithDataStreams(
+      actionRequest = arg.esContext.actionRequest,
+      getDataStreamsMethodName = "getNames"
+    ) match {
+      case MatchResult.Matched(dataStreams) =>
+        Some(
+          new DeleteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool)
+        )
+      case MatchResult.NotMatched() =>
+        None
+    }
   }
 
 }

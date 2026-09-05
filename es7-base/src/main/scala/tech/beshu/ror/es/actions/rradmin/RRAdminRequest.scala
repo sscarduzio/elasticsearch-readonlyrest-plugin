@@ -32,6 +32,10 @@ class RRAdminRequest(adminApiRequest: MainSettingsApi.MainSettingsRequest, esRes
   val getAdminRequest: MainSettingsApi.MainSettingsRequest = adminApiRequest
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
+  def this() = {
+    this(null, null)
+  }
+
   override def validate(): ActionRequestValidationException = null
 }
 

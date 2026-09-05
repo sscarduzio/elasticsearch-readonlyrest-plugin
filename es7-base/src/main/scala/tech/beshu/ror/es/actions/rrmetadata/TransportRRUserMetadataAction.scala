@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.actions.rrmetadata
 
 import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
+import org.elasticsearch.action.support.{ActionFilters, TransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
@@ -28,11 +28,10 @@ class TransportRRUserMetadataAction(
     transportService: TransportService,
     actionFilters: ActionFilters,
     @unused constructorDiscriminator: Unit
-) extends HandledTransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
+) extends TransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
       RRUserMetadataActionType.name,
-      transportService,
       actionFilters,
-      RRUserMetadataActionType.exceptionReader
+      transportService.getTaskManager
     ) {
 
   @Inject

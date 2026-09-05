@@ -18,7 +18,6 @@ package tech.beshu.ror.es.utils
 
 import monix.eval.Task
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionRequestBuilder, ActionResponse}
-import org.elasticsearch.client.Cancellable
 
 import scala.concurrent.Promise
 
@@ -36,7 +35,7 @@ object CallActionRequestAndHandleResponse {
 
 object InvokeCallerAndHandleResponse {
 
-  extension [RESPONSE <: ActionResponse](caller: ActionListener[RESPONSE] => Cancellable)
+  extension [RESPONSE <: ActionResponse](caller: ActionListener[RESPONSE] => Unit)
 
     def execute[R](f: RESPONSE => R): Task[R] = {
       val listener = new GenericResponseListener[RESPONSE]()

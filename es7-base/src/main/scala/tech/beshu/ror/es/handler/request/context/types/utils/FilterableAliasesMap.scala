@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.utils
 
-import org.elasticsearch.cluster.metadata.AliasMetadata
+import org.elasticsearch.cluster.metadata.AliasMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
@@ -39,7 +39,7 @@ class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
   }
 
   private def filter(
-      responseIndicesNadAliases: List[(String, java.util.List[AliasMetadata])],
+      responseIndicesNadAliases: List[(String, java.util.List[AliasMetaData])],
       allowedAliases: Iterable[ClusterIndexName]
   ) = {
     if (allowedAliases.isEmpty) List.empty
@@ -56,10 +56,10 @@ class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
 }
 
 object FilterableAliasesMap {
-  private implicit val conversion: PatternsMatcher[String]#Conversion[AliasMetadata] = Conversion.from(_.alias())
+  private implicit val conversion: PatternsMatcher[String]#Conversion[AliasMetaData] = Conversion.from(_.alias())
   private implicit val matchable: Matchable[String] = Matchable.caseSensitiveStringMatchable
 
-  type AliasesMap = ImmutableOpenMap[String, java.util.List[AliasMetadata]]
+  type AliasesMap = ImmutableOpenMap[String, java.util.List[AliasMetaData]]
 
   implicit def toFilterableAliasesMap(map: AliasesMap): FilterableAliasesMap = new FilterableAliasesMap(map)
 }

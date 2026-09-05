@@ -16,20 +16,13 @@
  */
 package tech.beshu.ror.es.actions.wrappers._cat
 
-import org.elasticsearch.action.ActionType
-import org.elasticsearch.common.io.stream.Writeable
+import org.elasticsearch.action.Action
 
-class RorWrappedCatActionType
-    extends ActionType[RorWrappedCatResponse](
-      RorWrappedCatActionType.name,
-      RorWrappedCatActionType.exceptionReader
-    )
+class RorWrappedCatActionType extends Action[RorWrappedCatResponse](RorWrappedCatActionType.name) {
+  override def newResponse(): RorWrappedCatResponse = new RorWrappedCatResponse
+}
 
 object RorWrappedCatActionType {
   val name = "cat_action"
   val instance = new RorWrappedCatActionType()
-
-  case object ArtificialCatActionCannotBeTransported extends Exception
-
-  private[_cat] def exceptionReader[A]: Writeable.Reader[A] = _ => throw ArtificialCatActionCannotBeTransported
 }

@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context
 
 import org.elasticsearch.action.search.SearchRequest
-import org.elasticsearch.action.support.IndicesOptions.WildcardStates
 import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
@@ -26,7 +25,6 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.{EsServices, RorRestRequest}
 
 import java.time.Instant
-import scala.jdk.CollectionConverters.*
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext) extends RequestContext {
 
@@ -73,12 +71,9 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext) ext
     }
   }
 
-  protected def indexAttributesFrom(request: IndicesRequest): IndexAttributeFilter = {
-    val wildcards = request.indicesOptions().getExpandWildcards.iterator().asScala.toSet
-    IndexAttributeFilter.from(
-      wildcards.contains(WildcardStates.OPEN),
-      wildcards.contains(WildcardStates.CLOSED)
-    )
-  }
+  protected def indexAttributesFrom(request: IndicesRequest): IndexAttributeFilter = IndexAttributeFilter.from(
+    request.indicesOptions().expandWildcardsOpen(),
+    request.indicesOptions().expandWildcardsClosed()
+  )
 
 }

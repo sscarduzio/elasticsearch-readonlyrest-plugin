@@ -19,17 +19,15 @@ package org.elasticsearch.transport.netty4
 import io.netty.channel.Channel
 import io.netty.handler.ssl.NotSslRecordException
 import org.elasticsearch.common.network.NetworkService
-import org.elasticsearch.common.settings.{ClusterSettings, Settings}
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.util.BigArrays
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport
 import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.SharedGroupFactory
 import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
 
 class SSLNetty4HttpServerTransport(
     settings: Settings,
@@ -38,19 +36,8 @@ class SSLNetty4HttpServerTransport(
     threadPool: ThreadPool,
     xContentRegistry: NamedXContentRegistry,
     dispatcher: HttpServerTransport.Dispatcher,
-    ssl: ExternalSslSettings,
-    clusterSettings: ClusterSettings,
-    sharedGroupFactory: SharedGroupFactory
-) extends Netty4HttpServerTransport(
-      settings,
-      networkService,
-      bigArrays,
-      threadPool,
-      xContentRegistry,
-      dispatcher,
-      clusterSettings,
-      sharedGroupFactory
-    )
+    ssl: ExternalSslSettings
+) extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher)
     with RequestIdAwareLogging {
 
   private val serverSslContext = doPrivileged {
