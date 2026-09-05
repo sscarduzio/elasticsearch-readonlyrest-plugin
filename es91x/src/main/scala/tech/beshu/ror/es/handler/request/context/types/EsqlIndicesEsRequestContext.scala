@@ -171,7 +171,7 @@ object EsqlIndicesEsRequestContext {
           arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
           arg.esContext,
           arg.aclContext,
-          arg.threadPool,
+          arg.threadPool
         )
       )
     } else {
