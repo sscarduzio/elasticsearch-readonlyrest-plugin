@@ -773,7 +773,12 @@ jobs:
       )
     runs-on: *self_hosted_runner
     container: *toolchains_container
-    timeout-minutes: 180
+    # 600, matching upload_pre_ror. These legs run on the self-hosted box now, which is a
+    # Ryzen 7 3700X — release_es8xx averaged 139 min on ubicloud-standard-4 and was killed by the
+    # old 180 bound on its first self-hosted run (1.71.0), leaving that release without its ES 8.x
+    # artifacts. The bound exists to catch a hung job, not to cap a slow one, and a self-hosted
+    # minute costs nothing, so give it the same headroom the pre-build path already has.
+    timeout-minutes: 600
     env: *shared_docker_host
     strategy:
       fail-fast: false
