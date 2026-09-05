@@ -54,7 +54,13 @@ env:
   # full-matrix run (es80x/es810x/es818x/es90x, exit 137) — those legs run suites es94x excludes,
   # so their memory peaks are higher. Fleet wall time is set by the slowest leg anyway: k=4.
   IT_PARALLELISM: '4'
-  AGENT_ISSELFHOSTED: '1'
+  # AGENT_ISSELFHOSTED is deliberately NOT set here any more. Its only reader is
+  # ci/free-host-disk.sh, and setting it workflow-wide made that script a no-op in every job of
+  # this workflow. Every Linux TEST job of ci.yml now runs on a GitHub-hosted runner, where the
+  # reclaim is what we want. The release jobs below (upload_pre_ror, release_ror, publish_mvn) and
+  # the standalone mirror-es-libs.yml / publish-pre-builds.yml run on the shared self-hosted box
+  # and set their own guards at job level, so they are unaffected. The script itself now fails
+  # closed: it reclaims nothing unless RUNNER_ENVIRONMENT says github-hosted.
 
 jobs:
 
@@ -90,10 +96,17 @@ jobs:
           IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
           MANUAL_RUN_ACTION: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.actionToPerform || '') }}
         run: |
-          LINUX_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x","es67x"]'
+          # Five ES series carry no CI leg any more: 7.3, 7.4, 7.9, 7.11 and 7.14. The customer
+          # portal's downloads table shows ZERO downloads of their plugin builds in the last two
+          # years, and the full Linux matrix has to fit the account's 40 concurrent-job budget
+          # alongside 6 Windows legs and 3 e2e legs. 34 + 6 + 3 did not fit; 29 + 6 + 3 does.
+          # The plugin is still BUILT and published for those series (build_ror groups by major,
+          # not by minor) — only the integration test coverage is gone, so a regression that is
+          # specific to one of them would now ship unnoticed. Revisit if a customer appears.
+          LINUX_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es710x","es78x","es77x","es72x","es70x","es67x"]'
           LINUX_IT_PR_READY_SET='["es94x","es90x","es818x","es816x","es810x","es80x","es717x","es710x","es70x","es67x"]'
           LINUX_IT_PR_DRAFT_SET='["es94x","es818x","es717x","es67x"]'
-          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
+          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es710x","es78x","es77x","es72x","es70x"]'
           WIN_IT_MASTER_OR_DEVELOP_SET='["es94x","es90x","es818x","es80x","es717x","es70x"]'
           WIN_IT_PR_READY_SET='["es94x","es818x","es717x"]'
           WIN_IT_PR_DRAFT_SET='[]'
@@ -266,8 +279,8 @@ jobs:
           path: '**/TEST*.xml'
           if-no-files-found: ignore
 
-  # ── TEST: Linux integration tests (Ubicloud) ──────────────────────────────
-  # Matrix comes from setup: full 34-version set on develop/master/epic + manual run, the
+  # ── TEST: Linux integration tests (GitHub-hosted) ─────────────────────────
+  # Matrix comes from setup: full 29-version set on develop/master/epic + manual run, the
   # 10-version representative subset on plain PRs.
   it_linux:
     needs: [ setup, toolchains_verify ]
@@ -276,7 +289,12 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubicloud-standard-4
+    # free for public repos (4cpu/16GB). Same vCPU and RAM as ubicloud-standard-4, so the shard
+    # count and the heavy-suite gate below carry over unchanged — but NOT the same throughput:
+    # measured on the 10-module PR set, a leg takes 25-35 min here against 21-27 min on Ubicloud.
+    # This is the single biggest line of the Ubicloud bill (~79k min/month), and it costs nothing
+    # here, so the extra minutes are the deliberate trade.
+    runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 120
     # "it_linux_es94x", not the truncated "it_linux (es94x)" composite, in the graph view. Same
@@ -284,7 +302,11 @@ jobs:
     name: it_linux_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
-      max-parallel: 20
+      # 29 = the full Linux matrix, so every leg starts in one wave. The account allows 40
+      # concurrent jobs (Pro); the other long jobs of a develop push are 6 it_windows and 3
+      # e2e, so 29 + 6 + 3 = 38 fits with two slots left for the ROR KBN pre-build that
+      # e2e_prepare dispatches into readonlyrest_kbn on this same account.
+      max-parallel: 29
       matrix:
         ES_MODULE: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
     steps:
@@ -383,7 +405,7 @@ jobs:
 
   # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
   # Matrix from setup: 6-version subset on develop/master/epic, 3 on ready PRs, none on draft
-  # PRs (job skipped), full 33 on manual run_all_tests_on_windows.
+  # PRs (job skipped), full 28 on manual run_all_tests_on_windows.
   it_windows:
     # toolchains_verify is in needs even though Windows doesn't use the image, so a broken image
     # fails fast instead of running doomed legs.
@@ -564,7 +586,11 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    runs-on: ubicloud-standard-4
+    # free for public repos (4cpu/16GB); same vCPU and RAM as ubicloud-standard-4, and measured
+    # at the same wall time for this job. Not a container: job, so ci/free-host-disk.sh below can
+    # see GitHub's preinstalled toolchains — though on the current 145 GB image there are already
+    # 83-87 GB free, so the script skips the reclaim unless the disk is genuinely tight.
+    runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
@@ -645,7 +671,11 @@ jobs:
       needs.it_linux.result == 'success' &&
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
       (needs.e2e_tests.result == 'success' || needs.setup.outputs.e2e_modules == '[]')
-    runs-on: ubicloud-standard-4
+    # free for public repos (4cpu/16GB); same vCPU and RAM as ubicloud-standard-4. Gradle deps are
+    # baked into the toolchains image, so no runner-side cache is needed — but this host is slower
+    # per core: measured 4.1 / 19.4 / 26.6 / 10.6 min for es6xx / es7xx / es8xx / es9xx against a
+    # 30-day Ubicloud average of 2.9 / 12.3 / 15.5 / 6.3. Free, and off the critical path.
+    runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 180
     name: ${{ matrix.ROR_TASK }}
