@@ -97,3 +97,65 @@ gh api repos/sscarduzio/elasticsearch-readonlyrest-plugin/actions/runners \
 - Shared host, so the release scripts must not sweep the whole Docker daemon. `ROR_SHARED_DOCKER_HOST=1`
   is set on these jobs and downgrades `docker system prune -af --volumes` to dangling layers and
   build cache only. Without it, a retry would kill the Kibana runners' in-flight ELK stacks.
+
+## Required: the job-started hook
+
+The `container:` jobs in `ci.yml` run as root, and on a machine that survives the job they leave
+the whole workspace owned by root. The runner service runs as `runner`, so the next job that is
+**not** a container job dies in `actions/checkout`:
+
+```
+fatal: Unable to create '.../.git/index.lock': Permission denied
+EACCES: permission denied, rmdir '.../_work/...'
+```
+
+This wedges the runner permanently — every following job fails the same way in about six seconds.
+It happened on 4 September 2026: ~22,500 root-owned entries on each of `gh-ror-es-1` and
+`gh-ror-es-2`, and every `publish-pre-builds.yml` run after it failed until the workspaces were
+chowned back.
+
+A hosted runner never sees this, because the VM is destroyed after the job. Here the fix is a
+hook that gives the workspace back before every job. Install it on each runner:
+
+```bash
+incus exec --project github-ci gh-ror-es-$N -- bash -s <<'INNER'
+set -e
+cat > /usr/local/sbin/reclaim-runner-workspace <<'EOS'
+#!/bin/sh
+exec chown -R runner:runner /home/runner/actions-runner/_work
+EOS
+chmod 0755 /usr/local/sbin/reclaim-runner-workspace
+
+# The runner user has no sudo. Grant exactly this one command, nothing else.
+echo 'runner ALL=(root) NOPASSWD: /usr/local/sbin/reclaim-runner-workspace' \
+  > /etc/sudoers.d/50-runner-workspace
+chmod 0440 /etc/sudoers.d/50-runner-workspace
+visudo -c -q
+
+cat > /home/runner/actions-runner/job-started-hook.sh <<'EOS'
+#!/bin/bash
+set -euo pipefail
+sudo -n /usr/local/sbin/reclaim-runner-workspace
+echo ">>> workspace ownership reclaimed for the runner user"
+EOS
+chown runner:runner /home/runner/actions-runner/job-started-hook.sh
+chmod 0755 /home/runner/actions-runner/job-started-hook.sh
+
+echo 'ACTIONS_RUNNER_HOOK_JOB_STARTED=/home/runner/actions-runner/job-started-hook.sh' \
+  >> /home/runner/actions-runner/.env
+INNER
+# .env is read at start-up, so the service has to be restarted.
+incus exec --project github-ci gh-ror-es-$N -- bash -lc \
+  "cd /home/runner/actions-runner && ./svc.sh stop && ./svc.sh start"
+```
+
+The sudoers entry names a root-owned script rather than `chown` with arguments, so the grant
+cannot be widened by passing different paths. It adds no real privilege either way: `runner` is
+already in the `docker` group, which is root-equivalent on this box.
+
+If a runner starts failing every job at `actions/checkout`, check this first:
+
+```bash
+incus exec --project github-ci gh-ror-es-$N -- \
+  find /home/runner/actions-runner/_work ! -user runner | wc -l
+```
