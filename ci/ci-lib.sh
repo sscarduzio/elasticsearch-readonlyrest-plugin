@@ -190,11 +190,11 @@ publish_ror_es_prebuild_plugin() {
     return 3
   fi
 
-  local ROR_VERSION GIT_SHA
-  ROR_VERSION=$(gradle_property pluginVersion) || return 1
+  local GIT_SHA
   GIT_SHA=$(git rev-parse --short HEAD)
 
-  local CANONICAL_TAG="${ES_VERSION}-ror-${ROR_VERSION}"
+  # The shared <esVersion>-ror-<pluginVersion> tag is gradle's business now: it builds it from the
+  # same dockerImageNamespace and pushes it alongside this one. Nothing here needs to name it.
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 
   echo ""
@@ -209,15 +209,17 @@ publish_ror_es_prebuild_plugin() {
   else
     # This build pulls base images and pushes the result, so a registry can answer 429. Only such
     # a failure is repeated. A broken build fails at once.
+    #
+    # Both tags go up in the SAME buildx push: the shared <esVersion>-ror-<pluginVersion> and this
+    # commit's immutable source tag. The source tag used to be copied from the shared one after the
+    # push, and that was a race - the shared tag carries no branch, so a concurrent publish on the
+    # same plugin version could overwrite it in between and leave the commit tag pointing at the
+    # other run's image, which every caller then treats as commit-pinned.
     if ! retry_with_backoff --retry-if is_docker_registry_error \
-         ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+         ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
+         "-PpreBuildSourceImage=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
       echo "Failed to publish plugin prebuild Docker image"
       return 4
-    fi
-    # Freeze this build under its immutable source-identity tag so future runs can detect & skip it.
-    if ! retag_dev_image "$CANONICAL_TAG" "$SOURCE_TAG"; then
-      echo "Failed to tag prebuild Docker image as ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"
-      return 5
     fi
   fi
 

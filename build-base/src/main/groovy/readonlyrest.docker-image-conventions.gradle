@@ -36,6 +36,15 @@ def dockerImageNamespace = project.property('dockerImageNamespace')
 def releaseDockerImageLatest = "${dockerImageNamespace}/elasticsearch-readonlyrest:${esVersion}-ror-latest"
 def releaseDockerImageVersion = "${dockerImageNamespace}/elasticsearch-readonlyrest:${esVersion}-ror-${pluginVersion}"
 def preBuildDockerImageVersion = "${dockerImageNamespace}/elasticsearch-readonlyrest-dev:${esVersion}-ror-${pluginVersion}"
+// The commit-identity image, when the caller supplies one. ci/ci-lib.sh passes the full reference,
+// which it builds from the same dockerImageNamespace, so the two cannot drift.
+//
+// It is pushed by the SAME buildx invocation as the tag above, so "this commit's image" is written
+// by the build that produced it. It used to be copied from preBuildDockerImageVersion after the
+// push, and that was a race: <esVersion>-ror-<pluginVersion> carries no branch, so a concurrent
+// publish on the same plugin version could overwrite it in between, leaving the commit tag pointing
+// at the other run's image - which every caller then treats as commit-pinned.
+def preBuildDockerImageSource = project.hasProperty('preBuildSourceImage') ? project.property('preBuildSourceImage') : null
 
 // Shared docker CLI task setup + the multi-arch `buildx build ... --push` invocation (latest/version and dev
 // images differ only in their -t tags). Keeps the three buildx tasks below from repeating the platform list,
@@ -217,7 +226,11 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
     dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
     dockerCliDefaults(delegate)
     environment 'SOURCE_DATE_EPOCH', sourceDateEpoch
-    args = buildxPushArgs([preBuildDockerImageVersion])
+    // Both tags in one push. Without -PpreBuildSourceImage this is exactly what it was, so a local
+    // or manual invocation keeps working.
+    args = buildxPushArgs(preBuildDockerImageSource
+            ? [preBuildDockerImageVersion, preBuildDockerImageSource]
+            : [preBuildDockerImageVersion])
 }
 
 tasks.register('localRorDockerImage', Exec) {
