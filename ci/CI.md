@@ -1,9 +1,16 @@
 # ReadonlyREST CI
 
-CI runs on GitHub Actions: `.github/workflows/ci.yml`. Linux jobs run on **GitHub-hosted**
-`ubuntu-latest` runners (4 vCPU / 16 GB — the same shape as the `ubicloud-standard-4` they used
-to run on) inside the `beshultd/ror-ci-toolchains` image; Windows jobs run on GitHub-hosted
-`windows-2025`. `ci/toolchains/image.env` holds that image's tag, and every workflow that needs
+CI runs on GitHub Actions: `.github/workflows/ci.yml`. The Linux **test and build** jobs run on
+**GitHub-hosted** `ubuntu-latest` runners inside the `beshultd/ror-ci-toolchains` image; Windows
+jobs run on GitHub-hosted `windows-2025`. The **release** jobs are the exception and stay on the
+shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` here, plus the standalone
+`mirror-es-libs.yml`. (`publish-pre-builds.yml` moved back to `ubuntu-latest` — see PR #1372.)
+
+`ubuntu-latest` is 4 vCPU / 16 GB, the same shape as the `ubicloud-standard-4` these jobs used to
+run on, but **not the same throughput**: measured on the 10-module PR set, an `it_linux` leg takes
+25-35 min here against 21-27 min on Ubicloud, and the `build_ror` legs are 40-70% slower. That is
+the deliberate trade — this was the single biggest line of the Ubicloud bill and it now costs
+nothing. `ci/toolchains/image.env` holds that image's tag, and every workflow that needs
 it sources that file. The repo is public, so GitHub-hosted runners are free. The concurrency limit
 is 40 jobs **per account** (GitHub Pro), shared with `readonlyrest_kbn`. A develop push has 29
 `it_linux` legs, 6 `it_windows` legs and 3 `e2e` legs — 38 long jobs — so `it_linux` sets
@@ -34,7 +41,7 @@ directory contain the build logic; the workflow only orchestrates.
 | `unit_tests_linux` | `core:test` and friends | pushes + PRs |
 | `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
 | `it_linux` | integration tests, one job per ES version | 10-version subset on PRs, full 29 on develop/master/epic and manual |
-| `it_windows` | integration tests on native-Windows ES | 3 on PRs, 7 on branches, full 33 on manual |
+| `it_windows` | integration tests on native-Windows ES | 3 on PRs, 6 on branches, full 28 on manual |
 | `unit_tests_windows` | `core:test` on Windows | manual `run_all_tests_on_windows` |
 | `e2e_prepare` | resolves the e2e matrix + starts the ROR KBN image build | pushes + PRs (not drafts) |
 | `e2e_tests` | Cypress e2e suite, one job per ES version | pushes + PRs (not drafts) |
