@@ -1,0 +1,65 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+import tech.beshu.ror.gradle.utils.EsModuleFinder
+
+plugins {
+    id "readonlyrest.base-common-conventions"
+    id "readonlyrest.es-libs-repository"
+}
+
+// Convention for the es<major>-base projects, the shared-source base of one ES major
+// (docs/architecture/ES_MODULE_LAYOUT.md).
+
+// Gradle does not compile this project: every module of the major compiles these sources against its OWN ES
+// version (the shared-source overlay in readonlyrest.plugin-common-conventions), and each module must
+// produce its own bytecode. The project exists so the shared tree is a real source root -- format and
+// license checks reach it at its real path, and the IDE can open it as one.
+tasks.withType(ScalaCompile).configureEach { enabled = false }
+tasks.withType(JavaCompile).configureEach { enabled = false }
+
+// Nothing in this project is shipped, so there is nothing to scan for CVEs: the dependencies below
+// exist only so the IDE can resolve ES symbols, and every es module's real payload is already
+// scanned through its 'distJars' configuration. Without this, cve_check flags the CVEs of the
+// ES-provided jars themselves, none of which ROR distributes.
+dependencyCheck { skip = true }
+
+def esMajor = (project.name =~ /^es(\d+)-base$/).with { it.matches() ? it.group(1) : null }
+if (esMajor == null) {
+    throw new GradleException("readonlyrest.es-base-conventions applies only to es<major>-base projects, not '${project.name}'")
+}
+
+// The IDE DOES compile it, and it builds its model from source sets rather than from the compile task's
+// source, so with no classpath here every ES symbol in the shared tree shows up unresolved. Declare the
+// same dependencies a module of this major gets, pinned to the one ES version whose shape the base holds
+// (docs/architecture/ES_MODULE_LAYOUT.md rule 2): the oldest of the major for a completed major, the
+// newest for the active one. Only symbol resolution depends on the pin -- nothing here is ever compiled
+// by Gradle; each module compiles the base minus its own overrides against its own ES version.
+// allSupportedEsVersions is ordered oldest-first.
+def versionsOfMajor = EsModuleFinder.allSupportedEsVersions(rootProject).findAll { it.startsWith("${esMajor}.") }
+def activeMajor = EsModuleFinder.allSupportedEsVersions(rootProject).last().startsWith("${esMajor}.")
+ext.esVersion = activeMajor ? versionsOfMajor.last() : versionsOfMajor.first()
+
+// The project's own build.gradle applies es<major>-base/module.gradle next (a precompiled script
+// plugin cannot `apply from:` an external script itself), which sets javaLanguageVersion -- read
+// it lazily, after that script ran.
+java {
+    toolchain {
+        languageVersion = providers.provider {
+            JavaLanguageVersion.of(project.ext.javaLanguageVersion as int)
+        }
+    }
+}
