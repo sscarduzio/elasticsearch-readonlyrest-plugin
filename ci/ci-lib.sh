@@ -133,9 +133,15 @@ is_docker_registry_error() {
 }
 
 # A --retry-if function for `./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository`.
-# True only when the run died in initializeSonatypeStagingRepository, which is the FIRST task of
-# that chain: it asks ossrh-staging-api for a staging repository and nothing has been uploaded yet.
-# Repeating from there cannot leave a second staging repository behind or half-release a version.
+# True only when the run died in initializeSonatypeStagingRepository's create-staging-repository
+# call AND the status is a transient one. That task is the FIRST of the chain: it asks
+# ossrh-staging-api for a staging repository and nothing has been uploaded yet, so repeating from
+# there cannot leave a second staging repository behind or half-release a version.
+#
+# Not every failure of that task is repeated, deliberately. `No response body` and the profile
+# lookup ("Failed to find staging profile for package group") do not match the second grep, so they
+# fail on the first attempt - a wrong MAVEN_STAGING_PROFILE_ID answers the same way every time, and
+# waiting three more times to say so helps nobody.
 #
 # Every later failure - an upload, the close, the release - is deliberately not repeated. Those run
 # against a staging repository that already exists, so a second attempt would open another one.
