@@ -105,7 +105,7 @@ The `container:` jobs in `ci.yml` run as root, and on a machine that survives th
 the whole workspace owned by root. The runner service runs as `runner`, so the next job that is
 **not** a container job dies in `actions/checkout`:
 
-```
+```text
 fatal: Unable to create '.../.git/index.lock': Permission denied
 EACCES: permission denied, rmdir '.../_work/...'
 ```
