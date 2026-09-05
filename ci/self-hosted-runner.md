@@ -8,11 +8,17 @@ Jobs that need a self-hosted runner:
 
 | Workflow | Job | Shape |
 |---|---|---|
-| `ci.yml` | `upload_pre_ror` | 4-leg matrix, ~45–57 min/leg, pre-release only |
-| `ci.yml` | `release_ror` | 4-leg matrix, ~16 min/leg, release only |
+| `ci.yml` | `upload_pre_ror` | 4-leg matrix, 8–95 min/leg (median 15/43/54/26 for es6/7/8/9xx), pre-release only |
+| `ci.yml` | `release_ror` | 4-leg matrix, 19–152 min/leg (median 22/93/138/61 for es6/7/8/9xx), release only |
 | `ci.yml` | `publish_mvn` | seconds, after `release_ror` |
 | `publish-pre-builds.yml` | `publish` | manual, long build-and-push |
 | `mirror-es-libs.yml` | `mirror` | manual, short |
+
+Those are measured, not estimates: n=10 release legs and n=26 upload legs from the 1 Aug - 4 Sep
+window. Size the pool on the **slowest** leg, not the median - `release_es8xx` reaches 152 min on a
+good day, and one run hit the 180-minute job bound and was killed, which is what PR #1370 raises.
+A two-slot pool means the four release legs run two at a time, so a release occupies the box for
+roughly `es8xx + es7xx` back to back.
 
 ## The selector
 
