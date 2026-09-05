@@ -74,6 +74,19 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2026-63136</cve>
         <cve>CVE-2026-63140</cve>
         <cve>CVE-2026-63263</cve>
+        <cve>CVE-2026-72636</cve>
+        <cve>CVE-2026-72638</cve>
+        <cve>CVE-2026-72639</cve>
+        <cve>CVE-2026-72642</cve>
+        <cve>CVE-2026-72645</cve>
+        <cve>CVE-2026-72647</cve>
+        <cve>CVE-2026-72678</cve>
+        <cve>CVE-2026-72679</cve>
+        <cve>CVE-2026-72683</cve>
+        <cve>CVE-2026-72684</cve>
+        <cve>CVE-2026-72685</cve>
+        <cve>CVE-2026-72686</cve>
+        <cve>CVE-2026-72687</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
@@ -119,6 +132,19 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2026-49090</cve>
         <cve>CVE-2026-56148</cve>
         <cve>CVE-2026-56149</cve>
+        <cve>CVE-2026-72636</cve>
+        <cve>CVE-2026-72638</cve>
+        <cve>CVE-2026-72639</cve>
+        <cve>CVE-2026-72642</cve>
+        <cve>CVE-2026-72645</cve>
+        <cve>CVE-2026-72647</cve>
+        <cve>CVE-2026-72678</cve>
+        <cve>CVE-2026-72679</cve>
+        <cve>CVE-2026-72683</cve>
+        <cve>CVE-2026-72684</cve>
+        <cve>CVE-2026-72685</cve>
+        <cve>CVE-2026-72686</cve>
+        <cve>CVE-2026-72687</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[

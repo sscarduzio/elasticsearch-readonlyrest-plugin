@@ -4,6 +4,18 @@
 # Sourced by ci/run-pipeline.sh.
 
 cleanup_docker_and_build() {
+  # ROR_SHARED_DOCKER_HOST=1 means the docker daemon is not ours alone: on the self-hosted box it
+  # also serves the readonlyrest_kbn runners, which hold running ELK stacks and images they built.
+  # The full sweep below would delete every one of them and fail their jobs, so reclaim only what
+  # this build itself left behind — dangling layers and build cache. Nothing else on the daemon.
+  if [ "${ROR_SHARED_DOCKER_HOST:-0}" = "1" ]; then
+    echo ">>> shared docker host: pruning only dangling images and build cache"
+    docker image prune -f || true
+    docker builder prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" || true
+    find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+    return 0
+  fi
+
   # Exclude the container this script is running inside (prevents self-removal in DinD setups).
   local SELF_ID
   SELF_ID=$(hostname 2>/dev/null || true)
