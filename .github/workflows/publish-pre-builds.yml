@@ -34,19 +34,21 @@ on:
 permissions:
   contents: read
 
-# The self-hosted pool this workflow used to run on had two slots, and that was the only thing
-# serialising it. On ubuntu-latest it is unbounded, and the publish is not safe to run twice at
-# once: publishEsRorPreBuildDockerImage pushes the SHARED tag <esVersion>-ror-<pluginVersion>, and
-# retag_dev_image then freezes "this commit's image" FROM that shared tag (ci/ci-lib.sh:207-230).
-# Interleave A-push, B-push, A-retag and <esVersion>-ror-<shaA> points at B's image, so an e2e leg
-# tests the wrong build while believing it is commit-pinned.
+# NO concurrency group here, deliberately. See the note in ci/self-hosted-runner.md.
 #
-# Keyed on the versions and the branch actually built, not on github.ref: two dispatches for the
-# same branch and the same ES versions are the pair that collides. cancel-in-progress is false -
-# the loser waits, because cancelling a half-finished push is what leaves the shared tag dangling.
-concurrency:
-  group: publish-pre-builds-${{ inputs.target_branch || github.ref }}-${{ inputs.es_versions }}
-  cancel-in-progress: false
+# The obvious guard would be `concurrency: {group: ..., cancel-in-progress: false}`, and it is a
+# trap. GitHub keeps ONE pending run per group and cancels any previously pending one, so a third
+# dispatch cancels the second. Two repos wait on this workflow by run id
+# (wait_for_es_prebuild_images), and its `*)` branch treats `cancelled` exactly like `failure`:
+# "its images will never be published", exit 6. A group would turn a queued dispatch into a hard
+# failure for a waiter that did nothing wrong - the failure mode this PR exists to remove.
+#
+# That leaves a real, PRE-EXISTING race: publishEsRorPreBuildDockerImage pushes the shared tag
+# <esVersion>-ror-<pluginVersion>, and retag_dev_image then freezes "this commit's image" from it
+# (ci/ci-lib.sh:207-230). Interleave A-push, B-push, A-retag and <esVersion>-ror-<shaA> points at
+# B's image. Two self-hosted slots already allowed that; hosted runners widen the window.
+# The fix belongs in ci-lib.sh - push the immutable source tag directly instead of pushing a shared
+# tag and copying it - not in a workflow-level queue that breaks the callers.
 
 defaults:
   run:

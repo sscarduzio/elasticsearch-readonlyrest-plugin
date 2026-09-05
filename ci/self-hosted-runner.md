@@ -148,11 +148,13 @@ EOS
 chown root:root /usr/local/sbin/job-started-hook.sh
 chmod 0755 /usr/local/sbin/job-started-hook.sh
 
-# .env itself must stay in the runner directory - that is where the runner reads it. Guarded, so
-# re-running this block on a runner that already has the hook does not add a second line.
-grep -q ACTIONS_RUNNER_HOOK_JOB_STARTED /home/runner/actions-runner/.env || \
-  echo 'ACTIONS_RUNNER_HOOK_JOB_STARTED=/usr/local/sbin/job-started-hook.sh' \
-    >> /home/runner/actions-runner/.env
+# .env itself must stay in the runner directory - that is where the runner reads it.
+# Delete then append, rather than `grep -q <name> || echo`: a name-only check passes on a runner
+# whose variable still points at an OLD, runner-owned hook, and would leave that path in place.
+sed -i '/ACTIONS_RUNNER_HOOK_JOB_STARTED/d' /home/runner/actions-runner/.env
+echo 'ACTIONS_RUNNER_HOOK_JOB_STARTED=/usr/local/sbin/job-started-hook.sh' \
+  >> /home/runner/actions-runner/.env
+rm -f /home/runner/actions-runner/job-started-hook.sh
 INNER
 # .env is read at start-up, so the service has to be restarted.
 incus exec --project github-ci gh-ror-es-$N -- bash -lc \
