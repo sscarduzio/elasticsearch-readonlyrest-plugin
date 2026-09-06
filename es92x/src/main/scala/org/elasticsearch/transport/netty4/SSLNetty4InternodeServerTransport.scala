@@ -28,7 +28,6 @@ import org.elasticsearch.common.util.PageCacheRecycler
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.ConnectionProfile
-import org.elasticsearch.transport.netty4.{Netty4Transport, SharedGroupFactory}
 import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
 import tech.beshu.ror.settings.es.SslSettings.InternodeSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged

@@ -118,11 +118,6 @@ object RestClientAuditOutputService extends RequestIdAwareLogging {
     }
   }
 
-  // the same client submits the audit events, so the resource must not close it. The service closes it.
-  private def createAuditOutputCreator(restClient: RestClient) = {
-    Resource.eval(Task.delay(AuditDataStreamCreator(new RestClientDataStreamService(restClient))))
-  }
-
   private def createService(
       remoteCluster: AuditCluster.RemoteAuditCluster,
       restClient: RestClient
@@ -132,6 +127,11 @@ object RestClientAuditOutputService extends RequestIdAwareLogging {
       inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
       dataStreamCreator = createAuditOutputCreator(restClient)
     )
+  }
+
+  // the same client submits the audit events, so the resource must not close it. The service closes it.
+  private def createAuditOutputCreator(restClient: RestClient) = {
+    Resource.eval(Task.delay(AuditDataStreamCreator(new RestClientDataStreamService(restClient))))
   }
 
   private def createRestClient(

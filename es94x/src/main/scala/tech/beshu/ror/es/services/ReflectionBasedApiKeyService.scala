@@ -45,15 +45,6 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any, threadPool: Threa
     extends ApiKeyService
     with RequestIdAwareLogging {
 
-  private val apiKeyType: Try[AnyRef] = Try {
-    val classLoader = apiKeyServiceRef.getClass.getClassLoader
-    val apiKeyTypeClass =
-      Class.forName("org.elasticsearch.xpack.core.security.action.apikey.ApiKey$Type", true, classLoader)
-    onClass(apiKeyTypeClass)
-      .call("valueOf", "REST")
-      .get[AnyRef]
-  }
-
   override def validateToken(token: AuthorizationToken)(
       implicit requestId: RequestId
   ): Task[Boolean] = {
@@ -71,10 +62,7 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any, threadPool: Threa
 
   private def parseApiKey(token: AuthorizationToken): Try[Option[AnyRef]] =
     Using(new SecureString(token.value.value.toArray)) { secureString =>
-      apiKeyType
-        .flatMap { `type` =>
-          Try(Option(on(apiKeyServiceRef).call("parseApiKey", secureString, `type`).get[AnyRef]))
-        }
+      Try(Option(on(apiKeyServiceRef).call("parseCredentialsFromApiKeyString", secureString).get[AnyRef]))
     }.flatten
 
   private def authenticateApiKey(apiKeyCredentials: AnyRef): Task[Boolean] = {

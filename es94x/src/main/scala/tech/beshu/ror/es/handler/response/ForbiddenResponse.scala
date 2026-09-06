@@ -39,6 +39,11 @@ final class ForbiddenResponse private (context: ForbiddenResponseContext)
       RestStatus.FORBIDDEN
     }
 
+  private def addHeader(name: String, value: String): Unit = {
+    addHttpHeader(name, value)
+    addBodyHeader(name, value)
+  }
+
 }
 
 object ForbiddenResponse extends ResponseCreator[ForbiddenResponse] {

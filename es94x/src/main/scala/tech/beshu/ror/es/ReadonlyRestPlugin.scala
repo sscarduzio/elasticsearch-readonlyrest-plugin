@@ -21,9 +21,7 @@ import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
-import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.internal.node.NodeClient
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
@@ -40,11 +38,15 @@ import org.elasticsearch.injection.guice.Inject
 import org.elasticsearch.plugins.*
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.repositories.RepositoriesService
-import org.elasticsearch.rest.{RestController, RestHandler}
-import org.elasticsearch.telemetry.tracing.Tracer
+import org.elasticsearch.rest.RestHandler
+import org.elasticsearch.telemetry.TelemetryProvider
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.{Netty4Utils, SharedGroupFactory}
-import org.elasticsearch.transport.netty4.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
+import org.elasticsearch.transport.netty4.{
+  Netty4Utils,
+  SSLNetty4HttpServerTransport,
+  SSLNetty4InternodeServerTransport,
+  SharedGroupFactory
+}
 import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
@@ -169,7 +171,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       dispatcher: HttpServerTransport.Dispatcher,
       perRequestThreadContext: BiConsumer[HttpPreRequest, ThreadContext],
       clusterSettings: ClusterSettings,
-      tracer: Tracer
+      telemetryProvider: TelemetryProvider
   ): util.Map[String, Supplier[HttpServerTransport]] = {
     esConfigBasedRorSettings.ssl
       .flatMap(_.externalSsl)
@@ -184,7 +186,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
             ssl,
             clusterSettings,
             getSharedGroupFactory(settings),
-            tracer
+            telemetryProvider
           )
         }
       }
@@ -230,8 +232,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     ilaf.stop()
   }
 
-  override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
-    List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
+  override def getActions: util.List[ActionPlugin.ActionHandler] = {
+    List[ActionPlugin.ActionHandler](
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
       new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
       new ActionHandler(RRTestSettingsActionType.instance, classOf[TransportRRTestSettingsAction]),
@@ -243,18 +245,14 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def getRestHandlers(
-      settings: Settings,
-      namedWriteableRegistry: NamedWriteableRegistry,
-      restController: RestController,
-      clusterSettings: ClusterSettings,
-      indexScopedSettings: IndexScopedSettings,
-      settingsFilter: SettingsFilter,
-      indexNameExpressionResolver: IndexNameExpressionResolver,
+      restHandlersServices: ActionPlugin.RestHandlersServices,
       nodesInCluster: Supplier[DiscoveryNodes],
       clusterSupportsFeature: Predicate[NodeFeature]
   ): util.Collection[RestHandler] = {
     import tech.beshu.ror.es.utils.RestControllerOps.*
-    restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
+    restHandlersServices
+      .restController()
+      .decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),

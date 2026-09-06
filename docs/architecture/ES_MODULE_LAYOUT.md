@@ -32,13 +32,11 @@ This holds for the Scala and Java sources, for the `Dockerfile`, and for the mod
 
 1. A file goes into the base only when **every** module of that major has it. If one module does not
    have the file, the base would add it to that module.
-2. For a **completed** major (ES 7 and 8), the base holds the shape of the **oldest** ES version of
-   the major -- the major's original shape. That shape never changes again, and it is the one shape a
-   single ES version can resolve in full, so the base project pins its IDE classpath to exactly that
-   version. Every later module that is incompatible overrides the file.
-3. For the **active** major (ES 9), the base holds the **newest** shape, and the base project pins its
-   IDE classpath to the newest supported version. A new module of this major then needs the smallest
-   number of overrides.
+2. The base holds the shape of the **oldest** ES version of the major -- the major's original shape.
+   That shape never changes again, it is the one shape a single ES version can resolve in full, and
+   the base project pins its IDE classpath to exactly that version. Every later module that is
+   incompatible overrides the file. This applies to the active major (ES 9) too: a new minor that
+   changes an API adds overrides to the new module and does not touch the base.
 
 There is one base per major, and not one base for all versions, because a base that follows the newest
 ES version is never complete. Each new ES version pushes the previous shape down into the older
@@ -75,5 +73,7 @@ cannot break an ES 7 module.
 2. In `gradle.properties`, set `supportedEsVersions`. The build calculates the other data from it.
 3. Compile the module. For each error, add an override, or change the base if the change applies to
    all modules of the major.
-4. For a new major version: copy the previous major's base to `es<N>-base`. The older modules do not
-   change.
+4. For a new major version: seed `es<N>-base` from the previous major's newest module (its base plus
+   its overrides), then fix it until the new major's first module compiles. That first module is the
+   oldest of the new major, so it starts with zero overrides: the base holds its shape (rule 2). The
+   older majors do not change.

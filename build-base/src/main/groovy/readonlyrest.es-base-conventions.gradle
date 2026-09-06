@@ -45,13 +45,12 @@ if (esMajor == null) {
 // The IDE DOES compile it, and it builds its model from source sets rather than from the compile task's
 // source, so with no classpath here every ES symbol in the shared tree shows up unresolved. Declare the
 // same dependencies a module of this major gets, pinned to the one ES version whose shape the base holds
-// (docs/architecture/ES_MODULE_LAYOUT.md rule 2): the oldest of the major for a completed major, the
-// newest for the active one. Only symbol resolution depends on the pin -- nothing here is ever compiled
-// by Gradle; each module compiles the base minus its own overrides against its own ES version.
+// (docs/architecture/ES_MODULE_LAYOUT.md rule 2): the OLDEST of the major. Only symbol resolution depends
+// on the pin -- nothing here is ever compiled by Gradle; each module compiles the base minus its own
+// overrides against its own ES version.
 // allSupportedEsVersions is ordered oldest-first.
 def versionsOfMajor = EsModuleFinder.allSupportedEsVersions(rootProject).findAll { it.startsWith("${esMajor}.") }
-def activeMajor = EsModuleFinder.allSupportedEsVersions(rootProject).last().startsWith("${esMajor}.")
-ext.esVersion = activeMajor ? versionsOfMajor.last() : versionsOfMajor.first()
+ext.esVersion = versionsOfMajor.first()
 
 // The project's own build.gradle applies es<major>-base/module.gradle next (a precompiled script
 // plugin cannot `apply from:` an external script itself), which sets javaLanguageVersion -- read

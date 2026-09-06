@@ -90,10 +90,16 @@ object EsqlRequestHelper {
       implicit classLoader: ClassLoader
   ) {
 
-    private val underlyingObject =
+    private val underlyingObject = {
+      val esqlFunctionRegistryClass =
+        classLoader.loadClass("org.elasticsearch.xpack.esql.expression.function.EsqlFunctionRegistry")
+      val esqlFunctionRegistry = onClass(esqlFunctionRegistryClass).create().get[Any]()
+      val esqlConfigClass = classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlConfig")
+      val esqlConfig = onClass(esqlConfigClass).create(esqlFunctionRegistry).get[Any]()
       onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser"))
-        .create()
+        .create(esqlConfig)
         .get[Any]()
+    }
 
     def createStatementBasedOn(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
       createStatement(request).flatMap(statementWithIndices)
@@ -122,16 +128,27 @@ object EsqlRequestHelper {
     }
 
     private def indicesFrom(statement: Any) = {
-      val preAnalyze = doPreAnalyze(newPreAnalyzer, statement)
-      tablesFrom(tableInfosFrom(preAnalyze), EsqlIndexTable.From.parse) ++
-        tablesFrom(lookupTableInfosFrom(preAnalyze), EsqlIndexTable.LookupJoin.parse)
+      val plan = on(statement).call("plan").get[Any]()
+      val preAnalysis = doPreAnalyze(newPreAnalyzer, plan)
+      indicesFromPreAnalysis(preAnalysis)
     }
 
-    private def tablesFrom(tableInfos: List[Any], tableFrom: String => Option[EsqlIndexTable]): List[EsqlIndexTable] = {
-      tableInfos
-        .map(tableIdentifierFrom)
-        .map(indexStringFrom)
-        .flatMap(tableFrom)
+    private def indicesFromPreAnalysis(preAnalysis: Any) = {
+      val fromIndexPatterns = on(preAnalysis).get[java.util.Map[Any, Any]]("indexes").keySet().asScala.toList
+      val lookupIndexPatterns =
+        on(preAnalysis).get[java.util.List[Any]]("lookupIndices").asScala.toList
+      tablesFrom(fromIndexPatterns, EsqlIndexTable.From.parse) ++
+        tablesFrom(lookupIndexPatterns, EsqlIndexTable.LookupJoin.parse)
+    }
+
+    private def tablesFrom(
+        indexPatterns: List[Any],
+        tableFrom: String => Option[EsqlIndexTable]
+    ): List[EsqlIndexTable] = {
+      indexPatterns.flatMap { indexPattern =>
+        val indexPatternString = on(indexPattern).call("indexPattern").get[String]()
+        tableFrom(indexPatternString)
+      }
     }
 
     private def newPreAnalyzer(
@@ -142,22 +159,6 @@ object EsqlRequestHelper {
 
     private def doPreAnalyze(preAnalyzer: Any, statement: Any) = {
       on(preAnalyzer).call("preAnalyze", statement).get[Any]()
-    }
-
-    private def tableInfosFrom(preAnalysis: Any) = {
-      on(preAnalysis).get[java.util.List[Any]]("indices").asScala.toList
-    }
-
-    private def lookupTableInfosFrom(preAnalysis: Any) = {
-      on(preAnalysis).get[java.util.List[Any]]("lookupIndices").asScala.toList
-    }
-
-    private def tableIdentifierFrom(tableInfo: Any) = {
-      on(tableInfo).call("id").get[Any]()
-    }
-
-    private def indexStringFrom(tableIdentifier: Any) = {
-      on(tableIdentifier).call("indexPattern").get[String]()
     }
 
   }

@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
-import org.elasticsearch.cluster.metadata.Metadata
+import org.elasticsearch.cluster.metadata.ProjectMetadata
 import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
+import tech.beshu.ror.es.utils.ClusterStateMetadataOps.toOps
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
@@ -131,10 +132,7 @@ class TemplateClusterStateEsRequestContext private (
   ) = {
     val oldMetadata = response.getState.metadata()
     val filteredTemplates = GetTemplatesEsRequestContext
-      .filter(
-        oldMetadata.templates().values().asScala.toList,
-        transformation
-      )
+      .filter(oldMetadata.allTemplatesMetadata.values, transformation)
       .filter { t =>
         TemplateName
           .fromString(t.name())
@@ -145,14 +143,20 @@ class TemplateClusterStateEsRequestContext private (
       .map(_.name())
 
     val newMetadataWithFilteredTemplates = oldMetadata
-      .templates()
-      .keySet()
+      .projects()
+      .values()
       .asScala
-      .foldLeft(Metadata.builder(oldMetadata)) {
-        case (acc, templateName) if filteredTemplates.contains(templateName) => acc
-        case (acc, templateName)                                             => acc.removeTemplate(templateName)
+      .foldLeft(oldMetadata) { case (clusterMetadata, projectMetadata) =>
+        clusterMetadata.copyAndUpdateProject(
+          projectMetadata.id(),
+          (builder: ProjectMetadata.Builder) => {
+            projectMetadata.templates().keySet().asScala.foreach {
+              case templateName if filteredTemplates.contains(templateName) => // nothing to do
+              case templateName                                             => builder.removeTemplate(templateName)
+            }
+          }
+        )
       }
-      .build()
 
     val modifiedClusterState =
       ClusterState
@@ -176,10 +180,7 @@ class TemplateClusterStateEsRequestContext private (
 
     val filteredTemplatesV2 =
       GetComposableIndexTemplateEsRequestContext
-        .filter(
-          oldMetadata.templatesV2().asSafeMap,
-          transformation
-        )
+        .filter(oldMetadata.allTemplatesV2Metadata, transformation)
         .keys
         .filter { name =>
           TemplateName
@@ -191,14 +192,20 @@ class TemplateClusterStateEsRequestContext private (
         .toCovariantSet
 
     val newMetadataWithFilteredTemplatesV2 = oldMetadata
-      .templatesV2()
-      .keySet()
+      .projects()
+      .values()
       .asScala
-      .foldLeft(Metadata.builder(oldMetadata)) {
-        case (acc, templateName) if filteredTemplatesV2.contains(templateName) => acc
-        case (acc, templateName)                                               => acc.removeIndexTemplate(templateName)
+      .foldLeft(oldMetadata) { case (metadata, project) =>
+        metadata.copyAndUpdateProject(
+          project.id(),
+          (builder: ProjectMetadata.Builder) => {
+            project.templatesV2().keySet().asScala.foreach {
+              case templateName if filteredTemplatesV2.contains(templateName) => // nothing to do
+              case templateName => builder.removeIndexTemplate(templateName)
+            }
+          }
+        )
       }
-      .build()
 
     val modifiedClusterState =
       ClusterState
