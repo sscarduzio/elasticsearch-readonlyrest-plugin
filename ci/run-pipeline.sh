@@ -248,10 +248,8 @@ if [[ $ROR_TASK == "publish_maven_artifacts" ]]; then
       echo ">>> Skipping publishing audit module artifacts"
     else
       echo ">>> Publishing audit module artifacts to sonatype repo"
-      # ossrh-staging-api answers the staging-repository request with 401 intermittently, on
-      # credentials that work minutes later. is_sonatype_staging_init_error owns the measurement and
-      # the reasoning about which failures are safe to repeat; do not restate the numbers here, they
-      # will drift.
+      # is_sonatype_staging_init_error owns the rule about which failures are safe to repeat.
+      # Do not restate it here.
       #
       # What is specific to this call site: it is a release, so it can afford to wait. The delay
       # doubles, so 30 gives gaps of 30 / 60 / 120 s - about 3.5 min across 4 attempts.

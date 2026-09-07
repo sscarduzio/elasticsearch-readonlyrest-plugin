@@ -146,9 +146,9 @@ is_docker_registry_error() {
 # Every later failure - an upload, the close, the release - is deliberately not repeated. Those run
 # against a staging repository that already exists, so a second attempt would open another one.
 #
-# 401 is in the list because it is measured, not assumed: the same three secrets produced three
-# 401s (runs 33210133390, 33724419080, 33725765043) and one clean publish (33854480199). An
-# expired credential answers the same way every time, so a retry still fails and still reports it.
+# 401 is in the list. ossrh-staging-api answers 401 intermittently on credentials that work
+# minutes later, so a 401 here does not prove the secret is wrong. An expired credential answers
+# the same way every time, so a repeat still fails and still reports it.
 is_sonatype_staging_init_error() {
   grep -Fq "Execution failed for task ':initializeSonatypeStagingRepository'" "$1" &&
     grep -Eq 'Failed to create staging repository.*status code (401|408|429|5[0-9][0-9])' "$1"
