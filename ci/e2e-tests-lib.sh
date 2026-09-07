@@ -252,20 +252,12 @@ order_e2e_kbn_images() {
     return 2
   fi
 
-  # One run builds the versions one after another, so it finishes after N build times. Scale the
-  # wait with the count, off the shared lib's single-version default...
-  local VERSION_COUNT
-  VERSION_COUNT=$(echo "$ELK_VERSIONS" | wc -w | tr -d '[:space:]')
-  local WAIT_TIMEOUT=$(( VERSION_COUNT * ${ROR_KBN_WAIT_TIMEOUT_SECONDS:-1800} ))
-  # ...but never past what this job is allowed to live for. A wait that outlasts the job can report
-  # nothing: GitHub kills the runner at `timeout-minutes` and the job dies with an opaque "exceeded
-  # the maximum execution time" instead of the diagnosis below. Keep the cap well under
-  # `timeout-minutes` on e2e_order_kbn_images in ci.yml, and raise both together.
-  local WAIT_TIMEOUT_CAP=${ROR_KBN_WAIT_TIMEOUT_CAP_SECONDS:-7200}
-  if [ "$WAIT_TIMEOUT" -gt "$WAIT_TIMEOUT_CAP" ]; then
-    echo ">>> Capping the ROR KBN image wait at ${WAIT_TIMEOUT_CAP}s (scaled value was ${WAIT_TIMEOUT}s)"
-    WAIT_TIMEOUT=$WAIT_TIMEOUT_CAP
-  fi
+  # How long to wait for the WHOLE order (one run builds the versions one after another). A wait
+  # that outlasts the job can report nothing: GitHub kills the runner at `timeout-minutes` and the
+  # job dies with an opaque "exceeded the maximum execution time" instead of the diagnosis below.
+  # So the caller sets this, and keeps it well under `timeout-minutes` on e2e_order_kbn_images in
+  # ci.yml, where both numbers sit side by side. This default is the fallback for local runs.
+  local WAIT_TIMEOUT=${ROR_KBN_WAIT_TIMEOUT_SECONDS:-7200}
   export ROR_KBN_WAIT_TIMEOUT_SECONDS=$WAIT_TIMEOUT
 
   echo ">>> Ordering e2e ROR KBN dev images: ELK [$ELK_VERSIONS], run tag: $RUN_TAG, wait up to ${WAIT_TIMEOUT}s"

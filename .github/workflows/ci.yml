@@ -565,7 +565,9 @@ jobs:
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest
-    timeout-minutes: 130
+    # Backstop only. The wait below (120min) fires first and says why it failed.
+    # Keep 30min between them, and raise both together.
+    timeout-minutes: 150
     outputs:
       kbn_run_url: ${{ steps.order.outputs.kbn_run_url }}
     steps:
@@ -580,6 +582,8 @@ jobs:
           ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
           E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+          # How long to wait for the whole ROR KBN order. Kept under timeout-minutes above.
+          ROR_KBN_WAIT_TIMEOUT_SECONDS: 7200
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
