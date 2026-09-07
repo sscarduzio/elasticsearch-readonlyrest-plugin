@@ -99,13 +99,12 @@ e2e_matrix                     resolve versions once, publish the build id
   resolving a version is a Gradle call — and its `elk_versions` output is what lets the order job run
   without one.
 - `e2e_order_kbn_images` places **one** dispatch for the whole version list and then waits for that
-  run, in the same shell, ending with a registry check of every image. Needs no toolchain: `gh`,
-  `jq` and an authenticated docker are enough.
+  run, in the same shell, ending with a registry check of every image. 
 - `e2e_build_es_images` builds and pushes the ROR ES dev image from **this** commit, one job per
   module, through the same `publish_ror_es_prebuild_plugin` helper the standalone pre-build task
   uses — so the sha-frozen-image skip still applies.
 - `e2e_tests` runs once per version, in parallel. Both images already exist by the time it starts, so
-  it clones the suite, brings up the stack and runs Cypress.
+  it clones the suite, brings up the stack and runs Cypress. 
 
 ### Why the order job owns both halves
 

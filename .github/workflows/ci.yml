@@ -556,7 +556,6 @@ jobs:
   # that dispatched a run can identify it. A failed ROR KBN build therefore fails THIS job, not a test
   # leg, and "re-run failed jobs" places a fresh order. e2e_build_es_images builds the ES images while
   # this job waits.
-  # Needs no toolchain: gh, jq and an authenticated docker are enough.
   e2e_order_kbn_images:
     needs: [ setup, e2e_matrix ]
     if: >-
@@ -637,20 +636,16 @@ jobs:
   # e2e_order_kbn_images verified the ROR KBN one, e2e_build_es_images published the ROR ES one. A leg
   # brings up the stack and runs the suite (see ci/e2e-tests-lib.sh).
   e2e_tests:
-    needs: [ setup, toolchains_verify, e2e_matrix, e2e_order_kbn_images, e2e_build_es_images ]
+    needs: [ setup, e2e_matrix, e2e_order_kbn_images, e2e_build_es_images ]
     if: >-
       !cancelled() &&
       needs.e2e_matrix.result == 'success' &&
       needs.e2e_order_kbn_images.result == 'success' &&
       needs.e2e_build_es_images.result == 'success' &&
-      needs.toolchains_verify.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubicloud-standard-4
     timeout-minutes: 120
-    env:
-      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
-      GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
     name: e2e_${{ matrix.module }}
     strategy:
       fail-fast: false
@@ -661,8 +656,6 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Free host disk (no-op on self-hosted)
         run: ci/free-host-disk.sh
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
-        with: { distribution: temurin, java-version: '17' }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: '24.11.0' }
       - name: run_e2e_tests
