@@ -207,12 +207,8 @@ publish_ror_es_prebuild_plugin() {
   FORCE_REBUILD_NORM=$(echo "${FORCE_REBUILD:-false}" | tr '[:upper:]' '[:lower:]')
 
   # BOTH tags, not just the source one. `buildx --push -t A -t B` is one build but two registry
-  # writes, and it can publish one and fail on the other. Checking only the source tag would then
-  # skip the rebuild on the next run and leave the shared tag stale or missing for good.
-  #
-  # The old code did not need this: it pushed the shared tag first and copied it to the source tag
-  # afterwards, so the source tag was the LAST write and its presence implied both. Pushing them
-  # together removes that ordering, so the check has to ask for both.
+  # writes, and it can publish one and fail on the other. Neither tag implies the other, so a check
+  # that asks for only one can skip the rebuild and leave the other stale or missing for good.
   if [ "$FORCE_REBUILD_NORM" != "true" ] &&
      docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" &&
      docker_image_exists "${ES_DEV_IMAGE_REPO}:${SHARED_TAG}"; then
@@ -222,10 +218,9 @@ publish_ror_es_prebuild_plugin() {
     # a failure is repeated. A broken build fails at once.
     #
     # Both tags go up in the SAME buildx push: the shared <esVersion>-ror-<pluginVersion> and this
-    # commit's immutable source tag. The source tag used to be copied from the shared one after the
-    # push, and that was a race - the shared tag carries no branch, so a concurrent publish on the
-    # same plugin version could overwrite it in between and leave the commit tag pointing at the
-    # other run's image, which every caller then treats as commit-pinned.
+    # commit's immutable source tag. The shared tag carries no branch, so a concurrent publish on
+    # the same plugin version can overwrite it. Only a single push keeps the commit tag naming the
+    # image this build produced.
     if ! retry_with_backoff --retry-if is_docker_registry_error \
          ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
          "-PpreBuildSourceImage=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
