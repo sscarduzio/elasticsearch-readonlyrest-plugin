@@ -519,11 +519,13 @@ jobs:
           path: '**/TEST*.xml'
           if-no-files-found: ignore
 
-  # ── E2E_PREPARE (setup for the e2e matrix) ────────────────────────────────
-  # Takes the newest ES version of every ES module picked for e2e, and starts ONE build of the ROR
-  # KBN dev image for all of them. Outputs those versions as the matrix the e2e_tests jobs run on,
-  # plus the build's run id so they know which build to wait for.
-  e2e_prepare:
+  # ── E2E_MATRIX (versions only) ────────────────────────────────────────────
+  # Takes the newest ES version of every ES module picked for e2e and publishes it as the matrix the
+  # downstream e2e jobs fan out over, together with the build id every dev image of this run is named
+  # after. Keep it free of side effects: "re-run failed jobs" skips a green job, so the build id and
+  # every image name survive a partial re-run.
+  # Stays in the toolchains container: resolving a module's version is a Gradle call.
+  e2e_matrix:
     needs: [ setup, toolchains_verify ]
     if: >-
       !cancelled() &&
@@ -532,35 +534,111 @@ jobs:
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest
     container: *toolchains_container
-    timeout-minutes: 30
+    timeout-minutes: 15
     outputs:
-      matrix: ${{ steps.prepare.outputs.matrix }}
-      build_id: ${{ steps.prepare.outputs.build_id }}
-      kbn_run_id: ${{ steps.prepare.outputs.kbn_run_id }}
-      kbn_run_url: ${{ steps.prepare.outputs.kbn_run_url }}
-      kbn_wait_timeout_seconds: ${{ steps.prepare.outputs.kbn_wait_timeout_seconds }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      build_id: ${{ steps.matrix.outputs.build_id }}
+      elk_versions: ${{ steps.matrix.outputs.elk_versions }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: prepare_e2e_kbn_images
-        id: prepare
+      - name: publish_e2e_matrix
+        id: matrix
         env:
-          ROR_TASK: prepare_e2e_kbn_images
+          ROR_TASK: publish_e2e_matrix
           E2E_ES_MODULES: ${{ join(fromJSON(needs.setup.outputs.e2e_modules), ' ') }}
-          ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
           E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
         run: ci/run-pipeline.sh
 
-  # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
-  # Cypress e2e suite (one job per module). Each job builds and publishes the ROR ES image for its
-  # version, waits for the ROR KBN image, then runs the test suite against both (see ci/e2e-tests-lib.sh).
-  e2e_tests:
-    needs: [ setup, toolchains_verify, e2e_prepare ]
+  # ── E2E_ORDER_KBN_IMAGES (the other repo's build) ─────────────────────────
+  # The ROR KBN images are built by the ROR KBN repo. This job dispatches that build for the whole
+  # version list and waits for it in one shell. The shared contract requires one shell: only the shell
+  # that dispatched a run can identify it. A failed ROR KBN build therefore fails THIS job, not a test
+  # leg, and "re-run failed jobs" places a fresh order. e2e_build_es_images builds the ES images while
+  # this job waits.
+  # Needs no toolchain: gh, jq and an authenticated docker are enough.
+  e2e_order_kbn_images:
+    needs: [ setup, e2e_matrix ]
     if: >-
       !cancelled() &&
-      needs.e2e_prepare.result == 'success' &&
+      needs.e2e_matrix.result == 'success' &&
+      needs.setup.outputs.e2e_modules != '[]' &&
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
+    runs-on: ubuntu-latest
+    timeout-minutes: 130
+    outputs:
+      kbn_run_url: ${{ steps.order.outputs.kbn_run_url }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: order_e2e_kbn_images
+        id: order
+        env:
+          ROR_TASK: order_e2e_kbn_images
+          E2E_ELK_VERSIONS: ${{ needs.e2e_matrix.outputs.elk_versions }}
+          ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+          ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
+          E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+        run: |
+          set -e
+          source ci/configure-docker.sh
+          ci/run-pipeline.sh
+
+  # ── E2E_BUILD_ES_IMAGES (this repo's build) ───────────────────────────────
+  # Builds and publishes this repo's ROR ES dev image, one job per module, under the per-run alias
+  # tag. Sibling of e2e_order_kbn_images: this build and the other repo's build run at the same
+  # time.
+  e2e_build_es_images:
+    needs: [ setup, e2e_matrix ]
+    if: >-
+      !cancelled() &&
+      needs.e2e_matrix.result == 'success' &&
+      needs.setup.outputs.e2e_modules != '[]' &&
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 120
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
+      GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
+    name: build_es_${{ matrix.module }}
+    strategy:
+      fail-fast: false
+      max-parallel: 99
+      matrix: ${{ fromJSON(needs.e2e_matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk (no-op on self-hosted)
+        run: ci/free-host-disk.sh
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with: { distribution: temurin, java-version: '17' }
+      - name: build_e2e_es_image
+        env:
+          ROR_TASK: build_e2e_es_image
+          E2E_ES_MODULE: ${{ matrix.module }}
+          E2E_ELK_VERSION: ${{ matrix.elk }}
+          E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+        run: |
+          set -e
+          source ci/configure-docker.sh
+          ci/run-pipeline.sh
+
+  # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
+  # Cypress e2e suite (one job per module). Both dev images are already in the registry:
+  # e2e_order_kbn_images verified the ROR KBN one, e2e_build_es_images published the ROR ES one. A leg
+  # brings up the stack and runs the suite (see ci/e2e-tests-lib.sh).
+  e2e_tests:
+    needs: [ setup, toolchains_verify, e2e_matrix, e2e_order_kbn_images, e2e_build_es_images ]
+    if: >-
+      !cancelled() &&
+      needs.e2e_matrix.result == 'success' &&
+      needs.e2e_order_kbn_images.result == 'success' &&
+      needs.e2e_build_es_images.result == 'success' &&
       needs.toolchains_verify.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
@@ -573,7 +651,7 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 99
-      matrix: ${{ fromJSON(needs.e2e_prepare.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.e2e_matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -590,10 +668,7 @@ jobs:
           E2E_ELK_VERSION: ${{ matrix.elk }}
           E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          E2E_BUILD_ID: ${{ needs.e2e_prepare.outputs.build_id }}
-          ROR_KBN_PREBUILD_RUN_ID: ${{ needs.e2e_prepare.outputs.kbn_run_id }}
-          ROR_KBN_PREBUILD_RUN_URL: ${{ needs.e2e_prepare.outputs.kbn_run_url }}
-          ROR_KBN_WAIT_TIMEOUT_SECONDS: ${{ needs.e2e_prepare.outputs.kbn_wait_timeout_seconds }}
+          E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
@@ -634,7 +709,7 @@ jobs:
   # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────
   # it_windows / e2e_tests may legitimately not run (draft PRs get reduced matrices, and no e2e at
   # all). e2e is tolerated via setup's empty list rather than a 'skipped' result, so that a FAILED
-  # e2e_prepare — which also leaves e2e_tests 'skipped' — still blocks this job.
+  # any e2e job — which also leaves e2e_tests 'skipped' — still blocks this job.
   build_ror:
     needs: [ setup, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     if: >-
