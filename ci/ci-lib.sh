@@ -149,9 +149,16 @@ is_docker_registry_error() {
 # 401 is in the list. ossrh-staging-api answers 401 intermittently on credentials that work
 # minutes later, so a 401 here does not prove the secret is wrong. An expired credential answers
 # the same way every time, so a repeat still fails and still reports it.
+#
+# ONLY the codes that prove the server made nothing. 401 and 429 are refusals: the request is
+# rejected before a staging repository exists, so a repeat cannot open a second one. A timeout
+# (408) or a server error (5xx) can arrive AFTER the POST took effect, and the plugin retries only
+# transitions, never the create - see AbstractTransitionNexusStagingRepositoryTask. Repeating those
+# would leave an orphan staging repository behind. Do not widen this list without checking that
+# again.
 is_sonatype_staging_init_error() {
   grep -Fq "Execution failed for task ':initializeSonatypeStagingRepository'" "$1" &&
-    grep -Eq 'Failed to create staging repository.*status code (401|408|429|5[0-9][0-9])' "$1"
+    grep -Eq 'Failed to create staging repository.*status code (401|429)' "$1"
 }
 
 # Force-remove every container belonging to THIS CI job, scoped by the ror.ci-job=$ROR_CI_JOB_ID label so we
