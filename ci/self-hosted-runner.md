@@ -110,10 +110,12 @@ fatal: Unable to create '.../.git/index.lock': Permission denied
 EACCES: permission denied, rmdir '.../_work/...'
 ```
 
-This wedges the runner permanently — every following job fails the same way in about six seconds.
-It happened on 4 September 2026: ~22,500 root-owned entries on each of `gh-ror-es-1` and
-`gh-ror-es-2`, and every `publish-pre-builds.yml` run after it failed until the workspaces were
-chowned back.
+This wedges the runner permanently — every following job fails the same way in seconds, until the
+workspace is chowned back. To check a runner:
+
+```bash
+find /home/runner/actions-runner/_work ! -user runner | wc -l
+```
 
 A hosted runner never sees this, because the VM is destroyed after the job. Here the fix is a
 hook that gives the workspace back before every job. Install it on each runner:
