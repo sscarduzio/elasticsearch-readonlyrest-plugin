@@ -24,10 +24,55 @@ directory contain the build logic; the workflow only orchestrates.
 | `e2e_prepare` | resolves the e2e matrix and starts the ROR KBN image build | selected runs; see the [test matrix policy](#test-matrix-policy) |
 | `e2e_tests` | Cypress e2e suite, one job per selected ES module | selected runs; see the [test matrix policy](#test-matrix-policy) |
 | `build_ror` | builds all plugin zips + bytecode-reuse guard, one job per ES major | PRs |
-| `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
+
 
 Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
-`run_all_tests_on_windows`, `run_e2e_tests`, `release_without_testing`.
+`run_all_tests_on_windows`, `run_e2e_tests`. Releasing without testing is no longer one of them —
+it has its own workflow, `manual-release.yml`.
+
+## Where a release lives
+
+`ci.yml` tests. It publishes nothing. `release.yml` publishes, and it has two ways in:
+
+| Trigger | When | Guard |
+|---|---|---|
+| `workflow_run` | CI finished on develop or master | `workflow_run.conclusion == 'success'` — one value for the whole CI run |
+| `workflow_dispatch` | an operator releases without waiting for tests | branch must be develop or master, and the operator types the `pluginVersion` that branch carries |
+
+That single `conclusion` check is the whole reason for the split. Inside `ci.yml`, the manual path
+was the only run whose test jobs are skipped on purpose, and carrying it forced `!cancelled()` and
+a second branch into every release condition. `build_ror` is now the only job in `ci.yml` that needs
+`!cancelled()` at all.
+
+`release.yml` mirrors `ci.yml`'s job names, because it asks the same questions. `release_setup`
+resolves the image, settles the branch, and on the manual path checks the version the operator
+typed. `discover` then asks the build what to publish — the ES majors from `printEsMajors`, and
+pre-release or release from `isPreReleaseVersion`.
+
+Both workflows share two composite actions rather than two copies:
+
+| Action | What it does | Used by |
+|---|---|---|
+| `resolve-toolchains-image` | picks the mirror or Docker Hub, and returns the image | `ci_setup`, `release_setup` |
+| `verify-toolchains-image` | proves the baked Gradle home works | `toolchains_verify` (a whole job, to fail fast before the CI matrices), `discover` in `release.yml` (a step, being its first container job) |
+
+### Two traps in `workflow_run`
+
+**`github.ref` and `github.sha` point at the default branch**, not at the commit CI tested. Every
+checkout in `release.yml` uses `env.RELEASE_SHA`, and the branch comes from `env.RELEASE_BRANCH`.
+Miss one and you release code nobody tested. Never write `github.ref` in that file.
+
+**GitHub only fires `workflow_run` for a copy of the file on the default branch**, which is `master`
+here. A change to `release.yml` does nothing until it lands there, so it will look broken while you
+develop it on a branch.
+
+Also note `workflow_run` fires for CI runs on pull requests too, and their `head_branch` can be any
+name. `release.yml` therefore checks `workflow_run.event == 'push'`, not just the branch filter.
+
+### What you give up
+
+Two runs, and the Actions graph draws no arrow between them. The release run's summary prints a link
+back to the CI run that earned it. That is a breadcrumb, not a graph.
 
 Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
 above: `build-toolchains-image.yml` (rebuilds the image every CI job runs in — weekly cron and
@@ -47,18 +92,11 @@ Two orchestration rules worth knowing before editing conditions:
 
   So `!cancelled() && needs.<X>.result == 'success'`, where `X` is already in `needs`, is the
   implicit rule spelled out, and buys nothing. Write it only when the job must survive some *other*
-  dependency being skipped. Two jobs must: `release_ror` and `publish_mvn`, whose manual
-  `release_without_testing` path skips the test jobs on purpose. There `!cancelled()` lets the
-  skipped ones through, and the explicit `== 'success'` checks are what still stop a failed one.
-  Delete those checks and a red test suite would publish a release.
+  dependency being skipped — and pair it with an explicit `== 'success'` on every dependency that
+  must still be green, because `!cancelled()` lets failures through as well as skips.
 
-  Everywhere else, let the implicit rule do the work. `build_ror` is the third exception: it accepts
-  `skipped` from the Windows and e2e families by name, because a draft PR runs neither.
-- Two questions, two answers. **What would this commit publish?** depends on `pluginVersion` alone,
-  so `ci_setup` answers it up front as `is_release_version`. **May this run publish it?** depends on
-  how the tests went, which no early job can know, so each publishing job checks the test results in
-  its own `if:`. The three checks are deliberate copies. Change one and change all three, or a job
-  will publish without a test the others still demand.
+  One job needs it: `build_ror`, which accepts `skipped` from the Windows and e2e families by name,
+  because a draft PR runs neither. Everywhere else, let the implicit rule do the work.
 - A job-level `if:` cannot read the `env` context, so a predicate that more than one job asks
   about has to be a job output. `ci_setup` publishes the three, and they are not the same
   question — do not collapse them:
@@ -66,15 +104,13 @@ Two orchestration rules worth knowing before editing conditions:
   | Output | True for | Gates |
   |---|---|---|
   | `is_full_matrix` | develop, master, `epic/**` | the full test matrices in `discover` |
-  | `is_release_branch` | develop, master | `upload_pre_ror`, `release_ror`, the NVD cache write |
-  | `is_master` | master | `publish_mvn` |
-  | `is_release_version` | `pluginVersion` carries no `-pre` | `upload_pre_ror` (false) vs `release_ror` / `publish_mvn` (true) |
-  | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks`, the auto branch of the three publishing jobs |
+  | `is_release_branch` | develop, master | `publish`, the NVD cache write |
+  | `is_master` | master | nothing in `ci.yml`; `release-jobs.yml` derives its own |
+  | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks`, `publish` |
   | `runs_linux_tests` | automatic runs + manual `run_all_tests_on_linux` | `discover`, `unit_tests_linux` |
   | `runs_windows_tests` | automatic runs + manual `run_all_tests_on_windows` | `discover` |
   | `runs_e2e_tests` | automatic runs + manual `run_e2e_tests` | `discover` |
   | `is_manual_windows_run` | manual `run_all_tests_on_windows` only | `unit_tests_windows` |
-  | `is_release_without_testing` | manual `release_without_testing` only | the manual branch of `release_ror` and `publish_mvn` |
   | `manual_action` | — the chosen action, `''` on an automatic run | `discover` |
 
   Every job `if:` reads one of these and compares it against `'true'`. `manual_action` is the one
@@ -97,6 +133,31 @@ Two orchestration rules worth knowing before editing conditions:
   Adding a flag: `${{ A && B }}` yields the string `"false"` when `A` is false, not `''`. That is
   why `manual_action` ends in `|| ''` — without it an automatic run would carry the word "false".
 
+## What the build decides, not the workflow
+
+A workflow must not work out a fact the build already knows. Three Gradle tasks answer for both
+`ci.yml` and `release.yml`, so no YAML and no shell script parses `gradle.properties` or guesses at
+a module list:
+
+| Task | Answers | Written to |
+|---|---|---|
+| `printEsMajors` | which ES majors get built, uploaded and released | `build/es-modules/es-majors.txt` |
+| `printTestMatrices` | which modules each test family covers, per [policy](#test-matrix-policy) | `build/ci-matrices/<name>.json` |
+| `isPreReleaseVersion` | whether the configured `pluginVersion` is a pre-release (`-pre`) | stdout: `true` or `false` |
+
+The first two write files, and callers must read those, not gradle stdout — configuration-time
+logging can pollute it even under `--quiet`. `isPreReleaseVersion` prints one word instead, so its
+caller takes the last line and **fails on anything that is not `true` or `false`**. A silently wrong
+value there would publish a release as a pre-release, or the reverse.
+
+`isPreReleaseVersion` is what decides `upload_pre_ror` against `release_ror`. That rule used to be a
+`grep -- '-pre'` inside the release workflow, where nothing tested it and nothing else could reach
+it. If the pre-release convention changes, change the task.
+
+Reading a property from shell is a fourth case, and `ci-lib.sh`'s `gradle_property` owns it. Its own
+comment states the rule: every reader goes through there, because a second parser drifts. The manual
+release guard uses it to check the version the operator typed.
+
 ## Derived matrices
 
 Every matrix of a run comes from the `discover` job, and so does every decision about which test
@@ -107,14 +168,6 @@ A test job therefore carries no condition about the kind of run. An empty matrix
 that is the single mechanism: a draft PR gets no Windows and no e2e leg, and a manual
 `run_e2e_tests` gets neither a Linux nor a Windows one. Keep it that way — a second gate in a job's
 `if:` would state the same rule in a second place, and the two would drift.
-
-| Task | Answers | Written to |
-|---|---|---|
-| `printEsMajors` | which ES majors `build_ror`, `upload_pre_ror` and `release_ror` build | `build/es-modules/es-majors.txt` |
-| `printTestMatrices` | which modules each test family covers, per [policy](#test-matrix-policy) | `build/ci-matrices/<name>.json` |
-
-Read those files, not gradle stdout, which configuration-time logging can pollute even under
-`--quiet`.
 
 `discover` publishes one ready matrix per job that fans out, so every consumer reads it the same way:
 
@@ -165,8 +218,8 @@ module in the middle of that major's list, newest first.
 | `develop`, `master`, or `epic/**` | All modules | Oldest and newest modules for each ES major version | Newest module for each ES major version |
 
 Windows integration tests and E2E tests do not run on ES 6. If a major version has only one module,
-it is selected once. Manual actions can select the full supported Linux or Windows matrix.
-`release_without_testing` skips all test jobs.
+it is selected once. Manual actions can select the full supported Linux or Windows matrix. To release with no tests at
+all, use the `manual-release.yml` workflow, not this one.
 
 To see what a change does to the matrices, run `./gradlew printTestMatrices --quiet`. To change the
 policy, change `TestMatrixPolicy` and this table together. Adding or removing a module changes which

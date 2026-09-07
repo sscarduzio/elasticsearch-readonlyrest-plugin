@@ -86,6 +86,20 @@ tasks.register("printEsMajors") {
     }
 }
 
+// Is the configured pluginVersion a pre-release? Prints `true` or `false`, and nothing else.
+// A `-pre` suffix means the build uploads a pre-release; anything else means it releases. That rule
+// was a `grep -- '-pre'` inside the release workflow, where nothing tested it and nothing else could
+// reach it. It belongs here, beside the property it reads. Change the convention, change this task.
+// Usage: ./gradlew isPreReleaseVersion --quiet
+tasks.register("isPreReleaseVersion") {
+    group = 'help'
+    description = 'Prints true if the configured pluginVersion is a pre-release, false otherwise'
+    outputs.upToDateWhen { false }
+    doLast {
+        println pluginVersion.toString().contains('-pre')
+    }
+}
+
 // Prints every ES version ROR supports, one per line, oldest first. The versions come from each es module's
 // `supportedEsVersions` (gradle.properties), so scripts that need the full list cannot drift from what CI
 // actually builds and tests. Invoke with --quiet to suppress Gradle's own output.

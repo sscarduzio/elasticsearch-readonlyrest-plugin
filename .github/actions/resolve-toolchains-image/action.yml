@@ -1,0 +1,36 @@
+name: Resolve the toolchains image
+description: >-
+  Picks the name every `container:` job pulls: the Docker Hub mirror on the normal path, Docker Hub
+  itself on the fallback. The caller must check the repo out first — this reads ci/toolchains/image.env
+  and runs ci/resolve-toolchains-image.sh. The caller must also not be a container job: a runner pulls
+  a container image before step 1, so a job cannot resolve its own.
+
+outputs:
+  image:
+    description: The image reference to put in `container:`. Carries a digest on the mirrored path.
+    value: ${{ steps.toolchains.outputs.image }}
+
+runs:
+  using: composite
+  steps:
+    # The Build toolchains image workflow put the digest of the last push in the cache below. The
+    # key holds the tag, so a new tag reads no entry.
+    - name: Read the toolchains image tag
+      shell: bash
+      run: |
+        . ci/toolchains/image.env
+        [ -n "${TOOLCHAINS_IMAGE:-}" ] || { echo "::error::ci/toolchains/image.env sets no tag."; exit 1; }
+        echo "TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE" >> "$GITHUB_ENV"
+    - id: digest_key
+      shell: bash
+      # Two hyphens. One would also match a tag that extends this one, such as -9.2.1-arm64.
+      run: echo "prefix=toolchains-digest-${TOOLCHAINS_IMAGE##*:}--" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: .toolchains-digest
+        # An exact key needs the rebuild's run id. The prefix gives its newest entry.
+        key: ${{ steps.digest_key.outputs.prefix }}
+        restore-keys: ${{ steps.digest_key.outputs.prefix }}
+    - id: toolchains
+      shell: bash
+      run: ci/resolve-toolchains-image.sh

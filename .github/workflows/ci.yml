@@ -27,7 +27,6 @@ on:
           - run_all_tests_on_linux
           - run_all_tests_on_windows
           - run_e2e_tests
-          - release_without_testing
 
 # Cancel superseded PR runs. Branch pushes queue behind the running build so an in-flight release
 # is never cancelled.
@@ -62,8 +61,9 @@ jobs:
   # The two facts every later job asks for: which image to pull, and what kind of run this is.
   #
   # The image. ci/resolve-toolchains-image.sh chooses between the mirror and Docker Hub, so the name
-  # is not a constant. This job holds no container, and it cannot hold one: it is the job that picks
-  # it. The runner pulls a container: image before step 1, so a job cannot resolve its own image.
+  # is not a constant. The work lives in .github/actions/resolve-toolchains-image, which
+  # manual-release.yml also uses. This job holds no container, and it cannot hold one: it is the job
+  # that picks it. A runner pulls a container: image before step 1, so a job cannot resolve its own.
   #
   # The run flags. A job-level `if:` cannot read the `env` context, so a predicate that more than one
   # job asks about has to be a job output. Each is named for what it gates, and none of them is a
@@ -81,62 +81,31 @@ jobs:
       # Which branch this is.
       is_full_matrix:             ${{ steps.flags.outputs.is_full_matrix }}
       is_release_branch:          ${{ steps.flags.outputs.is_release_branch }}
-      is_master:                  ${{ steps.flags.outputs.is_master }}
-      # What this commit would publish. `-pre` in pluginVersion means a pre-release build.
-      # This is a property of the commit. Whether the run MAY publish is a separate question, and
-      # each publishing job answers it from the test results.
-      is_release_version:         ${{ steps.flags.outputs.is_release_version }}
       # What kind of run this is.
       is_automatic_run:           ${{ steps.flags.outputs.is_automatic_run }}
       runs_linux_tests:           ${{ steps.flags.outputs.runs_linux_tests }}
       runs_windows_tests:         ${{ steps.flags.outputs.runs_windows_tests }}
       runs_e2e_tests:             ${{ steps.flags.outputs.runs_e2e_tests }}
-      # A manual action, and nothing else, starts these two. Note the contrast with the `runs_*`
+      # A manual action, and nothing else, starts this one. Note the contrast with the `runs_*`
       # flags above, which an automatic run also sets.
       is_manual_windows_run:      ${{ steps.flags.outputs.is_manual_windows_run }}
-      is_release_without_testing: ${{ steps.flags.outputs.is_release_without_testing }}
       # The action itself. `discover` picks a matrix by name, so it needs the value, not a yes or no.
       manual_action:              ${{ steps.flags.outputs.manual_action }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      # The Build toolchains image workflow put the digest of the last push in the cache below. The
-      # key holds the tag, so a new tag reads no entry.
-      - name: Read the toolchains image tag
-        run: |
-          . ci/toolchains/image.env
-          [ -n "${TOOLCHAINS_IMAGE:-}" ] || { echo "::error::ci/toolchains/image.env sets no tag."; exit 1; }
-          echo "TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE" >> "$GITHUB_ENV"
-      - id: digest_key
-        # Two hyphens. One would also match a tag that extends this one, such as -9.2.1-arm64.
-        run: echo "prefix=toolchains-digest-${TOOLCHAINS_IMAGE##*:}--" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .toolchains-digest
-          # An exact key needs the rebuild's run id. The prefix gives its newest entry.
-          key: ${{ steps.digest_key.outputs.prefix }}
-          restore-keys: ${{ steps.digest_key.outputs.prefix }}
       - id: toolchains
-        run: ci/resolve-toolchains-image.sh
+        uses: ./.github/actions/resolve-toolchains-image
       - id: flags
         env:
           # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
           IS_FULL_MATRIX: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
           IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}
-          IS_MASTER: ${{ github.ref == 'refs/heads/master' }}
           # The action the operator chose, and '' on every automatic run. Mind the second operand:
           # `A && B` yields the string "false" when A is false, so the `|| ''` is what makes an
           # automatic run empty rather than the word "false".
           MANUAL_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.actionToPerform || '' }}
         run: |
-          # No `-pre` in pluginVersion means this commit releases. ci/CI.md explains the two
-          # version fields.
-          if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep -q -- '-pre'; then
-            IS_RELEASE_VERSION=false
-          else
-            IS_RELEASE_VERSION=true
-          fi
-
           # A test family runs on every automatic run, and on a manual run only when the operator
           # asked for that family.
           runs_family() {
@@ -147,15 +116,12 @@ jobs:
           {
             echo "is_full_matrix=$IS_FULL_MATRIX"
             echo "is_release_branch=$IS_RELEASE_BRANCH"
-            echo "is_master=$IS_MASTER"
-            echo "is_release_version=$IS_RELEASE_VERSION"
             echo "manual_action=$MANUAL_ACTION"
             echo "is_automatic_run=$([ -z "$MANUAL_ACTION" ] && echo true || echo false)"
             echo "runs_linux_tests=$(runs_family run_all_tests_on_linux)"
             echo "runs_windows_tests=$(runs_family run_all_tests_on_windows)"
             echo "runs_e2e_tests=$(runs_family run_e2e_tests)"
             echo "is_manual_windows_run=$(chose run_all_tests_on_windows)"
-            echo "is_release_without_testing=$(chose release_without_testing)"
           } >> "$GITHUB_OUTPUT"
 
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
@@ -179,12 +145,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Verify baked Gradle home
-        run: |
-          set -e
-          echo "Baked GRADLE_USER_HOME=$GRADLE_USER_HOME"
-          ls "$GRADLE_USER_HOME/wrapper/dists" || { echo "No baked Gradle dist in image"; exit 1; }
-          ./gradlew --no-daemon -q help
+      - uses: ./.github/actions/verify-toolchains-image
 
   # ── DISCOVER ──────────────────────────────────────────────────────────────
   # What this run covers: the ES majors the release jobs build, and the modules each test family
@@ -756,154 +717,3 @@ jobs:
           ROR_TASK: build_plugins
           ES_MAJOR: ${{ matrix.ES_MAJOR }}
         run: ci/run-pipeline.sh
-
-  # ── UPLOAD_PRE_ROR (pre-release develop/master, auto only) ────────────────
-  # Self-hosted: gradle assembly plus S3/Docker Hub uploads. Long, IO-bound, low
-  # concurrency — the shape the ryzen box is good at, and the single largest Ubicloud line item
-  # (~3.8k minutes/month). Needs a registered self-hosted runner: see ci/self-hosted-runner.md.
-  upload_pre_ror:
-    needs: [ ci_setup, discover, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
-    # This job runs on automatic pushes only, where no test job is ever skipped. So the default
-    # rule — every `needs` job must succeed — already is the test gate, and no status check function
-    # appears below that would switch it off. Contrast release_ror, which must survive the manual
-    # path where the test jobs are skipped on purpose.
-    if: >-
-      needs.ci_setup.outputs.is_release_version == 'false' &&
-      needs.ci_setup.outputs.is_release_branch == 'true' &&
-      needs.ci_setup.outputs.is_automatic_run == 'true'
-    runs-on: &self_hosted_runner [self-hosted, Linux, X64]
-    container: *toolchains_container
-    timeout-minutes: 600
-    strategy:
-      fail-fast: false
-      matrix:
-        ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: upload_pre_plugins
-        env:
-          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
-          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
-          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
-          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
-          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
-          ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
-          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
-          ROR_TASK: upload_pre_plugins
-          ES_MAJOR: ${{ matrix.ES_MAJOR }}
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-        run: |
-          set -e
-          source ci/configure-docker.sh
-          ci/run-pipeline.sh
-
-  # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
-  # Self-hosted, same reasoning as upload_pre_ror: ~2.2k Ubicloud minutes/month of
-  # assembly and upload. See ci/self-hosted-runner.md.
-  release_ror:
-    needs: [ ci_setup, discover, toolchains_verify, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
-    permissions:
-      contents: write   # ci-lib.sh tags the release and pushes the tag via the checkout token
-    # `!cancelled()` drops the implicit success() gate that `needs` would otherwise apply, so every
-    # test result is checked by hand below. See ci/CI.md.
-    if: >-
-      !cancelled() &&
-      needs.ci_setup.outputs.is_release_version == 'true' &&
-      needs.ci_setup.outputs.is_release_branch == 'true' &&
-      (
-        (
-          needs.ci_setup.outputs.is_automatic_run == 'true' &&
-          needs.required_checks.result == 'success' &&
-          needs.unit_tests_linux.result == 'success' &&
-          needs.it_linux.result == 'success' &&
-          needs.it_windows.result == 'success' &&
-          needs.e2e_tests.result == 'success'
-        ) ||
-        (
-          needs.ci_setup.outputs.is_release_without_testing == 'true' &&
-          needs.toolchains_verify.result == 'success'
-        )
-      )
-    runs-on: *self_hosted_runner
-    container: *toolchains_container
-    timeout-minutes: 180
-    strategy:
-      fail-fast: false
-      matrix:
-        ROR_TASK: [ release_es9xx, release_es8xx, release_es7xx, release_es6xx ]
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: true }
-      - name: release_plugins
-        env:
-          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
-          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
-          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
-          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
-          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
-          ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
-          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
-          ROR_TASK: release_plugins
-          ES_MAJOR: ${{ matrix.ES_MAJOR }}
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-          # ci-lib.sh still uses this legacy variable name in the release tag message.
-          TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
-        run: |
-          set -e
-          source ci/configure-docker.sh
-          ci/run-pipeline.sh
-
-  # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
-  publish_mvn:
-    needs: [ ci_setup, toolchains_verify, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
-    # `!cancelled()` drops the implicit success() gate that `needs` would otherwise apply, so every
-    # test result is checked by hand below. See ci/CI.md.
-    if: >-
-      !cancelled() &&
-      needs.ci_setup.outputs.is_release_version == 'true' &&
-      needs.ci_setup.outputs.is_master == 'true' &&
-      (
-        (
-          needs.ci_setup.outputs.is_automatic_run == 'true' &&
-          needs.required_checks.result == 'success' &&
-          needs.unit_tests_linux.result == 'success' &&
-          needs.it_linux.result == 'success' &&
-          needs.it_windows.result == 'success' &&
-          needs.e2e_tests.result == 'success'
-        ) ||
-        (
-          needs.ci_setup.outputs.is_release_without_testing == 'true' &&
-          needs.toolchains_verify.result == 'success'
-        )
-      )
-    runs-on: *self_hosted_runner
-    container: *toolchains_container
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: Install PGP signing key
-        env:
-          PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}
-        run: |
-          mkdir -p .travis
-          # The workspace outlives the job on a persistent runner, and the next checkout only cleans
-          # it when the next job starts. Keep the private key unreadable to anything else meanwhile.
-          install -m 600 /dev/null .travis/secret.pgp
-          echo "$PGP_SECRET_KEY_B64" | base64 -d > .travis/secret.pgp
-      - name: publish_maven_artifacts
-        env:
-          ROR_TASK: publish_maven_artifacts
-          MAVEN_REPO_USER: ${{ secrets.MAVEN_REPO_USER }}
-          MAVEN_REPO_PASSWORD: ${{ secrets.MAVEN_REPO_PASSWORD }}
-          MAVEN_STAGING_PROFILE_ID: ${{ secrets.MAVEN_STAGING_PROFILE_ID }}
-          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: ci/run-pipeline.sh
-      # An ephemeral VM took the key away with it. This runner does not, so remove it here — also
-      # when the publish fails or is cancelled.
-      - name: Remove the PGP signing key
-        if: always()
-        run: rm -f .travis/secret.pgp
