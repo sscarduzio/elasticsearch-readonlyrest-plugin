@@ -10,10 +10,12 @@ shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` here, 
 use, and the repo is public, so it costs nothing. `ci/toolchains/image.env` holds the toolchains
 image tag, and every workflow that needs it sources that file.
 
-The concurrency limit is **per account**, and `readonlyrest_kbn` shares it. `it_linux` sets
-`max-parallel` to the size of its full matrix so the whole matrix starts in one wave. Before you
-raise either number, check the account limit against all the long jobs a develop push starts:
-`it_linux`, `it_windows`, `e2e_tests`, and the ROR KBN pre-build that `e2e_prepare` dispatches.
+The concurrency limit is **per account**, and `readonlyrest_kbn` shares it. `it_linux` and
+`e2e_tests` set no `max-parallel`: a cap equal to the number of legs never binds, and it starts
+throttling silently the day someone adds one more module. `it_windows` keeps a real cap, because it
+has far more legs than the cap allows. Before you add a cap, or add legs, check the account limit
+against every long job a develop push starts: `it_linux`, `it_windows`, `e2e_tests`, and the ROR
+KBN pre-build that `e2e_prepare` dispatches.
 
 **Some ES series have no test leg** — see `LINUX_IT_FULL_SET` in `ci.yml` for the current set.
 They are still **built and published** on every release: `build_es7xx` and `release_es7xx`

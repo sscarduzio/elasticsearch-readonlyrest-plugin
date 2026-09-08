@@ -284,11 +284,6 @@ jobs:
     name: it_linux_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
-      # Keep this equal to the number of legs in LINUX_IT_FULL_SET, so the whole matrix starts
-      # in one wave. Check the account's concurrent-job limit before you raise it: it_windows and
-      # e2e_tests run at the same time, and e2e_prepare dispatches one more job into
-      # readonlyrest_kbn on the same account.
-      max-parallel: 29
       matrix:
         ES_MODULE: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
     steps:
@@ -575,7 +570,6 @@ jobs:
     name: e2e_${{ matrix.module }}
     strategy:
       fail-fast: false
-      max-parallel: 99
       matrix: ${{ fromJSON(needs.e2e_prepare.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
