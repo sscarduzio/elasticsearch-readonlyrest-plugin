@@ -843,9 +843,8 @@ jobs:
       )
     runs-on: *self_hosted_runner
     container: *toolchains_container
-    # Catches a hung job; it does not cap a slow one. A killed leg leaves the release without
-    # that ES major's artifacts, and a self-hosted minute costs nothing, so keep it generous
-    # and equal to upload_pre_ror above.
+    # Generous on purpose: a killed leg leaves the release without that ES major's artifacts,
+    # and a self-hosted minute costs nothing.
     timeout-minutes: 600
     env: *shared_docker_host
     strategy:
