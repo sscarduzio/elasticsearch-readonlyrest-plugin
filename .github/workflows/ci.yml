@@ -54,7 +54,6 @@ env:
   # full-matrix run (es80x/es810x/es818x/es90x, exit 137) — those legs run suites es94x excludes,
   # so their memory peaks are higher. Fleet wall time is set by the slowest leg anyway: k=4.
   IT_PARALLELISM: '4'
-  AGENT_ISSELFHOSTED: '1'
 
 jobs:
 
@@ -90,10 +89,13 @@ jobs:
           IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
           MANUAL_RUN_ACTION: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.actionToPerform || '') }}
         run: |
-          LINUX_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x","es67x"]'
+          # 7.3, 7.4, 7.9, 7.11 and 7.14 have no test leg. build_ror still builds and publishes
+          # them, because it groups by major, not by minor. A regression specific to one of those
+          # series ships untested.
+          LINUX_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es710x","es78x","es77x","es72x","es70x","es67x"]'
           LINUX_IT_PR_READY_SET='["es94x","es90x","es818x","es816x","es810x","es80x","es717x","es710x","es70x","es67x"]'
           LINUX_IT_PR_DRAFT_SET='["es94x","es818x","es717x","es67x"]'
-          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
+          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es710x","es78x","es77x","es72x","es70x"]'
           WIN_IT_MASTER_OR_DEVELOP_SET='["es94x","es90x","es818x","es80x","es717x","es70x"]'
           WIN_IT_PR_READY_SET='["es94x","es818x","es717x"]'
           WIN_IT_PR_DRAFT_SET='[]'
@@ -266,9 +268,7 @@ jobs:
           path: '**/TEST*.xml'
           if-no-files-found: ignore
 
-  # ── TEST: Linux integration tests (Ubicloud) ──────────────────────────────
-  # Matrix comes from setup: full 34-version set on develop/master/epic + manual run, the
-  # 10-version representative subset on plain PRs.
+  # ── TEST: Linux integration tests ─────────────────────────────────────────
   it_linux:
     needs: [ setup, toolchains_verify ]
     if: >-
@@ -276,7 +276,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubicloud-standard-4
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     container: *toolchains_container
     timeout-minutes: 120
     # "it_linux_es94x", not the truncated "it_linux (es94x)" composite, in the graph view. Same
@@ -284,7 +284,6 @@ jobs:
     name: it_linux_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
-      max-parallel: 20
       matrix:
         ES_MODULE: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
     steps:
@@ -381,9 +380,7 @@ jobs:
           if-no-files-found: ignore
 
 
-  # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
-  # Matrix from setup: 6-version subset on develop/master/epic, 3 on ready PRs, none on draft
-  # PRs (job skipped), full 33 on manual run_all_tests_on_windows.
+  # ── TEST: Windows integration tests ───────────────────────────────────────
   it_windows:
     # toolchains_verify is in needs even though Windows doesn't use the image, so a broken image
     # fails fast instead of running doomed legs.
@@ -601,7 +598,8 @@ jobs:
       needs.e2e_matrix.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    runs-on: ubicloud-standard-4
+    # Not a container: job, so ci/free-host-disk.sh below can see the preinstalled toolchains.
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     timeout-minutes: 120
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
@@ -609,7 +607,6 @@ jobs:
     name: build_es_${{ matrix.module }}
     strategy:
       fail-fast: false
-      max-parallel: 99
       matrix: ${{ fromJSON(needs.e2e_matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -717,7 +714,8 @@ jobs:
       needs.it_linux.result == 'success' &&
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
       (needs.e2e_tests.result == 'success' || needs.setup.outputs.e2e_modules == '[]')
-    runs-on: ubicloud-standard-4
+    # Gradle deps are baked into the toolchains image, so no runner-side cache is needed.
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     container: *toolchains_container
     timeout-minutes: 180
     name: ${{ matrix.ROR_TASK }}
@@ -770,6 +768,9 @@ jobs:
           echo "is_release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
 
   # ── UPLOAD_PRE_ROR (pre-release develop/master, auto only) ────────────────
+  # Self-hosted: gradle assembly plus S3/Docker Hub uploads. Long, IO-bound, low
+  # concurrency — the shape the ryzen box is good at, and the single largest Ubicloud line item
+  # (~3.8k minutes/month). Needs a registered self-hosted runner: see ci/self-hosted-runner.md.
   upload_pre_ror:
     needs: [ setup, determine_ci_type ]
     if: >-
@@ -778,11 +779,19 @@ jobs:
       needs.determine_ci_type.outputs.is_release == 'false' &&
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
       github.event_name != 'workflow_dispatch'
-    runs-on: ubicloud-standard-4
+    runs-on: &self_hosted_runner [self-hosted, Linux, X64]
     container: *toolchains_container
     timeout-minutes: 600
+    # The job container gets the HOST docker socket, and that daemon also serves the readonlyrest_kbn
+    # runners on the same box. Tell the pipeline not to use host-wide docker cleanups. See
+    # cleanup_docker_and_build in ci/publish-ror-plugins.sh.
+    env: &shared_docker_host
+      ROR_SHARED_DOCKER_HOST: '1'
     strategy:
       fail-fast: false
+      # At most 2 legs at a time: two runners, ~4 GB each, and the box is shared with other repos.
+      # GitHub queues the rest — this bound is really set by how many self-hosted runners are registered.
+      max-parallel: 2
       matrix:
         ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
     steps:
@@ -806,6 +815,8 @@ jobs:
           ci/run-pipeline.sh
 
   # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
+  # Self-hosted, same reasoning as upload_pre_ror: ~2.2k Ubicloud minutes/month of
+  # assembly and upload. See ci/self-hosted-runner.md.
   release_ror:
     needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     permissions:
@@ -830,11 +841,14 @@ jobs:
           needs.toolchains_verify.result == 'success'
         )
       )
-    runs-on: ubicloud-standard-4
+    runs-on: *self_hosted_runner
     container: *toolchains_container
     timeout-minutes: 180
+    env: *shared_docker_host
     strategy:
       fail-fast: false
+      # Same bound as upload_pre_ror — see the note there.
+      max-parallel: 2
       matrix:
         ROR_TASK: [ release_es9xx, release_es8xx, release_es7xx, release_es6xx ]
     steps:
@@ -882,7 +896,7 @@ jobs:
           needs.toolchains_verify.result == 'success'
         )
       )
-    runs-on: ubicloud-standard-4
+    runs-on: *self_hosted_runner
     container: *toolchains_container
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -892,6 +906,9 @@ jobs:
           PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}
         run: |
           mkdir -p .travis
+          # The workspace outlives the job on a persistent runner, and the next checkout only cleans
+          # it when the next job starts. Keep the private key unreadable to anything else meanwhile.
+          install -m 600 /dev/null .travis/secret.pgp
           echo "$PGP_SECRET_KEY_B64" | base64 -d > .travis/secret.pgp
       - name: publish_maven_artifacts
         env:
@@ -902,3 +919,8 @@ jobs:
           GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: ci/run-pipeline.sh
+      # An ephemeral VM took the key away with it. This runner does not, so remove it here — also
+      # when the publish fails or is cancelled.
+      - name: Remove the PGP signing key
+        if: always()
+        run: rm -f .travis/secret.pgp

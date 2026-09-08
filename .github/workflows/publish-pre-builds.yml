@@ -41,12 +41,18 @@ defaults:
 jobs:
   publish:
     name: Publishing
-    runs-on: ubicloud-standard-4
+    # Self-hosted: a long build-and-push job, IO-bound, one at a time. Needs a registered
+    # self-hosted runner — see ci/self-hosted-runner.md.
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 600
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
       AGENT_ISSELFHOSTED: '1'
+      # This job talks to the box's docker daemon directly, and that daemon also serves the
+      # readonlyrest_kbn runners. No host-wide `docker system prune -a`, no removing containers that
+      # are not ours. See ci/run-pipeline.sh and ci/publish-ror-plugins.sh.
+      ROR_SHARED_DOCKER_HOST: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 0, persist-credentials: false }
@@ -68,7 +74,7 @@ jobs:
             fi
           fi
 
-      - name: Free host disk (no-op on self-hosted)
+      - name: Free host disk
         run: ci/free-host-disk.sh
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
@@ -97,3 +103,10 @@ jobs:
 
           echo ">>> Publishing pre-build docker images for: $BUILD_ROR_ES_VERSIONS"
           ci/run-pipeline.sh
+
+      # configure-docker.sh logs in with the Docker Hub RW token. On an ephemeral VM that credential
+      # died with the VM; here it would stay in the runner user's ~/.docker/config.json, where every
+      # later job on the box can read it.
+      - name: Log out of Docker Hub
+        if: always()
+        run: docker logout || true
