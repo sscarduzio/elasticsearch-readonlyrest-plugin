@@ -6,18 +6,20 @@
 
 History belongs to the commit message and the PR description. `git log -S <symbol>` finds it there, forever, with the diff next to it. A comment that tells the story of a line that no longer exists gets no such support. Six months later nobody knows if it is still true.
 
-Example — a comment that tells the story of a line removed from `.github/workflows/ci.yml`:
+Example — a comment that tells the story of a line in `.github/workflows/ci.yml`:
 
 ```yaml
-# Bad: the reader sees only that the variable is absent, which is the normal state.
-# AGENT_ISSELFHOSTED is deliberately NOT set here any more. Its only reader is
-# mirror-es-libs.yml, publish-pre-builds.yml, and the three release jobs...
+# Bad: the reader sees a line that is already there, plus a story about how it got there.
+# AGENT_ISSELFHOSTED was moved up to the workflow level in an earlier PR, because the
+# jobs kept forgetting it. Its only reader is ci/free-host-disk.sh...
+AGENT_ISSELFHOSTED: '1'
 ```
 
 ```bash
-# Good: the rule sits in ci/free-host-disk.sh, at the guard that enforces it.
-# The disk reclaim runs only on GitHub-hosted runners.
-if [[ -n "${AGENT_ISSELFHOSTED:-}" ]]; then exit 0; fi
+# Good: the rule sits at the guard that enforces it.
+#   shared self-hosted   the system directories belong to the box, so never touch them.
+elif [ "${AGENT_ISSELFHOSTED:-0}" != "1" ]; then
+  echo ">>> [host] freeing preinstalled toolchains to fit ES image builds"
 ```
 
 ### Where a comment goes
