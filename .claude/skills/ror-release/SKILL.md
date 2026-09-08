@@ -39,6 +39,7 @@ Verified against recent PRs (e.g. #1257). Files touched:
 Test locally first: `./gradlew integration-tests:test '-PesModule=es{NN}x'`.
 
 - **Adapt code keeping old-version compatibility at all costs.** Only when the new ES introduces true breaking changes: copy the latest module (`cp -r es93x es94x`), add it to `settings.gradle` and the files above.
+- The PR targets `master`, not `develop` — customers run released ES versions, so the support ships in a patch release. Merge `master` back into `develop` afterwards (`docs/dev/branching.md`).
 - The PR must come from the main repo, **not a fork** (artifact upload needs S3 credentials).
 - For unreleased/snapshot ES versions: build ES from source (`elastic/elasticsearch` repo) and publish deps to mavenLocal with `./gradlew clean publishElasticPublicationToMavenLocal` (needed jars: `elasticsearch` SDK, `transport-netty4`, `elasticsearch-plugin-classloader`).
 

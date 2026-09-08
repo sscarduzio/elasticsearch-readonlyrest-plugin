@@ -102,7 +102,7 @@ Settings can be loaded from a local file (`FileSettingsSource`) or from an ES in
 
 - Main branches: `master` (stable releases), `develop` (active development)
 - Feature branches: `feature/RORDEV-{issue}` pattern
-- PRs target `develop`
+- Which branch a PR targets, and what to do after a merge to `master`: `docs/dev/branching.md`
 
 ## Code Review
 
