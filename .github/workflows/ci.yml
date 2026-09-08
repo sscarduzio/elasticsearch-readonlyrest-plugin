@@ -567,8 +567,6 @@ jobs:
     # Backstop only. The wait below (120min) fires first and says why it failed.
     # Keep 30min between them, and raise both together.
     timeout-minutes: 150
-    outputs:
-      kbn_run_url: ${{ steps.order.outputs.kbn_run_url }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }

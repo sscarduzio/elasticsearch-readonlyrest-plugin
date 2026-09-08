@@ -287,10 +287,6 @@ order_e2e_kbn_images() {
     _report_kbn_order_failure wait "$STATUS" "${ROR_KBN_PREBUILD_RUN_URL:-}"
     return "$STATUS"
   fi
-
-  if [ -n "${GITHUB_OUTPUT:-}" ]; then
-    echo "kbn_run_url=${ROR_KBN_PREBUILD_RUN_URL:-}" >> "$GITHUB_OUTPUT"
-  fi
 }
 
 # Entry point for the `build_e2e_es_image` task (the `e2e_build_es_images` job). Runs once per ELK
