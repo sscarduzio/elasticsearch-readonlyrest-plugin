@@ -35,6 +35,7 @@ jobs:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
       AGENT_ISSELFHOSTED: '1'
+      ROR_SHARED_DOCKER_HOST: '1'   # shared box: ci/free-host-disk.sh prunes conservatively
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { persist-credentials: false }

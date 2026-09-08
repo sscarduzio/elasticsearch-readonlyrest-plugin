@@ -1,9 +1,31 @@
 # ReadonlyREST CI
 
-CI runs on GitHub Actions: `.github/workflows/ci.yml`. Linux jobs run on **Ubicloud**
-runners (`ubicloud-standard-4` = 4 vCPU / 16 GB) inside the `beshultd/ror-ci-toolchains`
-image; Windows jobs run on GitHub-hosted `windows-2025`. `ci/toolchains/image.env` holds that
-image's tag, and every workflow that needs it sources that file.
+CI runs on GitHub Actions: `.github/workflows/ci.yml`. The Linux **test and build** jobs run on
+**GitHub-hosted** `ubuntu-latest` runners inside the `beshultd/ror-ci-toolchains` image; Windows
+jobs run on GitHub-hosted `windows-2025`. The **release** jobs are the exception and stay on the
+shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` here, plus the standalone
+`mirror-es-libs.yml` and `publish-pre-builds.yml`.
+
+`ubuntu-latest` is 4 vCPU / 16 GB. It is slower per core than the paid runners these jobs can also
+use, and the repo is public, so it costs nothing. `ci/toolchains/image.env` holds the toolchains
+image tag, and every workflow that needs it sources that file.
+
+The concurrency limit is **per account**, and `readonlyrest_kbn` shares it. `it_linux` and
+`e2e_tests` set no `max-parallel`: a cap equal to the number of legs never binds, and it starts
+throttling silently the day someone adds one more module. `it_windows` keeps a real cap, because it
+has far more legs than the cap allows. Before you add a cap, or add legs, check the account limit
+against every long job a develop push starts: `it_linux`, `it_windows`, `e2e_tests`, and the ROR
+KBN pre-build that `e2e_prepare` dispatches.
+
+**Some ES series have no test leg** — see `LINUX_IT_FULL_SET` in `ci.yml` for the current set.
+They are still **built and published** on every release: `build_es7xx` and `release_es7xx`
+enumerate modules with the `printEsModules` Gradle task, which reads `settings.gradle`, not the CI
+matrix. Only integration-test coverage is gone, so a regression specific to one of those series
+ships untested.
+
+The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standalone
+`mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
+they push images and run for hours. `build-toolchains-image.yml` stays on `ubicloud-standard-4`.
 
 Every Linux job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this
 directory contain the build logic; the workflow only orchestrates.
@@ -17,8 +39,8 @@ directory contain the build logic; the workflow only orchestrates.
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
 | `unit_tests_linux` | `core:test` and friends | pushes + PRs |
 | `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
-| `it_linux` | integration tests, one job per ES version | 10-version subset on PRs, full 34 on develop/master/epic and manual |
-| `it_windows` | integration tests on native-Windows ES | 3 on PRs, 7 on branches, full 33 on manual |
+| `it_linux` | integration tests, one job per ES version | a subset on PRs, the full matrix on develop/master/epic and manual |
+| `it_windows` | integration tests on native-Windows ES | a subset on PRs and branches, the full matrix on manual |
 | `unit_tests_windows` | `core:test` on Windows | manual `run_all_tests_on_windows` |
 | `e2e_matrix` | resolves the e2e matrix and the build id that names every dev image | pushes + PRs (not drafts) |
 | `e2e_order_kbn_images` | dispatches the ROR KBN dev image build **and waits for it** | pushes + PRs (not drafts) |
