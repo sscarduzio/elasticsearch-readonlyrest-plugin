@@ -3,7 +3,7 @@
 ## The two long-lived branches
 
 - `master` carries the released code. Its version in `gradle.properties` is always stable (`X.Y.Z`).
-- `develop` carries the code under development. Its version is always unstable (`X.Y.Z-preN`).
+- `develop` carries the code under development. Its version becomes unstable (`X.Y.Z-preN`) with the first change after a release, and stays unstable until the next release.
 
 A release merges `develop` into `master`. Version and artifact mechanics live in the `ror-release` skill.
 
@@ -15,7 +15,7 @@ A release merges `develop` into `master`. Version and artifact mechanics live in
 
 1. **Support for a new ES version.** Customers run released ES versions, so the support ships in a patch release. Most PRs to `master` are of this kind.
 2. **A fix that must ship immediately.** The released version has the bug, so the fix goes out in a patch release instead of waiting for the next feature release.
-3. **A CVE fix, or a suppression of a false positive in the CVE scan.** The scan runs on `master`, so a suppression that only lives on `develop` does not stop the alert.
+3. **A CVE fix, or a suppression of a false positive in the CVE scan.** The scan runs on both branches. A fix or a suppression that only lives on `develop` leaves `master` alerting until the next release.
 4. **A pipeline, build or publishing change.** The release runs from `master`, so the branch needs the current pipeline.
 5. **Docs and examples that describe the released version.**
 

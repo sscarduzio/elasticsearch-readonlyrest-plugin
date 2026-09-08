@@ -11,7 +11,7 @@ Source: `beshu-tech/readonlyrest-internal` (`versioning.md`, `releasing.md`), re
 
 - Stable versions are semver `X.Y.Z`; unstable are `X.Y.Z-preN`. Both live in `/gradle.properties` → `pluginVersion`.
 - ES and Kibana plugins are released **in lockstep**: customers must install the same ROR version on both sides. Never release one without the other.
-- `master` holds **stable versions only** — a `-pre` version on master breaks CI. `develop` takes `-pre` versions; PRs are squash-and-merged into it.
+- `master` holds **stable versions only** — a `-pre` version on master breaks CI. `develop` takes `-pre` versions. Which branch a PR targets: `docs/dev/branching.md`.
 
 ## pluginVersion vs publishedPluginVersion (the iron rule)
 
