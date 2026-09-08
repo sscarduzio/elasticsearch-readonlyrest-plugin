@@ -20,7 +20,7 @@ directory contain the build logic; the workflow only orchestrates.
 | `it_linux` | integration tests, one job per ES version | 10-version subset on PRs, full 34 on develop/master/epic and manual |
 | `it_windows` | integration tests on native-Windows ES | 3 on PRs, 7 on branches, full 33 on manual |
 | `unit_tests_windows` | `core:test` on Windows | manual `run_all_tests_on_windows` |
-| `e2e_matrix` | resolves the e2e matrix + the build id every dev image is named after | pushes + PRs (not drafts) |
+| `e2e_matrix` | resolves the e2e matrix and the build id that names every dev image | pushes + PRs (not drafts) |
 | `e2e_order_kbn_images` | dispatches the ROR KBN dev image build **and waits for it** | pushes + PRs (not drafts) |
 | `e2e_build_es_images` | builds + publishes this repo's ROR ES dev image, one job per module | pushes + PRs (not drafts) |
 | `e2e_tests` | Cypress e2e suite, one job per ES version | pushes + PRs (not drafts) |
@@ -93,50 +93,49 @@ e2e_matrix                     resolve versions once, publish the build id
           └── e2e_tests        stack + Cypress only
 ```
 
-- `e2e_matrix` resolves the newest ES version of every module in the matrix
-  (`:esXXXx:printNewestEsVersionForModule`) and publishes it together with the build id and the ELK
-  version list. It orders nothing and builds nothing. It stays in the toolchains container, because
-  resolving a version is a Gradle call — and its `elk_versions` output is what lets the order job run
-  without one.
-- `e2e_order_kbn_images` places **one** dispatch for the whole version list and then waits for that
-  run, in the same shell, ending with a registry check of every image. 
+- `e2e_matrix` finds the newest ES version of every module in the matrix
+  (`:esXXXx:printNewestEsVersionForModule`). It publishes those versions, the build id and the ELK
+  version list. It orders nothing and builds nothing. It runs in the toolchains container, because it
+  calls Gradle to find the versions. Its `elk_versions` output lets the order job run outside that
+  container.
+- `e2e_order_kbn_images` sends **one** dispatch for all versions. Then it waits for that run, in the
+  same shell. At the end it checks the registry for every image.
 - `e2e_build_es_images` builds and pushes the ROR ES dev image from **this** commit, one job per
-  module, through the same `publish_ror_es_prebuild_plugin` helper the standalone pre-build task
-  uses — so the sha-frozen-image skip still applies.
-- `e2e_tests` runs once per version, in parallel. Both images already exist by the time it starts, so
-  it clones the suite, brings up the stack and runs Cypress. 
+  module. It uses the same `publish_ror_es_prebuild_plugin` helper as the standalone pre-build task,
+  so the sha-frozen-image skip still applies.
+- `e2e_tests` runs once per version, in parallel. Both images exist when it starts. It clones the
+  suite, starts the stack and runs Cypress.
 
-### Why the order job owns both halves
+### Why one job does both the dispatch and the wait
 
-Three reasons the dispatch and the wait belong to one job:
+There are three reasons:
 
-- **Blame lands where the fault is.** A ROR KBN build that fails, times out or publishes nothing
-  fails `e2e_order_kbn_images`, and the test jobs are then skipped rather than reporting a failure
-  that had nothing to do with them. The job translates the shared lib's exit code into one line
-  naming the cause, in the log and in the job summary.
-- **"Re-run failed jobs" does the right thing.** That button re-runs the *failed* jobs, so it re-runs
-  the order job — whose dispatch is a fresh `gh workflow run`, and whose run lookup only considers
-  runs created around that dispatch. It therefore follows the new run, not the dead one. `e2e_matrix`
-  is green and is not re-run, so the build id and every image name are unchanged, and the ES images
-  pushed on the first attempt stay valid.
-- **The shared contract requires it.** A dispatch is not told which run it created; the lib finds it
-  by title, in a window around the dispatch. Only the dispatching shell can identify the run, so only
-  that shell can wait for it.
+- **The failure points at the fault.** A ROR KBN build that fails, times out or publishes nothing
+  fails `e2e_order_kbn_images`. The test jobs are then skipped. They do not report a failure that is
+  not theirs. The job turns the shared lib's exit code into one line that names the cause, in the log
+  and in the job summary.
+- **"Re-run failed jobs" does the correct thing.** That button re-runs only the failed jobs, so it
+  re-runs the order job. Its dispatch is a new `gh workflow run`, and its run lookup only accepts
+  runs created around that dispatch. So it follows the new run, not the dead one. `e2e_matrix` is
+  green and does not re-run, so the build id and the image names stay the same. The ES images from
+  the first attempt stay valid.
+- **The shared contract makes it necessary.** A dispatch is not told which run it created. The lib
+  finds the run by title, in a window around the dispatch. Only the shell that dispatched the run can
+  identify it, so only that shell can wait for it.
 
-`e2e_order_kbn_images` and `e2e_build_es_images` are siblings under `e2e_matrix`, and neither needs
-the other. The critical path is therefore `max(local ES build, ROR KBN run)`, plus one runner
-handoff.
+`e2e_order_kbn_images` and `e2e_build_es_images` are siblings under `e2e_matrix`. Neither needs the
+other. So the critical path is `max(local ES build, ROR KBN run)`, plus one runner handoff.
 
-The wait is not a poll of the registry: it waits on the dispatched ROR KBN **run**. What the wait
+The wait does not poll the registry. It waits on the dispatched ROR KBN **run**. What the wait
 guarantees, and what this repo has to supply for it, is the contract at the top of the shared lib.
 Read it there, not here. Three obligations fall on this repo:
 
-- **Log in first.** The order job authenticates Docker before the wait. The registry check at the
-  end of the wait is a pull per image, and Docker Hub counts an anonymous pull against the runner's
-  address (100 per 6h, shared) and an authenticated one against the ROR account (200 per 6h).
+- **Log in first.** The order job authenticates Docker before the wait. The registry check at the end
+  of the wait does one pull per image. Docker Hub counts an anonymous pull against the runner's
+  address (100 per 6h, shared), and an authenticated pull against the ROR account (200 per 6h).
 - **Give the order job a token that can read the runs of the ROR KBN repo.** `ROR_GH_TOKEN` needs
-  `actions:read`. A refused read ends the wait with code 8 in seconds, and names the right it
-  needs. Reading it is how the job follows the run, so there is no way round it.
+  `actions:read`. A refused read stops the wait in seconds with code 8, and it names the necessary
+  right. The job follows the run by these reads, so there is no other way.
 - **Keep the title on our own pre-build run.** `publish-pre-builds.yml` carries
   `run-name: ROR ES pre-build ${{ inputs.tag || inputs.es_versions }}`. Every repo that dispatches it
   — the e2e repo and the ROR KBN repo — finds its run by that title, because a dispatch is told
@@ -145,9 +144,9 @@ Read it there, not here. Three obligations fall on this repo:
   The fallback applies only to a dispatch that sends no tag, and no search looks for such a title.
   Remove the line and every dispatch of this workflow fails, because no run can be recognised.
 
-Both sides address the images by a per-run tag (`run-<build id>`), and the build id is created by
-`e2e_matrix` and passed down as a job output. No other job may re-derive it: a partial re-run bumps
-the run attempt without re-running `e2e_matrix`, and the two sides would then name different images.
+Both sides address the images by a per-run tag (`run-<build id>`). `e2e_matrix` creates the build id
+and passes it down as a job output. No other job may derive it again. A partial re-run bumps the run
+attempt but does not re-run `e2e_matrix`, and the two sides would then name different images.
 
 Branch resolution — both other repos are asked for the branch of this PR first. The e2e clone then
 tries the base branch, `develop`, `master`; the base branch matters, because a change based on

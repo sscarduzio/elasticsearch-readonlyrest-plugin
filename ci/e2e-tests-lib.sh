@@ -1,21 +1,24 @@
 # Sourced by run-pipeline.sh — do not execute directly.
 
-# Helpers for the four e2e tasks in run-pipeline.sh: `publish_e2e_matrix`, `order_e2e_kbn_images`,
-# `build_e2e_es_image` and `run_e2e_tests`. Together they run the Cypress e2e suite (docker env)
-# against dev Docker images of both ROR plugins. Each job has one responsibility. One job orders the
-# ROR KBN images from the other repo and waits for them. One job builds the ROR ES image. The test
-# jobs run the suite. What each job is: ci/CI.md#e2e-tests.
+# Helpers for the four e2e tasks in run-pipeline.sh. Together they run the Cypress e2e suite (docker
+# env) against dev Docker images of both ROR plugins. Each task has one responsibility:
 #
-# Both images carry a per-run tag (run-<build id>). The build id is published by the matrix job and
-# handed to every other job as a job output. No job may re-derive it, because a partial re-run bumps
-# the GitHub run attempt without re-running the matrix job, which would rename the images.
+#   publish_e2e_matrix   — find the versions, publish the matrix and the build id
+#   order_e2e_kbn_images — order the ROR KBN images from the other repo, and wait for them
+#   build_e2e_es_image   — build the ROR ES image
+#   run_e2e_tests        — run the suite
 #
-# The ROR KBN dispatch/wait helpers are not defined here — they live in the e2e repo and are loaded
-# from a clone of it: https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/develop/ci/prebuild-images-lib.sh
-# That file owns the cross-repo contract (image names, tag shape, workflow inputs, and the rule that
-# the dispatch and the wait share a shell), so a change to how the images are named or dispatched
-# belongs there, not here. This file handles only what is specific to this repo: the ROR ES image and
-# running the test suite.
+# What each job is: ci/CI.md#e2e-tests.
+#
+# Both images carry a per-run tag (run-<build id>). The matrix job publishes the build id, and every
+# other job gets it as a job output. No job may derive it again. A partial re-run bumps the GitHub
+# run attempt but does not re-run the matrix job, and the images would get new names.
+#
+# The ROR KBN dispatch and wait helpers are not here. They live in the e2e repo, and a clone of it
+# loads them: https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/develop/ci/prebuild-images-lib.sh
+# That file owns the cross-repo contract: image names, tag shape, workflow inputs, and the rule that
+# the dispatch and the wait share a shell. Change how images are named or dispatched there, not here.
+# This file holds only what belongs to this repo: the ROR ES image and the test suite.
 # Note: docker_image_exists is defined in the shared file and replaces the copy in ci-lib.sh.
 
 E2E_TESTS_REPO="https://github.com/beshu-tech/readonlyrest-e2e-tests.git"
@@ -140,14 +143,18 @@ e2e_matrix_json() {
   printf '%s\n' "${ENTRIES[@]}" | jq -cs '{include: .}'
 }
 
-# Entry point for the `publish_e2e_matrix` task (the `e2e_matrix` job). Runs once per pipeline run,
-# and does nothing but resolve versions: it publishes the matrix the downstream jobs fan out over,
-# the ELK version list the order job dispatches for, and the build id whose run tag names every image
-# of this run. Keep it free of side effects: "re-run failed jobs" skips a green job, so the build id
-# and the published images survive a partial re-run.
+# Entry point for the `publish_e2e_matrix` task (the `e2e_matrix` job). Runs once per pipeline run.
+# It only finds versions, and publishes three things:
 #
-# It stays in the toolchains container, because resolving a module's newest ES version is a Gradle
-# call. Its `elk_versions` output is what lets the order job run outside that container.
+#   matrix       — the versions the downstream jobs fan out over
+#   elk_versions — the version list the order job dispatches for
+#   build_id     — the id whose run tag names every image of this run
+#
+# Keep this task free of side effects. "Re-run failed jobs" skips a green job, so the build id and
+# the published images must survive a partial re-run.
+#
+# It runs in the toolchains container, because it calls Gradle to find each module's newest ES
+# version. Its `elk_versions` output lets the order job run outside that container.
 #
 # Args: <es modules> <build id>
 #   es modules — e2e ES modules, space- or comma-separated (e.g. "es94x es818x es717x")
@@ -164,7 +171,7 @@ publish_e2e_matrix() {
 
   echo ">>> e2e matrix: $MATRIX (build id: $2, run tag: $(e2e_run_tag "$2"))"
 
-  # A no-op outside GitHub Actions, where the matrix is printed above and the build id is the
+  # Outside GitHub Actions this does nothing. The matrix is printed above, and the build id is the
   # caller's own.
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
     echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
@@ -173,12 +180,12 @@ publish_e2e_matrix() {
   fi
 }
 
-# Report why the ROR KBN order failed, in one line, to the log and to the job summary. The shared lib
-# has already printed its own diagnosis; this adds the sentence a reader of the job list needs, and
-# the link, without making them open the step log.
+# Reports why the ROR KBN order failed. One line, to the log and to the job summary. The shared lib
+# already printed its own diagnosis. This adds the one sentence, and the link, that a reader of the
+# job list needs. They do not have to open the step log.
 #
-# The two halves reuse the same small exit codes for different things (3 and 4 mean one thing to the
-# dispatch and another to the wait), so the phase is part of the lookup.
+# The dispatch and the wait reuse the same small exit codes for different faults. Codes 3 and 4 mean
+# one thing to the dispatch and another to the wait. So the phase is part of the lookup.
 # Usage: _report_kbn_order_failure <dispatch|wait> <exit code> <run url>
 _report_kbn_order_failure() {
   local PHASE=$1 CODE=$2 RUN_URL=${3:-} REASON
@@ -208,15 +215,15 @@ _report_kbn_order_failure() {
   echo ""
   echo "ERROR: $LINE"
   echo "       The e2e test jobs are skipped, because there is nothing to test against."
-  echo "       Re-running the failed jobs re-runs THIS job, which places a fresh order under the"
-  echo "       same run tag; the ES images already published stay valid."
+  echo "       Re-run the failed jobs. That re-runs THIS job and places a new order under the same"
+  echo "       run tag. The ES images already published stay valid."
 
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
     {
       echo "### ❌ $LINE"
       echo ""
-      echo "The ROR KBN dev images are built by the ROR KBN repo. This job orders them and waits for"
-      echo "them, so a failure here is about that build — not about the e2e suite."
+      echo "The ROR KBN repo builds the ROR KBN dev images. This job orders them and waits for them."
+      echo "A failure here is about that build, not about the e2e suite."
     } >> "$GITHUB_STEP_SUMMARY"
   fi
 }
@@ -224,16 +231,15 @@ _report_kbn_order_failure() {
 # Entry point for the `order_e2e_kbn_images` task (the `e2e_order_kbn_images` job). Runs once per
 # pipeline run.
 #
-# Dispatches ONE ROR KBN pre-build for every version of the matrix, then waits for it in the SAME
-# shell. The two halves must share a shell. The shared lib identifies a dispatched run by a title
-# search over the seconds around the dispatch, so only the shell that dispatched it can name the run
-# to wait for.
+# Dispatches ONE ROR KBN pre-build for all versions of the matrix, then waits for it in the SAME
+# shell. The two steps must share a shell: the shared lib finds a dispatched run by its title, in the
+# seconds around the dispatch. Only the shell that dispatched the run can name it.
 #
 # Args: <elk versions> <target branch> <fallback branch> <build id>
 #   elk versions    — the `elk_versions` output of the matrix job (space-separated X.Y.Z)
 #   target branch   — branch to build the ROR KBN plugin from
 #   fallback branch — branch to use when the target branch is missing in the e2e repo
-#   build id        — E2E_BUILD_ID, as PUBLISHED by the matrix job; it names the images ordered here
+#   build id        — E2E_BUILD_ID, as PUBLISHED by the matrix job. It names the images ordered here
 order_e2e_kbn_images() {
   if [ "$#" -ne 4 ]; then
     echo "Usage: order_e2e_kbn_images <elk versions> <target branch> <fallback branch> <build id>"
@@ -252,27 +258,28 @@ order_e2e_kbn_images() {
     return 2
   fi
 
-  # How long to wait for the WHOLE order (one run builds the versions one after another). A wait
-  # that outlasts the job can report nothing: GitHub kills the runner at `timeout-minutes` and the
-  # job dies with an opaque "exceeded the maximum execution time" instead of the diagnosis below.
-  # So the caller sets this, and keeps it well under `timeout-minutes` on e2e_order_kbn_images in
-  # ci.yml, where both numbers sit side by side. This default is the fallback for local runs.
+  # How long to wait for the WHOLE order. One run builds the versions one after another.
+  # A wait that outlasts the job can report nothing. GitHub stops the runner at `timeout-minutes`,
+  # and the job dies with "exceeded the maximum execution time" instead of the diagnosis below.
+  # So the caller sets this value, and keeps it well below `timeout-minutes` on
+  # e2e_order_kbn_images in ci.yml, where the two numbers sit side by side.
+  # This default applies to local runs only.
   local WAIT_TIMEOUT=${ROR_KBN_WAIT_TIMEOUT_SECONDS:-7200}
   export ROR_KBN_WAIT_TIMEOUT_SECONDS=$WAIT_TIMEOUT
 
   echo ">>> Ordering e2e ROR KBN dev images: ELK [$ELK_VERSIONS], run tag: $RUN_TAG, wait up to ${WAIT_TIMEOUT}s"
 
-  # Clone the e2e repo only to load the shared dispatch and wait helpers (test jobs clone it
-  # separately, for the runner).
+  # Clone the e2e repo only to load the shared dispatch and wait helpers. The test jobs clone it
+  # again, for the runner.
   local E2E_DIR
   E2E_DIR=$(clone_e2e_tests_repo "$TARGET_BRANCH" "$FALLBACK_BRANCH") || return $?
-  # Drop the clone however this exits. The path is expanded into the trap now, because E2E_DIR is
-  # local and gone by the time the trap runs.
+  # Delete the clone on every exit path. The path is expanded into the trap now, because E2E_DIR is
+  # local and no longer exists when the trap runs.
   trap "rm -rf '$E2E_DIR'" EXIT
   load_kbn_prebuild_helpers "$E2E_DIR" || return $?
 
-  # One dispatch for every version. It is dispatched even if the image exists, so the per-run tag
-  # always gets applied.
+  # One dispatch for all versions. It is dispatched even if the image exists, so that the per-run tag
+  # is always applied.
   local STATUS=0
   dispatch_kbn_prebuild_image "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG" || STATUS=$?
   if [ "$STATUS" -ne 0 ]; then
@@ -280,8 +287,8 @@ order_e2e_kbn_images() {
     return "$STATUS"
   fi
 
-  # The wait follows ROR_KBN_PREBUILD_RUN_ID, which the dispatch set in this shell. It ends when the
-  # run ends, then checks the registry for every image.
+  # The wait follows ROR_KBN_PREBUILD_RUN_ID. The dispatch set it in this shell. The wait ends when
+  # the run ends. Then it checks the registry for every image.
   wait_for_kbn_prebuild_images "$ELK_VERSIONS" "$RUN_TAG" || STATUS=$?
   if [ "$STATUS" -ne 0 ]; then
     _report_kbn_order_failure wait "$STATUS" "${ROR_KBN_PREBUILD_RUN_URL:-}"
@@ -292,9 +299,9 @@ order_e2e_kbn_images() {
 # Entry point for the `build_e2e_es_image` task (the `e2e_build_es_images` job). Runs once per ELK
 # version, while the order job waits for the other repo's build.
 #
-# Publishes this repo's ROR ES dev image under the per-run alias tag, through the same helper the
-# standalone pre-build task uses. The sha-frozen-image skip applies: if the image for this commit
-# already exists, the helper only retags it in the registry.
+# Publishes this repo's ROR ES dev image under the per-run tag. It uses the same helper as the
+# standalone pre-build task, so the sha-frozen-image skip applies: if the image for this commit
+# already exists, the helper only adds the tag in the registry.
 # Args: <elk version> <build id>
 build_e2e_es_image() {
   if [ "$#" -ne 2 ]; then
@@ -350,13 +357,13 @@ run_e2e_against_dev_images() {
 }
 
 # Entry point for the `run_e2e_tests` task. Runs once per ELK version. It clones the e2e repo and
-# runs the suite. Both dev images are already in the registry: e2e_order_kbn_images verified the ROR
+# runs the suite. Both dev images are already in the registry: e2e_order_kbn_images checked the ROR
 # KBN one, e2e_build_es_images published the ROR ES one.
 # Args: <elk version> <target branch> <fallback branch> <build id>
 #   elk version     — ELK version to test (X.Y.Z)
 #   target branch   — branch for the e2e suite
 #   fallback branch — branch to use when target branch is missing in the e2e repo
-#   build id        — E2E_BUILD_ID (from the matrix job; do not re-derive it)
+#   build id        — E2E_BUILD_ID, from the matrix job. Do not derive it again
 run_e2e_tests() {
   if [ "$#" -ne 4 ]; then
     echo "Usage: run_e2e_tests <elk version> <target branch> <fallback branch> <build id>"

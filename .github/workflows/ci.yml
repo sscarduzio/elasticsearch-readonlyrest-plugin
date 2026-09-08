@@ -520,11 +520,13 @@ jobs:
           if-no-files-found: ignore
 
   # ── E2E_MATRIX (versions only) ────────────────────────────────────────────
-  # Takes the newest ES version of every ES module picked for e2e and publishes it as the matrix the
-  # downstream e2e jobs fan out over, together with the build id every dev image of this run is named
-  # after. Keep it free of side effects: "re-run failed jobs" skips a green job, so the build id and
-  # every image name survive a partial re-run.
-  # Stays in the toolchains container: resolving a module's version is a Gradle call.
+  # Finds the newest ES version of each e2e module. Publishes those versions as the matrix for the
+  # e2e jobs below. Also publishes the build id that names every dev image of this run.
+  #
+  # This job must stay free of side effects. "Re-run failed jobs" skips a green job, so the build id
+  # and the image names must survive a partial re-run.
+  #
+  # It runs in the toolchains container, because it calls Gradle to find the versions.
   e2e_matrix:
     needs: [ setup, toolchains_verify ]
     if: >-
@@ -551,11 +553,12 @@ jobs:
         run: ci/run-pipeline.sh
 
   # ── E2E_ORDER_KBN_IMAGES (the other repo's build) ─────────────────────────
-  # The ROR KBN images are built by the ROR KBN repo. This job dispatches that build for the whole
-  # version list and waits for it in one shell. The shared contract requires one shell: only the shell
-  # that dispatched a run can identify it. A failed ROR KBN build therefore fails THIS job, not a test
-  # leg, and "re-run failed jobs" places a fresh order. e2e_build_es_images builds the ES images while
-  # this job waits.
+  # The ROR KBN repo builds the ROR KBN images. This job orders that build for all versions, then
+  # waits for it. Both steps run in one shell, because only the shell that ordered a build can find
+  # its run.
+  #
+  # A failed ROR KBN build fails THIS job, not a test job. "Re-run failed jobs" then places a new
+  # order. e2e_build_es_images builds the ES images while this job waits.
   e2e_order_kbn_images:
     needs: [ setup, e2e_matrix ]
     if: >-
@@ -564,8 +567,8 @@ jobs:
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest
-    # Backstop only. The wait below (120min) fires first and says why it failed.
-    # Keep 30min between them, and raise both together.
+    # Backstop only. The wait below stops first (120 min) and prints the cause.
+    # Keep 30 min between the two numbers. Raise both together.
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -579,7 +582,7 @@ jobs:
           ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
           E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
-          # How long to wait for the whole ROR KBN order. Kept under timeout-minutes above.
+          # How long to wait for the whole ROR KBN order. Keep it below timeout-minutes above.
           ROR_KBN_WAIT_TIMEOUT_SECONDS: 7200
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
@@ -589,9 +592,8 @@ jobs:
           ci/run-pipeline.sh
 
   # ── E2E_BUILD_ES_IMAGES (this repo's build) ───────────────────────────────
-  # Builds and publishes this repo's ROR ES dev image, one job per module, under the per-run alias
-  # tag. Sibling of e2e_order_kbn_images: this build and the other repo's build run at the same
-  # time.
+  # Builds and publishes this repo's ROR ES dev image. One job per module, under the per-run tag.
+  # It runs at the same time as e2e_order_kbn_images.
   e2e_build_es_images:
     needs: [ setup, e2e_matrix ]
     if: >-
@@ -630,9 +632,9 @@ jobs:
           ci/run-pipeline.sh
 
   # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
-  # Cypress e2e suite (one job per module). Both dev images are already in the registry:
-  # e2e_order_kbn_images verified the ROR KBN one, e2e_build_es_images published the ROR ES one. A leg
-  # brings up the stack and runs the suite (see ci/e2e-tests-lib.sh).
+  # Cypress e2e suite, one job per module. Both dev images are already in the registry:
+  # e2e_order_kbn_images checked the ROR KBN one, e2e_build_es_images published the ROR ES one.
+  # Each job starts the stack and runs the suite. See ci/e2e-tests-lib.sh.
   e2e_tests:
     needs: [ setup, e2e_matrix, e2e_order_kbn_images, e2e_build_es_images ]
     if: >-
@@ -703,8 +705,8 @@ jobs:
 
   # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────
   # it_windows / e2e_tests may legitimately not run (draft PRs get reduced matrices, and no e2e at
-  # all). e2e is tolerated via setup's empty list rather than a 'skipped' result, so that a FAILED
-  # any e2e job — which also leaves e2e_tests 'skipped' — still blocks this job.
+  # all). e2e is tolerated via setup's empty list rather than a 'skipped' result. A FAILED e2e job
+  # also leaves e2e_tests 'skipped', and it must still block this job.
   build_ror:
     needs: [ setup, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     if: >-
