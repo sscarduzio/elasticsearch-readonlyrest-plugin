@@ -194,7 +194,6 @@ publish_ror_es_prebuild_plugin() {
   ROR_VERSION=$(gradle_property pluginVersion) || return 1
   GIT_SHA=$(git rev-parse --short HEAD)
 
-  local CANONICAL_TAG="${ES_VERSION}-ror-${ROR_VERSION}"
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 
   echo ""
@@ -207,17 +206,13 @@ publish_ror_es_prebuild_plugin() {
   if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"; then
     echo ">>> Sources unchanged (image for this commit already published), skipping build"
   else
-    # This build pulls base images and pushes the result, so a registry can answer 429. Only such
-    # a failure is repeated. A broken build fails at once.
+    # A registry can answer 429 to the pull or the push. Only that failure is repeated.
+    # One buildx push writes both tags, so the commit tag always names this build's image.
     if ! retry_with_backoff --retry-if is_docker_registry_error \
-         ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+         ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
+         "-PadditionalImageTag=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
       echo "Failed to publish plugin prebuild Docker image"
       return 4
-    fi
-    # Freeze this build under its immutable source-identity tag so future runs can detect & skip it.
-    if ! retag_dev_image "$CANONICAL_TAG" "$SOURCE_TAG"; then
-      echo "Failed to tag prebuild Docker image as ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"
-      return 5
     fi
   fi
 
