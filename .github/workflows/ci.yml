@@ -725,6 +725,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
@@ -783,8 +785,6 @@ jobs:
     timeout-minutes: 600
     strategy:
       fail-fast: false
-      # One below the number of self-hosted runners, so a release never takes every slot: the ES
-      # pre-build that two repos wait on must always find one. See ci/self-hosted-runner.md.
       max-parallel: 2
       matrix:
         ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
@@ -842,7 +842,6 @@ jobs:
     timeout-minutes: 600
     strategy:
       fail-fast: false
-      # Same bound as upload_pre_ror — see the note there.
       max-parallel: 2
       matrix:
         ROR_TASK: [ release_es9xx, release_es8xx, release_es7xx, release_es6xx ]

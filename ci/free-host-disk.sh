@@ -17,12 +17,14 @@
 # Nothing here fails the job. A reclaim is an optimisation; a full disk fails the build with a better
 # message than this script could write.
 set -euo pipefail
+# shellcheck source=ci/runner-detect.sh
+source "$(dirname "${BASH_SOURCE[0]}")/runner-detect.sh"
 
 # Below this many GB free, the levers are worth their wall time. Above it they are not: a reclaim
 # costs minutes, so do not run one for space no job is short of.
 ROR_DISK_RECLAIM_THRESHOLD_GB="${ROR_DISK_RECLAIM_THRESHOLD_GB:-40}"
 
-if [ -e /etc/ror-shared-docker-host ]; then
+if is_shared_docker_host; then
   echo ">>> [host] shared self-hosted box: reclaiming only our own docker leftovers"
   df -h / || true
   docker image prune -f || true
