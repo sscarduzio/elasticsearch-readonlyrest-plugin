@@ -1,21 +1,15 @@
 #!/usr/bin/env bash
-# Make room for ES image builds and ES data dirs. The script detects where it runs; no job tells it.
+# Make room for ES image builds and ES data dirs. Every job calls it; the script decides what to do:
 #
-#   shared self-hosted box   /etc/ror-shared-docker-host exists (written when the runner is
-#                            provisioned, see ci/self-hosted-runner.md). The system directories and
-#                            the Docker daemon belong to every runner on the box, so reclaim only
-#                            dangling layers and build cache.
-#   GitHub-hosted VM         RUNNER_ENVIRONMENT=github-hosted, set by the runner itself. The VM dies
-#                            with the job, so delete the preinstalled toolchains and prune the whole
-#                            daemon, but only when the disk is tight.
-#   anything else            reclaim nothing.
+#   shared self-hosted box   reclaim dangling layers and build cache only. The daemon and the
+#                            system directories belong to every runner on the box.
+#   GitHub-hosted VM         delete the preinstalled toolchains and prune the whole daemon, when the
+#                            disk is tight. The VM dies with the job.
+#   anything else            nothing.
 #
 # Inside a `container:` job the host toolchains are not on this filesystem, but the bind-mounted
-# /var/run/docker.sock controls the host daemon, so a throwaway container with the host root mounted
-# deletes them. The github-hosted guard covers that path too: it removes system directories.
-#
-# Nothing here fails the job. A reclaim is an optimisation; a full disk fails the build with a better
-# message than this script could write.
+# /var/run/docker.sock controls the host daemon, so a throwaway container with the host root
+# mounted deletes them. Nothing here fails the job.
 set -euo pipefail
 # shellcheck source=ci/runner-detect.sh
 source "$(dirname "${BASH_SOURCE[0]}")/runner-detect.sh"
