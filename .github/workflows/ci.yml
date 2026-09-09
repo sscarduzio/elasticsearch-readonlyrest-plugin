@@ -641,7 +641,7 @@ jobs:
       needs.e2e_build_es_images.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    # Not a container: job, so ci/free-host-disk.sh below can see the preinstalled toolchains.
+    # No container: the disk-reclaim step below must see the host's preinstalled toolchains.
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     timeout-minutes: 120
     name: e2e_${{ matrix.module }}
