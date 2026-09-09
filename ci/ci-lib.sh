@@ -23,6 +23,22 @@ gradle_property() {
   printf '%s\n' "$value"
 }
 
+# True when HEAD carries the same tree as master's tip and pluginVersion is a -pre version.
+# Fetches master from origin; needs no token on a public repo. False on any failure.
+is_merge_back_of_master() {
+  local master_tree here_tree plugin_version
+  git fetch --quiet --no-tags --depth=1 origin master 2>/dev/null || return 1
+  master_tree=$(git rev-parse --verify --quiet 'FETCH_HEAD^{tree}') || return 1
+  here_tree=$(git rev-parse --verify --quiet 'HEAD^{tree}') || return 1
+  echo ">>> HEAD tree $here_tree, master tree $master_tree" >&2
+  [ "$here_tree" = "$master_tree" ] || return 1
+  plugin_version=$(gradle_property pluginVersion) || return 1
+  case "$plugin_version" in
+    *-pre*) return 0 ;;
+    *) echo ">>> release version $plugin_version - keeping the full matrix" >&2; return 1 ;;
+  esac
+}
+
 docker_image_exists() {
   # This answer decides whether we skip an expensive rebuild, so it must come from Docker Hub and
   # never from a cache: a cache can hold a stale answer for a tag we pushed a moment ago. `docker
