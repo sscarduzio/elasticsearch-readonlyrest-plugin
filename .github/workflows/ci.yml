@@ -551,6 +551,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: publish_e2e_matrix
         id: matrix
         env:
@@ -580,6 +582,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: order_e2e_kbn_images
         id: order
         env:
@@ -608,7 +612,6 @@ jobs:
       needs.e2e_matrix.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    # Not a container: job, so ci/free-host-disk.sh below can see the preinstalled toolchains.
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     timeout-minutes: 120
     env:
