@@ -863,7 +863,9 @@ jobs:
       )
     runs-on: *self_hosted_runner
     container: *toolchains_container
-    timeout-minutes: 180
+    # Generous on purpose: a killed leg leaves the release without that ES major's artifacts,
+    # and a self-hosted minute costs nothing.
+    timeout-minutes: 600
     env: *shared_docker_host
     strategy:
       fail-fast: false
