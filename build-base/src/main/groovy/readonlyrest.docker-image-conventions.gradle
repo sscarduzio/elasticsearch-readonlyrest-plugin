@@ -50,7 +50,6 @@ def buildxPushArgs = { List<String> tags ->
     def platforms = project.hasProperty('dockerPlatforms') ? project.property('dockerPlatforms') : 'linux/amd64,linux/arm64'
     def cmd = ['buildx', 'build', '--platform', platforms] + commonBuildArgs
     tags.each { cmd += ['-t', it] }
-    // -PadditionalImageTag adds one more tag to the same push.
     if (project.hasProperty('additionalImageTag')) cmd += ['-t', project.property('additionalImageTag')]
     cmd + ['--output', 'type=image,push=true,rewrite-timestamp=true', '.']
 }
