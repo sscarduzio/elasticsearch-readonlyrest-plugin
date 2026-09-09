@@ -641,12 +641,12 @@ jobs:
       needs.e2e_build_es_images.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    runs-on: ubicloud-standard-4
+    # Not a container: job, so ci/free-host-disk.sh below can see the preinstalled toolchains.
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     timeout-minutes: 120
     name: e2e_${{ matrix.module }}
     strategy:
       fail-fast: false
-      max-parallel: 99
       matrix: ${{ fromJSON(needs.e2e_matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
