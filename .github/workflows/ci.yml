@@ -783,8 +783,8 @@ jobs:
     timeout-minutes: 600
     strategy:
       fail-fast: false
-      # At most 2 legs at a time: two runners, ~4 GB each, and the box is shared with other repos.
-      # GitHub queues the rest — this bound is really set by how many self-hosted runners are registered.
+      # One below the number of self-hosted runners, so a release never takes every slot: the ES
+      # pre-build that two repos wait on must always find one. See ci/self-hosted-runner.md.
       max-parallel: 2
       matrix:
         ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
