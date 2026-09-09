@@ -114,6 +114,15 @@ gh api repos/sscarduzio/elasticsearch-readonlyrest-plugin/actions/runners \
 - The `runner` user must be in the `docker` group; the release jobs build and push images.
 - Disk is the binding constraint, roughly 1.5 GB of base image per ES version. The 40 GB root disk
   in the profile is enough for two runners only because `ci/free-host-disk.sh` prunes between legs.
-- Shared host, so the release scripts must not sweep the whole Docker daemon. `ROR_SHARED_DOCKER_HOST=1`
-  is set on these jobs and downgrades `docker system prune -af --volumes` to dangling layers and
-  build cache only. Without it, a retry would kill the Kibana runners' in-flight ELK stacks.
+- Shared host, so the CI scripts must not sweep the whole Docker daemon. They detect the box by the
+  marker file `/etc/ror-shared-docker-host` and downgrade every prune to dangling layers and build
+  cache. Write the marker when you provision the runner:
+
+  ```bash
+  incus exec --project github-ci gh-ror-es-$N -- sh -c \
+    'echo "Runners for more than one repo share this box." > /etc/ror-shared-docker-host'
+  ```
+
+  Without it, a retry of a release leg would kill the Kibana runners' in-flight ELK stacks.
+- Three runners, and `release_ror` / `upload_pre_ror` keep `max-parallel: 2`. A release then never
+  takes every slot, so the pre-build that two repos wait on always finds one.

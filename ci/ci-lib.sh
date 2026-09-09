@@ -5,6 +5,10 @@
 # lib is sourced rather than run (`source ci/ci-lib.sh && reap_ci_job_containers` resolved it to ".").
 CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+# True on a box whose Docker daemon and system directories other runners share. The runner
+# provisioning writes the marker (ci/self-hosted-runner.md); no job sets it.
+is_shared_docker_host() { [ -e /etc/ror-shared-docker-host ]; }
+
 # Reads one key from gradle.properties, which holds the build's own values. The file sits beside this
 # one, so the caller's working directory does not matter.
 #

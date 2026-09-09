@@ -641,7 +641,6 @@ jobs:
       needs.e2e_build_es_images.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    # No container: the disk-reclaim step below must see the host's preinstalled toolchains.
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     timeout-minutes: 120
     name: e2e_${{ matrix.module }}
@@ -782,11 +781,6 @@ jobs:
     runs-on: &self_hosted_runner [self-hosted, Linux, X64]
     container: *toolchains_container
     timeout-minutes: 600
-    # The job container gets the HOST docker socket, and that daemon also serves the readonlyrest_kbn
-    # runners on the same box. Tell the pipeline not to use host-wide docker cleanups. See
-    # cleanup_docker_and_build in ci/publish-ror-plugins.sh.
-    env: &shared_docker_host
-      ROR_SHARED_DOCKER_HOST: '1'
     strategy:
       fail-fast: false
       # At most 2 legs at a time: two runners, ~4 GB each, and the box is shared with other repos.
@@ -846,7 +840,6 @@ jobs:
     # Generous on purpose: a killed leg leaves the release without that ES major's artifacts,
     # and a self-hosted minute costs nothing.
     timeout-minutes: 600
-    env: *shared_docker_host
     strategy:
       fail-fast: false
       # Same bound as upload_pre_ror — see the note there.
