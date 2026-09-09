@@ -77,13 +77,29 @@ jobs:
       - id: flags
         env:
           REF: ${{ github.head_ref || github.ref_name }}
+          IS_DEVELOP_PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
         run: |
+          source ci/ci-lib.sh
+
           echo "is_master=${{ github.ref == 'refs/heads/master' }}"   >> "$GITHUB_OUTPUT"
           echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
+
           # Treat nested */epic/* branches like top-level epic/* branches.
-          case "$REF" in *epic/*)  echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
+          case "$REF" in
+            *epic/*) echo "is_epic=true"  >> "$GITHUB_OUTPUT";;
+            *)       echo "is_epic=false" >> "$GITHUB_OUTPUT";;
+          esac
+
+          MERGE_BACK=no
+          [ "$IS_DEVELOP_PUSH" = "true" ] && is_merge_back_of_master && MERGE_BACK=yes
+
+          case "$MERGE_BACK" in
+            yes) echo "is_merge_back=true"  >> "$GITHUB_OUTPUT";;
+            *)   echo "is_merge_back=false" >> "$GITHUB_OUTPUT";;
+          esac
       - id: matrices
         env:
+          IS_MERGE_BACK: ${{ steps.flags.outputs.is_merge_back || false }}
           # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
           IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
           IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
@@ -104,6 +120,8 @@ jobs:
 
           if [ "$IS_PR_DRAFT" = "true" ]; then
             echo "linux=$LINUX_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_MERGE_BACK" = "true" ]; then
+            echo "linux=$LINUX_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_linux" ] || [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
             echo "linux=$LINUX_IT_FULL_SET" >> "$GITHUB_OUTPUT"
           else
@@ -112,6 +130,8 @@ jobs:
 
           if [ "$IS_PR_DRAFT" = "true" ]; then
             echo "windows=$WIN_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_MERGE_BACK" = "true" ]; then
+            echo "windows=$WIN_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_windows" ]; then
             echo "windows=$WIN_IT_FULL_SET" >> "$GITHUB_OUTPUT"
           elif [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
