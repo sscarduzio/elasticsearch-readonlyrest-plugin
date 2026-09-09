@@ -194,9 +194,6 @@ publish_ror_es_prebuild_plugin() {
   ROR_VERSION=$(gradle_property pluginVersion) || return 1
   GIT_SHA=$(git rev-parse --short HEAD)
 
-  # Gradle pushes both of these in one buildx invocation. The shell still names the shared one for
-  # the skip check below - it does not build it.
-  local SHARED_TAG="${ES_VERSION}-ror-${ROR_VERSION}"
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 
   echo ""
@@ -206,24 +203,14 @@ publish_ror_es_prebuild_plugin() {
   local FORCE_REBUILD_NORM
   FORCE_REBUILD_NORM=$(echo "${FORCE_REBUILD:-false}" | tr '[:upper:]' '[:lower:]')
 
-  # BOTH tags, not just the source one. `buildx --push -t A -t B` is one build but two registry
-  # writes, and it can publish one and fail on the other. Neither tag implies the other, so a check
-  # that asks for only one can skip the rebuild and leave the other stale or missing for good.
-  if [ "$FORCE_REBUILD_NORM" != "true" ] &&
-     docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" &&
-     docker_image_exists "${ES_DEV_IMAGE_REPO}:${SHARED_TAG}"; then
-    echo ">>> Sources unchanged (both images for this commit already published), skipping build"
+  if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"; then
+    echo ">>> Sources unchanged (image for this commit already published), skipping build"
   else
-    # This build pulls base images and pushes the result, so a registry can answer 429. Only such
-    # a failure is repeated. A broken build fails at once.
-    #
-    # Both tags go up in the SAME buildx push: the shared <esVersion>-ror-<pluginVersion> and this
-    # commit's immutable source tag. The shared tag carries no branch, so a concurrent publish on
-    # the same plugin version can overwrite it. Only a single push keeps the commit tag naming the
-    # image this build produced.
+    # A registry can answer 429 to the pull or the push. Only that failure is repeated.
+    # One buildx push writes both tags, so the commit tag always names this build's image.
     if ! retry_with_backoff --retry-if is_docker_registry_error \
          ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
-         "-PpreBuildSourceImage=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
+         "-PadditionalImageTag=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
       echo "Failed to publish plugin prebuild Docker image"
       return 4
     fi

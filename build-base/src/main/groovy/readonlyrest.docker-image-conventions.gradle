@@ -36,14 +36,6 @@ def dockerImageNamespace = project.property('dockerImageNamespace')
 def releaseDockerImageLatest = "${dockerImageNamespace}/elasticsearch-readonlyrest:${esVersion}-ror-latest"
 def releaseDockerImageVersion = "${dockerImageNamespace}/elasticsearch-readonlyrest:${esVersion}-ror-${pluginVersion}"
 def preBuildDockerImageVersion = "${dockerImageNamespace}/elasticsearch-readonlyrest-dev:${esVersion}-ror-${pluginVersion}"
-// The commit-identity image, when the caller supplies one. ci/ci-lib.sh passes the full reference,
-// which it builds from the same dockerImageNamespace, so the two cannot drift.
-//
-// It must be pushed by the SAME buildx invocation as the tag above. Callers treat this tag as
-// commit-pinned, and only one push can guarantee that. The shared tag
-// <esVersion>-ror-<pluginVersion> carries no branch, so any route that copies this tag from the
-// shared one lets a concurrent publish on the same plugin version supply the image instead.
-def preBuildDockerImageSource = project.hasProperty('preBuildSourceImage') ? project.property('preBuildSourceImage') : null
 
 // Shared docker CLI task setup + the multi-arch `buildx build ... --push` invocation (latest/version and dev
 // images differ only in their -t tags). Keeps the three buildx tasks below from repeating the platform list,
@@ -58,6 +50,8 @@ def buildxPushArgs = { List<String> tags ->
     def platforms = project.hasProperty('dockerPlatforms') ? project.property('dockerPlatforms') : 'linux/amd64,linux/arm64'
     def cmd = ['buildx', 'build', '--platform', platforms] + commonBuildArgs
     tags.each { cmd += ['-t', it] }
+    // -PadditionalImageTag adds one more tag to the same push.
+    if (project.hasProperty('additionalImageTag')) cmd += ['-t', project.property('additionalImageTag')]
     cmd + ['--output', 'type=image,push=true,rewrite-timestamp=true', '.']
 }
 
@@ -225,11 +219,7 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
     dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
     dockerCliDefaults(delegate)
     environment 'SOURCE_DATE_EPOCH', sourceDateEpoch
-    // Both tags in one push. -PpreBuildSourceImage is optional, so a local or manual invocation
-    // pushes the shared tag alone.
-    args = buildxPushArgs(preBuildDockerImageSource
-            ? [preBuildDockerImageVersion, preBuildDockerImageSource]
-            : [preBuildDockerImageVersion])
+    args = buildxPushArgs([preBuildDockerImageVersion])
 }
 
 tasks.register('localRorDockerImage', Exec) {
