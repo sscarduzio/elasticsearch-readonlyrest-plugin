@@ -273,7 +273,7 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
       # Each ES version pulls its own ~1.5 GB base image, so reclaim between versions. On a shared
       # self-hosted daemon `-a` would also delete the images other repos' runners are using — see
       # cleanup_docker_and_build in ci/publish-ror-plugins.sh.
-      if [ "${ROR_SHARED_DOCKER_HOST:-0}" = "1" ]; then
+      if is_shared_docker_host; then
         docker image prune -f || true
         docker builder prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" || true
       else

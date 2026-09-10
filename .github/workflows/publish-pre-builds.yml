@@ -48,11 +48,6 @@ jobs:
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
-      AGENT_ISSELFHOSTED: '1'
-      # This job talks to the box's docker daemon directly, and that daemon also serves the
-      # readonlyrest_kbn runners. No host-wide `docker system prune -a`, no removing containers that
-      # are not ours. See ci/run-pipeline.sh and ci/publish-ror-plugins.sh.
-      ROR_SHARED_DOCKER_HOST: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 0, persist-credentials: false }

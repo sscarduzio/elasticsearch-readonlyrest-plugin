@@ -5,6 +5,9 @@
 # lib is sourced rather than run (`source ci/ci-lib.sh && reap_ci_job_containers` resolved it to ".").
 CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+# shellcheck source=ci/runner-detect.sh
+source "$CI_DIR/runner-detect.sh"
+
 # Reads one key from gradle.properties, which holds the build's own values. The file sits beside this
 # one, so the caller's working directory does not matter.
 #
