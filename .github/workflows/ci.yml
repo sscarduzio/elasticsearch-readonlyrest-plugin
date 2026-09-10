@@ -74,6 +74,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - id: flags
         env:
           REF: ${{ github.head_ref || github.ref_name }}
@@ -187,6 +189,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: Verify baked Gradle home
         run: |
           set -e
@@ -218,6 +222,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         uses: ./.github/actions/cve-check
         with:
@@ -248,6 +254,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
@@ -272,6 +280,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: core_tests
         env:
           ROR_TASK: core_tests
@@ -561,6 +571,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: publish_e2e_matrix
         id: matrix
         env:
@@ -590,6 +602,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: order_e2e_kbn_images
         id: order
         env:
@@ -618,7 +632,6 @@ jobs:
       needs.e2e_matrix.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    # Not a container: job, so ci/free-host-disk.sh below can see the preinstalled toolchains.
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     timeout-minutes: 120
     env:
@@ -661,12 +674,11 @@ jobs:
       needs.e2e_build_es_images.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    runs-on: ubicloud-standard-4
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     timeout-minutes: 120
     name: e2e_${{ matrix.module }}
     strategy:
       fail-fast: false
-      max-parallel: 99
       matrix: ${{ fromJSON(needs.e2e_matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -746,6 +758,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
@@ -779,6 +793,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - id: release_check
         run: |
           IS_RELEASE=true
@@ -802,21 +818,16 @@ jobs:
     runs-on: &self_hosted_runner [self-hosted, Linux, X64]
     container: *toolchains_container
     timeout-minutes: 600
-    # The job container gets the HOST docker socket, and that daemon also serves the readonlyrest_kbn
-    # runners on the same box. Tell the pipeline not to use host-wide docker cleanups. See
-    # cleanup_docker_and_build in ci/publish-ror-plugins.sh.
-    env: &shared_docker_host
-      ROR_SHARED_DOCKER_HOST: '1'
     strategy:
       fail-fast: false
-      # At most 2 legs at a time: two runners, ~4 GB each, and the box is shared with other repos.
-      # GitHub queues the rest — this bound is really set by how many self-hosted runners are registered.
       max-parallel: 2
       matrix:
         ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
@@ -866,16 +877,16 @@ jobs:
     # Generous on purpose: a killed leg leaves the release without that ES major's artifacts,
     # and a self-hosted minute costs nothing.
     timeout-minutes: 600
-    env: *shared_docker_host
     strategy:
       fail-fast: false
-      # Same bound as upload_pre_ror — see the note there.
       max-parallel: 2
       matrix:
         ROR_TASK: [ release_es9xx, release_es8xx, release_es7xx, release_es6xx ]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: true }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
@@ -923,6 +934,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: Install PGP signing key
         env:
           PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}

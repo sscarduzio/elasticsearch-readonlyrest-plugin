@@ -27,6 +27,10 @@ The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standa
 `mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
 they push images and run for hours. `build-toolchains-image.yml` stays on `ubicloud-standard-4`.
 
+**Every job calls `ci/free-host-disk.sh` right after checkout**, including a new one. The script
+detects the runner and decides whether to reclaim disk; a job never decides that for it. On a
+Windows job there is no equivalent step.
+
 Every Linux job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this
 directory contain the build logic; the workflow only orchestrates.
 
