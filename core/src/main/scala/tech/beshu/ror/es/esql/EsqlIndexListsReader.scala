@@ -18,7 +18,6 @@ package tech.beshu.ror.es.esql
 
 trait EsqlIndexListsReader {
 
-  /** Left when Elasticsearch cannot parse the query at all. */
   def indexListsIn(query: Query): Either[Throwable, List[ReportedIndexList]]
 
 }

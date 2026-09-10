@@ -654,7 +654,6 @@ class IndexListReplacerTest extends AnyWordSpec {
       .map(lists => NonEmptyList.fromListUnsafe(lists))
   }
 
-  /** The second argument is the index list as ES normalizes it: `FROM a, b` is reported as `a,b`. */
   private def from(writtenText: String, indexList: String): ReportedBy =
     ReportedBy(writtenText, IndexListRead.SourceCommand(indexList), forcedOffset = None)
 

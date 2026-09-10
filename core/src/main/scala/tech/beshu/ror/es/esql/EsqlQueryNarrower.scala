@@ -38,7 +38,6 @@ final class EsqlQueryNarrower(reader: EsqlIndexListsReader) extends Logging {
     }
   }
 
-  /** `None` when the query can run as it was written. */
   def narrowedTo(
       classification: Either[Rejection, RequestClassification],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
