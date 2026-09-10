@@ -52,6 +52,7 @@ directory contain the build logic; the workflow only orchestrates.
 | `e2e_tests` | Cypress e2e suite, one job per ES version | pushes + PRs (not drafts) |
 | `build_ror` | builds all plugin zips + bytecode-reuse guard | PRs |
 | `determine_ci_type` → `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
+| `verify_sonatype_credentials` | asks the Sonatype staging API for our profiles, so a dead publish credential shows up before release day, not on it | master pushes |
 
 Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
 `run_all_tests_on_windows`, `run_e2e_tests`, `release_without_testing`.
