@@ -18,19 +18,21 @@ plugins {
     id "readonlyrest.plugin-common-conventions"
 }
 
+// The only ES 6 module, so there is no es6-base to share with: this file is the whole config.
 ext.javaLanguageVersion = 11
 ext.jarHellMainClass = 'org.elasticsearch.bootstrap.JarHell'
+// No arm64 ES base image published for this line.
 ext.dockerPlatforms = 'linux/amd64'
 
 def moduleEsVersion = project.ext.esVersion
 
 dependencies {
-    implementation  project(path: ':core')
-    implementation  project(path: ':ror-tools', configuration: 'shadow')
-    implementation  project(path: ':ror-tools-core')
-    implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: moduleEsVersion
-    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: moduleEsVersion
-    implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.14'
-//    compileOnly     group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',                     version: moduleEsVersion // no 6.8.11&12 in mvn atm
-    implementation  group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: moduleEsVersion
+    implementation project(path: ':core')
+    implementation project(path: ':ror-tools', configuration: 'shadow')
+    implementation project(path: ':ror-tools-core')
+    implementation group: 'org.elasticsearch',          name: 'elasticsearch',              version: moduleEsVersion
+    implementation group: 'org.elasticsearch.client',   name: 'elasticsearch-rest-client',  version: moduleEsVersion
+    implementation group: 'org.apache.httpcomponents',  name: 'httpclient',                 version: '4.5.14'
+    implementation group: 'org.elasticsearch.plugin',   name: 'transport-netty4-client',    version: moduleEsVersion
+    // plugin-classloader is deliberately absent: no 6.8.11 & 6.8.12 in mvn at the time.
 }
