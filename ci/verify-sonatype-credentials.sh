@@ -1,16 +1,10 @@
 #!/usr/bin/env bash
 
-# Prove the Sonatype credentials work, on every master push, not on release day.
+# Asks the Sonatype staging API for our profiles. A 200 means it accepts the credentials.
 #
-# publish_mvn runs only when the run is a release, and it skips silently when the current
-# version is already published. A rotated, expired or wrong token therefore stays invisible
-# until the one run that must not fail. Three real publish attempts died on a bare 401 from
-# the staging API before the credentials were last rotated, and nothing has exercised the new
-# ones since.
-#
-# This asks the staging API for our profiles. A 200 means the credentials are accepted. It
-# also checks that MAVEN_STAGING_PROFILE_ID is one the account owns, because build.gradle
-# passes that id straight to the create-staging-repository call.
+# It also checks that MAVEN_STAGING_PROFILE_ID is a profile the account owns, because the publish
+# task sends that id straight to the call that creates the staging repository. A stale id fails
+# there, and the failure looks the same as a bad password.
 #
 # Nothing here prints a credential or the response body.
 
