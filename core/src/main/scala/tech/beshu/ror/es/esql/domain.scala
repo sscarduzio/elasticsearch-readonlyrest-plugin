@@ -30,12 +30,11 @@ object Query {
 
   private[esql] final case class TextSpan(start: Int, end: Int)
 
-  /** Where in a query's text something sits, the way ES reports it: a 1-based line and a 0-based column. */
+  /** A 1-based line and a 0-based column, the way ES reports them. */
   final case class SourceLocation(line: Int, column: Int)
 
 }
 
-/** Why ReadonlyREST cannot run an ES|QL query holding it to the indices the ACL allowed. */
 sealed trait Rejection
 
 object Rejection {
@@ -44,12 +43,13 @@ object Rejection {
 
   final case class CannotExtractIndices(failure: ReadingFailure) extends Rejection
 
+  final case class CannotParseRewrittenQuery(intendedIndexLists: List[String]) extends Rejection
+
   final case class SubstitutionNotConfirmed(intendedIndexLists: List[String], readIndexLists: List[String])
       extends Rejection
 
 }
 
-/** Why an index list ES reported could not be found in the query text, or read as indices once found. */
 sealed trait ReadingFailure
 
 object ReadingFailure {
@@ -66,7 +66,6 @@ object ReadingFailure {
 
 }
 
-/** An index list ES read out of a query, normalized its way (`FROM a, b` as `a,b`). All a rewrite is held to. */
 sealed trait IndexListRead {
 
   def indexList: String
@@ -89,10 +88,8 @@ object IndexListRead {
 
 }
 
-/** An index list ES read, plus the query text it read it from and where that sits - the list alone is unsearchable. */
 final case class ReportedIndexList(read: IndexListRead, writtenAt: SourceLocation, writtenText: String)
 
-/** An index list found in the query text, so the indices it names can be replaced with the ones the ACL allowed. */
 private[esql] sealed trait LocatedIndexList {
   def span: Query.TextSpan
   def requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
@@ -144,17 +141,17 @@ private[esql] object LocatedIndexList {
 
 }
 
-/** A rewritten query, together with what ES has to read out of it for the rewrite to have done its job. */
 private[esql] final case class ReplacedQuery(query: Query, intendedReads: List[IndexListRead]) {
+
+  def intendedIndexLists: List[String] = intendedReads.map(_.stringify).sorted
 
   /** Held to what ES reads back out of the rewrite - the only thing saying which indices it will really run against. */
   def checkedAgainst(esReads: List[IndexListRead]): Either[Rejection, Query] = {
-    val intended = intendedReads.map(_.stringify).sorted
     val read = esReads.map(_.stringify).sorted
     Either.cond(
-      test = intended == read,
+      test = intendedIndexLists == read,
       right = query,
-      left = Rejection.SubstitutionNotConfirmed(intended, read)
+      left = Rejection.SubstitutionNotConfirmed(intendedIndexLists, read)
     )
   }
 

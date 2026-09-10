@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.esql
 
-/** The index lists Elasticsearch itself reads out of a query - only its own parser, in an ES module, can say. */
 trait EsqlIndexListsReader {
 
   /** Left when Elasticsearch cannot parse the query at all. */

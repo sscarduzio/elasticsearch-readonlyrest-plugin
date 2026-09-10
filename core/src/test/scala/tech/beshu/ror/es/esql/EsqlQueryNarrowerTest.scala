@@ -14,14 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.es.esql
+package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.esql.*
 import tech.beshu.ror.es.esql.Query.SourceLocation
+import tech.beshu.ror.syntax.*
 
 class EsqlQueryNarrowerTest extends AnyWordSpec {
 
@@ -30,7 +30,7 @@ class EsqlQueryNarrowerTest extends AnyWordSpec {
       "read the indices a source command asks for" in {
         val classification = classify("FROM logs-1,logs-2 | LIMIT 10", from("FROM logs-1,logs-2", "logs-1,logs-2"))
 
-        classification.map(requestedIndicesOf) shouldBe Right(List("logs-1", "logs-2"))
+        classification.map(requestedIndexNamesOf) shouldBe Right(List("logs-1", "logs-2"))
       }
       "take a query naming no index list as unrelated to indices" in {
         classify("ROW a = 1") shouldBe Right(RequestClassification.NonIndicesRelated)
@@ -51,6 +51,15 @@ class EsqlQueryNarrowerTest extends AnyWordSpec {
           Left(Rejection.CannotExtractIndices(ReadingFailure.NotWhereEsReportedIt("logs-1")))
       }
     }
+    "telling which indices a query asks for" should {
+      "take a query it cannot read to ask for all indices" in {
+        EsqlQueryNarrower.requestedIndicesOf(Left(Rejection.CannotParseQuery)) shouldBe allIndices.toList.toCovariantSet
+      }
+      "take a query unrelated to indices to ask for all indices" in {
+        EsqlQueryNarrower.requestedIndicesOf(Right(RequestClassification.NonIndicesRelated)) shouldBe
+          allIndices.toList.toCovariantSet
+      }
+    }
     "narrowing a query down" should {
       "rewrite the index list and confirm it with Elasticsearch" in {
         narrow(
@@ -60,7 +69,18 @@ class EsqlQueryNarrowerTest extends AnyWordSpec {
             "FROM logs-* | LIMIT 10" -> List(from("FROM logs-*", "logs-*")),
             "FROM logs-1 | LIMIT 10" -> List(from("FROM logs-1", "logs-1"))
           )
-        ) shouldBe Right("FROM logs-1 | LIMIT 10")
+        ) shouldBe Right(Some("FROM logs-1 | LIMIT 10"))
+      }
+      "leave the query as written when the ACL allows exactly the indices it asks for" in {
+        narrow(
+          query = "FROM logs-1 | LIMIT 10",
+          allowed = allowed("logs-1"),
+          reads = Map("FROM logs-1 | LIMIT 10" -> List(from("FROM logs-1", "logs-1")))
+        ) shouldBe Right(None)
+      }
+      "leave a query unrelated to indices as written" in {
+        narrow(query = "ROW a = 1", allowed = allowed("logs-1"), reads = Map("ROW a = 1" -> List.empty)) shouldBe
+          Right(None)
       }
       "reject the query when Elasticsearch reads the rewrite as naming other indices" in {
         narrow(
@@ -78,13 +98,26 @@ class EsqlQueryNarrowerTest extends AnyWordSpec {
             Right(List(reported("FROM logs-* | LIMIT 10", from("FROM logs-*", "logs-*"))))
           case _ => Left(new IllegalArgumentException("cannot parse"))
         }))
-        val classification = narrower.classify(Query("FROM logs-* | LIMIT 10")).map(indicesRelated)
 
-        classification.flatMap(narrower.narrowedTo(_, allowed("logs-1"))) shouldBe
-          Left(Rejection.SubstitutionNotConfirmed(List("logs-1"), List.empty))
+        narrower.narrowedTo(narrower.classify(Query("FROM logs-* | LIMIT 10")), allowed("logs-1")) shouldBe
+          Left(Rejection.CannotParseRewrittenQuery(List("logs-1")))
+      }
+      "reject a query Elasticsearch cannot parse when the ACL narrowed the indices down" in {
+        val narrower = new EsqlQueryNarrower(readerFailingWith(new IllegalArgumentException("cannot parse")))
+
+        narrower.narrowedTo(narrower.classify(Query("FROM")), allowed("logs-1")) shouldBe
+          Left(Rejection.CannotParseQuery)
+      }
+      "leave a query Elasticsearch cannot parse as written when the ACL narrowed nothing" in {
+        val narrower = new EsqlQueryNarrower(readerFailingWith(new IllegalArgumentException("cannot parse")))
+
+        narrower.narrowedTo(narrower.classify(Query("FROM")), allIndices) shouldBe Right(None)
       }
     }
   }
+
+  private val allIndices: NonEmptyList[RequestedIndex[ClusterIndexName]] =
+    NonEmptyList.one(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   private def classify(query: String, reported: ReadWrittenAs*): Either[Rejection, RequestClassification] =
     new EsqlQueryNarrower(readerReading(q => reported.toList.map(reported => reported.at(q.value))))
@@ -94,25 +127,22 @@ class EsqlQueryNarrowerTest extends AnyWordSpec {
       query: String,
       allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
       reads: Map[String, List[ReadWrittenAs]]
-  ): Either[Rejection, String] = {
+  ): Either[Rejection, Option[String]] = {
     val narrower = new EsqlQueryNarrower(new StubReader({
       case q if reads.contains(q.value) => Right(reads(q.value).map(_.at(q.value)))
       case q                            => throw new IllegalStateException(s"unexpected query: ${q.value}")
     }))
     narrower
-      .classify(Query(query))
-      .map(indicesRelated)
-      .flatMap(narrower.narrowedTo(_, allowed))
-      .map(_.value)
+      .narrowedTo(narrower.classify(Query(query)), allowed)
+      .map(_.map(_.value))
   }
 
-  private def requestedIndicesOf(classification: RequestClassification): List[String] =
-    indicesRelated(classification).requestedIndices.toList.map(_.name.stringify).sorted
-
-  private def indicesRelated(classification: RequestClassification): RequestClassification.IndicesRelated =
+  private def requestedIndexNamesOf(classification: RequestClassification): List[String] =
     classification match {
-      case indicesRelated: RequestClassification.IndicesRelated => indicesRelated
-      case RequestClassification.NonIndicesRelated              => fail("the query was taken as unrelated to indices")
+      case indicesRelated: RequestClassification.IndicesRelated =>
+        indicesRelated.requestedIndices.toList.map(_.name.stringify).sorted
+      case RequestClassification.NonIndicesRelated =>
+        fail("the query was taken as unrelated to indices")
     }
 
   private def readerReading(reads: Query => List[ReportedIndexList]): EsqlIndexListsReader =

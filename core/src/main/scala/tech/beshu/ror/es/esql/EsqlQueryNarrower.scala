@@ -20,9 +20,9 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.RequestClassification.{IndicesRelated, NonIndicesRelated}
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.slf4j.Logging
 
-/** Holds an ES|QL query to the indices the ACL allowed: which ones it asks for, and how it reads once narrowed. */
 final class EsqlQueryNarrower(reader: EsqlIndexListsReader) extends Logging {
 
   def classify(query: Query): Either[Rejection, RequestClassification] = {
@@ -38,22 +38,46 @@ final class EsqlQueryNarrower(reader: EsqlIndexListsReader) extends Logging {
     }
   }
 
+  /** `None` when the query can run as it was written. */
   def narrowedTo(
+      classification: Either[Rejection, RequestClassification],
+      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ): Either[Rejection, Option[Query]] = {
+    if (allowedIndices.toList.toCovariantSet == EsqlQueryNarrower.requestedIndicesOf(classification)) Right(None)
+    else
+      classification match {
+        case Right(indicesRelated: IndicesRelated) => narrowed(indicesRelated, allowedIndices).map(Some(_))
+        case Right(NonIndicesRelated)              => Right(None)
+        case Left(rejection)                       => Left(rejection)
+      }
+  }
+
+  private def narrowed(
       classification: IndicesRelated,
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): Either[Rejection, Query] = {
     val replaced = IndexListReplacer.replacing(classification.query, classification.indexLists, allowedIndices)
-    replaced.checkedAgainst(esReadsOf(replaced.query))
-  }
-
-  /** What ES reads out of the rewritten query, asked of the same parser it will use to run it. */
-  private def esReadsOf(query: Query): List[IndexListRead] = {
-    reader.indexListsIn(query) match {
+    reader.indexListsIn(replaced.query) match {
       case Right(reported) =>
-        reported.map(_.read).filterNot(_.indexListIsEmpty)
+        replaced.checkedAgainst(reported.map(_.read).filterNot(_.indexListIsEmpty))
       case Left(cause) =>
         logger.warn("Elasticsearch cannot parse the ES|QL query ReadonlyREST rewrote", cause)
-        List.empty
+        Left(Rejection.CannotParseRewrittenQuery(replaced.intendedIndexLists))
+    }
+  }
+
+}
+
+object EsqlQueryNarrower {
+
+  def requestedIndicesOf(
+      classification: Either[Rejection, RequestClassification]
+  ): Set[RequestedIndex[ClusterIndexName]] = {
+    classification match {
+      case Right(indicesRelated: IndicesRelated) =>
+        indicesRelated.requestedIndices
+      case Right(NonIndicesRelated) | Left(_) =>
+        Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
     }
   }
 

@@ -47,3 +47,7 @@ readonlyrest:
     - name: "The FROM target and both LOOKUP JOIN targets"
       auth_key: joins:test
       indices: ["book_catalog", "book_prices", "store_ratings"]
+
+    - name: "One of the two metrics indices a PROMQL command reads"
+      auth_key: metrics:test
+      indices: ["metrics-app"]

@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.esql.{Rejection, RequestClassification}
+import tech.beshu.ror.es.esql.EsqlQueryNarrower
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
@@ -57,17 +57,8 @@ class EsqlIndicesEsRequestContext private (
   override protected def requestedIndicesFrom(
       request: ActionRequest with CompositeIndicesRequest
   ): Set[RequestedIndex[ClusterIndexName]] = {
-    requestClassification match {
-      case Right(classification: RequestClassification.IndicesRelated) =>
-        classification.requestedIndices
-      case Right(RequestClassification.NonIndicesRelated) | Left(_) =>
-        allIndices
-    }
+    EsqlQueryNarrower.requestedIndicesOf(requestClassification)
   }
-
-  /** What a query ROR cannot read the index lists of has to be taken to ask for. */
-  private def allIndices: Set[RequestedIndex[ClusterIndexName]] =
-    Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   override protected def update(
       request: ActionRequest with CompositeIndicesRequest,
@@ -75,38 +66,16 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    modifyRequestIndices(request, filteredRequestedIndices) match {
+    EsqlRequestHelper.modifyIndicesOf(request, requestClassification, filteredRequestedIndices) match {
       case Right(_) =>
         applyFieldLevelSecurityTo(request, fieldLevelSecurity)
         applyFilterTo(request, filter)
         UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
       case Left(rejection) =>
-        logger.warn(rejection.show)
+        logger.warn(s"[${id.show}] ${rejection.show}")
         ModificationResult.ShouldBeInterrupted
     }
   }
-
-  private def modifyRequestIndices(
-      request: ActionRequest with CompositeIndicesRequest,
-      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Either[Rejection, Unit] = {
-    requestClassification match {
-      case Right(RequestClassification.NonIndicesRelated) =>
-        Right(())
-      case Right(classification: RequestClassification.IndicesRelated) =>
-        if (aclNarrowedNothing(filteredIndices, classification.requestedIndices)) Right(())
-        else EsqlRequestHelper.modifyIndicesOf(request, classification, filteredIndices)
-      case Left(rejection) =>
-        if (aclNarrowedNothing(filteredIndices, allIndices)) Right(())
-        else Left(rejection)
-    }
-  }
-
-  /** When the ACL allows exactly what the query asked for, there is nothing to narrow down and nothing to rewrite. */
-  private def aclNarrowedNothing(
-      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      requestedIndices: Set[RequestedIndex[ClusterIndexName]]
-  ): Boolean = filteredIndices.toList.toCovariantSet == requestedIndices
 
   private def applyFieldLevelSecurityTo(
       request: ActionRequest with CompositeIndicesRequest,

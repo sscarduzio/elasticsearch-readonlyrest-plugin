@@ -25,7 +25,6 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.Query.SourceLocation
-import tech.beshu.ror.es.esql.RequestClassification.IndicesRelated
 import tech.beshu.ror.es.esql.{
   EsqlIndexListsReader,
   EsqlQueryNarrower,
@@ -50,12 +49,12 @@ object EsqlRequestHelper extends Logging {
 
   def modifyIndicesOf(
       request: CompositeIndicesRequest,
-      classification: IndicesRelated,
+      classification: Either[Rejection, RequestClassification],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): Either[Rejection, Unit] = {
     narrowerFor(request)
       .narrowedTo(classification, allowedIndices)
-      .map(setQuery(request, _))
+      .map(_.foreach(setQuery(request, _)))
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -94,7 +93,7 @@ object EsqlRequestHelper extends Logging {
       implicit classLoader: ClassLoader
   ) extends EsqlIndexListsReader {
 
-    private val underlyingObject =
+    private lazy val underlyingObject =
       onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser"))
         .create()
         .get[Any]()

@@ -556,7 +556,7 @@ class IndexListReplacerTest extends AnyWordSpec {
           from("FROM a, // and\n b", "a,b")
         ) shouldBe Left(Rejection.SubstitutionNotConfirmed(List("b"), List("b,b")))
       }
-      "reject a rewrite ES cannot parse at all, which it reads nothing out of" in {
+      "reject a rewrite ES reads no index list out of" in {
         verify(
           "FROM logs-* | LIMIT 10",
           allowed("logs-1"),

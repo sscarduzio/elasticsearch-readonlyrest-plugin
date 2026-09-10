@@ -27,6 +27,9 @@ import tech.beshu.ror.utils.elasticsearch.{DocumentManager, EsqlApiManager, Inde
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+
 trait BaseEsqlApiSuite
     extends AnyWordSpecLike
     with BaseEsClusterIntegrationTest
@@ -57,6 +60,7 @@ trait BaseEsqlApiSuite
   private lazy val bookWildcardEsqlManager = new EsqlApiManager(basicAuthClient("books", "test"), esVersionUsed)
   private lazy val allJoinTargetsEsqlManager = new EsqlApiManager(basicAuthClient("joins", "test"), esVersionUsed)
   private lazy val unrestrictedEsqlManager = new EsqlApiManager(basicAuthClient("admin", "container"), esVersionUsed)
+  private lazy val metricsAppOnlyEsqlManager = new EsqlApiManager(basicAuthClient("metrics", "test"), esVersionUsed)
 
   "ESQL query request" when {
     "a source command is used" should {
@@ -271,6 +275,44 @@ trait BaseEsqlApiSuite
           }
         }
       }
+      "replace an index list whose written form differs from the one ES's parser reports" when {
+        "it is written with spaces after the commas" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          val result = catalogOnlyEsqlManager.execute("""FROM book_catalog, book_prices | LIMIT 100""")
+
+          result should have statusCode 200
+          result.columnNames should contain only ("book_id", "title", "title.keyword")
+          result.rows.size should be(2)
+        }
+        "it carries the bracketed METADATA clause ES 8.x still accepts" excludeES (
+          allEs6x,
+          allEs7x,
+          allEs8xBelowEs818x,
+          allEs9x
+        ) in {
+          val result =
+            catalogOnlyEsqlManager.execute("""FROM book_catalog, book_prices [METADATA _index] | LIMIT 100""")
+
+          result should have statusCode 200
+          result.columnNames should contain only ("book_id", "title", "title.keyword", "_index")
+          result.rows.size should be(2)
+        }
+        "a comment holding a bracket interrupts it" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+          val result = catalogOnlyEsqlManager.execute(
+            """FROM book_catalog, /* and (also) */ book_prices | LIMIT 100"""
+          )
+
+          result should have statusCode 200
+          result.columnNames should contain only ("book_id", "title", "title.keyword")
+          result.rows.size should be(2)
+        }
+        "its entries are quoted" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
+          val result = catalogOnlyEsqlManager.execute("""FROM \"book_catalog\",\"book_prices\" | LIMIT 100""")
+
+          result should have statusCode 200
+          result.columnNames should contain only ("book_id", "title", "title.keyword")
+          result.rows.size should be(2)
+        }
+      }
     }
   }
 
@@ -417,44 +459,74 @@ trait BaseEsqlApiSuite
           """FROM book_catalog | LOOKUP JOIN \"book_catalog,book_prices\" ON book_id | LIMIT 100"""
         )
 
-        result.responseCode should not be 403
+        result should have statusCode 400
       }
     }
-    "replace an index list whose written form differs from the one ES's parser reports" when {
-      "it is written with spaces after the commas" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
-        val result = catalogOnlyEsqlManager.execute("""FROM book_catalog, book_prices | LIMIT 100""")
+  }
 
-        result should have statusCode 200
-        result.columnNames should contain only ("book_id", "title", "title.keyword")
-        result.rows.size should be(2)
-      }
-      "it carries the bracketed METADATA clause ES 8.x still accepts" excludeES (
+  "An ESQL PROMQL request" should {
+    "be allowed" when {
+      "the index parameter names a pattern, and the ACL narrows it to the allowed indices" excludeES (
         allEs6x,
         allEs7x,
-        allEs8xBelowEs818x,
-        allEs9x
+        allEs8x,
+        allEs9xBelowEs94x
       ) in {
-        val result = catalogOnlyEsqlManager.execute("""FROM book_catalog, book_prices [METADATA _index] | LIMIT 100""")
+        val result = metricsAppOnlyEsqlManager.execute("""PROMQL index=metrics-* step=1m max by (host) (cpu)""")
 
         result should have statusCode 200
-        result.columnNames should contain only ("book_id", "title", "title.keyword", "_index")
-        result.rows.size should be(2)
+        result.column("host").toList should contain only Str("metrics-app-host")
       }
-      "a comment holding a bracket interrupts it" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
-        val result = catalogOnlyEsqlManager.execute(
-          """FROM book_catalog, /* and (also) */ book_prices | LIMIT 100"""
+      "the index parameter is a quoted list, and the ACL narrows it to the allowed indices" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8x,
+        allEs9xBelowEs94x
+      ) in {
+        val result = metricsAppOnlyEsqlManager.execute(
+          """PROMQL index=\"metrics-app,metrics-secret\" step=1m max by (host) (cpu)"""
         )
 
         result should have statusCode 200
-        result.columnNames should contain only ("book_id", "title", "title.keyword")
-        result.rows.size should be(2)
+        result.column("host").toList should contain only Str("metrics-app-host")
       }
-      "its entries are quoted" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
-        val result = catalogOnlyEsqlManager.execute("""FROM \"book_catalog\",\"book_prices\" | LIMIT 100""")
+    }
+    "be bad request (implicitly forbidden)" when {
+      "the index parameter names only an index the ACL does not allow" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8x,
+        allEs9xBelowEs94x
+      ) in {
+        val result = metricsAppOnlyEsqlManager.execute("""PROMQL index=metrics-secret step=1m max by (host) (cpu)""")
+
+        result should have statusCode 400
+        result.responseJson("error").obj("reason").str should include("Unknown index")
+      }
+    }
+    "be rejected as forbidden" when {
+      "the index parameter is not written, so Elasticsearch picks the indices and ROR has no index list to narrow" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8x,
+        allEs9xBelowEs94x
+      ) in {
+        val result = metricsAppOnlyEsqlManager.execute("""PROMQL step=1m max by (host) (cpu)""")
+
+        result should have statusCode 403
+      }
+    }
+    "be left to run as written" when {
+      "the index parameter is not written, but the ACL narrowed nothing to hold the query to" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8x,
+        allEs9xBelowEs94x
+      ) in {
+        val result = unrestrictedEsqlManager.execute("""PROMQL step=1m max by (host) (cpu)""")
 
         result should have statusCode 200
-        result.columnNames should contain only ("book_id", "title", "title.keyword")
-        result.rows.size should be(2)
+        result.column("host").toList should contain allOf (Str("metrics-app-host"), Str("metrics-secret-host"))
       }
     }
   }
@@ -469,8 +541,42 @@ object BaseEsqlApiSuite {
 
     configureBookstore(documentManager, indexManager)
     configureLibrary(documentManager)
-    if (Version.greaterOrEqualThan(esVersion, 8, 18, 0)) {
-      configureLookupIndices(documentManager, indexManager)
+    if (Version.greaterOrEqualThan(esVersion, 8, 11, 0)) {
+      configureLookupIndices(documentManager, indexManager, esVersion)
+    }
+    if (Version.greaterOrEqualThan(esVersion, 9, 4, 0)) {
+      configureMetricsIndices(documentManager, indexManager)
+    }
+  }
+
+  private def configureMetricsIndices(documentManager: DocumentManager, indexManager: IndexManager): Unit = {
+    List("metrics-app", "metrics-secret").foreach { index =>
+      indexManager
+        .createIndex(
+          index,
+          settings = Some(
+            ujson.read(
+              """{
+                |  "settings": {"index": {"mode": "time_series", "routing_path": ["host"]}},
+                |  "mappings": {
+                |    "properties": {
+                |      "@timestamp": {"type": "date"},
+                |      "host": {"type": "keyword", "time_series_dimension": true},
+                |      "cpu": {"type": "double", "time_series_metric": "gauge"}
+                |    }
+                |  }
+                |}""".stripMargin
+            )
+          )
+        )
+        .force()
+      val timestamp = Instant.now().truncatedTo(ChronoUnit.SECONDS)
+      documentManager
+        .createDocWithGeneratedId(
+          index,
+          ujson.read(s"""{"@timestamp": "$timestamp", "host": "$index-host", "cpu": 0.5}""")
+        )
+        .force()
     }
   }
 
@@ -521,7 +627,11 @@ object BaseEsqlApiSuite {
     )
   }
 
-  private def configureLookupIndices(documentManager: DocumentManager, indexManager: IndexManager): Unit = {
+  private def configureLookupIndices(
+      documentManager: DocumentManager,
+      indexManager: IndexManager,
+      esVersion: String
+  ): Unit = {
     documentManager.createDocAndAssert(
       index = "book_catalog",
       `type` = "_doc",
@@ -535,12 +645,14 @@ object BaseEsqlApiSuite {
       content = ujson.read("""{"book_id": 2, "title": "Hyperion"}""")
     )
 
-    indexManager
-      .createIndex("book_prices", settings = Some(ujson.read("""{"settings": {"index": {"mode": "lookup"}}}""")))
-      .force()
-    indexManager
-      .createIndex("store_ratings", settings = Some(ujson.read("""{"settings": {"index": {"mode": "lookup"}}}""")))
-      .force()
+    if (Version.greaterOrEqualThan(esVersion, 8, 18, 0)) {
+      indexManager
+        .createIndex("book_prices", settings = Some(ujson.read("""{"settings": {"index": {"mode": "lookup"}}}""")))
+        .force()
+      indexManager
+        .createIndex("store_ratings", settings = Some(ujson.read("""{"settings": {"index": {"mode": "lookup"}}}""")))
+        .force()
+    }
 
     documentManager.createDocAndAssert(
       index = "book_prices",
