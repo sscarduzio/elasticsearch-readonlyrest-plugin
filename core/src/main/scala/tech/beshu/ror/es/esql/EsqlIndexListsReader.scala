@@ -18,6 +18,6 @@ package tech.beshu.ror.es.esql
 
 trait EsqlIndexListsReader {
 
-  def indexListsIn(query: Query): Either[Throwable, List[ReportedIndexList]]
+  def indexListsIn(query: String): Either[Throwable, List[ReportedIndexList]]
 
 }

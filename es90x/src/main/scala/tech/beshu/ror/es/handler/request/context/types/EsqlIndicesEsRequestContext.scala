@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.esql.EsqlQueryNarrower
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
@@ -52,12 +51,12 @@ class EsqlIndicesEsRequestContext private (
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  private lazy val requestClassification = EsqlRequestHelper.classifyEsqlRequest(actionRequest)
+  private lazy val esqlQuery = EsqlRequestHelper.esqlQueryOf(actionRequest)
 
   override protected def requestedIndicesFrom(
       request: ActionRequest with CompositeIndicesRequest
   ): Set[RequestedIndex[ClusterIndexName]] = {
-    EsqlQueryNarrower.requestedIndicesOf(requestClassification)
+    esqlQuery.indices
   }
 
   override protected def update(
@@ -66,7 +65,7 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    EsqlRequestHelper.modifyIndicesOf(request, requestClassification, filteredRequestedIndices) match {
+    EsqlRequestHelper.modifyIndicesOf(request, esqlQuery, filteredRequestedIndices) match {
       case Right(_) =>
         applyFieldLevelSecurityTo(request, fieldLevelSecurity)
         applyFilterTo(request, filter)

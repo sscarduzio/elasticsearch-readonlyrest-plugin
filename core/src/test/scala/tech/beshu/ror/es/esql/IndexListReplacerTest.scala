@@ -609,7 +609,7 @@ class IndexListReplacerTest extends AnyWordSpec {
   ): String = {
     val indexLists = indexListsIn(query, reported)
       .fold(failure => fail(s"index lists were not read: ${failure.toString}"), identity)
-    IndexListReplacer.replacing(Query(query), indexLists, allowed).query.value
+    IndexListReplacer.replacing(query, indexLists, allowed).query
   }
 
   private def readingFailureFor(
@@ -622,7 +622,7 @@ class IndexListReplacerTest extends AnyWordSpec {
       indexLists =>
         fail(
           s"index lists were read, although they should not have been: " +
-            s"${IndexListReplacer.replacing(Query(query), indexLists, allowed).query.value}"
+            s"${IndexListReplacer.replacing(query, indexLists, allowed).query}"
         )
     )
   }
@@ -635,8 +635,8 @@ class IndexListReplacerTest extends AnyWordSpec {
   ): Either[Rejection, String] = {
     val indexLists = indexListsIn(query, reported)
       .fold(failure => fail(s"index lists were not read: ${failure.toString}"), identity)
-    val replaced = IndexListReplacer.replacing(Query(query), indexLists, allowed)
-    replaced.checkedAgainst(esReads).map(_.value)
+    val replaced = IndexListReplacer.replacing(query, indexLists, allowed)
+    replaced.checkedAgainst(esReads)
   }
 
   private def indexListsIn(
@@ -650,7 +650,7 @@ class IndexListReplacerTest extends AnyWordSpec {
       }
       ._2
     IndexListLocator
-      .locatedIn(Query(query), relations)
+      .locatedIn(query, relations)
       .map(lists => NonEmptyList.fromListUnsafe(lists))
   }
 

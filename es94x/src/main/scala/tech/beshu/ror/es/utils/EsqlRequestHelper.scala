@@ -25,15 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.Query.SourceLocation
-import tech.beshu.ror.es.esql.{
-  EsqlIndexListsReader,
-  EsqlQueryNarrower,
-  IndexListRead,
-  Query,
-  Rejection,
-  ReportedIndexList,
-  RequestClassification
-}
+import tech.beshu.ror.es.esql.{EsqlIndexListsReader, IndexListRead, Query, Rejection, ReportedIndexList}
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
 import tech.beshu.ror.syntax.*
@@ -49,12 +41,12 @@ object EsqlRequestHelper extends Logging {
 
   def modifyIndicesOf(
       request: CompositeIndicesRequest,
-      classification: Either[Rejection, RequestClassification],
+      query: Query,
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): Either[Rejection, Unit] = {
-    narrowerFor(request)
-      .narrowedTo(classification, allowedIndices)
-      .map(_.foreach(setQuery(request, _)))
+    query
+      .narrowedTo(allowedIndices, readerFor(request))
+      .map(narrowed => setQuery(request, narrowed.stringify))
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -64,23 +56,21 @@ object EsqlRequestHelper extends Logging {
     new EsqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions).underlyingObject
   }
 
-  def classifyEsqlRequest(
-      request: CompositeIndicesRequest
-  ): Either[Rejection, RequestClassification] = {
-    narrowerFor(request).classify(getQuery(request))
+  def esqlQueryOf(request: CompositeIndicesRequest): Query = {
+    Query.from(getQuery(request), readerFor(request))
   }
 
-  private def narrowerFor(request: CompositeIndicesRequest): EsqlQueryNarrower = {
+  private def readerFor(request: CompositeIndicesRequest): EsqlIndexListsReader = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-    new EsqlQueryNarrower(new EsqlParser(request))
+    new EsqlParser(request)
   }
 
-  private def getQuery(request: CompositeIndicesRequest): Query = {
-    Query(on(request).call("query").get[String])
+  private def getQuery(request: CompositeIndicesRequest): String = {
+    on(request).call("query").get[String]
   }
 
-  private def setQuery(request: CompositeIndicesRequest, query: Query): Unit = {
-    on(request).call("query", query.value)
+  private def setQuery(request: CompositeIndicesRequest, query: String): Unit = {
+    on(request).call("query", query)
   }
 
   private def getParams(request: CompositeIndicesRequest): AnyRef = {
@@ -104,8 +94,8 @@ object EsqlRequestHelper extends Logging {
         .get[Any]()
     }
 
-    override def indexListsIn(query: Query): Either[Throwable, List[ReportedIndexList]] = {
-      createStatement(query.value).map(statement => reportedIndexListsIn(planOf(statement)))
+    override def indexListsIn(query: String): Either[Throwable, List[ReportedIndexList]] = {
+      createStatement(query).map(statement => reportedIndexListsIn(planOf(statement)))
     }
 
     private def createStatement(query: String) = {

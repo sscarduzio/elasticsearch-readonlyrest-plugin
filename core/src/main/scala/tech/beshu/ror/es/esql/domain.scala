@@ -24,17 +24,6 @@ import tech.beshu.ror.es.esql.Query.SourceLocation
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-final case class Query(value: String) extends AnyVal
-
-object Query {
-
-  private[esql] final case class TextSpan(start: Int, end: Int)
-
-  /** A 1-based line and a 0-based column, the way ES reports them. */
-  final case class SourceLocation(line: Int, column: Int)
-
-}
-
 sealed trait Rejection
 
 object Rejection {
@@ -141,12 +130,12 @@ private[esql] object LocatedIndexList {
 
 }
 
-private[esql] final case class ReplacedQuery(query: Query, intendedReads: List[IndexListRead]) {
+private[esql] final case class ReplacedQuery(query: String, intendedReads: List[IndexListRead]) {
 
   def intendedIndexLists: List[String] = intendedReads.map(_.stringify).sorted
 
   /** Held to what ES reads back out of the rewrite - the only thing saying which indices it will really run against. */
-  def checkedAgainst(esReads: List[IndexListRead]): Either[Rejection, Query] = {
+  def checkedAgainst(esReads: List[IndexListRead]): Either[Rejection, String] = {
     val read = esReads.map(_.stringify).sorted
     Either.cond(
       test = intendedIndexLists == read,
@@ -154,22 +143,5 @@ private[esql] final case class ReplacedQuery(query: Query, intendedReads: List[I
       left = Rejection.SubstitutionNotConfirmed(intendedIndexLists, read)
     )
   }
-
-}
-
-sealed trait RequestClassification
-
-object RequestClassification {
-
-  final class IndicesRelated private[esql] (
-      private[esql] val query: Query,
-      private[esql] val indexLists: NonEmptyList[LocatedIndexList]
-  ) extends RequestClassification {
-
-    lazy val requestedIndices: Set[RequestedIndex[ClusterIndexName]] =
-      LocatedIndexList.requestedIndicesOf(indexLists)
-  }
-
-  case object NonIndicesRelated extends RequestClassification
 
 }

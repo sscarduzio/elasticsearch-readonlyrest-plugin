@@ -26,7 +26,7 @@ import tech.beshu.ror.syntax.*
 private[esql] object IndexListReplacer {
 
   def replacing(
-      query: Query,
+      query: String,
       indexLists: NonEmptyList[LocatedIndexList],
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): ReplacedQuery = {
@@ -123,12 +123,10 @@ private[esql] object IndexListReplacer {
   private def indexListOf(indices: NonEmptyList[ClusterIndexName]): String =
     indices.toList.map(_.stringify).mkString(",")
 
-  private def rewritten(query: Query, edits: List[Edit]): Query = {
-    Query(
-      edits.sortBy(-_.span.start).foldLeft(query.value) { case (text, edit) =>
-        s"${text.substring(0, edit.span.start)}${edit.intendedRead.indexList}${text.substring(edit.span.end)}"
-      }
-    )
+  private def rewritten(query: String, edits: List[Edit]): String = {
+    edits.sortBy(-_.span.start).foldLeft(query) { case (text, edit) =>
+      s"${text.substring(0, edit.span.start)}${edit.intendedRead.indexList}${text.substring(edit.span.end)}"
+    }
   }
 
   private final case class Edit(span: TextSpan, intendedRead: IndexListRead)

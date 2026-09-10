@@ -47,10 +47,10 @@ private[esql] object IndexListLocator {
   private val anonymousQueryParameter: Regex = """^\s*\?\??\s*$""".r
 
   def locatedIn(
-      query: Query,
+      query: String,
       reported: List[ReportedIndexList]
   ): Either[ReadingFailure, List[LocatedIndexList]] =
-    reported.filterNot(_.read.indexListIsEmpty).traverse(locate(query.value, _))
+    reported.filterNot(_.read.indexListIsEmpty).traverse(locate(query, _))
 
   private def locate(
       query: String,
