@@ -54,7 +54,6 @@ env:
   # full-matrix run (es80x/es810x/es818x/es90x, exit 137) — those legs run suites es94x excludes,
   # so their memory peaks are higher. Fleet wall time is set by the slowest leg anyway: k=4.
   IT_PARALLELISM: '4'
-  AGENT_ISSELFHOSTED: '1'
 
 jobs:
 
@@ -75,25 +74,46 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - id: flags
         env:
           REF: ${{ github.head_ref || github.ref_name }}
+          IS_DEVELOP_PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
         run: |
+          source ci/ci-lib.sh
+
           echo "is_master=${{ github.ref == 'refs/heads/master' }}"   >> "$GITHUB_OUTPUT"
           echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
+
           # Treat nested */epic/* branches like top-level epic/* branches.
-          case "$REF" in *epic/*)  echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
+          case "$REF" in
+            *epic/*) echo "is_epic=true"  >> "$GITHUB_OUTPUT";;
+            *)       echo "is_epic=false" >> "$GITHUB_OUTPUT";;
+          esac
+
+          MERGE_BACK=no
+          [ "$IS_DEVELOP_PUSH" = "true" ] && is_merge_back_of_master && MERGE_BACK=yes
+
+          case "$MERGE_BACK" in
+            yes) echo "is_merge_back=true"  >> "$GITHUB_OUTPUT";;
+            *)   echo "is_merge_back=false" >> "$GITHUB_OUTPUT";;
+          esac
       - id: matrices
         env:
+          IS_MERGE_BACK: ${{ steps.flags.outputs.is_merge_back || false }}
           # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
           IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
           IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
           MANUAL_RUN_ACTION: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.actionToPerform || '') }}
         run: |
-          LINUX_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x","es67x"]'
+          # 7.3, 7.4, 7.9, 7.11 and 7.14 have no test leg. build_ror still builds and publishes
+          # them, because it groups by major, not by minor. A regression specific to one of those
+          # series ships untested.
+          LINUX_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es710x","es78x","es77x","es72x","es70x","es67x"]'
           LINUX_IT_PR_READY_SET='["es94x","es90x","es818x","es816x","es810x","es80x","es717x","es710x","es70x","es67x"]'
           LINUX_IT_PR_DRAFT_SET='["es94x","es818x","es717x","es67x"]'
-          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
+          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es710x","es78x","es77x","es72x","es70x"]'
           WIN_IT_MASTER_OR_DEVELOP_SET='["es94x","es90x","es818x","es80x","es717x","es70x"]'
           WIN_IT_PR_READY_SET='["es94x","es818x","es717x"]'
           WIN_IT_PR_DRAFT_SET='[]'
@@ -102,6 +122,8 @@ jobs:
 
           if [ "$IS_PR_DRAFT" = "true" ]; then
             echo "linux=$LINUX_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_MERGE_BACK" = "true" ]; then
+            echo "linux=$LINUX_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_linux" ] || [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
             echo "linux=$LINUX_IT_FULL_SET" >> "$GITHUB_OUTPUT"
           else
@@ -110,6 +132,8 @@ jobs:
 
           if [ "$IS_PR_DRAFT" = "true" ]; then
             echo "windows=$WIN_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_MERGE_BACK" = "true" ]; then
+            echo "windows=$WIN_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
           elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_windows" ]; then
             echo "windows=$WIN_IT_FULL_SET" >> "$GITHUB_OUTPUT"
           elif [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
@@ -165,6 +189,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: Verify baked Gradle home
         run: |
           set -e
@@ -196,6 +222,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         uses: ./.github/actions/cve-check
         with:
@@ -226,6 +254,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
@@ -250,6 +280,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: core_tests
         env:
           ROR_TASK: core_tests
@@ -266,9 +298,7 @@ jobs:
           path: '**/TEST*.xml'
           if-no-files-found: ignore
 
-  # ── TEST: Linux integration tests (Ubicloud) ──────────────────────────────
-  # Matrix comes from setup: full 34-version set on develop/master/epic + manual run, the
-  # 10-version representative subset on plain PRs.
+  # ── TEST: Linux integration tests ─────────────────────────────────────────
   it_linux:
     needs: [ setup, toolchains_verify ]
     if: >-
@@ -276,7 +306,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.setup.outputs.it_linux_matrix != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubicloud-standard-4
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     container: *toolchains_container
     timeout-minutes: 120
     # "it_linux_es94x", not the truncated "it_linux (es94x)" composite, in the graph view. Same
@@ -284,7 +314,6 @@ jobs:
     name: it_linux_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
-      max-parallel: 20
       matrix:
         ES_MODULE: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
     steps:
@@ -381,9 +410,7 @@ jobs:
           if-no-files-found: ignore
 
 
-  # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
-  # Matrix from setup: 6-version subset on develop/master/epic, 3 on ready PRs, none on draft
-  # PRs (job skipped), full 33 on manual run_all_tests_on_windows.
+  # ── TEST: Windows integration tests ───────────────────────────────────────
   it_windows:
     # toolchains_verify is in needs even though Windows doesn't use the image, so a broken image
     # fails fast instead of running doomed legs.
@@ -519,11 +546,15 @@ jobs:
           path: '**/TEST*.xml'
           if-no-files-found: ignore
 
-  # ── E2E_PREPARE (setup for the e2e matrix) ────────────────────────────────
-  # Takes the newest ES version of every ES module picked for e2e, and starts ONE build of the ROR
-  # KBN dev image for all of them. Outputs those versions as the matrix the e2e_tests jobs run on,
-  # plus the build's run id so they know which build to wait for.
-  e2e_prepare:
+  # ── E2E_MATRIX (versions only) ────────────────────────────────────────────
+  # Finds the newest ES version of each e2e module. Publishes those versions as the matrix for the
+  # e2e jobs below. Also publishes the build id that names every dev image of this run.
+  #
+  # This job must stay free of side effects. "Re-run failed jobs" skips a green job, so the build id
+  # and the image names must survive a partial re-run.
+  #
+  # It runs in the toolchains container, because it calls Gradle to find the versions.
+  e2e_matrix:
     needs: [ setup, toolchains_verify ]
     if: >-
       !cancelled() &&
@@ -532,48 +563,84 @@ jobs:
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
     runs-on: ubuntu-latest
     container: *toolchains_container
-    timeout-minutes: 30
+    timeout-minutes: 15
     outputs:
-      matrix: ${{ steps.prepare.outputs.matrix }}
-      build_id: ${{ steps.prepare.outputs.build_id }}
-      kbn_run_id: ${{ steps.prepare.outputs.kbn_run_id }}
-      kbn_run_url: ${{ steps.prepare.outputs.kbn_run_url }}
-      kbn_wait_timeout_seconds: ${{ steps.prepare.outputs.kbn_wait_timeout_seconds }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      build_id: ${{ steps.matrix.outputs.build_id }}
+      elk_versions: ${{ steps.matrix.outputs.elk_versions }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: prepare_e2e_kbn_images
-        id: prepare
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: publish_e2e_matrix
+        id: matrix
         env:
-          ROR_TASK: prepare_e2e_kbn_images
+          ROR_TASK: publish_e2e_matrix
           E2E_ES_MODULES: ${{ join(fromJSON(needs.setup.outputs.e2e_modules), ' ') }}
-          ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
           E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
         run: ci/run-pipeline.sh
 
-  # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
-  # Cypress e2e suite (one job per module). Each job builds and publishes the ROR ES image for its
-  # version, waits for the ROR KBN image, then runs the test suite against both (see ci/e2e-tests-lib.sh).
-  e2e_tests:
-    needs: [ setup, toolchains_verify, e2e_prepare ]
+  # ── E2E_ORDER_KBN_IMAGES (the other repo's build) ─────────────────────────
+  # The ROR KBN repo builds the ROR KBN images. This job orders that build for all versions, then
+  # waits for it. Both steps run in one shell, because only the shell that ordered a build can find
+  # its run.
+  #
+  # A failed ROR KBN build fails THIS job, not a test job. "Re-run failed jobs" then places a new
+  # order. e2e_build_es_images builds the ES images while this job waits.
+  e2e_order_kbn_images:
+    needs: [ setup, e2e_matrix ]
     if: >-
       !cancelled() &&
-      needs.e2e_prepare.result == 'success' &&
-      needs.toolchains_verify.result == 'success' &&
+      needs.e2e_matrix.result == 'success' &&
       needs.setup.outputs.e2e_modules != '[]' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    runs-on: ubicloud-standard-4
+    runs-on: ubuntu-latest
+    # Backstop only. The wait below stops first (120 min) and prints the cause.
+    # Keep 30 min between the two numbers. Raise both together.
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: order_e2e_kbn_images
+        id: order
+        env:
+          ROR_TASK: order_e2e_kbn_images
+          E2E_ELK_VERSIONS: ${{ needs.e2e_matrix.outputs.elk_versions }}
+          ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+          ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
+          E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+          # How long to wait for the whole ROR KBN order. Keep it below timeout-minutes above.
+          ROR_KBN_WAIT_TIMEOUT_SECONDS: 7200
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+        run: |
+          set -e
+          source ci/configure-docker.sh
+          ci/run-pipeline.sh
+
+  # ── E2E_BUILD_ES_IMAGES (this repo's build) ───────────────────────────────
+  # Builds and publishes this repo's ROR ES dev image. One job per module, under the per-run tag.
+  # It runs at the same time as e2e_order_kbn_images.
+  e2e_build_es_images:
+    needs: [ setup, e2e_matrix ]
+    if: >-
+      !cancelled() &&
+      needs.e2e_matrix.result == 'success' &&
+      needs.setup.outputs.e2e_modules != '[]' &&
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     timeout-minutes: 120
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
-    name: e2e_${{ matrix.module }}
+    name: build_es_${{ matrix.module }}
     strategy:
       fail-fast: false
-      max-parallel: 99
-      matrix: ${{ fromJSON(needs.e2e_prepare.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.e2e_matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -581,6 +648,43 @@ jobs:
         run: ci/free-host-disk.sh
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
         with: { distribution: temurin, java-version: '17' }
+      - name: build_e2e_es_image
+        env:
+          ROR_TASK: build_e2e_es_image
+          E2E_ES_MODULE: ${{ matrix.module }}
+          E2E_ELK_VERSION: ${{ matrix.elk }}
+          E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+        run: |
+          set -e
+          source ci/configure-docker.sh
+          ci/run-pipeline.sh
+
+  # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
+  # Cypress e2e suite, one job per module. Both dev images are already in the registry:
+  # e2e_order_kbn_images checked the ROR KBN one, e2e_build_es_images published the ROR ES one.
+  # Each job starts the stack and runs the suite. See ci/e2e-tests-lib.sh.
+  e2e_tests:
+    needs: [ setup, e2e_matrix, e2e_order_kbn_images, e2e_build_es_images ]
+    if: >-
+      !cancelled() &&
+      needs.e2e_matrix.result == 'success' &&
+      needs.e2e_order_kbn_images.result == 'success' &&
+      needs.e2e_build_es_images.result == 'success' &&
+      needs.setup.outputs.e2e_modules != '[]' &&
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
+    timeout-minutes: 120
+    name: e2e_${{ matrix.module }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.e2e_matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk (no-op on self-hosted)
+        run: ci/free-host-disk.sh
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: '24.11.0' }
       - name: run_e2e_tests
@@ -590,10 +694,7 @@ jobs:
           E2E_ELK_VERSION: ${{ matrix.elk }}
           E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          E2E_BUILD_ID: ${{ needs.e2e_prepare.outputs.build_id }}
-          ROR_KBN_PREBUILD_RUN_ID: ${{ needs.e2e_prepare.outputs.kbn_run_id }}
-          ROR_KBN_PREBUILD_RUN_URL: ${{ needs.e2e_prepare.outputs.kbn_run_url }}
-          ROR_KBN_WAIT_TIMEOUT_SECONDS: ${{ needs.e2e_prepare.outputs.kbn_wait_timeout_seconds }}
+          E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
@@ -633,8 +734,8 @@ jobs:
 
   # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────
   # it_windows / e2e_tests may legitimately not run (draft PRs get reduced matrices, and no e2e at
-  # all). e2e is tolerated via setup's empty list rather than a 'skipped' result, so that a FAILED
-  # e2e_prepare — which also leaves e2e_tests 'skipped' — still blocks this job.
+  # all). e2e is tolerated via setup's empty list rather than a 'skipped' result. A FAILED e2e job
+  # also leaves e2e_tests 'skipped', and it must still block this job.
   build_ror:
     needs: [ setup, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
     if: >-
@@ -645,7 +746,8 @@ jobs:
       needs.it_linux.result == 'success' &&
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
       (needs.e2e_tests.result == 'success' || needs.setup.outputs.e2e_modules == '[]')
-    runs-on: ubicloud-standard-4
+    # Gradle deps are baked into the toolchains image, so no runner-side cache is needed.
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     container: *toolchains_container
     timeout-minutes: 180
     name: ${{ matrix.ROR_TASK }}
@@ -656,6 +758,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
@@ -689,6 +793,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - id: release_check
         run: |
           IS_RELEASE=true
@@ -712,21 +818,16 @@ jobs:
     runs-on: &self_hosted_runner [self-hosted, Linux, X64]
     container: *toolchains_container
     timeout-minutes: 600
-    # The job container gets the HOST docker socket, and that daemon also serves the readonlyrest_kbn
-    # runners on the same box. Tell the pipeline not to use host-wide docker cleanups. See
-    # cleanup_docker_and_build in ci/publish-ror-plugins.sh.
-    env: &shared_docker_host
-      ROR_SHARED_DOCKER_HOST: '1'
     strategy:
       fail-fast: false
-      # At most 2 legs at a time: two runners, ~4 GB each, and the box is shared with other repos.
-      # GitHub queues the rest — this bound is really set by how many self-hosted runners are registered.
       max-parallel: 2
       matrix:
         ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
@@ -773,17 +874,19 @@ jobs:
       )
     runs-on: *self_hosted_runner
     container: *toolchains_container
-    timeout-minutes: 180
-    env: *shared_docker_host
+    # Generous on purpose: a killed leg leaves the release without that ES major's artifacts,
+    # and a self-hosted minute costs nothing.
+    timeout-minutes: 600
     strategy:
       fail-fast: false
-      # Same bound as upload_pre_ror — see the note there.
       max-parallel: 2
       matrix:
         ROR_TASK: [ release_es9xx, release_es8xx, release_es7xx, release_es6xx ]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: true }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
@@ -831,6 +934,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: Install PGP signing key
         env:
           PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}

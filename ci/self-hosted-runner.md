@@ -1,18 +1,38 @@
 # Self-hosted runners for this repo
 
 The release path runs on the ReadonlyREST build host rather than on a paid cloud runner. The jobs
-are long, IO-bound and low-concurrency: gradle assembly plus uploads to S3, Docker Hub and Maven
-Central. They do not benefit from a fast ephemeral VM, and they were ~5.2k Ubicloud minutes/month.
+are long, IO-bound and low-concurrency: gradle assembly plus uploads. Nothing else waits on them,
+so a slow runner costs wall time but blocks no other job.
+
+**Do not move a job here if another run polls it.** The pool has few slots. A queued job holds up
+every runner that waits for its result, and those runners may be paid.
 
 Jobs that need a self-hosted runner:
 
 | Workflow | Job | Shape |
 |---|---|---|
-| `ci.yml` | `upload_pre_ror` | 4-leg matrix, ~45–57 min/leg, pre-release only |
-| `ci.yml` | `release_ror` | 4-leg matrix, ~16 min/leg, release only |
+| `ci.yml` | `upload_pre_ror` | 4-leg matrix, pre-release only |
+| `ci.yml` | `release_ror` | 4-leg matrix, release only |
 | `ci.yml` | `publish_mvn` | seconds, after `release_ror` |
 | `publish-pre-builds.yml` | `publish` | manual, long build-and-push |
 | `mirror-es-libs.yml` | `mirror` | manual, short |
+
+**Size the pool on the slowest leg, not the average, and measure before you change it.** Leg times
+differ by more than an order of magnitude between ES majors, and they move when the build changes.
+To get the current numbers:
+
+```bash
+gh run list --repo sscarduzio/elasticsearch-readonlyrest-plugin \
+  --workflow ci.yml --limit 50 --json databaseId \
+  --jq '.[].databaseId' |
+  xargs -I{} gh run view {} --repo sscarduzio/elasticsearch-readonlyrest-plugin \
+    --json jobs --jq '.jobs[] | select(.name|startswith("release_")) |
+      "\(.name) \(.startedAt) \(.completedAt)"'
+```
+
+`release_ror` sets `max-parallel: 2`, which does not create fixed pairs — Actions starts a queued
+leg as soon as a slot frees — so read a release's occupancy as first leg start to last leg finish,
+not as the sum of the legs.
 
 ## The selector
 
@@ -94,6 +114,15 @@ gh api repos/sscarduzio/elasticsearch-readonlyrest-plugin/actions/runners \
 - The `runner` user must be in the `docker` group; the release jobs build and push images.
 - Disk is the binding constraint, roughly 1.5 GB of base image per ES version. The 40 GB root disk
   in the profile is enough for two runners only because `ci/free-host-disk.sh` prunes between legs.
-- Shared host, so the release scripts must not sweep the whole Docker daemon. `ROR_SHARED_DOCKER_HOST=1`
-  is set on these jobs and downgrades `docker system prune -af --volumes` to dangling layers and
-  build cache only. Without it, a retry would kill the Kibana runners' in-flight ELK stacks.
+- Shared host, so the CI scripts must not sweep the whole Docker daemon. They detect the box by the
+  marker file `/etc/ror-shared-docker-host` and downgrade every prune to dangling layers and build
+  cache. Write the marker when you provision the runner:
+
+  ```bash
+  incus exec --project github-ci gh-ror-es-$N -- sh -c \
+    'echo "Runners for more than one repo share this box." > /etc/ror-shared-docker-host'
+  ```
+
+  Without it, a retry of a release leg would kill the Kibana runners' in-flight ELK stacks.
+- Three runners, and `release_ror` / `upload_pre_ror` keep `max-parallel: 2`. A release then never
+  takes every slot, so the pre-build that two repos wait on always finds one.
