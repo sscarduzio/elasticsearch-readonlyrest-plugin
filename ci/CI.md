@@ -62,7 +62,9 @@ manual; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml
 into the libs store — see [S3 stores](#s3-stores)), `disk-probe.yml` (manually reports runner and
 Docker disk usage), `pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml`
 (regenerates the ES action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand
-ROR+ES dev images).
+ROR+ES dev images), `verify-publish-credentials.yml` (daily cron and manual — proves the Maven
+Central credentials still work, because `publish_mvn` only runs on a release and skips silently
+when the version is already published).
 
 Two orchestration rules worth knowing before editing conditions:
 
