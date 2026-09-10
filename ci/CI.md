@@ -52,7 +52,6 @@ directory contain the build logic; the workflow only orchestrates.
 | `e2e_tests` | Cypress e2e suite, one job per ES version | pushes + PRs (not drafts) |
 | `build_ror` | builds all plugin zips + bytecode-reuse guard | PRs |
 | `determine_ci_type` → `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
-| `verify_sonatype_credentials` | asks the Sonatype staging API for our profiles, so a dead publish credential shows up before release day, not on it | master pushes |
 
 Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
 `run_all_tests_on_windows`, `run_e2e_tests`, `release_without_testing`.
@@ -63,7 +62,9 @@ manual; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml
 into the libs store — see [S3 stores](#s3-stores)), `disk-probe.yml` (manually reports runner and
 Docker disk usage), `pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml`
 (regenerates the ES action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand
-ROR+ES dev images).
+ROR+ES dev images), `verify-publish-credentials.yml` (daily cron and manual — proves the Maven
+Central credentials still work, because `publish_mvn` only runs on a release and skips silently
+when the version is already published).
 
 Two orchestration rules worth knowing before editing conditions:
 

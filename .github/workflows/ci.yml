@@ -906,30 +906,6 @@ jobs:
           source ci/configure-docker.sh
           ci/run-pipeline.sh
 
-  # ── VERIFY_SONATYPE_CREDENTIALS (every master push) ───────────────────────
-  # publish_mvn runs only on a release, and it skips when the version is already published.
-  # A broken publish credential is therefore invisible until the run that must not fail.
-  # This job exercises the credential on every master push, for a few seconds of a free runner.
-  verify_sonatype_credentials:
-    needs: [ setup ]
-    if: >-
-      !cancelled() &&
-      needs.setup.result == 'success' &&
-      needs.setup.outputs.is_master == 'true'
-    runs-on: ubuntu-latest   # free for public repos; the job is one HTTPS call
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: Free host disk
-        run: ci/free-host-disk.sh
-      - name: verify_sonatype_credentials
-        env:
-          MAVEN_REPO_USER: ${{ secrets.MAVEN_REPO_USER }}
-          MAVEN_REPO_PASSWORD: ${{ secrets.MAVEN_REPO_PASSWORD }}
-          MAVEN_STAGING_PROFILE_ID: ${{ secrets.MAVEN_STAGING_PROFILE_ID }}
-        run: ci/verify-sonatype-credentials.sh
-
   # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
   publish_mvn:
     needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
