@@ -16,17 +16,82 @@
  */
 package tech.beshu.ror.accesscontrol.audit.output
 
+import monix.eval.Task
+import tech.beshu.ror.accesscontrol.audit.output.AuditOutputServiceCreator.InitializationError
+import tech.beshu.ror.accesscontrol.audit.remote.AuditRemoteClusterConnectivityCheck
+import tech.beshu.ror.accesscontrol.audit.remote.AuditRemoteClusterConnectivityCheck.Error.ConnectivityError
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.RemoteAuditCluster
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, IndexBasedAuditOutputService}
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
-sealed trait AuditOutputServiceCreator
+sealed trait AuditOutputServiceCreator extends RequestIdAwareLogging {
+
+  protected final def withConnectivityCheck[AUDIT_SERVICE](
+      cluster: AuditCluster,
+      httpClientsFactory: HttpClientsFactory,
+      create: Task[AUDIT_SERVICE]
+  ): Task[Either[AuditOutputServiceCreator.InitializationError, AUDIT_SERVICE]] = {
+    cluster match {
+      case AuditCluster.LocalAuditCluster =>
+        create.map(Right(_))
+      case remote: RemoteAuditCluster =>
+        new AuditRemoteClusterConnectivityCheck(httpClientsFactory)
+          .check(remote)
+          .flatMap {
+            case Right(()) =>
+              create.map(Right(_))
+            case Left(error: ConnectivityError) if remote.ignoreClusterConnectivityProblems =>
+              Task
+                .delay(
+                  noRequestIdLogger.info(
+                    s"Audit cluster connectivity check failed, but 'ignore_es_connectivity_problems: true' is set, so auditing will proceed: ${error.message}"
+                  )
+                )
+                .flatMap(_ => create.map(Right(_)))
+            case Left(error: ConnectivityError) =>
+              Task.pure(
+                Left(
+                  InitializationError(
+                    s"${error.message}. You can disable this check by setting 'ignore_es_connectivity_problems: true' in the audit cluster configuration"
+                  )
+                )
+              )
+            case Left(error: AuditRemoteClusterConnectivityCheck.Error.ConfigurationError) =>
+              Task.pure(Left(InitializationError(error.message)))
+          }
+    }
+  }
+
+}
+
+object AuditOutputServiceCreator {
+
+  final case class InitializationError(message: String)
+
+}
 
 trait IndexBasedAuditOutputServiceCreator extends AuditOutputServiceCreator {
 
-  def index(cluster: AuditCluster): IndexBasedAuditOutputService
+  protected def index(cluster: AuditCluster): IndexBasedAuditOutputService
+
+  final def createIndexService(
+      cluster: AuditCluster,
+      httpClientsFactory: HttpClientsFactory
+  ): Task[Either[AuditOutputServiceCreator.InitializationError, IndexBasedAuditOutputService]] =
+    withConnectivityCheck(cluster, httpClientsFactory, Task.delay(index(cluster)))
+
 }
 
 trait DataStreamBasedAuditOutputServiceCreator extends AuditOutputServiceCreator {
 
-  def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService
+  protected def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService
+
+  final def createDataStreamService(
+      cluster: AuditCluster,
+      httpClientsFactory: HttpClientsFactory
+  ): Task[Either[AuditOutputServiceCreator.InitializationError, DataStreamBasedAuditOutputService]] =
+    withConnectivityCheck(cluster, httpClientsFactory, Task.delay(dataStream(cluster)))
+
 }

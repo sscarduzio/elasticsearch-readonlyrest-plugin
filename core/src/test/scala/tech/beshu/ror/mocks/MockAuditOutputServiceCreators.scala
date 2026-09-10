@@ -42,7 +42,7 @@ object MockedCapabilities {
 
 object MockIndexBasedAuditOutputServiceCreator extends IndexBasedAuditOutputServiceCreator {
 
-  override def index(cluster: AuditCluster): IndexBasedAuditOutputService = new IndexBasedAuditOutputService {
+  val indexService: IndexBasedAuditOutputService = new IndexBasedAuditOutputService {
     override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
         implicit requestId: RequestId
     ): Unit =
@@ -50,11 +50,13 @@ object MockIndexBasedAuditOutputServiceCreator extends IndexBasedAuditOutputServ
     override def close(): Unit = ()
   }
 
+  override protected def index(cluster: AuditCluster): IndexBasedAuditOutputService = indexService
+
 }
 
 object MockDataStreamBasedAuditOutputServiceCreator extends DataStreamBasedAuditOutputServiceCreator {
 
-  override def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService =
+  override protected def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService =
     new DataStreamBasedAuditOutputService {
       override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
           implicit requestId: RequestId

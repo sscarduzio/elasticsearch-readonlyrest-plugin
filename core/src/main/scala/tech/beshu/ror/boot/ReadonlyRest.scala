@@ -233,7 +233,7 @@ class ReadonlyRest(
   ): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
     val core = coreCreationResult.core
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
-    EitherT(createAuditingTool(coreCreationResult.auditSetup))
+    EitherT(createAuditingTool(coreCreationResult.auditSetup, engineResources.httpClientsFactory))
       .map { auditingTool =>
         val decoratedCore = Core(
           accessControl = new AccessControlListLoggingDecorator(
@@ -251,11 +251,14 @@ class ReadonlyRest(
       }
   }
 
-  private def createAuditingTool(auditSetup: AuditSetup)(
+  private def createAuditingTool(
+      auditSetup: AuditSetup,
+      httpClientsFactory: HttpClientsFactory
+  )(
       implicit loggingContext: LoggingContext
   ): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
     AuditingTool
-      .create(auditSetup)(
+      .create(auditSetup, httpClientsFactory)(
         using systemContext.clock,
         loggingContext
       )

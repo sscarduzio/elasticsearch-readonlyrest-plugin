@@ -16,10 +16,14 @@
  */
 package tech.beshu.ror.es.services
 
+import cats.data.NonEmptyList
 import monix.eval.Task
-import org.elasticsearch.client.{Request, Response, ResponseListener, RestClient}
-import tech.beshu.ror.es.services.MultiNodeRestClient.RequestExecutor
+import org.elasticsearch.client.{Request, Response, ResponseException, ResponseListener, RestClient}
+import tech.beshu.ror.es.services.MultiNodeRestClient.{FailoverDecision, RequestExecutor}
+import tech.beshu.ror.es.utils.RestResponseOps.*
 
+import java.io.IOException
+import java.time.Clock
 import scala.concurrent.Promise
 
 final class RestClientRequestExecutor(restClient: RestClient) extends RequestExecutor[Request, Response] {
@@ -45,6 +49,28 @@ object RestClientRequestExecutor {
   // one client configured with all hosts - the ES RestClient rotates over them itself
   def roundRobinClient(restClient: RestClient): MultiNodeRestClient[Request, Response] = {
     new DelegatingMultiNodeRestClient(new RestClientRequestExecutor(restClient))
+  }
+
+  // one client per host - FailoverClient decides which node to try and when
+  def failoverClient(restClientPerNode: NonEmptyList[RestClient])(
+      using clock: Clock
+  ): MultiNodeRestClient[Request, Response] = {
+    FailoverClient.create(
+      nodeExecutors = restClientPerNode.map(new RestClientRequestExecutor(_)),
+      failoverDecision = failoverDecision,
+      clock = clock
+    )
+  }
+
+  private val failoverDecision: Throwable => FailoverDecision = {
+    case exception: ResponseException if exception.getResponse.isRetryable =>
+      FailoverDecision.TryNextNode
+    case _: ResponseException =>
+      FailoverDecision.Stop
+    case _: IOException =>
+      FailoverDecision.TryNextNode
+    case _ =>
+      FailoverDecision.Stop
   }
 
 }
