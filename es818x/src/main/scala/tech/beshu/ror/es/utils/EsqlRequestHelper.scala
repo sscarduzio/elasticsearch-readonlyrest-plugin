@@ -25,37 +25,30 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.EsVersion
+import tech.beshu.ror.es.esql.Query.SourceLocation
+import tech.beshu.ror.es.esql.{EsqlIndexListsReader, IndexListRead, Query, Rejection, ReportedIndexList}
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{
-  ClassificationError,
-  EsqlRequestClassification,
-  IndicesModificationResult
-}
-import tech.beshu.ror.es.{EsqlIndexTable, EsqlQueryRewriteResult}
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.utils.slf4j.Logging
 
 import java.time.ZoneOffset
+import java.util.function.Predicate as JPredicate
 import java.util.{List as JList, Locale}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
-class EsqlRequestHelper(esVersion: EsVersion) {
+class EsqlRequestHelper(esVersion: EsVersion) extends Logging {
 
   def modifyIndicesOf(
       request: CompositeIndicesRequest,
-      requestTables: NonEmptyList[EsqlIndexTable],
-      finalIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): IndicesModificationResult = {
-    EsqlIndexTable.newQueryFrom(getQuery(request), requestTables, finalIndices) match {
-      case EsqlQueryRewriteResult.Rewritten(newQuery) =>
-        setQuery(request, newQuery)
-        IndicesModificationResult.IndicesModified
-      case EsqlQueryRewriteResult.CannotRewriteQuery(reason) =>
-        IndicesModificationResult.CannotModifyIndices(reason)
-    }
+      query: Query,
+      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ): Either[Rejection, Unit] = {
+    query
+      .narrowedTo(allowedIndices, readerFor(request))
+      .map(narrowed => setQuery(request, narrowed.stringify))
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -65,28 +58,21 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     new EsqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions).underlyingObject
   }
 
-  import EsqlRequestClassification.*
-
-  def classifyEsqlRequest(request: CompositeIndicesRequest): Either[ClassificationError, EsqlRequestClassification] = {
-    createStatement(request) match {
-      case Right(statement: IndicesRelatedStatement) => Right(IndicesRelated(statement.indices))
-      case Right(command: OtherCommand)              => Right(NonIndicesRelated)
-      case Left(error)                               => Left(error)
-    }
+  def esqlQueryOf(request: CompositeIndicesRequest): Query = {
+    Query.from(getQuery(request), readerFor(request))
   }
 
-  private def createStatement(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
+  private def readerFor(request: CompositeIndicesRequest): EsqlIndexListsReader = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-    new EsqlParser().createStatementBasedOn(request)
+    new EsqlParser(request)
   }
 
   private def getQuery(request: CompositeIndicesRequest): String = {
     on(request).call("query").get[String]
   }
 
-  private def setQuery(request: CompositeIndicesRequest, newQuery: String): CompositeIndicesRequest = {
-    on(request).call("query", newQuery)
-    request
+  private def setQuery(request: CompositeIndicesRequest, query: String): Unit = {
+    on(request).call("query", query)
   }
 
   private def getParams(request: CompositeIndicesRequest): AnyRef = {
@@ -114,101 +100,84 @@ class EsqlRequestHelper(esVersion: EsVersion) {
   }
 
   private final class EsqlParser(
+      request: CompositeIndicesRequest
+  )(
       implicit classLoader: ClassLoader
-  ) {
+  ) extends EsqlIndexListsReader {
 
-    private val underlyingObject =
+    private lazy val underlyingObject =
       onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser"))
         .create()
         .get[Any]()
 
-    def createStatementBasedOn(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
-      val statement = esVersion match {
-        case v if v >= EsVersion(8, 19, 0) => createStatementForEsEqualOrAbove8190(request)
-        case v                             => createStatementForEsBelow8190(request)
-      }
-      statement.flatMap(statementWithIndices)
+    override def indexListsIn(query: String): Either[Throwable, List[ReportedIndexList]] = {
+      createStatement(query).map(statement => reportedIndexListsIn(planOf(statement)))
     }
 
-    private def statementWithIndices(statement: Any): Either[ClassificationError, Statement] = {
-      Try(indicesFrom(statement)) match {
-        case Success(tables) =>
-          Right(NonEmptyList.fromList(tables) match {
-            case Some(indices) => new IndicesRelatedStatement(statement, indices)
-            case None          => OtherCommand(statement)
-          })
-        case Failure(ex) =>
-          Left(ClassificationError.IndicesExtractionException(ex))
+    private def createStatement(query: String) = {
+      esVersion match {
+        case v if v >= EsVersion(8, 19, 0) => createStatementForEsEqualOrAbove8190(query)
+        case _                             => createStatementForEsBelow8190(query)
       }
     }
 
-    private def createStatementForEsBelow8190(request: CompositeIndicesRequest) = {
-      val query = getQuery(request)
+    private def createStatementForEsBelow8190(query: String) = {
       val params = getParams(request)
       Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
         case Success(s)                                                                       => Right(s)
         case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
-        case Failure(ex) => Left(ClassificationError.ParsingException(ex))
+        case Failure(ex)                                                                      => Left(ex)
       }
     }
 
-    private def createStatementForEsEqualOrAbove8190(request: CompositeIndicesRequest) = {
-      val query = getQuery(request)
+    private def createStatementForEsEqualOrAbove8190(query: String) = {
       val params = getParams(request)
       val configuration = createConfiguration(request)
       Try(on(underlyingObject).call("createStatement", query, params, configuration).get[AnyRef]) match {
         case Success(s)                                                                       => Right(s)
         case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
-        case Failure(ex) => Left(ClassificationError.ParsingException(ex))
+        case Failure(ex)                                                                      => Left(ex)
       }
     }
 
-    private def indicesFrom(statement: Any) = {
-      val preAnalyze = doPreAnalyze(newPreAnalyzer, statement)
-      tablesFrom(tableInfosFrom(preAnalyze), EsqlIndexTable.From.parse) ++
-        tablesFrom(lookupTableInfosFrom(preAnalyze), EsqlIndexTable.LookupJoin.parse)
+    private def planOf(statement: Any): Any = statement
+
+    /**
+     * The very nodes ES reads the query's indices from when it pre-analyzes the plan - except the pre-analysis
+     * deduplicates them by pattern text and keeps one source location per pattern, which is one span too few for
+     * a query naming the same pattern twice.
+     */
+    private def reportedIndexListsIn(plan: Any): List[ReportedIndexList] = {
+      val isUnresolvedRelation: JPredicate[Any] = node => node.getClass.getSimpleName == "UnresolvedRelation"
+      on(plan)
+        .call("collect", isUnresolvedRelation)
+        .get[java.util.List[Any]]()
+        .asScala
+        .toList
+        .map(reportedIndexListOf)
     }
 
-    private def tablesFrom(tableInfos: List[Any], tableFrom: String => Option[EsqlIndexTable]): List[EsqlIndexTable] = {
-      tableInfos
-        .map(tableIdentifierFrom)
-        .map(indexStringFrom)
-        .flatMap(tableFrom)
+    private def reportedIndexListOf(relation: Any): ReportedIndexList = {
+      val indexPattern = on(relation).call("indexPattern").get[Any]()
+      val source = on(indexPattern).call("source").get[Any]()
+      val location = on(source).call("source").get[Any]()
+      ReportedIndexList(
+        read = indexListReadOf(relation, on(indexPattern).call("indexPattern").get[String]()),
+        writtenAt = SourceLocation(
+          line = on(location).call("getLineNumber").get[Int](),
+          column = on(location).call("getColumnNumber").get[Int]() - 1
+        ),
+        writtenText = on(source).call("text").get[String]()
+      )
     }
 
-    private def newPreAnalyzer(
-        implicit classLoader: ClassLoader
-    ) = {
-      onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.analysis.PreAnalyzer")).create().get[Any]()
-    }
-
-    private def doPreAnalyze(preAnalyzer: Any, statement: Any) = {
-      on(preAnalyzer).call("preAnalyze", statement).get[Any]()
-    }
-
-    private def tableInfosFrom(preAnalysis: Any) = {
-      on(preAnalysis).get[java.util.List[Any]]("indices").asScala.toList
-    }
-
-    private def lookupTableInfosFrom(preAnalysis: Any) = {
-      on(preAnalysis).get[java.util.List[Any]]("lookupIndices").asScala.toList
-    }
-
-    private def tableIdentifierFrom(tableInfo: Any) = {
-      on(tableInfo).call("id").get[Any]()
-    }
-
-    private def indexStringFrom(tableIdentifier: Any) = {
-      on(tableIdentifier).call("indexPattern").get[String]()
+    private def indexListReadOf(relation: Any, indexList: String): IndexListRead = {
+      val isLookupJoin = Option(on(relation).call("indexMode").get[AnyRef])
+        .exists(indexMode => on(indexMode).call("name").get[String]() == "LOOKUP")
+      if (isLookupJoin) IndexListRead.LookupJoin(indexList) else IndexListRead.SourceCommand(indexList)
     }
 
   }
-
-  private sealed trait Statement
-  private final class IndicesRelatedStatement(val underlyingObject: Any, val indices: NonEmptyList[EsqlIndexTable])
-      extends Statement
-
-  private final class OtherCommand(val underlyingObject: Any) extends Statement
 
   private final class EsqlQueryResponse(val underlyingObject: ActionResponse) {
 
@@ -300,37 +269,6 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
     }
 
-  }
-
-}
-
-object EsqlRequestHelper {
-
-  sealed trait EsqlRequestClassification
-
-  object EsqlRequestClassification {
-
-    final case class IndicesRelated(tables: NonEmptyList[EsqlIndexTable]) extends EsqlRequestClassification {
-
-      lazy val requestedIndices: Set[RequestedIndex[ClusterIndexName]] = EsqlIndexTable.requestedIndicesOf(tables)
-
-    }
-
-    case object NonIndicesRelated extends EsqlRequestClassification
-  }
-
-  sealed trait ClassificationError
-
-  object ClassificationError {
-    final case class ParsingException(cause: Throwable) extends ClassificationError
-    final case class IndicesExtractionException(cause: Throwable) extends ClassificationError
-  }
-
-  sealed trait IndicesModificationResult
-
-  object IndicesModificationResult {
-    case object IndicesModified extends IndicesModificationResult
-    final case class CannotModifyIndices(reason: String) extends IndicesModificationResult
   }
 
 }

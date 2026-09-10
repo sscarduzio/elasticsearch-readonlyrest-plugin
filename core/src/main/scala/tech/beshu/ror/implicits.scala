@@ -76,6 +76,7 @@ import tech.beshu.ror.accesscontrol.logging.ResponseContext.{
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.es.esql.{ReadingFailure, Rejection}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader
@@ -744,6 +745,46 @@ trait LogsShowInstances extends cats.instances.AllInstances {
           .show
       case None => url.show
     }
+  }
+
+  implicit val esqlIndexListReadingFailureShow: Show[ReadingFailure] = Show.show {
+    case ReadingFailure.NotWhereEsReportedIt(indexList) =>
+      s"Elasticsearch says the query reads [${indexList.show}], but points at a place in the query text where " +
+        s"that is not what is written - so there is nothing ReadonlyREST can safely rewrite. Please report " +
+        s"this query to the ReadonlyREST team"
+    case ReadingFailure.SubqueryInSourceCommand(indexList) =>
+      s"the indices [${indexList.show}] are read by a command that also holds a subquery, and Elasticsearch " +
+        s"reports the two merged into a single list - so ReadonlyREST cannot tell which part of the query " +
+        s"text to narrow down. Write the subquery as a separate command to have such a query authorized"
+    case ReadingFailure.PromqlLeaningOnDefaultIndex =>
+      "the PROMQL command names no [index] parameter, so it reads whichever indices Elasticsearch defaults to " +
+        "and the query text holds no index list to narrow down. Add [index=...] to have such a query authorized"
+    case ReadingFailure.IndexListInAnonymousParameter =>
+      "the indices are named by an anonymous query parameter ([?] or [??]), which Elasticsearch binds by the " +
+        "order the parameters are written in - so narrowing it down would rebind every parameter written after " +
+        "it. Name the parameter ([?index]) or number it ([?1]) to have such a query authorized"
+    case ReadingFailure.UnsupportedIndexList(indexList) =>
+      s"[${indexList.show}] is not something ReadonlyREST can read as a list of index names"
+  }
+
+  implicit val esqlQueryRejectionShow: Show[Rejection] = Show.show {
+    case Rejection.CannotParseQuery =>
+      "The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
+        "indices the user is allowed to, and it could not read the query at all - so it cannot tell which indices " +
+        "the query would run against. If the query is valid ES|QL, please report it to the ReadonlyREST team."
+    case Rejection.CannotExtractIndices(failure) =>
+      s"The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
+        s"indices the user is allowed to, and running it as written would have let the user read the indices " +
+        s"they asked for, unchecked. It could not be rewritten, because ${failure.show}."
+    case Rejection.CannotParseRewrittenQuery(intended) =>
+      s"The ES|QL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
+        s"the indices the user is allowed to, but Elasticsearch cannot parse the rewritten query. Please report " +
+        s"this query to the ReadonlyREST team."
+    case Rejection.SubstitutionNotConfirmed(intended, read) =>
+      s"The ES|QL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
+        s"the indices the user is allowed to, but Elasticsearch reads the rewritten query as reading " +
+        s"[${read.mkString(", ")}] instead. Since the two disagree, ReadonlyREST cannot tell which indices the " +
+        s"query would really read, so it does not run it. Please report this query to the ReadonlyREST team."
   }
 
   implicit val remoteAuditClusterShow: Show[RemoteAuditCluster] = Show.show { cluster =>
