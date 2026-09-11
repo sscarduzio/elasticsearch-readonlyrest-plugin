@@ -87,9 +87,8 @@ tasks.register("printEsMajors") {
 }
 
 // Is the configured pluginVersion a pre-release? Prints `true` or `false`, and nothing else.
-// A `-pre` suffix means the build uploads a pre-release; anything else means it releases. That rule
-// was a `grep -- '-pre'` inside the release workflow, where nothing tested it and nothing else could
-// reach it. It belongs here, beside the property it reads. Change the convention, change this task.
+// A `-pre` suffix means the build uploads a pre-release; anything else means it releases.
+// Change the convention, change this task.
 // Usage: ./gradlew isPreReleaseVersion --quiet
 tasks.register("isPreReleaseVersion") {
     group = 'help'

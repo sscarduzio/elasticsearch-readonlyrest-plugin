@@ -39,7 +39,7 @@ directory contain the build logic; the workflow only orchestrates.
 | Job | What it does | When |
 |---|---|---|
 | `ci_setup` | chooses where every `container:` job pulls the toolchains image from, and publishes the run flags the later `if:` conditions read | always |
-| `toolchains_verify` | sanity-checks the toolchains image | always (fail-fast gate for tests) |
+| `toolchains_verify` | sanity-checks the toolchains image | always (stops the run early when the image is broken) |
 | `discover` | derives every matrix: the ES majors and the modules each test family covers; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
 | `unit_tests_linux` | `core:test` and friends | pushes + PRs |
@@ -116,7 +116,7 @@ Two orchestration rules worth knowing before editing conditions:
 
 - `concurrency` auto-cancels superseded **PR** runs only; branch pushes queue, so a push
   during a release run can never kill the release.
-- GitHub skips a job whose `needs` contains a failed **or skipped** job. That gate is implicit, and
+- GitHub skips a job whose `needs` contains a failed **or skipped** job. That rule is implicit, and
   an `if:` only switches it off when the expression holds a status check function — `success()`,
   `failure()`, `cancelled()` or `always()`. An `if:` of plain conditions keeps it.
 
@@ -131,7 +131,7 @@ Two orchestration rules worth knowing before editing conditions:
   about has to be a job output. `ci_setup` publishes the three, and they are not the same
   question — do not collapse them:
 
-  | Output | True for | Gates |
+  | Output | True for | Read by |
   |---|---|---|
   | `is_full_matrix` | develop, master, `epic/**` | the full test matrices in `discover` |
   | `is_release_branch` | develop, master | `publish`, the NVD cache write |
@@ -147,9 +147,9 @@ Two orchestration rules worth knowing before editing conditions:
   exception, and it is not read by any `if:`: `discover` picks a matrix by name, so it needs the
   value.
 
-  Mind the pair that looks alike. `runs_windows_tests` covers automatic runs as well, and gates the
-  Windows integration matrix. `is_manual_windows_run` covers the manual action alone, and gates the
-  Windows unit tests, which no automatic run may start.
+  Mind the pair that looks alike. `runs_windows_tests` covers automatic runs as well, and decides
+  the Windows integration matrix. `is_manual_windows_run` covers the manual action alone, and starts
+  the Windows unit tests, which no automatic run may start.
 
   A test family runs on every automatic run, and on a manual run only when the operator asked for
   that family. The three `runs_*` flags say so. `discover` reads them and empties the matrix of
@@ -196,7 +196,7 @@ module or a new ES major joins the matrices by itself.
 
 A test job therefore carries no condition about the kind of run. An empty matrix skips its job, and
 that is the single mechanism: a draft PR gets no Windows and no e2e leg, and a manual
-`run_e2e_tests` gets neither a Linux nor a Windows one. Keep it that way — a second gate in a job's
+`run_e2e_tests` gets neither a Linux nor a Windows one. Keep it that way — a second test in a job's
 `if:` would state the same rule in a second place, and the two would drift.
 
 `discover` publishes one ready matrix per job that fans out, so every consumer reads it the same way:

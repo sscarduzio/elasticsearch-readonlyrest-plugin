@@ -59,13 +59,10 @@ jobs:
   # ── CI_SETUP ──────────────────────────────────────────────────────────────
   # The two facts every later job asks for: which image to pull, and what kind of run this is.
   #
-  # The image. ci/resolve-toolchains-image.sh chooses between the mirror and Docker Hub, so the name
-  # is not a constant. The work lives in .github/actions/resolve-toolchains-image, which
-  # manual-release.yml also uses. This job holds no container, and it cannot hold one: it is the job
-  # that picks it. A runner pulls a container: image before step 1, so a job cannot resolve its own.
+  # The image. This job holds no container, and it cannot hold one: it is the job that picks it.
   #
   # The run flags. A job-level `if:` cannot read the `env` context, so a predicate that more than one
-  # job asks about has to be a job output. Each is named for what it gates, and none of them is a
+  # job asks about has to be a job output. Each is named for what it decides, and none of them is a
   # synonym of another: the full matrix also covers epic/**, a release covers develop and master,
   # and Maven publishing covers master alone; a test family runs on every automatic run plus the one
   # manual action that asks for it, while a manual-only job matches no automatic run at all.
@@ -798,7 +795,8 @@ jobs:
     container: *toolchains_container
     timeout-minutes: 180
     # discover supplies the majors, so a new major needs no edit here. The name must stay
-    # what it renders today ("build_es9xx"). These are required checks. A renamed check stops gating.
+    # what it renders today ("build_es9xx"). These are required checks. A renamed check does not
+    # block a merge.
     name: build_es${{ matrix.ES_MAJOR }}xx
     strategy:
       fail-fast: false

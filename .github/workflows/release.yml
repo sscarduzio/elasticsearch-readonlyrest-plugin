@@ -5,11 +5,6 @@
 #   workflow_run       CI finished on develop or master, and every job of it passed
 #   workflow_dispatch  an operator releases without waiting for tests
 #
-# CI no longer knows this file exists. That is the point: the manual path was the only run whose
-# test jobs are skipped on purpose, and carrying it inside ci.yml forced `!cancelled()` and a second
-# branch into every release condition there. Here the whole test result arrives as one value,
-# `workflow_run.conclusion`, and the two paths are just two triggers.
-#
 # TWO TRAPS, both from `workflow_run` (see ci/CI.md):
 #   - `github.ref` and `github.sha` point at the DEFAULT branch, not at the commit CI tested. Every
 #     checkout below uses RELEASE_SHA, and the branch comes from RELEASE_BRANCH. Never `github.ref`.

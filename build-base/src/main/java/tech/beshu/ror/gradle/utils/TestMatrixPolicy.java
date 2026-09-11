@@ -30,8 +30,8 @@ import java.util.Set;
  * implements. The policy applies to each ES major on its own, so a new major joins every matrix by
  * itself.
  *
- * <p>The matrices were hand-written lists before. A list drifts from the modules that exist, and
- * from the policy it is supposed to follow.
+ * <p>A hand-written list would drift from the modules that exist, and from the policy it is
+ * supposed to follow.
  */
 public final class TestMatrixPolicy {
 
