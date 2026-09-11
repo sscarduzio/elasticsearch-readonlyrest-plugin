@@ -48,6 +48,7 @@ Hunt for these categories on **every** PR, not just security-flagged ones:
 - `-Xfatal-warnings` violations (unused imports/params/locals/privates)
 - Identical change applied to one `es{version}x` module but missed in siblings where the same code path exists
 - Direct imports of un-shaded dependency packages (should go through `tech.beshu.ror` prefix)
+- Comment defects (`docs/dev/code-style.md`): narrating the change ("no longer set here", "moved from X") instead of the current state; explaining a function at its call site instead of at its definition; restating self-describing code
 - `Future.successful(...)` wrappers around already-synchronous values inside `Task` flows (anti-pattern: just lift directly with `Task.now`/`Task.pure`)
 
 ## Output format
@@ -61,6 +62,7 @@ Hunt for these categories on **every** PR, not just security-flagged ones:
 - NO "What I checked" narrative, NO "What looks good" section, NO methodology recap, NO restating the PR description. Do the investigation; don't serialize it.
 - **Open questions**: only if the answer would change a finding; max 2.
 - Genuinely no issues? One line: `No issues found — verified <the 3–5 highest-risk things you checked>.` That line IS the required backing; never a bare "No issues found".
+- Write the review itself in the repo style: Simplified Technical English plus Zinsser (`docs/dev/writing-style.md`). One idea per sentence, active voice, no metaphor.
 - **Hard cap: ~30 lines / ~350 words total.** With many findings, keep every Critical/Warning full and compress Nits to one line each.
 
 ## When the PR is small / docs-only

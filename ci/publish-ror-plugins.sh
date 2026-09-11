@@ -4,6 +4,16 @@
 # Sourced by ci/run-pipeline.sh.
 
 cleanup_docker_and_build() {
+  # On the shared box the daemon also serves the readonlyrest_kbn runners, which hold running ELK
+  # stacks. The full sweep below would delete them, so reclaim only what this build left behind.
+  if is_shared_docker_host; then
+    echo ">>> shared docker host: pruning only dangling images and build cache"
+    docker image prune -f || true
+    docker builder prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" || true
+    find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+    return 0
+  fi
+
   # Exclude the container this script is running inside (prevents self-removal in DinD setups).
   local SELF_ID
   SELF_ID=$(hostname 2>/dev/null || true)

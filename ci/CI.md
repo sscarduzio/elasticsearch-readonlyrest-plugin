@@ -1,9 +1,35 @@
 # ReadonlyREST CI
 
-CI runs on GitHub Actions: `.github/workflows/ci.yml`. Linux jobs run on **Ubicloud**
-runners (`ubicloud-standard-4` = 4 vCPU / 16 GB) inside the `beshultd/ror-ci-toolchains`
-image; Windows jobs run on GitHub-hosted `windows-2025`. `ci/toolchains/image.env` holds that
-image's tag, and every workflow that needs it sources that file.
+CI runs on GitHub Actions: `.github/workflows/ci.yml`. The Linux **test and build** jobs run on
+**GitHub-hosted** `ubuntu-latest` runners inside the `beshultd/ror-ci-toolchains` image; Windows
+jobs run on GitHub-hosted `windows-2025`. The **release** jobs are the exception and stay on the
+shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` here, plus the standalone
+`mirror-es-libs.yml` and `publish-pre-builds.yml`.
+
+`ubuntu-latest` is 4 vCPU / 16 GB. It is slower per core than the paid runners these jobs can also
+use, and the repo is public, so it costs nothing. `ci/toolchains/image.env` holds the toolchains
+image tag, and every workflow that needs it sources that file.
+
+The concurrency limit is **per account**, and `readonlyrest_kbn` shares it. `it_linux` and
+`e2e_tests` set no `max-parallel`: a cap equal to the number of legs never binds, and it starts
+throttling silently the day someone adds one more module. `it_windows` keeps a real cap, because it
+has far more legs than the cap allows. Before you add a cap, or add legs, check the account limit
+against every long job a develop push starts: `it_linux`, `it_windows`, `e2e_tests`, and the ROR
+KBN pre-build that `e2e_order_kbn_images` dispatches.
+
+**Some ES series have no test leg** — see `LINUX_IT_FULL_SET` in `ci.yml` for the current set.
+They are still **built and published** on every release: `build_es7xx` and `release_es7xx`
+enumerate modules with the `printEsModules` Gradle task, which reads `settings.gradle`, not the CI
+matrix. Only integration-test coverage is gone, so a regression specific to one of those series
+ships untested.
+
+The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standalone
+`mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
+they push images and run for hours. `build-toolchains-image.yml` stays on `ubicloud-standard-4`.
+
+**Every job calls `ci/free-host-disk.sh` right after checkout**, including a new one. The script
+detects the runner and decides whether to reclaim disk; a job never decides that for it. On a
+Windows job there is no equivalent step.
 
 Every Linux job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this
 directory contain the build logic; the workflow only orchestrates.
@@ -21,7 +47,9 @@ directory contain the build logic; the workflow only orchestrates.
 | `it_linux` | integration tests, one job per selected ES module | module selection follows the [test matrix policy](#test-matrix-policy) |
 | `it_windows` | integration tests on native-Windows ES | module selection follows the [test matrix policy](#test-matrix-policy) |
 | `unit_tests_windows` | `core:test` on Windows | manual `run_all_tests_on_windows` |
-| `e2e_prepare` | resolves the e2e matrix and starts the ROR KBN image build | selected runs; see the [test matrix policy](#test-matrix-policy) |
+| `e2e_matrix` | resolves the e2e matrix and the build id that names every dev image | selected runs; see the [test matrix policy](#test-matrix-policy) |
+| `e2e_order_kbn_images` | dispatches the ROR KBN dev image build **and waits for it** | selected runs |
+| `e2e_build_es_images` | builds + publishes this repo's ROR ES dev image, one job per module | selected runs |
 | `e2e_tests` | Cypress e2e suite, one job per selected ES module | selected runs; see the [test matrix policy](#test-matrix-policy) |
 | `build_ror` | builds all plugin zips + bytecode-reuse guard, one job per ES major | PRs |
 
@@ -80,7 +108,9 @@ manual; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml
 into the libs store — see [S3 stores](#s3-stores)), `disk-probe.yml` (manually reports runner and
 Docker disk usage), `pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml`
 (regenerates the ES action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand
-ROR+ES dev images).
+ROR+ES dev images), `verify-publish-credentials.yml` (daily cron and manual — proves the Maven
+Central credentials still work, because `publish_mvn` only runs on a release and skips silently
+when the version is already published).
 
 Two orchestration rules worth knowing before editing conditions:
 
@@ -173,24 +203,21 @@ that is the single mechanism: a draft PR gets no Windows and no e2e leg, and a m
 
 | Output | Consumed by | Shape |
 |---|---|---|
-| `build_matrix` | `build_ror`, `upload_pre_ror`, `release_ror` | `{"include":[{"ES_MAJOR":"9"},…]}` |
+| `build_matrix` | `build_ror` | `{"include":[{"ES_MAJOR":"9"},…]}` |
 | `it_linux_matrix` | `it_linux` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
 | `it_windows_matrix` | `it_windows` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
-| `e2e_matrix` | `e2e_prepare` | `{"include":[{"ES_MODULES":"es94x es818x es717x"}]}` |
+| `e2e_modules` | `e2e_matrix`, and the three e2e jobs after it | `["es94x","es818x","es717x"]` |
 
 The `include` form matters. GitHub skips a matrix job whose include list is empty, so a family a run
 does not cover needs no condition of its own: a draft PR emits an empty Windows and e2e matrix, and
 both jobs skip before a runner boots. A bare `KEY: []` would instead stop the run with "Matrix vector
 'KEY' does not contain any values".
 
-`e2e_prepare` runs once for all modules, not once per module, so its matrix holds a single leg that
-carries the whole list, and no leg when the list is empty. That keeps one skip mechanism for every
-family. Two things follow: the job needs an explicit `name: e2e_prepare`, or the leg would appear in
-the rendered name, and its outputs come from that one leg — a second leg would race for them.
-`e2e_tests` then follows `e2e_prepare`, and `build_ror` accepts a skipped `e2e_tests`.
-
-`e2e_tests` keeps its own matrix, from `e2e_prepare`: it pairs each module with an ELK version that
-only a gradle call per module can resolve.
+`e2e_modules` is the one exception to the `include` form, because the e2e family does not fan out
+from `discover`. It is a plain list, and `e2e_matrix` fans out from it instead: that job pairs each
+module with an ELK version, which only a gradle call per module can resolve, and publishes the real
+e2e matrix plus the build id. So the e2e jobs guard themselves on `e2e_modules != '[]'` rather than
+on an empty matrix, and `build_ror` accepts a skipped `e2e_tests` when that list is empty.
 
 It is the workflow, not the build, that picks which matrix a run takes: only the workflow knows the
 branch and the event. `discover` needs the toolchains image for gradle, so it runs after
@@ -264,26 +291,58 @@ contract between all three —
 [`ci/prebuild-images-lib.sh`](https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/develop/ci/prebuild-images-lib.sh)
 (image names, tag shape, workflow inputs, wait behaviour). Change the contract there, not here.
 
-Two jobs, because the two plugin images are built in different places:
+Four jobs, each with one responsibility:
 
-- `e2e_prepare` runs once. It resolves the newest ES version of every module in the matrix
-  (`:esXXXx:printNewestEsVersionForModule`), publishes that matrix, and dispatches **one** ROR
-  KBN image build for all those versions. Non-blocking: it does not wait for the build.
-- `e2e_tests` runs once per version, in parallel. It builds and pushes the ROR ES dev image from
-  **this** commit, waits for the ROR KBN image, then runs the suite against both.
+```
+e2e_matrix                     resolve versions once, publish the build id
+   ├── e2e_order_kbn_images    dispatch the ROR KBN build, wait for it, verify the images  ─┐ in
+   └── e2e_build_es_images     build + publish the ROR ES image, one job per module         ─┘ parallel
+          └── e2e_tests        stack + Cypress only
+```
 
-The wait is not a poll of the registry: a leg waits on the dispatched ROR KBN **run**. What the wait
+- `e2e_matrix` finds the newest ES version of every module in the matrix
+  (`:esXXXx:printNewestEsVersionForModule`). It publishes those versions, the build id and the ELK
+  version list. It orders nothing and builds nothing. It runs in the toolchains container, because it
+  calls Gradle to find the versions. Its `elk_versions` output lets the order job run outside that
+  container.
+- `e2e_order_kbn_images` sends **one** dispatch for all versions. Then it waits for that run, in the
+  same shell. At the end it checks the registry for every image.
+- `e2e_build_es_images` builds and pushes the ROR ES dev image from **this** commit, one job per
+  module. It uses the same `publish_ror_es_prebuild_plugin` helper as the standalone pre-build task,
+  so the sha-frozen-image skip still applies.
+- `e2e_tests` runs once per version, in parallel. Both images exist when it starts. It clones the
+  suite, starts the stack and runs Cypress.
+
+### Why one job does both the dispatch and the wait
+
+There are three reasons:
+
+- **The failure points at the fault.** A ROR KBN build that fails, times out or publishes nothing
+  fails `e2e_order_kbn_images`. The test jobs are then skipped. They do not report a failure that is
+  not theirs. The job turns the shared lib's exit code into one line that names the cause, in the log
+  and in the job summary.
+- **"Re-run failed jobs" does the correct thing.** That button re-runs only the failed jobs, so it
+  re-runs the order job. Its dispatch is a new `gh workflow run`, and its run lookup only accepts
+  runs created around that dispatch. So it follows the new run, not the dead one. `e2e_matrix` is
+  green and does not re-run, so the build id and the image names stay the same. The ES images from
+  the first attempt stay valid.
+- **The shared contract makes it necessary.** A dispatch is not told which run it created. The lib
+  finds the run by title, in a window around the dispatch. Only the shell that dispatched the run can
+  identify it, so only that shell can wait for it.
+
+`e2e_order_kbn_images` and `e2e_build_es_images` are siblings under `e2e_matrix`. Neither needs the
+other. So the critical path is `max(local ES build, ROR KBN run)`, plus one runner handoff.
+
+The wait does not poll the registry. It waits on the dispatched ROR KBN **run**. What the wait
 guarantees, and what this repo has to supply for it, is the contract at the top of the shared lib.
-Read it there, not here. Four obligations fall on this repo:
+Read it there, not here. Three obligations fall on this repo:
 
-- **Pass the run down.** `e2e_prepare` fails if it cannot identify the run it started, and publishes
-  it as the `kbn_run_id` and `kbn_run_url` outputs. `ci.yml` hands both to every `e2e_tests` leg,
-  together with `ROR_GH_TOKEN`. A leg with an empty run id reports broken wiring and stops.
-- **Log in first.** Each leg authenticates Docker before the wait, so the registry check the wait
-  makes at the end counts against the ROR account and not against the runner address.
-- **Give the leg a token that can read the runs of the ROR KBN repo.** `ROR_GH_TOKEN` needs
-  `actions:read`. A refused read ends the wait with code 8 in seconds, and names the right it
-  needs. Reading it is how the leg follows the run, so there is no way round it.
+- **Log in first.** The order job authenticates Docker before the wait. The registry check at the end
+  of the wait does one pull per image. Docker Hub counts an anonymous pull against the runner's
+  address (100 per 6h, shared), and an authenticated pull against the ROR account (200 per 6h).
+- **Give the order job a token that can read the runs of the ROR KBN repo.** `ROR_GH_TOKEN` needs
+  `actions:read`. A refused read stops the wait in seconds with code 8, and it names the necessary
+  right. The job follows the run by these reads, so there is no other way.
 - **Keep the title on our own pre-build run.** `publish-pre-builds.yml` carries
   `run-name: ROR ES pre-build ${{ inputs.tag || inputs.es_versions }}`. Every repo that dispatches it
   — the e2e repo and the ROR KBN repo — finds its run by that title, because a dispatch is told
@@ -292,14 +351,9 @@ Read it there, not here. Four obligations fall on this repo:
   The fallback applies only to a dispatch that sends no tag, and no search looks for such a title.
   Remove the line and every dispatch of this workflow fails, because no run can be recognised.
 
-One consequence shapes this side: the wait ends when the ROR KBN run ends, not when one image
-appears, so all legs reach their suite at about the same time. The Gradle build of the ROR ES
-image runs before the wait and absorbs most of that time.
-
-Both sides address the images by a per-run tag (`run-<build id>`), and the build id is created by
-`e2e_prepare` and passed down as a job output. A test job must never re-derive it: a partial re-run
-bumps the run attempt without re-running `e2e_prepare`, and the two sides would then name different
-images.
+Both sides address the images by a per-run tag (`run-<build id>`). `e2e_matrix` creates the build id
+and passes it down as a job output. No other job may derive it again. A partial re-run bumps the run
+attempt but does not re-run `e2e_matrix`, and the two sides would then name different images.
 
 Branch resolution — both other repos are asked for the branch of this PR first. The e2e clone then
 tries the base branch, `develop`, `master`; the base branch matters, because a change based on

@@ -45,6 +45,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: Read the toolchains image tag
         run: |
           . ci/toolchains/image.env
