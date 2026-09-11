@@ -137,27 +137,18 @@ class EsModuleFinderTest {
     assertEquals(9, EsModuleFinder.majorVersionOf("9.0.0-alpha1"));
   }
 
-  // --- sortedEsModules / newestEsVersionComparator ---
+  // --- module ordering, through the methods that expose it ---
 
   @Test
-  void sortedEsModulesAscendingByNewest() {
-    Project root = rootWithModules("es92x:9.2.0", "es818x:8.18.0, 8.19.0");
-    List<String> names =
-        EsModuleFinder.sortedEsModules(root, EsModuleFinder.newestEsVersionComparator()).stream()
-            .map(Project::getName)
-            .toList();
-    assertEquals(List.of("es818x", "es92x"), names);
+  void esModuleNamesForMajorAreNewestFirst() {
+    Project root = rootWithModules("es816x:8.16.0", "es92x:9.2.0", "es818x:8.18.0, 8.19.0");
+    assertEquals(List.of("es818x", "es816x"), EsModuleFinder.esModuleNamesForMajor(root, 8));
   }
 
   @Test
-  void sortedEsModulesDescendingByNewest() {
-    Project root = rootWithModules("es818x:8.18.0, 8.19.0", "es92x:9.2.0");
-    List<String> names =
-        EsModuleFinder.sortedEsModules(root, EsModuleFinder.newestEsVersionComparator().reversed())
-            .stream()
-            .map(Project::getName)
-            .toList();
-    assertEquals(List.of("es92x", "es818x"), names);
+  void allSupportedEsVersionsAreOldestFirst() {
+    Project root = rootWithModules("es92x:9.2.0", "es818x:8.18.0, 8.19.0");
+    assertEquals(List.of("8.18.0", "8.19.0", "9.2.0"), EsModuleFinder.allSupportedEsVersions(root));
   }
 
   // ---

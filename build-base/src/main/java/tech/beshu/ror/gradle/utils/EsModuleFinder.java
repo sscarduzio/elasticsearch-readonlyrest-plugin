@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Finds the {@code esXXx} module responsible for a given ES version by checking whether the version
@@ -53,7 +54,7 @@ public final class EsModuleFinder {
    * single source of truth for anything that needs the full list (see {@code printAllSupportedEsVersions}).
    */
   public static List<String> allSupportedEsVersions(Project rootProject) {
-    return sortedEsModules(rootProject, newestEsVersionComparator()).stream()
+    return esModulesSortedBy(rootProject, newestEsVersionComparator())
         .flatMap(module -> EsVersions.of(module).all.stream())
         .distinct()
         .collect(Collectors.toList());
@@ -69,7 +70,7 @@ public final class EsModuleFinder {
    */
   public static List<Integer> allSupportedEsMajors(Project rootProject) {
     return allEsModules(rootProject).stream()
-        .map(module -> majorVersionOf(newestEsVersionFor(module)))
+        .map(EsModuleFinder::majorOf)
         .distinct()
         .sorted(Comparator.reverseOrder())
         .collect(Collectors.toList());
@@ -80,8 +81,8 @@ public final class EsModuleFinder {
    * version, so a module that spans two majors appears under one of them only.
    */
   public static List<String> esModuleNamesForMajor(Project rootProject, int esMajor) {
-    return sortedEsModules(rootProject, newestEsVersionComparator().reversed()).stream()
-        .filter(module -> majorVersionOf(newestEsVersionFor(module)) == esMajor)
+    return esModulesSortedBy(rootProject, newestEsVersionComparator().reversed())
+        .filter(module -> majorOf(module) == esMajor)
         .map(Project::getName)
         .collect(Collectors.toList());
   }
@@ -95,13 +96,22 @@ public final class EsModuleFinder {
     }
   }
 
-  public static List<Project> sortedEsModules(Project rootProject, Comparator<Project> comparator) {
-    List<Project> esModules = allEsModules(rootProject);
-    esModules.sort(comparator);
-    return esModules;
+  /** A module counts for the major of its newest supported version. */
+  private static int majorOf(Project esModule) {
+    return majorVersionOf(newestEsVersionFor(esModule));
   }
 
-  public static Comparator<Project> newestEsVersionComparator() {
+  /**
+   * Sorts without touching the list {@link #allEsModules} returned. {@code Collectors.toList()}
+   * promises no mutable list, so sorting one in place works by luck and stops working the day it
+   * collects to an immutable one.
+   */
+  private static Stream<Project> esModulesSortedBy(
+      Project rootProject, Comparator<Project> comparator) {
+    return allEsModules(rootProject).stream().sorted(comparator);
+  }
+
+  private static Comparator<Project> newestEsVersionComparator() {
     return Comparator.comparing(EsModuleFinder::newestEsVersionFor, EsVersions.VERSION_COMPARATOR);
   }
 
