@@ -48,29 +48,20 @@ env:
 jobs:
 
   # ── CI_SETUP ──────────────────────────────────────────────────────────────
-  # Which image to pull, and what kind of run this is. A job-level `if:` cannot read the `env`
-  # context, so each flag below is a job output. Every job `if:` compares one against 'true'.
-  # ci/CI.md names each flag and what reads it.
+  # Resolves the toolchains image to pull, and the facts about this run: which branch it is on, and
+  # whether an operator started it. They are job outputs, and not workflow `env`, because a
+  # job-level `if:` cannot read the `env` context. An output is a string: a reader compares a flag
+  # against 'true', and `manual_action` against an action name.
   ci_setup:
-    runs-on: ubuntu-latest   # trivial job; GH-hosted so it runs even if the Ubicloud app is down
+    runs-on: ubuntu-latest
     outputs:
       image:                      ${{ steps.toolchains.outputs.image }}
-      # Which branch this is.
-      is_full_matrix:             ${{ steps.flags.outputs.is_full_matrix }}
       is_release_branch:          ${{ steps.flags.outputs.is_release_branch }}
-      # A develop push whose tree equals master's tip, on a -pre version: the merge-back after a
-      # release. It was tested on master already, so it takes the reduced matrix, not the full one.
+      is_epic_branch:             ${{ steps.flags.outputs.is_epic_branch }}
       is_merge_back:              ${{ steps.flags.outputs.is_merge_back }}
-      # What kind of run this is.
       is_automatic_run:           ${{ steps.flags.outputs.is_automatic_run }}
-      runs_linux_tests:           ${{ steps.flags.outputs.runs_linux_tests }}
-      runs_windows_tests:         ${{ steps.flags.outputs.runs_windows_tests }}
-      runs_e2e_tests:             ${{ steps.flags.outputs.runs_e2e_tests }}
-      # A manual action, and nothing else, starts this one. Note the contrast with the `runs_*`
-      # flags above, which an automatic run also sets.
-      is_manual_windows_run:      ${{ steps.flags.outputs.is_manual_windows_run }}
-      # The action itself. `discover` picks a matrix by name, so it needs the value, not a yes or no.
       manual_action:              ${{ steps.flags.outputs.manual_action }}
+      unique_build_id:            ${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -78,54 +69,29 @@ jobs:
         uses: ./.github/actions/resolve-toolchains-image
       - id: flags
         env:
-          # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
-          IS_FULL_MATRIX: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
           IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}
-          # The action the operator chose, and '' on every automatic run. Mind the second operand:
-          # `A && B` yields the string "false" when A is false, so the `|| ''` is what makes an
-          # automatic run empty rather than the word "false".
+          IS_EPIC_BRANCH: ${{ contains(github.head_ref || github.ref_name, 'epic/') }}
           MANUAL_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.actionToPerform || '' }}
         run: |
-          # A test family runs on every automatic run, and on a manual run only when the operator
-          # asked for that family.
-          runs_family() {
-            if [ -z "$MANUAL_ACTION" ] || [ "$MANUAL_ACTION" = "$1" ]; then echo true; else echo false; fi
-          }
-          # A job that only a manual action may start. An automatic run must not match.
-          chose() { if [ "$MANUAL_ACTION" = "$1" ]; then echo true; else echo false; fi; }
-
           # ci-lib.sh owns the merge-back test: same tree as master's tip, and a -pre version.
           source ci/ci-lib.sh
           MERGE_BACK=false
           [ "$IS_RELEASE_BRANCH" = "true" ] && [ -z "$MANUAL_ACTION" ] \
             && is_merge_back_of_master && MERGE_BACK=true
           {
-            echo "is_full_matrix=$IS_FULL_MATRIX"
             echo "is_release_branch=$IS_RELEASE_BRANCH"
+            echo "is_epic_branch=$IS_EPIC_BRANCH"
             echo "manual_action=$MANUAL_ACTION"
             echo "is_automatic_run=$([ -z "$MANUAL_ACTION" ] && echo true || echo false)"
-            echo "runs_linux_tests=$(runs_family run_all_tests_on_linux)"
-            echo "runs_windows_tests=$(runs_family run_all_tests_on_windows)"
-            echo "runs_e2e_tests=$(runs_family run_e2e_tests)"
-            echo "is_manual_windows_run=$(chose run_all_tests_on_windows)"
             echo "is_merge_back=$MERGE_BACK"
           } >> "$GITHUB_OUTPUT"
 
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
+  # Fails fast when the toolchains image is broken: one cheap job runs the checks that every heavy
+  # job depends on. See .github/actions/verify-toolchains-image.
   toolchains_verify:
     needs: ci_setup
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    # The runner pulls this image before step 1 runs, so ci/configure-docker.sh reaches neither the
-    # mirror nor the login for it. The ci_setup job settles the name.
-    # A mirrored name carries the digest, so every job of a run pulls the same bytes.
-    #
-    # The pull sends no credentials. A Docker Hub login against mirror.gcr.io fails, so the block
-    # must be absent on the mirrored path. An empty value does not remove it. GitHub rejects it with
-    # "Unexpected value ''" and stops the run before step 1. YAML cannot drop a key on a condition,
-    # so the block is absent on both paths.
-    #
-    # Docker Hub then counts the fallback pull against the runner's address, not against our
-    # account. The mirror serves the normal path.
+    runs-on: ubuntu-latest
     container: &toolchains_container
       image: ${{ needs.ci_setup.outputs.image }}
     timeout-minutes: 10
@@ -135,44 +101,35 @@ jobs:
       - uses: ./.github/actions/verify-toolchains-image
 
   # ── DISCOVER ──────────────────────────────────────────────────────────────
-  # Which ES majors to build, and which modules each test family covers. TestMatrixPolicy decides,
-  # so a new module joins every matrix by itself. One ready matrix per fan-out job: an empty one
-  # skips its job, so a leg a run does not cover never boots a runner.
+  # Picks the work of this run: which ES majors get a plugin build, and which ES modules the Linux,
+  # Windows and E2E tests cover. TestMatrixPolicy (build-base) holds the rules, so a new ES module
+  # joins every matrix without an edit here.
   discover:
     needs: [ ci_setup, toolchains_verify ]
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
+    runs-on: ubuntu-latest
     container: *toolchains_container
-    timeout-minutes: 10
+    timeout-minutes: 15
     outputs:
-      # One matrix per job that fans out, each ready for `strategy: matrix:`. An empty one skips its
-      # job, so a family a run does not cover needs no condition of its own.
       build_matrix:      ${{ steps.matrices.outputs.build }}
       it_linux_matrix:   ${{ steps.matrices.outputs.linux }}
       it_windows_matrix: ${{ steps.matrices.outputs.windows }}
-      # A bare JSON list, not a matrix: the e2e jobs below are single jobs, not fan-outs.
-      e2e_modules:       ${{ steps.matrices.outputs.e2e }}
+      e2e_matrix:        ${{ steps.matrices.outputs.e2e }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      # One gradle call for both tasks. Each writes its answer to a file under build/. Gradle stdout
-      # can carry configuration-time logging even under -q, so no step parses it.
+        # One gradle call for both tasks. Each writes its answer to a file under build/
       - name: Derive the ES majors and the test matrices
         run: ./gradlew --no-daemon -q printEsMajors printTestMatrices
       - id: matrices
         env:
-          IS_FULL_MATRIX: ${{ needs.ci_setup.outputs.is_full_matrix }}
+          IS_RELEASE_BRANCH: ${{ needs.ci_setup.outputs.is_release_branch }}
+          IS_EPIC_BRANCH: ${{ needs.ci_setup.outputs.is_epic_branch }}
           IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
           IS_MERGE_BACK: ${{ needs.ci_setup.outputs.is_merge_back }}
           MANUAL_RUN_ACTION: ${{ needs.ci_setup.outputs.manual_action }}
-          RUNS_LINUX_TESTS: ${{ needs.ci_setup.outputs.runs_linux_tests }}
-          RUNS_WINDOWS_TESTS: ${{ needs.ci_setup.outputs.runs_windows_tests }}
-          RUNS_E2E_TESTS: ${{ needs.ci_setup.outputs.runs_e2e_tests }}
-        # Assign first, echo second. `echo "x=$(...)"` keeps the status of echo, so a missing matrix
-        # would publish an empty one, skip every leg that reads it, and leave the run green.
         run: |
           set -e
 
-          # The modules of one matrix, as the task wrote them: ["es94x", ...]
           read_modules() {
             local file=build/ci-matrices/$1.json
             [ -s "$file" ] || { echo "::error::printTestMatrices wrote no $1 matrix." >&2; return 1; }
@@ -180,43 +137,54 @@ jobs:
           }
 
           # ["es94x", ...] -> {"include":[{"ES_MODULE":"es94x"}, ...]}, the matrix each leg reads.
-          # The include form is the one whose empty case GitHub skips. A bare `KEY: []` is an error:
-          # "Matrix vector 'KEY' does not contain any values".
           as_matrix() { jq -c --arg key "$1" '{include: map({($key): .})}' <<< "$2"; }
 
+          # Did the operator choose this action? No automatic run matches.
+          is_action_chosen() { [ "$MANUAL_RUN_ACTION" = "$1" ]; }
+
+          # Is this action selected for the run? An automatic run selects every action, a manual
+          # run only the chosen one.
+          is_action_selected() { [ -z "$MANUAL_RUN_ACTION" ] || is_action_chosen "$1"; }
+
           MAJORS_FILE=build/es-modules/es-majors.txt
-          # No major means no plugin gets built. That must fail, not pass quietly.
           [ -s "$MAJORS_FILE" ] || { echo "::error::printEsMajors wrote no ES major."; exit 1; }
           MAJORS=$(awk 'BEGIN { printf "[" } { printf "%s\"%s\"", (NR > 1 ? "," : ""), $0 } END { print "]" }' "$MAJORS_FILE")
 
-          # An empty list is how a family is skipped. Each family starts from the question "does
-          # this run cover it at all?", so a manual run of one family leaves the others empty.
-          if [ "$RUNS_LINUX_TESTS" != "true" ]; then
+          if ! is_action_selected run_all_tests_on_linux; then
             LINUX='[]'
           elif [ "$IS_PR_DRAFT" = "true" ]; then
             LINUX=$(read_modules linux_it_pr_draft)
           elif [ "$IS_MERGE_BACK" = "true" ]; then
             LINUX=$(read_modules linux_it_pr_ready)
-          elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_linux" ] || [ "$IS_FULL_MATRIX" = "true" ]; then
+          elif is_action_chosen run_all_tests_on_linux; then
+            LINUX=$(read_modules linux_it_full)
+          elif [ "$IS_RELEASE_BRANCH" = "true" ]; then
+            LINUX=$(read_modules linux_it_full)
+          elif [ "$IS_EPIC_BRANCH" = "true" ]; then
             LINUX=$(read_modules linux_it_full)
           else
             LINUX=$(read_modules linux_it_pr_ready)
           fi
 
-          # A draft PR runs no Windows and no e2e leg at all.
-          if [ "$RUNS_WINDOWS_TESTS" != "true" ] || [ "$IS_PR_DRAFT" = "true" ]; then
+          if ! is_action_selected run_all_tests_on_windows; then
+            WINDOWS='[]'
+          elif [ "$IS_PR_DRAFT" = "true" ]; then
             WINDOWS='[]'
           elif [ "$IS_MERGE_BACK" = "true" ]; then
             WINDOWS=$(read_modules win_it_pr_ready)
-          elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_windows" ]; then
+          elif is_action_chosen run_all_tests_on_windows; then
             WINDOWS=$(read_modules win_it_full)
-          elif [ "$IS_FULL_MATRIX" = "true" ]; then
+          elif [ "$IS_RELEASE_BRANCH" = "true" ]; then
+            WINDOWS=$(read_modules win_it_master_or_develop)
+          elif [ "$IS_EPIC_BRANCH" = "true" ]; then
             WINDOWS=$(read_modules win_it_master_or_develop)
           else
             WINDOWS=$(read_modules win_it_pr_ready)
           fi
 
-          if [ "$RUNS_E2E_TESTS" != "true" ] || [ "$IS_PR_DRAFT" = "true" ]; then
+          if ! is_action_selected run_e2e_tests; then
+            E2E='[]'
+          elif [ "$IS_PR_DRAFT" = "true" ]; then
             E2E='[]'
           else
             E2E=$(read_modules e2e_full)
@@ -226,7 +194,7 @@ jobs:
             echo "build=$(as_matrix ES_MAJOR "$MAJORS")"
             echo "linux=$(as_matrix ES_MODULE "$LINUX")"
             echo "windows=$(as_matrix ES_MODULE "$WINDOWS")"
-            echo "e2e=$E2E"
+            echo "e2e=$(as_matrix ES_MODULE "$E2E")"
           } >> "$GITHUB_OUTPUT"
 
           {
@@ -238,19 +206,14 @@ jobs:
 
   # ── OPTIONAL_CHECKS: CVE (non-blocking) ───────────────────────────────────
   # Failures annotate the run but never block it. Matrix for symmetry with required_checks;
-  # cve_check is currently its only member.
   optional_checks:
+    name: ${{ matrix.OPTIONAL_CHECK }}
     needs: [ ci_setup, toolchains_verify ]
-    # No status check function here, so the default still applies: every `needs` job must succeed.
     if: needs.ci_setup.outputs.is_automatic_run == 'true'
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
+    runs-on: ubuntu-latest
     container: *toolchains_container
     continue-on-error: true
-    # Without this limit, the job uses the GitHub default of 6 hours. dependency-check does not
-    # treat a Sonatype 429 or 5xx as fatal. It sends the OSS Index request again for each
-    # dependency. A Sonatype outage can thus use all 6 hours. A good run takes a few minutes.
     timeout-minutes: 30
-    name: ${{ matrix.OPTIONAL_CHECK }}
     strategy:
       fail-fast: false
       matrix:
@@ -274,12 +237,11 @@ jobs:
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
-    needs: [ ci_setup, toolchains_verify ]
-    # No status check function here, so the default still applies: every `needs` job must succeed.
-    if: needs.ci_setup.outputs.is_automatic_run == 'true'
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    container: *toolchains_container
     name: ${{ matrix.REQUIRED_CHECK }}
+    needs: [ ci_setup, toolchains_verify ]
+    if: needs.ci_setup.outputs.is_automatic_run == 'true'
+    runs-on: ubuntu-latest
+    container: *toolchains_container
     strategy:
       fail-fast: false
       matrix:
@@ -303,9 +265,10 @@ jobs:
   # ── TEST: unit (Linux) ────────────────────────────────────────────────────
   unit_tests_linux:
     needs: [ ci_setup, toolchains_verify ]
-    # No status check function here, so the default still applies: every `needs` job must succeed.
-    if: needs.ci_setup.outputs.runs_linux_tests == 'true'
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
+    if: >-
+      needs.ci_setup.outputs.is_automatic_run == 'true' ||
+      needs.ci_setup.outputs.manual_action == 'run_all_tests_on_linux'
+    runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 30
     steps:
@@ -330,14 +293,14 @@ jobs:
           if-no-files-found: ignore
 
   # ── TEST: Linux integration tests (GitHub-hosted) ─────────────────────────
-  # Matrix comes from discover: full set on develop/master/epic + manual run, the representative
-  # subset on plain PRs, and the reduced subset on a merge-back of master into develop.
   it_linux:
+    name: it_linux_${{ matrix.ES_MODULE }}
     needs: [ discover, ci_setup, toolchains_verify ]
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
+    runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 120
-    name: it_linux_${{ matrix.ES_MODULE }}
+    env:
+      ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -348,13 +311,15 @@ jobs:
       - name: Free host disk (no-op on self-hosted)
         run: ci/free-host-disk.sh
       - name: Start memory telemetry
-        run: ci/mem-telemetry.sh start integration-tests/build/mem-telemetry-${{ matrix.ES_MODULE }}.log > "$RUNNER_TEMP/mem-telemetry.pid"
+        uses: ./.github/actions/mem-telemetry-start
+        with:
+          id: ${{ matrix.ES_MODULE }}
+          log-dir: integration-tests/build
       - name: integration_${{ matrix.ES_MODULE }}
         env:
           # The pipeline task name run-pipeline.sh dispatches on — unchanged, only the matrix now
           # carries the bare module (see discover).
           ROR_TASK: integration_${{ matrix.ES_MODULE }}
-          ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
           # Balanced (level) shard packing + the memory gate that makes it survivable on 16GB.
           # 2 permits, not 3: at k=4 with 3 permits the worst case (3 heavies x 3 nodes + a
           # single-node suite + 4 gradle JVMs) grazes 16GB and host-OOM'd es90x — and balanced
@@ -383,8 +348,6 @@ jobs:
           name: it-linux-${{ matrix.ES_MODULE }}-results
           path: '**/TEST*.xml'
           if-no-files-found: ignore
-      # Shard stdout goes to shard-<i>.log files during the run (live interleaving would be
-      # unreadable); print them afterwards as collapsible groups so they are browsable in the UI.
       - name: Shard logs (browsable)
         if: always()
         run: |
@@ -396,27 +359,10 @@ jobs:
           done
       - name: Memory telemetry report
         if: always()
-        env:
-          ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
-        run: |
-          [ -f "$RUNNER_TEMP/mem-telemetry.pid" ] && ci/mem-telemetry.sh stop "$(cat "$RUNNER_TEMP/mem-telemetry.pid")" || true
-          for f in integration-tests/build/mem-telemetry-*.log; do
-            [ -f "$f" ] || continue
-            echo "::group::$(basename "$f") report"
-            ci/mem-telemetry.sh report "$f"
-            echo "::endgroup::"
-          done
-      - name: Publish memory telemetry
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/mem-telemetry-report
         with:
-          name: mem-telemetry-${{ matrix.ES_MODULE }}
-          path: integration-tests/build/mem-telemetry-*.log
-          if-no-files-found: ignore
-      # Drift guard for duration-balanced sharding: warns when measured suite times diverge from
-      # the committed suite-timings.json and uploads a regenerated file (regeneration = download
-      # the artifact, commit it). One leg only — es90x (the first ES 9 module: a stable reference
-      # that never moves when a newer es9Xx module is added).
+          id: ${{ matrix.ES_MODULE }}
+          log-dir: integration-tests/build
       - name: Suite-timings drift check
         if: always() && matrix.ES_MODULE == 'es90x'
         run: ./gradlew integration-tests:regenerateSuiteTimings || true
@@ -437,9 +383,10 @@ jobs:
 
 
   # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
-  # Matrix from discover: 6-version subset on develop/master/epic, 3 on ready PRs, none on draft
-  # PRs (job skipped), full 33 on manual run_all_tests_on_windows.
   it_windows:
+    # "it_win_es94x", not the truncated "it_windows (es94x)" composite, in the graph view. Same
+    # <leg>_<module> shape as it_linux_* and e2e_*, so the three test legs sort together.
+    name: it_win_${{ matrix.ES_MODULE }}
     # toolchains_verify is in needs even though Windows doesn't use the image, so a broken image
     # fails fast instead of running doomed legs.
     needs: [ discover, toolchains_verify ]
@@ -450,9 +397,6 @@ jobs:
     env:
       GRADLE_USER_HOME: ''
       GRADLE_OPTS: ''
-    # "it_win_es94x", not the truncated "it_windows (es94x)" composite, in the graph view. Same
-    # <leg>_<module> shape as it_linux_* and e2e_*, so the three test families sort together.
-    name: it_win_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
       max-parallel: 10
@@ -536,10 +480,11 @@ jobs:
 
   # ── TEST: unit tests on Windows (manual run_all_tests_on_windows only) ────
   unit_tests_windows:
-    # ci_setup is in needs only to read its flags; this job uses no toolchains image.
+    # ci_setup is in needs only to read the chosen action; this job uses no toolchains image.
     needs: ci_setup
-    if: >-
-      needs.ci_setup.outputs.is_manual_windows_run == 'true'
+    # By name, not through a flag: no automatic run may start this job, and every other manual
+    # action leaves it out.
+    if: needs.ci_setup.outputs.manual_action == 'run_all_tests_on_windows'
     runs-on: windows-2025
     timeout-minutes: 150
     env:
@@ -568,41 +513,6 @@ jobs:
           path: '**/TEST*.xml'
           if-no-files-found: ignore
 
-  # ── E2E_MATRIX (versions only) ────────────────────────────────────────────
-  # Finds the newest ES version of each e2e module. Publishes those versions as the matrix for the
-  # e2e jobs below. Also publishes the build id that names every dev image of this run.
-  #
-  # This job must stay free of side effects. "Re-run failed jobs" skips a green job, so the build id
-  # and the image names must survive a partial re-run.
-  #
-  # It runs in the toolchains container, because it calls Gradle to find the versions.
-  e2e_matrix:
-    needs: [ ci_setup, discover, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      needs.discover.outputs.e2e_modules != '[]' &&
-      needs.ci_setup.outputs.runs_e2e_tests == 'true'
-    runs-on: ubuntu-latest
-    container: *toolchains_container
-    timeout-minutes: 15
-    outputs:
-      matrix: ${{ steps.matrix.outputs.matrix }}
-      build_id: ${{ steps.matrix.outputs.build_id }}
-      elk_versions: ${{ steps.matrix.outputs.elk_versions }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: Free host disk
-        run: ci/free-host-disk.sh
-      - name: publish_e2e_matrix
-        id: matrix
-        env:
-          ROR_TASK: publish_e2e_matrix
-          E2E_ES_MODULES: ${{ join(fromJSON(needs.discover.outputs.e2e_modules), ' ') }}
-          E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-        run: ci/run-pipeline.sh
-
   # ── E2E_ORDER_KBN_IMAGES (the other repo's build) ─────────────────────────
   # The ROR KBN repo builds the ROR KBN images. This job orders that build for all versions, then
   # waits for it. Both steps run in one shell, because only the shell that ordered a build can find
@@ -611,29 +521,54 @@ jobs:
   # A failed ROR KBN build fails THIS job, not a test job. "Re-run failed jobs" then places a new
   # order. e2e_build_es_images builds the ES images while this job waits.
   e2e_order_kbn_images:
-    needs: [ ci_setup, discover, e2e_matrix ]
+    needs: discover
+    # An empty matrix is how discover says "no e2e in this run". This job has no matrix of its own
+    # for GitHub to skip, so it tests the value here. A failed or skipped discover publishes '',
+    # which is not the empty matrix either, hence the result check.
     if: >-
-      !cancelled() &&
-      needs.e2e_matrix.result == 'success' &&
-      needs.discover.outputs.e2e_modules != '[]' &&
-      needs.ci_setup.outputs.runs_e2e_tests == 'true'
+      needs.discover.result == 'success' &&
+      needs.discover.outputs.e2e_matrix != '{"include":[]}'
     runs-on: ubuntu-latest
     # Backstop only. The wait below stops first (120 min) and prints the cause.
     # Keep 30 min between the two numbers. Raise both together.
     timeout-minutes: 150
+    # This job runs no container, so the toolchains-image Gradle home does not exist here.
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
+      GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Free host disk
         run: ci/free-host-disk.sh
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with: { distribution: temurin, java-version: '17' }
+      # One dispatch covers every version, so this job needs them all before it starts. The other
+      # e2e jobs resolve their own, one per matrix row.
+      - name: Resolve the ELK version of every e2e module
+        id: versions
+        env:
+          E2E_ES_MODULES: ${{ join(fromJSON(needs.discover.outputs.e2e_matrix).include.*.ES_MODULE, ' ') }}
+        run: |
+          set -e
+          source ci/e2e-tests-lib.sh
+          VERSIONS=""
+          for module in $E2E_ES_MODULES; do
+            # `|| exit $?` is not decoration: `set -e` does not fire for a failed assignment inside
+            # a command substitution, so without it a failed lookup would add an empty version.
+            version=$(e2e_elk_version_for_module "$module") || exit $?
+            echo ">>> $module -> ELK $version"
+            VERSIONS="${VERSIONS:+$VERSIONS }$version"
+          done
+          echo "elk_versions=$VERSIONS" >> "$GITHUB_OUTPUT"
       - name: order_e2e_kbn_images
         id: order
         env:
           ROR_TASK: order_e2e_kbn_images
-          E2E_ELK_VERSIONS: ${{ needs.e2e_matrix.outputs.elk_versions }}
+          E2E_ELK_VERSIONS: ${{ steps.versions.outputs.elk_versions }}
           ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
+          E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           # How long to wait for the whole ROR KBN order. Keep it below timeout-minutes above.
           ROR_KBN_WAIT_TIMEOUT_SECONDS: 7200
@@ -648,21 +583,18 @@ jobs:
   # Builds and publishes this repo's ROR ES dev image. One job per module, under the per-run tag.
   # It runs at the same time as e2e_order_kbn_images.
   e2e_build_es_images:
-    needs: [ ci_setup, discover, e2e_matrix ]
-    if: >-
-      !cancelled() &&
-      needs.e2e_matrix.result == 'success' &&
-      needs.discover.outputs.e2e_modules != '[]' &&
-      needs.ci_setup.outputs.runs_e2e_tests == 'true'
+    name: build_es_${{ matrix.ES_MODULE }}
+    needs: [ ci_setup, discover ]
+    # No condition: this job fans out over the e2e matrix, and GitHub skips a job whose include
+    # list is empty. Same as it_linux and it_windows.
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     timeout-minutes: 120
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
-    name: build_es_${{ matrix.module }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.e2e_matrix.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.discover.outputs.e2e_matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -673,9 +605,10 @@ jobs:
       - name: build_e2e_es_image
         env:
           ROR_TASK: build_e2e_es_image
-          E2E_ES_MODULE: ${{ matrix.module }}
-          E2E_ELK_VERSION: ${{ matrix.elk }}
-          E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
+          # No ELK version here: run-pipeline.sh derives it from the module, with the Gradle this
+          # job already sets up.
+          E2E_ES_MODULE: ${{ matrix.ES_MODULE }}
+          E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
@@ -688,20 +621,20 @@ jobs:
   # e2e_order_kbn_images checked the ROR KBN one, e2e_build_es_images published the ROR ES one.
   # Each job starts the stack and runs the suite. See ci/e2e-tests-lib.sh.
   e2e_tests:
-    needs: [ ci_setup, discover, e2e_matrix, e2e_order_kbn_images, e2e_build_es_images ]
-    if: >-
-      !cancelled() &&
-      needs.e2e_matrix.result == 'success' &&
-      needs.e2e_order_kbn_images.result == 'success' &&
-      needs.e2e_build_es_images.result == 'success' &&
-      needs.discover.outputs.e2e_modules != '[]' &&
-      needs.ci_setup.outputs.runs_e2e_tests == 'true'
+    name: e2e_${{ matrix.ES_MODULE }}
+    # No condition either. The empty matrix skips this job, and the default rule — every `needs`
+    # job must succeed — covers the rest: a skipped or failed image job leaves the tests out.
+    needs: [ ci_setup, discover, e2e_order_kbn_images, e2e_build_es_images ]
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     timeout-minutes: 120
-    name: e2e_${{ matrix.module }}
+    # This job runs no container, so the toolchains-image Gradle home does not exist here. Gradle
+    # runs once, to derive the ELK version of this row's module.
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
+      GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.e2e_matrix.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.discover.outputs.e2e_matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -709,14 +642,16 @@ jobs:
         run: ci/free-host-disk.sh
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: '24.11.0' }
+      # run_e2e_tests derives E2E_ELK_VERSION from the module, and that is a Gradle call.
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with: { distribution: temurin, java-version: '17' }
       - name: run_e2e_tests
         env:
           ROR_TASK: run_e2e_tests
-          E2E_ES_MODULE: ${{ matrix.module }}
-          E2E_ELK_VERSION: ${{ matrix.elk }}
+          E2E_ES_MODULE: ${{ matrix.ES_MODULE }}
           E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          E2E_BUILD_ID: ${{ needs.e2e_matrix.outputs.build_id }}
+          E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
@@ -728,11 +663,11 @@ jobs:
            # The e2e repo pins yarn in "packageManager". Corepack reads and uses that.
           corepack enable
           source ci/configure-docker.sh
-          echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
+          echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE"
           ci/run-pipeline.sh
 
       # Upload test videos/screenshots to S3 (not GitHub artifacts, to save the Actions quota).
-      # E2E_TESTS_DIR is set by run_e2e_tests.
+      # E2E_TESTS_DIR and E2E_ELK_VERSION are set by run_e2e_tests.
       - name: Upload Cypress artifacts to S3 on failure
         if: failure()
         continue-on-error: true
@@ -752,14 +687,20 @@ jobs:
           export ROR_S3_PATH_E2E_REPORTS="${BASE}$(date -u +%Y-%m-%d)/build_${{ github.run_id }}"
           ci/upload-cypress-artifacts-to-s3.sh \
             "${E2E_TESTS_DIR:?run_e2e_tests did not publish the e2e clone path}/results" \
-            "${{ matrix.module }}_${{ matrix.elk }}"
+            "${{ matrix.ES_MODULE }}_${E2E_ELK_VERSION:?run_e2e_tests did not publish the ELK version}"
 
   # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────
-  # it_windows / e2e_tests may legitimately not run (draft PRs get reduced matrices, and no e2e at
-  # all). e2e is tolerated via setup's empty list rather than a 'skipped' result. A FAILED e2e job
-  # also leaves e2e_tests 'skipped', and it must still block this job.
+  # it_windows and the e2e jobs may legitimately not run: a draft PR gets a reduced Windows matrix
+  # and no e2e at all. A failed e2e job also leaves e2e_tests 'skipped', and that must still block
+  # this job — hence the e2e clause reads e2e_build_es_images, which is skipped only when the e2e
+  # matrix was empty. Every e2e failure path leaves it 'success' or 'failure' instead.
   build_ror:
-    needs: [ ci_setup, discover, required_checks, unit_tests_linux, it_linux, it_windows, e2e_matrix, e2e_tests ]
+    # discover supplies the majors, so a new major needs no edit here. The name must stay
+    # what it renders today ("build_es9xx"). These are required checks. A renamed check does not
+    # block a merge.
+    name: build_es${{ matrix.ES_MAJOR }}xx
+    needs: [ ci_setup, discover, required_checks, unit_tests_linux, it_linux, it_windows,
+             e2e_build_es_images, e2e_tests ]
     if: >-
       !cancelled() &&
       github.event_name == 'pull_request' &&
@@ -767,15 +708,11 @@ jobs:
       needs.unit_tests_linux.result == 'success' &&
       needs.it_linux.result == 'success' &&
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
-      (needs.e2e_tests.result == 'success' || needs.discover.outputs.e2e_modules == '[]')
+      (needs.e2e_tests.result == 'success' || needs.e2e_build_es_images.result == 'skipped')
     # Gradle deps are baked into the toolchains image, so no runner-side cache is needed.
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB)
     container: *toolchains_container
     timeout-minutes: 180
-    # discover supplies the majors, so a new major needs no edit here. The name must stay
-    # what it renders today ("build_es9xx"). These are required checks. A renamed check does not
-    # block a merge.
-    name: build_es${{ matrix.ES_MAJOR }}xx
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.build_matrix) }}

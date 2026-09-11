@@ -45,8 +45,8 @@ import java.util.stream.Collectors;
 public class PrintTestMatricesTask extends DefaultTask {
 
   /**
-   * ROR supports no Windows or Kibana stack on ES 6, so those two families skip it. The Linux
-   * integration tests still cover it.
+   * ROR supports no Windows or Kibana stack on ES 6, so the Windows and e2e matrices skip it. The
+   * Linux integration tests still cover it.
    */
   private static final Set<Integer> NO_WINDOWS_OR_E2E = Collections.singleton(6);
 
@@ -59,8 +59,7 @@ public class PrintTestMatricesTask extends DefaultTask {
     matrices.put("linux_it_pr_ready", modulesFor(Selection.READY_PR, EVERY_MAJOR));
     matrices.put("linux_it_pr_draft", modulesFor(Selection.NEWEST, EVERY_MAJOR));
     matrices.put("win_it_full", modulesFor(Selection.ALL, NO_WINDOWS_OR_E2E));
-    matrices.put(
-        "win_it_master_or_develop", modulesFor(Selection.OLDEST_AND_NEWEST, NO_WINDOWS_OR_E2E));
+    matrices.put("win_it_master_or_develop", modulesFor(Selection.OLDEST_AND_NEWEST, NO_WINDOWS_OR_E2E));
     matrices.put("win_it_pr_ready", modulesFor(Selection.NEWEST, NO_WINDOWS_OR_E2E));
     matrices.put("e2e_full", modulesFor(Selection.NEWEST, NO_WINDOWS_OR_E2E));
 

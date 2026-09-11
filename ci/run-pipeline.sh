@@ -210,7 +210,7 @@ build_ror_plugins() {
   done <<< "$modules"
 }
 
-# Three families over the ES generations. Only the function the generation goes to differs. The
+# Three tasks over the ES generations. Only the function the generation goes to differs. The
 # caller passes the generation in ES_MAJOR, so the major is any number and ES 10 needs no edit here.
 # The discover job tells the workflow which majors to run.
 case "$ROR_TASK" in
@@ -286,16 +286,6 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
 
 fi
 
-# Runs once per pipeline. Finds each module's ELK version. Publishes the test matrix, the ELK
-# version list and the build id.
-# Keep this task free of side effects. "Re-run failed jobs" skips a green job, so the build id and
-# the image names must survive a partial re-run.
-if [[ $ROR_TASK == "publish_e2e_matrix" ]]; then
-  publish_e2e_matrix \
-    "${E2E_ES_MODULES:?E2E_ES_MODULES is not set}" \
-    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set}"
-fi
-
 # Runs once per pipeline. Dispatches ONE ROR KBN pre-build for all versions, then waits for it in
 # the same shell. A failed ROR KBN build fails THIS job. A re-run of this job places a new order.
 # Branches: ROR_KBN_TARGET_BRANCH and ROR_KBN_FALLBACK_BRANCH apply to the ROR KBN repo (not e2e).
@@ -303,34 +293,39 @@ fi
 # in the e2e clone function already includes `develop` and `master`.
 if [[ $ROR_TASK == "order_e2e_kbn_images" ]]; then
   order_e2e_kbn_images \
-    "${E2E_ELK_VERSIONS:?E2E_ELK_VERSIONS is not set — in CI it comes from the elk_versions output of e2e_matrix}" \
+    "${E2E_ELK_VERSIONS:?E2E_ELK_VERSIONS is not set — in CI it is the ELK column of the e2e_matrix output of discover}" \
     "${ROR_KBN_TARGET_BRANCH:?ROR_KBN_TARGET_BRANCH is not set}" \
     "${ROR_KBN_FALLBACK_BRANCH:-}" \
-    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the build_id output of e2e_matrix}"
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the unique_build_id output of ci_setup}"
 fi
 
-# Runs once per ELK version, while the order task waits. Publishes this repo's ROR ES dev image
-# under the per-run tag. E2E_ELK_VERSION comes from the published matrix. If it is missing, this
-# task derives it from E2E_ES_MODULE.
+# Runs once per ES module, while the order task waits. Publishes this repo's ROR ES dev image
+# under the per-run tag. The matrix carries the module, so this task derives the ELK version from
+# it. A caller that already knows the version passes E2E_ELK_VERSION instead.
 if [[ $ROR_TASK == "build_e2e_es_image" ]]; then
   if [ -z "${E2E_ELK_VERSION:-}" ]; then
     E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
   fi
   build_e2e_es_image \
     "$E2E_ELK_VERSION" \
-    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the build_id output of e2e_matrix}"
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the unique_build_id output of ci_setup}"
 fi
 
-# Runs once per ELK version, after both image jobs. The branches (E2E_TARGET_BRANCH and
-# E2E_FALLBACK_BRANCH) apply to the e2e repo. E2E_ELK_VERSION comes from the published matrix. If it
-# is missing, this task derives it from E2E_ES_MODULE.
+# Runs once per ES module, after both image jobs. The branches (E2E_TARGET_BRANCH and
+# E2E_FALLBACK_BRANCH) apply to the e2e repo. The matrix carries the module, so this task derives
+# the ELK version from it. A caller that already knows the version passes E2E_ELK_VERSION instead.
 if [[ $ROR_TASK == "run_e2e_tests" ]]; then
   if [ -z "${E2E_ELK_VERSION:-}" ]; then
     E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
+    # The later steps of the job name their report folder after the version. `if`, not `&&`:
+    # outside GitHub Actions a false `&&` would end a `set -e` script with status 1.
+    if [ -n "${GITHUB_ENV:-}" ]; then
+      echo "E2E_ELK_VERSION=$E2E_ELK_VERSION" >> "$GITHUB_ENV"
+    fi
   fi
   run_e2e_tests \
     "$E2E_ELK_VERSION" \
     "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
     "${E2E_FALLBACK_BRANCH:-}" \
-    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the build_id output of e2e_matrix}"
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the unique_build_id output of ci_setup}"
 fi

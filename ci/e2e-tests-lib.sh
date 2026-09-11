@@ -1,18 +1,18 @@
 # Sourced by run-pipeline.sh — do not execute directly.
 
-# Helpers for the four e2e tasks in run-pipeline.sh. Together they run the Cypress e2e suite (docker
-# env) against dev Docker images of both ROR plugins. Each task has one responsibility:
+# Helpers for the three e2e tasks in run-pipeline.sh. Together they run the Cypress e2e suite
+# (docker env) against dev Docker images of both ROR plugins. Each task has one responsibility:
 #
-#   publish_e2e_matrix   — find the versions, publish the matrix and the build id
 #   order_e2e_kbn_images — order the ROR KBN images from the other repo, and wait for them
 #   build_e2e_es_image   — build the ROR ES image
 #   run_e2e_tests        — run the suite
 #
-# What each job is: ci/CI.md#e2e-tests.
+# The e2e matrix itself is shaped in the `discover` job of ci.yml, which calls
+# e2e_elk_version_for_module below for each module. What each job is: ci/CI.md#e2e-tests.
 #
-# Both images carry a per-run tag (run-<build id>). The matrix job publishes the build id, and every
-# other job gets it as a job output. No job may derive it again. A partial re-run bumps the GitHub
-# run attempt but does not re-run the matrix job, and the images would get new names.
+# Both images carry a per-run tag (run-<build id>). `ci_setup` publishes the build id, and every
+# job gets it as a job output. No job may derive it again. A partial re-run bumps the GitHub run
+# attempt but does not re-run `ci_setup`, and the images would get new names.
 #
 # The ROR KBN dispatch and wait helpers are not here. They live in the e2e repo, and a clone of it
 # loads them: https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/develop/ci/prebuild-images-lib.sh
@@ -126,60 +126,6 @@ e2e_elk_version_for_module() {
 
 # Build the test matrix as GitHub Actions JSON (one entry per ES module with its ELK version).
 # Job names are based on the module, so branch-protection checks survive version bumps.
-# Usage: e2e_matrix_json "es94x es818x es717x"
-e2e_matrix_json() {
-  if [ "$#" -ne 1 ] || [ -z "${1// /}" ]; then
-    echo "Usage: e2e_matrix_json <es modules>" >&2
-    return 1
-  fi
-
-  local MODULE VERSION ENTRIES=()
-  for MODULE in $(echo "$1" | tr ',' ' '); do
-    VERSION=$(e2e_elk_version_for_module "$MODULE") || return $?
-    echo ">>> $MODULE -> ELK $VERSION" >&2
-    ENTRIES+=("$(jq -cn --arg m "$MODULE" --arg v "$VERSION" '{module: $m, elk: $v}')")
-  done
-
-  printf '%s\n' "${ENTRIES[@]}" | jq -cs '{include: .}'
-}
-
-# Entry point for the `publish_e2e_matrix` task (the `e2e_matrix` job). Runs once per pipeline run.
-# It only finds versions, and publishes three things:
-#
-#   matrix       — the versions the downstream jobs fan out over
-#   elk_versions — the version list the order job dispatches for
-#   build_id     — the id whose run tag names every image of this run
-#
-# Keep this task free of side effects. "Re-run failed jobs" skips a green job, so the build id and
-# the published images must survive a partial re-run.
-#
-# It runs in the toolchains container, because it calls Gradle to find each module's newest ES
-# version. Its `elk_versions` output lets the order job run outside that container.
-#
-# Args: <es modules> <build id>
-#   es modules — e2e ES modules, space- or comma-separated (e.g. "es94x es818x es717x")
-#   build id   — E2E_BUILD_ID (published to every other job as the `build_id` output)
-publish_e2e_matrix() {
-  if [ "$#" -ne 2 ]; then
-    echo "Usage: publish_e2e_matrix <es modules> <build id>"
-    return 1
-  fi
-
-  local MATRIX ELK_VERSIONS
-  MATRIX=$(e2e_matrix_json "$1") || return $?
-  ELK_VERSIONS=$(echo "$MATRIX" | jq -r '[.include[].elk] | join(" ")')
-
-  echo ">>> e2e matrix: $MATRIX (build id: $2, run tag: $(e2e_run_tag "$2"))"
-
-  # Outside GitHub Actions this does nothing. The matrix is printed above, and the build id is the
-  # caller's own.
-  if [ -n "${GITHUB_OUTPUT:-}" ]; then
-    echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-    echo "build_id=$2" >> "$GITHUB_OUTPUT"
-    echo "elk_versions=$ELK_VERSIONS" >> "$GITHUB_OUTPUT"
-  fi
-}
-
 # Reports why the ROR KBN order failed. One line, to the log and to the job summary. The shared lib
 # already printed its own diagnosis. This adds the one sentence, and the link, that a reader of the
 # job list needs. They do not have to open the step log.
@@ -236,10 +182,10 @@ _report_kbn_order_failure() {
 # seconds around the dispatch. Only the shell that dispatched the run can name it.
 #
 # Args: <elk versions> <target branch> <fallback branch> <build id>
-#   elk versions    — the `elk_versions` output of the matrix job (space-separated X.Y.Z)
+#   elk versions    — the ELK column of discover's e2e matrix (space-separated X.Y.Z)
 #   target branch   — branch to build the ROR KBN plugin from
 #   fallback branch — branch to use when the target branch is missing in the e2e repo
-#   build id        — E2E_BUILD_ID, as PUBLISHED by the matrix job. It names the images ordered here
+#   build id        — E2E_BUILD_ID, as PUBLISHED by ci_setup. It names the images ordered here
 order_e2e_kbn_images() {
   if [ "$#" -ne 4 ]; then
     echo "Usage: order_e2e_kbn_images <elk versions> <target branch> <fallback branch> <build id>"
@@ -253,8 +199,8 @@ order_e2e_kbn_images() {
   RUN_TAG=$(e2e_run_tag "$4") || return $?
 
   if [ -z "${ELK_VERSIONS// /}" ]; then
-    echo "ERROR: no ELK versions to order ROR KBN images for. The matrix job publishes them as its"
-    echo "       'elk_versions' output."
+    echo "ERROR: no ELK versions to order ROR KBN images for. The caller reads them out of the"
+    echo "       e2e matrix that discover publishes."
     return 2
   fi
 

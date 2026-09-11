@@ -40,14 +40,13 @@ directory contain the build logic; the workflow only orchestrates.
 |---|---|---|
 | `ci_setup` | chooses where every `container:` job pulls the toolchains image from, and publishes the run flags the later `if:` conditions read | always |
 | `toolchains_verify` | sanity-checks the toolchains image | always (stops the run early when the image is broken) |
-| `discover` | derives every matrix: the ES majors and the modules each test family covers; see the [test matrix policy](#test-matrix-policy) | always |
+| `discover` | decides which tests this run covers, and derives every matrix: the ES majors to build, the ES modules each test matrix covers, and — when the run covers e2e — the ELK version of each e2e module plus the build id; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
 | `unit_tests_linux` | `core:test` and friends | pushes + PRs |
 | `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
 | `it_linux` | integration tests, one job per selected ES module | module selection follows the [test matrix policy](#test-matrix-policy) |
 | `it_windows` | integration tests on native-Windows ES | module selection follows the [test matrix policy](#test-matrix-policy) |
 | `unit_tests_windows` | `core:test` on Windows | manual `run_all_tests_on_windows` |
-| `e2e_matrix` | resolves the e2e matrix and the build id that names every dev image | selected runs; see the [test matrix policy](#test-matrix-policy) |
 | `e2e_order_kbn_images` | dispatches the ROR KBN dev image build **and waits for it** | selected runs |
 | `e2e_build_es_images` | builds + publishes this repo's ROR ES dev image, one job per module | selected runs |
 | `e2e_tests` | Cypress e2e suite, one job per selected ES module | selected runs; see the [test matrix policy](#test-matrix-policy) |
@@ -125,37 +124,36 @@ Two orchestration rules worth knowing before editing conditions:
   dependency being skipped — and pair it with an explicit `== 'success'` on every dependency that
   must still be green, because `!cancelled()` lets failures through as well as skips.
 
-  One job needs it: `build_ror`, which accepts `skipped` from the Windows and e2e families by name,
+  One job needs it: `build_ror`, which accepts `skipped` from the Windows and e2e jobs by name,
   because a draft PR runs neither. Everywhere else, let the implicit rule do the work.
 - A job-level `if:` cannot read the `env` context, so a predicate that more than one job asks
-  about has to be a job output. `ci_setup` publishes the three, and they are not the same
+  about has to be a job output. `ci_setup` publishes these, and they are not the same
   question — do not collapse them:
 
   | Output | True for | Read by |
   |---|---|---|
-  | `is_full_matrix` | develop, master, `epic/**` | the full test matrices in `discover` |
-  | `is_release_branch` | develop, master | `publish`, the NVD cache write |
-  | `is_master` | master | nothing in `ci.yml`; `release-jobs.yml` derives its own |
-  | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks`, `publish` |
-  | `runs_linux_tests` | automatic runs + manual `run_all_tests_on_linux` | `discover`, `unit_tests_linux` |
-  | `runs_windows_tests` | automatic runs + manual `run_all_tests_on_windows` | `discover` |
-  | `runs_e2e_tests` | automatic runs + manual `run_e2e_tests` | `discover` |
-  | `is_manual_windows_run` | manual `run_all_tests_on_windows` only | `unit_tests_windows` |
-  | `manual_action` | — the chosen action, `''` on an automatic run | `discover` |
+  | `is_release_branch` | develop, master | the NVD cache write in `optional_checks`; `discover`, ORed below |
+  | `is_epic_branch` | `epic/**`, and PRs from one | `discover`, ORed with `is_release_branch` |
+  | `is_merge_back` | a develop push whose tree equals master's tip, on a `-pre` version | `discover` |
+  | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks` |
+  | `manual_action` | — the chosen action, `''` on an automatic run | `discover`, `unit_tests_windows` |
+  | `unique_build_id` | — `<run id>-<run attempt>`, the tag of every dev image of this run | the e2e jobs |
 
-  Every job `if:` reads one of these and compares it against `'true'`. `manual_action` is the one
-  exception, and it is not read by any `if:`: `discover` picks a matrix by name, so it needs the
-  value.
+  Every job `if:` reads one of these and compares it against `'true'`. `manual_action` is the
+  exception: it holds an action name, so its readers compare it against one. `discover` picks a
+  matrix that way, and `unit_tests_windows` starts only on `run_all_tests_on_windows`.
 
-  Mind the pair that looks alike. `runs_windows_tests` covers automatic runs as well, and decides
-  the Windows integration matrix. `is_manual_windows_run` covers the manual action alone, and starts
-  the Windows unit tests, which no automatic run may start.
-
-  A test family runs on every automatic run, and on a manual run only when the operator asked for
-  that family. The three `runs_*` flags say so. `discover` reads them and empties the matrix of
-  every family the run does not cover, so no test job carries a condition of its own — see
+  Which tests a run covers is not among them. `ci_setup` publishes `manual_action`, and `discover`
+  decides: the Linux, Windows and e2e tests each run on every automatic run, and a manual run
+  starts only the tests the operator asked for. `discover` empties the matrix of every test the run
+  does not cover, so no test job carries a condition of its own — see
   [Derived matrices](#derived-matrices). `unit_tests_linux` is the exception, because it has no
-  matrix to empty. `manual_action` serves the jobs that only a manual action may start.
+  matrix to empty. It asks the same question in its own `if:`, from `is_automatic_run` and
+  `manual_action`.
+
+  `manual_action` stays in `ci_setup` for one reason beyond `discover`. It starts
+  `unit_tests_windows`, which no automatic run may start, and no Windows job may wait for
+  `discover` — that job runs in the Linux toolchains container.
 
   Always compare against the string `'true'`. An output is a string, so a bare
   `needs.ci_setup.outputs.is_release_branch` is truthy even when it holds `"false"`.
@@ -172,7 +170,7 @@ a module list:
 | Task | Answers | Written to |
 |---|---|---|
 | `printEsMajors` | which ES majors get built, uploaded and released | `build/es-modules/es-majors.txt` |
-| `printTestMatrices` | which modules each test family covers, per [policy](#test-matrix-policy) | `build/ci-matrices/<name>.json` |
+| `printTestMatrices` | which ES modules each test matrix covers, per [policy](#test-matrix-policy) | `build/ci-matrices/<name>.json` |
 | `isPreReleaseVersion` | whether the configured `pluginVersion` is a pre-release (`-pre`) | stdout: `true` or `false` |
 
 The first two write files, and callers must read those, not gradle stdout — configuration-time
@@ -190,9 +188,9 @@ release guard uses it to check the version the operator typed.
 
 ## Derived matrices
 
-Every matrix of a run comes from the `discover` job, and so does every decision about which test
-families the run covers. Nothing is written down twice: the modules that exist decide, so a new
-module or a new ES major joins the matrices by itself.
+Every matrix of a run comes from the `discover` job, and so does every decision about which tests
+the run covers. Nothing is written down twice: the modules that exist decide, so a new module or a
+new ES major joins the matrices by itself.
 
 A test job therefore carries no condition about the kind of run. An empty matrix skips its job, and
 that is the single mechanism: a draft PR gets no Windows and no e2e leg, and a manual
@@ -206,18 +204,22 @@ that is the single mechanism: a draft PR gets no Windows and no e2e leg, and a m
 | `build_matrix` | `build_ror` | `{"include":[{"ES_MAJOR":"9"},…]}` |
 | `it_linux_matrix` | `it_linux` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
 | `it_windows_matrix` | `it_windows` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
-| `e2e_modules` | `e2e_matrix`, and the three e2e jobs after it | `["es94x","es818x","es717x"]` |
+| `e2e_matrix` | the three e2e jobs, and `build_ror` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
 
-The `include` form matters. GitHub skips a matrix job whose include list is empty, so a family a run
-does not cover needs no condition of its own: a draft PR emits an empty Windows and e2e matrix, and
+The `include` form matters. GitHub skips a matrix job whose include list is empty, so tests a run
+does not cover need no condition of their own: a draft PR emits an empty Windows and e2e matrix, and
 both jobs skip before a runner boots. A bare `KEY: []` would instead stop the run with "Matrix vector
 'KEY' does not contain any values".
 
-`e2e_modules` is the one exception to the `include` form, because the e2e family does not fan out
-from `discover`. It is a plain list, and `e2e_matrix` fans out from it instead: that job pairs each
-module with an ELK version, which only a gradle call per module can resolve, and publishes the real
-e2e matrix plus the build id. So the e2e jobs guard themselves on `e2e_modules != '[]'` rather than
-on an empty matrix, and `build_ror` accepts a skipped `e2e_tests` when that list is empty.
+`e2e_matrix` holds the same one key as the others. `e2e_order_kbn_images` and `build_ror` compare
+it against `{"include":[]}` by value, because neither is a fan-out over it: the first has no matrix
+of its own, and the second must tell "no e2e in this run" from "e2e failed".
+
+The ELK version of a module is not in the matrix. Every job that needs it derives it from the
+module, with `e2e_elk_version_for_module` in `ci/e2e-tests-lib.sh`
+(`:esXXXx:printNewestEsVersionForModule`): `e2e_order_kbn_images` resolves all of them in one step,
+because its single dispatch covers every version, and the two fan-out jobs each resolve their own
+row. `discover` stays at one Gradle call, so no test job waits for a lookup only e2e needs.
 
 It is the workflow, not the build, that picks which matrix a run takes: only the workflow knows the
 branch and the event. `discover` needs the toolchains image for gradle, so it runs after
@@ -294,20 +296,17 @@ contract between all three —
 [`ci/prebuild-images-lib.sh`](https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/develop/ci/prebuild-images-lib.sh)
 (image names, tag shape, workflow inputs, wait behaviour). Change the contract there, not here.
 
-Four jobs, each with one responsibility:
+Three jobs, each with one responsibility, under `discover`:
 
 ```
-e2e_matrix                     resolve versions once, publish the build id
+discover                       publish the e2e module matrix
    ├── e2e_order_kbn_images    dispatch the ROR KBN build, wait for it, verify the images  ─┐ in
    └── e2e_build_es_images     build + publish the ROR ES image, one job per module         ─┘ parallel
           └── e2e_tests        stack + Cypress only
 ```
 
-- `e2e_matrix` finds the newest ES version of every module in the matrix
-  (`:esXXXx:printNewestEsVersionForModule`). It publishes those versions, the build id and the ELK
-  version list. It orders nothing and builds nothing. It runs in the toolchains container, because it
-  calls Gradle to find the versions. Its `elk_versions` output lets the order job run outside that
-  container.
+- `discover` publishes the module matrix. It resolves no ELK version, orders nothing and builds
+  nothing.
 - `e2e_order_kbn_images` sends **one** dispatch for all versions. Then it waits for that run, in the
   same shell. At the end it checks the registry for every image.
 - `e2e_build_es_images` builds and pushes the ROR ES dev image from **this** commit, one job per
@@ -326,14 +325,14 @@ There are three reasons:
   and in the job summary.
 - **"Re-run failed jobs" does the correct thing.** That button re-runs only the failed jobs, so it
   re-runs the order job. Its dispatch is a new `gh workflow run`, and its run lookup only accepts
-  runs created around that dispatch. So it follows the new run, not the dead one. `e2e_matrix` is
+  runs created around that dispatch. So it follows the new run, not the dead one. `ci_setup` is
   green and does not re-run, so the build id and the image names stay the same. The ES images from
   the first attempt stay valid.
 - **The shared contract makes it necessary.** A dispatch is not told which run it created. The lib
   finds the run by title, in a window around the dispatch. Only the shell that dispatched the run can
   identify it, so only that shell can wait for it.
 
-`e2e_order_kbn_images` and `e2e_build_es_images` are siblings under `e2e_matrix`. Neither needs the
+`e2e_order_kbn_images` and `e2e_build_es_images` are siblings under `discover`. Neither needs the
 other. So the critical path is `max(local ES build, ROR KBN run)`, plus one runner handoff.
 
 The wait does not poll the registry. It waits on the dispatched ROR KBN **run**. What the wait
@@ -354,9 +353,9 @@ Read it there, not here. Three obligations fall on this repo:
   The fallback applies only to a dispatch that sends no tag, and no search looks for such a title.
   Remove the line and every dispatch of this workflow fails, because no run can be recognised.
 
-Both sides address the images by a per-run tag (`run-<build id>`). `e2e_matrix` creates the build id
+Both sides address the images by a per-run tag (`run-<build id>`). `ci_setup` creates the build id
 and passes it down as a job output. No other job may derive it again. A partial re-run bumps the run
-attempt but does not re-run `e2e_matrix`, and the two sides would then name different images.
+attempt but does not re-run `ci_setup`, and the two sides would then name different images.
 
 Branch resolution — both other repos are asked for the branch of this PR first. The e2e clone then
 tries the base branch, `develop`, `master`; the base branch matters, because a change based on
@@ -366,7 +365,7 @@ own side.
 
 Module selection follows the [test matrix policy](#test-matrix-policy). Job names are built from
 the module, not the ES version, so branch-protection checks survive a version bump. The same
-`<leg>_<module>` shape is used by all three test families: `it_linux_es94x`, `it_win_es94x`,
+`<leg>_<module>` shape is used by all three test legs: `it_linux_es94x`, `it_win_es94x`,
 `e2e_es94x`.
 
 On failure the job uploads the Cypress videos and screenshots to the E2E_REPORTS store

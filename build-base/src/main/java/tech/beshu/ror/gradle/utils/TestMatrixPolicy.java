@@ -56,7 +56,7 @@ public final class TestMatrixPolicy {
 
   private TestMatrixPolicy() {}
 
-  /** How much of one ES major a test family covers. */
+  /** How many ES modules of one major a matrix covers. */
   public enum Selection {
     ALL,
     NEWEST,
@@ -68,7 +68,7 @@ public final class TestMatrixPolicy {
   /**
    * The modules a selection covers, newest major first, and newest module first inside a major.
    *
-   * @param skippedMajors majors this test family does not run at all
+   * @param skippedMajors majors the matrix does not cover at all
    */
   public static List<String> modulesFor(
       Project rootProject, Selection selection, Set<Integer> skippedMajors) {
