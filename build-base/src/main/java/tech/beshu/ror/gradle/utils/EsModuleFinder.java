@@ -50,8 +50,8 @@ public final class EsModuleFinder {
   }
 
   /**
-   * Every ES version ROR supports, oldest first, from each module's {@code supportedEsVersions}. The
-   * single source of truth for anything that needs the full list (see {@code printAllSupportedEsVersions}).
+   * Every ES version ROR supports, oldest first, from each module's {@code supportedEsVersions}.
+   * The one source for anything that needs the full list.
    */
   public static List<String> allSupportedEsVersions(Project rootProject) {
     return esModulesSortedBy(rootProject, newestEsVersionComparator())
@@ -65,8 +65,7 @@ public final class EsModuleFinder {
    * version, which is the rule {@code printEsModules} uses. A module that spans two majors thus
    * counts once.
    *
-   * <p>CI builds its matrices from this list. A second, hand-written list is how a new major once
-   * got no build at all.
+   * <p>CI builds its matrices from this list. A second, hand-written list would miss a new major.
    */
   public static List<Integer> allSupportedEsMajors(Project rootProject) {
     return allEsModules(rootProject).stream()
@@ -102,9 +101,8 @@ public final class EsModuleFinder {
   }
 
   /**
-   * Sorts without touching the list {@link #allEsModules} returned. {@code Collectors.toList()}
-   * promises no mutable list, so sorting one in place works by luck and stops working the day it
-   * collects to an immutable one.
+   * Sorts a copy, never the list {@link #allEsModules} returns. {@code Collectors.toList()}
+   * promises no mutable list, so an in-place sort breaks the day it returns an immutable one.
    */
   private static Stream<Project> esModulesSortedBy(
       Project rootProject, Comparator<Project> comparator) {

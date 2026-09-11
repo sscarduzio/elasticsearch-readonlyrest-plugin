@@ -112,6 +112,68 @@ class TestMatrixPolicyTest {
         .collect(Collectors.toList());
   }
 
+  // --- untested modules ---
+
+  @Test
+  void anUntestedModuleIsNeverSelected() {
+    Project root = rootWithModules("es717x:7.17.0", "es714x:7.14.0", "es70x:7.0.0");
+    assertEquals(
+        List.of("es717x", "es70x"), TestMatrixPolicy.modulesFor(root, Selection.ALL, Set.of()));
+  }
+
+  @Test
+  void oldestAndNewestSkipAnUntestedModule() {
+    // es714x would be the oldest of this major if it were tested.
+    Project root = rootWithModules("es717x:7.17.0", "es716x:7.16.0", "es714x:7.14.0");
+    assertEquals(
+        List.of("es717x", "es716x"),
+        TestMatrixPolicy.modulesFor(root, Selection.OLDEST_AND_NEWEST, Set.of()));
+  }
+
+  @Test
+  void aPickOnAnUntestedModuleMovesToTheNearestFreeOne() {
+    // The middle of these 10 lands on es79x, which is untested. The newer neighbour takes the slot.
+    Project root =
+        rootWithModules(
+            "es717x:7.17.0",
+            "es716x:7.16.0",
+            "es714x:7.14.0",
+            "es711x:7.11.0",
+            "es710x:7.10.0",
+            "es79x:7.9.0",
+            "es78x:7.8.0",
+            "es77x:7.7.0",
+            "es72x:7.2.0",
+            "es70x:7.0.0");
+    assertEquals(
+        List.of("es717x", "es710x", "es70x"),
+        TestMatrixPolicy.modulesFor(root, Selection.READY_PR, Set.of()));
+  }
+
+  @Test
+  void aMajorKeepsItsModuleCountWhenSomeModulesAreUntested() {
+    // 10 modules, so the policy wants three. Five of them are untested, and it still wants three.
+    Project root =
+        rootWithModules(
+            "es717x:7.17.0",
+            "es716x:7.16.0",
+            "es714x:7.14.0",
+            "es711x:7.11.0",
+            "es710x:7.10.0",
+            "es79x:7.9.0",
+            "es78x:7.8.0",
+            "es77x:7.7.0",
+            "es74x:7.4.0",
+            "es73x:7.3.0");
+    assertEquals(3, TestMatrixPolicy.modulesFor(root, Selection.READY_PR, Set.of()).size());
+  }
+
+  @Test
+  void aMajorWhoseEveryModuleIsUntestedContributesNothing() {
+    Project root = rootWithModules("es94x:9.4.0", "es73x:7.3.0", "es74x:7.4.0");
+    assertEquals(List.of("es94x"), TestMatrixPolicy.modulesFor(root, Selection.ALL, Set.of()));
+  }
+
   private static Project rootWithModules(String... specs) {
     Project root = ProjectBuilder.builder().build();
     for (String spec : specs) {

@@ -1,15 +1,7 @@
-# Publishing, in a workflow of its own.
+# Publishing. A green CI run starts it, or an operator does.
 #
-# Two ways in, and they differ only in the trigger:
-#
-#   workflow_run       CI finished on develop or master, and every job of it passed
-#   workflow_dispatch  an operator releases without waiting for tests
-#
-# TWO TRAPS, both from `workflow_run` (see ci/CI.md):
-#   - `github.ref` and `github.sha` point at the DEFAULT branch, not at the commit CI tested. Every
-#     checkout below uses RELEASE_SHA, and the branch comes from RELEASE_BRANCH. Never `github.ref`.
-#   - GitHub fires `workflow_run` only for a copy of this file on the default branch (master). A
-#     change here does nothing until it lands there.
+# On a workflow_run, `github.ref` and `github.sha` name the default branch, not the commit CI
+# tested. Use RELEASE_SHA and RELEASE_BRANCH. Never `github.ref`. ci/CI.md holds the rest.
 name: Release
 
 on:
@@ -49,16 +41,9 @@ env:
 jobs:
 
   # ── RELEASE_SETUP ─────────────────────────────────────────────────────────
-  # May this run publish, and which branch is it publishing from?
-  #
-  # The first question is one line, because `workflow_run` reports CI as a single conclusion. The
-  # `event == 'push'` test matters: workflow_run also fires for CI runs on pull requests, whose
-  # head_branch can be anything, including a branch named develop.
-  #
-  # WHAT to publish is not settled here. That reads gradle.properties, and the build owns that —
-  # see the isPreReleaseVersion task, which `discover` runs.
-  #
-  # This job holds no container, and it cannot: it is the job that picks one.
+  # May this run publish, and from which branch? `discover` decides WHAT to publish.
+  # The `event == 'push'` test matters: workflow_run also fires for CI runs on pull requests, and a
+  # pull request head_branch can be any name. This job holds no container: it is the job that picks one.
   release_setup:
     if: >-
       github.event_name == 'workflow_dispatch' ||
@@ -74,10 +59,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
-      # Only the manual path needs a guard. The workflow_run path already carries a green CI run on
-      # a branch the trigger filtered.
-      #
-      # ci-lib.sh is the one reader of gradle.properties, by its own rule — a second parser drifts.
+      # Only the manual path needs a guard: the trigger already filtered the workflow_run path.
+      # ci-lib.sh is the one reader of gradle.properties, by its own rule.
       - name: Check the branch and the typed version
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -99,8 +82,7 @@ jobs:
       - id: branch
         run: |
           echo "is_master=$([ "$RELEASE_BRANCH" = master ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          # Two runs, and the Actions graph cannot draw an arrow between them. This is the
-          # breadcrumb back to the CI run that earned this release.
+          # Two runs, and the Actions graph draws no arrow between them. This links them.
           {
             echo "Branch: $RELEASE_BRANCH"
             echo "Commit: $RELEASE_SHA"
@@ -108,12 +90,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ── DISCOVER ──────────────────────────────────────────────────────────────
-  # What to publish, and for which ES generations. Both answers come from gradle: `printEsMajors`
-  # gives the majors, the same task ci.yml's discover uses, and `isPreReleaseVersion` decides
-  # upload_pre_ror against release_ror.
-  #
-  # This is also where the image is proven, with the check ci.yml's toolchains_verify runs. It is
-  # the first container job here, so a bad image stops one cheap job, not a self-hosted matrix.
+  # What to publish, and for which ES majors. Gradle answers both. This is also the first container
+  # job, so it verifies the image here: a bad image then stops one cheap job, not a self-hosted matrix.
   discover:
     needs: release_setup
     runs-on: ubuntu-latest
@@ -160,11 +138,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ── UPLOAD_PRE_ROR (pre-release versions, automatic path only) ────────────
-  # Self-hosted: gradle assembly plus S3/Docker Hub uploads. Long, IO-bound, low
-  # concurrency — the shape the ryzen box is good at, and the single largest Ubicloud line item
-  # (~3.8k minutes/month). Needs a registered self-hosted runner: see ci/self-hosted-runner.md.
-  #
-  # The manual path exists to cut a release. A pre-release build belongs to the automatic pipeline.
+  # Self-hosted: long, IO-bound gradle assembly plus S3 and Docker Hub uploads, and the largest
+  # Ubicloud line item (~3.8k minutes/month). Needs a runner: see ci/self-hosted-runner.md.
   upload_pre_ror:
     needs: [ release_setup, discover ]
     if: >-

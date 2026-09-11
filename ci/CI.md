@@ -17,11 +17,11 @@ has far more legs than the cap allows. Before you add a cap, or add legs, check 
 against every long job a develop push starts: `it_linux`, `it_windows`, `e2e_tests`, and the ROR
 KBN pre-build that `e2e_order_kbn_images` dispatches.
 
-**Some ES series have no test leg** — see `LINUX_IT_FULL_SET` in `ci.yml` for the current set.
+**Some ES modules are not tested** — `UNTESTED_MODULES` in `TestMatrixPolicy` holds the current set.
 They are still **built and published** on every release: `build_es7xx` and `release_es7xx`
 enumerate modules with the `printEsModules` Gradle task, which reads `settings.gradle`, not the CI
-matrix. Only integration-test coverage is gone, so a regression specific to one of those series
-ships untested.
+matrix. Only integration-test coverage is gone, so a regression specific to one of those modules
+ships untested. Removing a name from that set gives it its tests back, and costs runner minutes.
 
 The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standalone
 `mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
@@ -244,8 +244,11 @@ module in the middle of that major's list, newest first.
 | Ready PR | Fewer than 10 modules: oldest and newest. 10 or more modules: oldest, middle, and newest | Newest module for each ES major version | Newest module for each ES major version |
 | `develop`, `master`, or `epic/**` | All modules | Oldest and newest modules for each ES major version | Newest module for each ES major version |
 
-Windows integration tests and E2E tests do not run on ES 6. If a major version has only one module,
-it is selected once. Manual actions can select the full supported Linux or Windows matrix. To release with no tests at
+Windows integration tests and E2E tests do not run on ES 6. The modules in `UNTESTED_MODULES` run on
+neither platform. A selection still picks oldest, middle and newest by how many modules the major
+holds, and an untested pick moves to the nearest module that is tested — so the exclusion changes
+which modules run, never how many. If a major
+version has only one module, it is selected once. Manual actions can select the full supported Linux or Windows matrix. To release with no tests at
 all, use the `manual-release.yml` workflow, not this one.
 
 To see what a change does to the matrices, run `./gradlew printTestMatrices --quiet`. To change the

@@ -20,10 +20,12 @@ package tech.beshu.ror.gradle.utils;
 import org.gradle.api.Project;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Which ES modules a test run covers. See "Test matrix policy" in ci/CI.md, which this class
@@ -36,22 +38,30 @@ import java.util.Set;
 public final class TestMatrixPolicy {
 
   /**
-   * A ready PR runs a middle module too, once a major holds this many. Below it, oldest and newest
+   * A ready PR adds a middle module once a major holds this many. Below it, oldest and newest
    * already sit close together.
    */
   private static final int MIDDLE_MODULE_THRESHOLD = 10;
+
+  /**
+   * ES modules that no integration test covers, on Linux or on Windows. They are still built and
+   * published, because {@code build_ror} and the release tasks group by major and enumerate modules
+   * with {@code printEsModules}. So a regression specific to one of these modules ships untested.
+   *
+   * <p>This is a choice about cost, not a fact the build can derive, which is why it is written
+   * down. Removing a name here gives that module its tests back, and costs runner minutes.
+   */
+  private static final Set<String> UNTESTED_MODULES =
+      Set.of("es73x", "es74x", "es79x", "es711x", "es714x");
 
   private TestMatrixPolicy() {}
 
   /** How much of one ES major a test family covers. */
   public enum Selection {
-    /** Every module. */
     ALL,
-    /** The newest module only. */
     NEWEST,
-    /** The newest and the oldest module. */
     OLDEST_AND_NEWEST,
-    /** Newest and oldest, plus a middle module once the major holds enough of them. */
+    /* Newest and oldest, plus a middle module once the major holds enough of them. */
     READY_PR
   }
 
@@ -62,39 +72,75 @@ public final class TestMatrixPolicy {
    */
   public static List<String> modulesFor(
       Project rootProject, Selection selection, Set<Integer> skippedMajors) {
-    List<String> selected = new ArrayList<>();
-    for (Integer esMajor : EsModuleFinder.allSupportedEsMajors(rootProject)) {
-      if (skippedMajors.contains(esMajor)) {
-        continue;
-      }
-      selected.addAll(
-          select(EsModuleFinder.esModuleNamesForMajor(rootProject, esMajor), selection));
-    }
-    return selected;
+    return EsModuleFinder.allSupportedEsMajors(rootProject).stream()
+        .filter(esMajor -> !skippedMajors.contains(esMajor))
+        .map(esMajor -> EsModuleFinder.esModuleNamesForMajor(rootProject, esMajor))
+        .flatMap(modulesOfMajor -> select(modulesOfMajor, selection).stream())
+        .collect(Collectors.toList());
   }
 
   /**
-   * The modules a selection covers inside one ES major. A major with one module gives that module
-   * once, whatever the selection asks for.
+   * The modules a selection covers inside one ES major.
    *
    * @param modulesNewestFirst the modules of one ES major, newest first
    */
   public static List<String> select(List<String> modulesNewestFirst, Selection selection) {
-    int moduleCount = modulesNewestFirst.size();
-    if (moduleCount == 0) {
+    if (modulesNewestFirst.isEmpty()) {
       throw new IllegalArgumentException("An ES major with no module cannot be selected from");
     }
-    if (selection == Selection.ALL) {
-      return new ArrayList<>(modulesNewestFirst);
-    }
-    if (selection == Selection.NEWEST || moduleCount == 1) {
-      return Collections.singletonList(modulesNewestFirst.get(0));
-    }
-    String newest = modulesNewestFirst.get(0);
-    String oldest = modulesNewestFirst.get(moduleCount - 1);
-    if (selection == Selection.OLDEST_AND_NEWEST || moduleCount < MIDDLE_MODULE_THRESHOLD) {
-      return Arrays.asList(newest, oldest);
-    }
-    return Arrays.asList(newest, modulesNewestFirst.get(moduleCount / 2), oldest);
+    return modulesAt(modulesNewestFirst, wantedPositions(modulesNewestFirst.size(), selection));
+  }
+
+  /**
+   * Where in the major a selection wants its modules, counting from the newest. How many positions
+   * there are follows from how many modules the major HOLDS, never from how many are tested.
+   * {@link #modulesAt} then takes each module once, so a repeated position yields one module.
+   */
+  private static IntStream wantedPositions(int moduleCount, Selection selection) {
+    int oldest = moduleCount - 1;
+    return switch (selection) {
+      case ALL -> IntStream.range(0, moduleCount);
+      case NEWEST -> IntStream.of(0);
+      case OLDEST_AND_NEWEST -> IntStream.of(0, oldest);
+      case READY_PR ->
+          moduleCount < MIDDLE_MODULE_THRESHOLD
+              ? IntStream.of(0, oldest)
+              : IntStream.of(0, moduleCount / 2, oldest);
+    };
+  }
+
+  /**
+   * One module per wanted position, in the order asked for. A position on an untested module, or
+   * on one an earlier position took, moves to the nearest free module. A position with nothing
+   * free left yields nothing.
+   */
+  private static List<String> modulesAt(
+      List<String> modulesNewestFirst, IntStream wantedPositions) {
+    List<String> taken = new ArrayList<>();
+    wantedPositions.forEach(
+        wanted -> nearestTested(modulesNewestFirst, wanted, taken).ifPresent(taken::add));
+    return taken;
+  }
+
+  private static Optional<String> nearestTested(
+      List<String> modulesNewestFirst, int wanted, List<String> alreadyTaken) {
+    return positionsNearest(wanted, modulesNewestFirst.size())
+        .mapToObj(modulesNewestFirst::get)
+        .filter(module -> isTested(module) && !alreadyTaken.contains(module))
+        .findFirst();
+  }
+
+  /** Every position, the nearest to {@code wanted} first, and the newer of two equally near ones. */
+  private static IntStream positionsNearest(int wanted, int moduleCount) {
+    return IntStream.range(0, moduleCount)
+        .boxed()
+        .sorted(
+            Comparator.comparingInt((Integer position) -> Math.abs(position - wanted))
+                .thenComparing(Comparator.naturalOrder()))
+        .mapToInt(Integer::intValue);
+  }
+
+  private static boolean isTested(String module) {
+    return !UNTESTED_MODULES.contains(module);
   }
 }

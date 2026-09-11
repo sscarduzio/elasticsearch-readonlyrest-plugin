@@ -67,11 +67,9 @@ tasks.register("printEsModules", PrintEsModulesTask)
 // Usage: ./gradlew printTestMatrices --quiet
 tasks.register("printTestMatrices", PrintTestMatricesTask)
 
-// Prints every ES major ROR builds, one per line, newest first. A module counts for the major of its
-// NEWEST supported version, which is the rule `printEsModules` uses. CI builds its build, upload and
-// release matrices from this list, so a new major needs no CI edit.
-// Like `printEsModules`, it also writes build/es-modules/es-majors.txt. Scripts must read that file.
-// Configuration-time logging can pollute stdout even under --quiet.
+// Prints every ES major ROR builds, one per line, newest first, and writes them to
+// build/es-modules/es-majors.txt. Scripts must read that file: configuration-time logging can
+// pollute stdout even under --quiet. CI builds its matrices from this, so a new major needs no edit.
 // Usage: ./gradlew printEsMajors --quiet
 tasks.register("printEsMajors") {
     group = 'help'
@@ -87,8 +85,7 @@ tasks.register("printEsMajors") {
 }
 
 // Is the configured pluginVersion a pre-release? Prints `true` or `false`, and nothing else.
-// A `-pre` suffix means the build uploads a pre-release; anything else means it releases.
-// Change the convention, change this task.
+// A `-pre` suffix uploads a pre-release; anything else releases. Change the convention here.
 // Usage: ./gradlew isPreReleaseVersion --quiet
 tasks.register("isPreReleaseVersion") {
     group = 'help'

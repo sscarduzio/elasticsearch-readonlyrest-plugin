@@ -44,8 +44,7 @@ defaults:
     shell: bash
 
 env:
-  # TOOLCHAINS_IMAGE is not here. It lives in ci/toolchains/image.env, which the two jobs that
-  # need it source. One file holds the tag, and every workflow reads that file.
+  # TOOLCHAINS_IMAGE is not here. Every workflow reads the tag from ci/toolchains/image.env.
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
   # 4 shards per leg + HeavySuiteGate (max 2 concurrent multi-cluster suites, machine-wide).
@@ -57,19 +56,9 @@ env:
 jobs:
 
   # ── CI_SETUP ──────────────────────────────────────────────────────────────
-  # The two facts every later job asks for: which image to pull, and what kind of run this is.
-  #
-  # The image. This job holds no container, and it cannot hold one: it is the job that picks it.
-  #
-  # The run flags. A job-level `if:` cannot read the `env` context, so a predicate that more than one
-  # job asks about has to be a job output. Each is named for what it decides, and none of them is a
-  # synonym of another: the full matrix also covers epic/**, a release covers develop and master,
-  # and Maven publishing covers master alone; a test family runs on every automatic run plus the one
-  # manual action that asks for it, while a manual-only job matches no automatic run at all.
-  # ci/CI.md holds the table.
-  #
-  # Every job `if:` reads one of these and compares it against the string 'true'. An output is a
-  # string, so the bare value is also truthy when it holds "false".
+  # Which image to pull, and what kind of run this is. A job-level `if:` cannot read the `env`
+  # context, so each flag below is a job output. Every job `if:` compares one against 'true'.
+  # ci/CI.md names each flag and what reads it.
   ci_setup:
     runs-on: ubuntu-latest   # trivial job; GH-hosted so it runs even if the Ubicloud app is down
     outputs:
@@ -154,12 +143,9 @@ jobs:
       - uses: ./.github/actions/verify-toolchains-image
 
   # ── DISCOVER ──────────────────────────────────────────────────────────────
-  # What this run covers: the ES majors the release jobs build, and the modules each test family
-  # tests. Both come from the modules that exist, through `printEsMajors` and `printTestMatrices`,
-  # so a new module or a new major joins every matrix by itself. The rule is TestMatrixPolicy, and
-  # ci/CI.md states it in prose.
-  #
-  # It emits one ready matrix per fan-out job, so a leg a run does not cover never boots a runner.
+  # Which ES majors to build, and which modules each test family covers. TestMatrixPolicy decides,
+  # so a new module joins every matrix by itself. One ready matrix per fan-out job: an empty one
+  # skips its job, so a leg a run does not cover never boots a runner.
   discover:
     needs: [ ci_setup, toolchains_verify ]
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
