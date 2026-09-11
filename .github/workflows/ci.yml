@@ -8,9 +8,6 @@ on:
       - '.claude/**'
       - '**/*.md'
   pull_request:
-    # Draft PRs run a reduced test matrix, so marking a draft "ready for review" must start a run
-    # with the full PR matrix. That only happens if ready_for_review is listed here — it is not
-    # part of the default trigger types (opened, synchronize, reopened).
     types: [ opened, synchronize, reopened, ready_for_review ]
     branches: [ master, develop, 'epic/**', '**/epic/**' ]
     paths-ignore:
@@ -44,13 +41,8 @@ defaults:
     shell: bash
 
 env:
-  # TOOLCHAINS_IMAGE is not here. Every workflow reads the tag from ci/toolchains/image.env.
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  # 4 shards per leg + HeavySuiteGate (max 2 concurrent multi-cluster suites, machine-wide).
-  # k=5 was measured faster on es94x (20.6 vs ~21.3 min) but host-OOM'd 4 of 10 modules on the
-  # full-matrix run (es80x/es810x/es818x/es90x, exit 137) — those legs run suites es94x excludes,
-  # so their memory peaks are higher. Fleet wall time is set by the slowest leg anyway: k=4.
   IT_PARALLELISM: '4'
 
 jobs:

@@ -62,8 +62,6 @@ tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
 // Usage: ./gradlew printEsModules -PesMajor=8 --quiet
 tasks.register("printEsModules", PrintEsModulesTask)
 
-// Builds every test matrix of ci.yml from the modules that exist, so a new module joins the matrices by
-// itself. The rule is TestMatrixPolicy; ci/CI.md states it in prose.
 // Usage: ./gradlew printTestMatrices --quiet
 tasks.register("printTestMatrices", PrintTestMatricesTask)
 

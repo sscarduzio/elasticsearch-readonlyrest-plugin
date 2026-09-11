@@ -267,7 +267,7 @@ tag() {
   git config --global user.email "support@readonlyrest.com"
   git config --global user.name "CI"
   # -f overwrites any stale local tag from a previous failed push attempt
-  git tag -fa "$GIT_TAG" -m "Generated tag from CI build $TRAVIS_BUILD_NUMBER"
+  git tag -fa "$GIT_TAG" -m "Generated tag from CI build $CI_BUILD_NUMBER"
   git push origin "$GIT_TAG"
   return 0
 }

@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      image:     ${{ steps.toolchains.outputs.image }}
+      image: ${{ steps.toolchains.outputs.image }}
       is_master: ${{ steps.branch.outputs.is_master }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -99,7 +99,7 @@ jobs:
       image: ${{ needs.release_setup.outputs.image }}
     timeout-minutes: 10
     outputs:
-      majors_matrix:      ${{ steps.plan.outputs.majors_matrix }}
+      majors_matrix: ${{ steps.plan.outputs.majors_matrix }}
       is_release_version: ${{ steps.plan.outputs.is_release_version }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -110,17 +110,13 @@ jobs:
       - id: plan
         run: |
           set -eo pipefail
-
-          # printEsMajors writes a file, because a list is easy to pollute. Read that, not stdout.
+          
           MAJORS_FILE=build/es-modules/es-majors.txt
-          # No major means nothing gets published. That must fail, not pass quietly.
           [ -s "$MAJORS_FILE" ] || { echo "::error::printEsMajors wrote no ES major."; exit 1; }
+          
           # ["9", ...] -> {"include":[{"ES_MAJOR":"9"}, ...]}, the matrix both jobs below read.
           MAJORS=$(awk 'BEGIN { printf "[" } { printf "%s\"%s\"", (NR > 1 ? "," : ""), $0 } END { print "]" }' "$MAJORS_FILE")
 
-          # isPreReleaseVersion prints one word. Configuration-time logging can still reach stdout
-          # under -q, so take the last line and refuse anything that is not the answer. A wrong
-          # value here would publish a release as a pre-release, or the reverse.
           IS_PRE=$(./gradlew --no-daemon -q isPreReleaseVersion | tail -n 1)
           case "$IS_PRE" in
             true|false) ;;
@@ -138,14 +134,12 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ── UPLOAD_PRE_ROR (pre-release versions, automatic path only) ────────────
-  # Self-hosted: long, IO-bound gradle assembly plus S3 and Docker Hub uploads, and the largest
-  # Ubicloud line item (~3.8k minutes/month). Needs a runner: see ci/self-hosted-runner.md.
   upload_pre_ror:
     needs: [ release_setup, discover ]
     if: >-
       needs.discover.outputs.is_release_version == 'false' &&
       github.event_name == 'workflow_run'
-    runs-on: &self_hosted_runner [self-hosted, Linux, X64]
+    runs-on: &self_hosted_runner [ self-hosted, Linux, X64 ]
     container: *toolchains_container
     timeout-minutes: 600
     strategy:
@@ -156,6 +150,8 @@ jobs:
         with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
       - name: upload_pre_plugins
         env:
+          ROR_TASK: upload_pre_plugins
+          ES_MAJOR: ${{ matrix.ES_MAJOR }}
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
           ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
           ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
@@ -163,8 +159,6 @@ jobs:
           ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
           ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
-          ROR_TASK: upload_pre_plugins
-          ES_MAJOR: ${{ matrix.ES_MAJOR }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
@@ -173,8 +167,6 @@ jobs:
           ci/run-pipeline.sh
 
   # ── RELEASE_ROR (release versions) ────────────────────────────────────────
-  # Self-hosted, same reasoning as upload_pre_ror: ~2.2k Ubicloud minutes/month of
-  # assembly and upload. See ci/self-hosted-runner.md.
   release_ror:
     needs: [ release_setup, discover ]
     if: needs.discover.outputs.is_release_version == 'true'
@@ -191,6 +183,9 @@ jobs:
         with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: true }
       - name: release_plugins
         env:
+          ROR_TASK: release_plugins
+          ES_MAJOR: ${{ matrix.ES_MAJOR }}
+          CI_BUILD_NUMBER: ${{ github.run_number }}
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
           ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
           ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
@@ -198,12 +193,8 @@ jobs:
           ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
           ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
-          ROR_TASK: release_plugins
-          ES_MAJOR: ${{ matrix.ES_MAJOR }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-          # ci-lib.sh still uses this legacy variable name in the release tag message.
-          TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -e
           source ci/configure-docker.sh

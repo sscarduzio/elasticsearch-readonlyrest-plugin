@@ -195,7 +195,7 @@ build_ror_plugins() {
   # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
   local modules
   modules=$(list_es_modules "$es_major") || { echo "ERROR: cannot list es${es_major}x modules"; return 1; }
-  # An empty list would loop zero times and return 0: a job that built nothing, and reported green.
+
   if [ -z "$modules" ]; then
     echo "ERROR: no es${es_major}x module to build; ES $es_major has no module owning it"
     return 1

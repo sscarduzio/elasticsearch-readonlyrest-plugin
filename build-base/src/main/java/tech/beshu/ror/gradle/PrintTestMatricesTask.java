@@ -34,14 +34,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Builds every test matrix of ci.yml from the modules that exist: printed as {@code name=[...]} for
- * humans, AND written to {@code build/ci-matrices/<name>.json} for the workflow. Read the files.
- * Configuration-time logging can pollute stdout even under {@code --quiet}.
+ * Builds every test matrix from the modules that exist, so a new module joins by itself: printed as
+ * {@code name=[...]} for humans, AND written to {@code build/ci-matrices/<name>.json} for the
+ * workflow. The workflow must read the files -- never parse the stdout, which any
+ * configuration-time build-script logging can pollute even under {@code --quiet}.
  *
- * <p>The workflow decides which matrix a run takes, because only it knows the branch and the event.
- * This task decides what each matrix holds. See "Test matrix policy" in ci/CI.md.
- *
- * <p>Usage: {@code ./gradlew printTestMatrices --quiet}
+ * <p>This task decides what each matrix holds, never which matrix a run takes.
+ * Usage: {@code ./gradlew printTestMatrices --quiet}
  */
 public class PrintTestMatricesTask extends DefaultTask {
 
