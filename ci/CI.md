@@ -52,6 +52,7 @@ directory contain the build logic; the workflow only orchestrates.
 | `e2e_tests` | Cypress e2e suite, one job per ES version | pushes + PRs (not drafts) |
 | `build_ror` | builds all plugin zips + bytecode-reuse guard | PRs |
 | `determine_ci_type` → `upload_pre_ror` / `release_ror` / `publish_mvn` | release pipeline | develop/master pushes + manual `release_without_testing` |
+| `notify_e2e_tests` | tells the e2e tests repo that the released images are published | every `release_ror` leg green |
 
 Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
 `run_all_tests_on_windows`, `run_e2e_tests`, `release_without_testing`.
@@ -194,6 +195,22 @@ S3, not GitHub artifacts: those count against the metered Actions-storage quota.
 Needs `ROR_ENT_ACTIVATION_TOKEN` (the suite refuses to start without it) and `ROR_GH_TOKEN` (to
 dispatch the ROR KBN build and read its status).
 
+### Telling the e2e repo about a release
+
+The e2e repo also runs a bootstrap sweep: it boots every released ELK version against the released
+`<elk>-ror-latest` images and checks that the stack starts. Those tags are its only input, and only
+a release moves them, so the sweep waits for an event instead of a cron.
+
+`notify_e2e_tests` sends that event: `POST /repos/beshu-tech/readonlyrest-e2e-tests/dispatches` with
+`event_type: ror-plugins-released`, from `ci/notify-e2e-tests.sh`. The payload carries the plugin
+version and the run that sent it, for the reader of the sweep's log. The receiver reads nothing from
+it, so a new key breaks nothing.
+
+`ROR_GH_TOKEN` needs write access to the e2e repo for this call. GitHub answers 404, not 403, to a
+token without it. The script treats every failure as a warning and exits 0: the release is published
+by then, and a red run would say it is not. The log line names the manual command that starts the
+sweep.
+
 ## S3 stores
 
 ROR uploads to S3-compatible stores through one path: `ci/s3-uploader.sh` (curl + SigV4) under
@@ -233,7 +250,7 @@ build cannot compile against jars that are not in the store yet.
 | `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `configure-docker.sh` reads |
 | `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. `unit_tests_linux` and `it_linux` map it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which authenticates the pulls their steps make. No `container:` pull uses it, because the runner makes that pull before step 1. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
 | `ROR_ENT_ACTIVATION_TOKEN` | ROR PRO/Enterprise key the e2e stack boots with. **The secret is renamed; the env var handed to the container stays `ROR_ACTIVATION_KEY`, which is the customer-facing name** |
-| `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, pushes docs |
+| `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, sends the release event to the e2e tests repo, pushes docs |
 | `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |
 | `MAVEN_REPO_USER`, `MAVEN_REPO_PASSWORD`, `MAVEN_STAGING_PROFILE_ID`, `GPG_KEY_ID`, `GPG_PASSPHRASE` | Maven Central publishing |
 | `PGP_SECRET_KEY_B64` | base64 of `secret.pgp`; the publish step decodes it to `.travis/secret.pgp`. Create with `base64 -w0 secret.pgp \| gh secret set PGP_SECRET_KEY_B64` |

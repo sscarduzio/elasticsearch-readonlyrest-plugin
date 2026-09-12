@@ -959,3 +959,22 @@ jobs:
       - name: Remove the PGP signing key
         if: always()
         run: rm -f .travis/secret.pgp
+
+  # ── NOTIFY_E2E_TESTS (after a successful release) ─────────────────────────
+  # The bootstrap sweep in the e2e tests repo boots every released ELK version against the
+  # `<elk>-ror-latest` images. release_ror is what moves those tags, so the sweep starts from this
+  # event instead of a nightly cron that asks the same question 30 times between two releases.
+  # No `if:`, on purpose: the default gate is "every release_ror leg succeeded", which is exactly
+  # when the tags moved. A skipped or failed release_ror skips this job too.
+  notify_e2e_tests:
+    needs: [ release_ror ]
+    runs-on: ubuntu-latest   # one HTTP call; no gradle, no docker, so it costs no self-hosted minute
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: Notify the e2e tests repo
+        env:
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+        run: ci/notify-e2e-tests.sh
