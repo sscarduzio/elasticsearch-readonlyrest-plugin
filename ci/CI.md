@@ -28,11 +28,18 @@ The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standa
 they push images and run for hours. `build-toolchains-image.yml` stays on `ubicloud-standard-4`.
 
 **Every job calls `ci/free-host-disk.sh` right after checkout**, including a new one. The script
-detects the runner and decides whether to reclaim disk; a job never decides that for it. On a
-Windows job there is no equivalent step.
+detects the runner and decides whether to reclaim disk; a job never decides that for it. A Windows
+job instead calls `./.github/actions/setup-windows-job` right after checkout — the Defender
+exclusions, the JDK of the wrapper and the gradle home cache, which a Windows job must not miss
+one of. The checkout stays in the job: a local action is resolvable only once the repository is on
+disk.
 
 Every Linux job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this
-directory contain the build logic; the workflow only orchestrates.
+directory contain the build logic; the workflow only orchestrates. `it_windows` calls the same
+`integration_<module>` task through the Git Bash of the runner, so both platforms read one
+definition of the leg; what the two do differently sits behind `is_windows`
+(`ci/runner-detect.sh`): gradle provisions its own JDKs, the build cache of the runner is read,
+and the `ror-tools:test` gate is left to `unit_tests_windows`.
 
 ## Jobs
 
@@ -260,8 +267,9 @@ itself changes.
 
 ## Integration-test parallelism
 
-Each IT leg runs **4 sharded test JVMs** on its VM (Windows: 3), orchestrated by
-`integration-tests:shardedTest` (`IT_PARALLELISM` → `-PshardCount`). Suites are
+Each IT leg runs **4 sharded test JVMs** on its VM (Windows: 3, set by a job-level
+`IT_PARALLELISM`), orchestrated by `integration-tests:shardedTest` (`IT_PARALLELISM` →
+`-PshardCount`). Suites are
 partitioned by `SuiteSharder` (build-base; unit-tested), packed by measured duration
 (`integration-tests/suite-timings.json`, `ROR_BALANCED_SHARDS`) so no shard becomes the
 long pole. Two things make this fit a 16 GB box:

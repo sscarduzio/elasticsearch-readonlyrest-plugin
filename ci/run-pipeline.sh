@@ -147,7 +147,25 @@ run_integration_tests() {
   local esArgs=("-PesModule=$ES_MODULE")
   [ -n "$ES_VERSION" ] && esArgs+=("-PesVersion=$ES_VERSION")
 
-  echo ">>> $ES_MODULE => ror-tools:test (serial gate) + integration-tests:shardedTest (${parallelism} shard(s)).."
+  # Windows runs the same task, and only these differ:
+  #  * installations.paths of gradle.properties holds the Linux toolchains-image JDK paths, so
+  #    gradle must provision its own instead;
+  #  * the build cache of the runner is worth reading, because no toolchains image warms it.
+  local platformArgs=()
+  if is_windows; then
+    platformArgs+=(
+      --build-cache
+      -Dorg.gradle.java.installations.paths=
+      -Dorg.gradle.java.installations.auto-download=true
+    )
+  fi
+
+  # ror-tools:test is skipped on Windows: it took ~10 min per leg there, and every ES node install
+  # of the suites already exercises the patcher end to end. unit_tests_windows still runs it once.
+  local runToolsGate=true
+  is_windows && runToolsGate=false
+
+  echo ">>> $ES_MODULE => ror-tools:test gate: $runToolsGate, integration-tests:shardedTest (${parallelism} shard(s)).."
 
   # Each gradle invocation runs in its OWN process group (setsid) so the trap can reap the whole tree;
   # appends the leader PID to GRADLE_PIDS (never pruned) and sets LAST_PID for the caller.
@@ -158,17 +176,25 @@ run_integration_tests() {
     # this one does not. The leg already holds, on a 16GB runner:
     #   K shard JVMs        K x (1024m heap + 512m metaspace)   (capped in ShardedGradlewTest)
     #   K test workers      K x 512m heap                       (itTestHeap)
-    #   >= K ES containers  512m heap each, ~1.1GB RSS each
+    #   >= K ES nodes       512m heap each, ~1.1GB RSS each     (containers; native on Windows)
     # At K=4 that is already ~15GB, so a 6GB orchestrator ceiling on top is what tips the host into
     # OOM. A crashed daemon in integration_es80x reported daemonOpts=-Xmx6144m (RORDEV-2156).
-    setsid ./gradlew --no-daemon -Dorg.gradle.jvmargs="$IT_ORCHESTRATOR_JVMARGS" "$@" &
+    #
+    # Git Bash carries no setsid, thus no process group to signal on Windows. The SIGTERM trap
+    # still kills the leader; the runner ends the VM anyway, and the VM is ephemeral.
+    local launcher=()
+    command -v setsid >/dev/null 2>&1 && launcher=(setsid)
+    "${launcher[@]}" ./gradlew --no-daemon -Dorg.gradle.jvmargs="$IT_ORCHESTRATOR_JVMARGS" "${platformArgs[@]}" "$@" &
     LAST_PID=$!; GRADLE_PIDS+=("$LAST_PID")
   }
 
   # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the CI job). Also warms :build-base/:buildSrc.
-  run_one ror-tools:test
-  wait "$LAST_PID"; local rc=$?
-  if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
+  local rc=0
+  if [ "$runToolsGate" = true ]; then
+    run_one ror-tools:test
+    wait "$LAST_PID"; rc=$?
+    if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
+  fi
 
   # 2) All sharding orchestration lives in integration-tests:shardedTest (see its build.gradle):
   #    prebuild barrier via task deps, K child ./gradlew spawn/wait, ProcessHandle kill on cancel.

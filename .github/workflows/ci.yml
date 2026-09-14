@@ -34,8 +34,6 @@ concurrency:
 permissions:
   contents: read
 
-# Container jobs default run: steps to `sh`, where `source` (configure-docker.sh) fails with 127.
-# Windows jobs are unaffected — their steps declare `shell: pwsh` explicitly.
 defaults:
   run:
     shell: bash
@@ -286,11 +284,9 @@ jobs:
           ci/run-pipeline.sh
       - name: Publish test results
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/publish-test-results
         with:
-          name: unit-test-results
-          path: '**/TEST*.xml'
-          if-no-files-found: ignore
+          id: unit-test
 
   # ── TEST: Linux integration tests (GitHub-hosted) ─────────────────────────
   it_linux:
@@ -343,57 +339,38 @@ jobs:
       - name: Publish test results
         # always(): green-run XMLs feed suite-timings.json regeneration (duration-balanced sharding)
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/publish-test-results
         with:
-          name: it-linux-${{ matrix.ES_MODULE }}-results
-          path: '**/TEST*.xml'
-          if-no-files-found: ignore
-      - name: Shard logs (browsable)
-        if: always()
-        run: |
-          for f in integration-tests/build/sharded-logs/shard-*.log; do
-            [ -f "$f" ] || continue
-            echo "::group::$(basename "$f")"
-            cat "$f"
-            echo "::endgroup::"
-          done
+          id: it-linux-${{ matrix.ES_MODULE }}
       - name: Memory telemetry report
         if: always()
         uses: ./.github/actions/mem-telemetry-report
         with:
           id: ${{ matrix.ES_MODULE }}
           log-dir: integration-tests/build
+      # es90x is the reference leg: the first ES 9 module, and thus a stable baseline.
       - name: Suite-timings drift check
         if: always() && matrix.ES_MODULE == 'es90x'
-        run: ./gradlew integration-tests:regenerateSuiteTimings || true
-      - name: Publish regenerated suite timings
-        if: always() && matrix.ES_MODULE == 'es90x'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: suite-timings-regenerated
-          path: integration-tests/build/suite-timings-regenerated.json
-          if-no-files-found: ignore
-      - name: Publish per-shard logs
+        uses: ./.github/actions/suite-timings-drift
+      - name: Shard logs
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/shard-logs
         with:
-          name: sharded-logs-it-linux-${{ matrix.ES_MODULE }}
-          path: integration-tests/build/sharded-logs/
-          if-no-files-found: ignore
-
+          id: it-linux-${{ matrix.ES_MODULE }}
+          log-dir: integration-tests/build/sharded-logs
 
   # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
   it_windows:
-    # "it_win_es94x", not the truncated "it_windows (es94x)" composite, in the graph view. Same
-    # <leg>_<module> shape as it_linux_* and e2e_*, so the three test legs sort together.
     name: it_win_${{ matrix.ES_MODULE }}
-    # toolchains_verify is in needs even though Windows doesn't use the image, so a broken image
-    # fails fast instead of running doomed legs.
     needs: [ discover, toolchains_verify ]
     runs-on: windows-2025
     timeout-minutes: 150
-    # Clear the Linux toolchains-image Gradle settings at job scope; the workflow-level
-    # GRADLE_USER_HOME=/opt/gradle-home would otherwise leak into gradlew here.
+    # Clear the Linux toolchains-image Gradle settings. This belongs at job scope and cannot move
+    # into setup-windows-job: an action writes GITHUB_ENV, and a workflow-level `env:` outranks
+    # that. Empty, and not a path: gradle reads a blank GRADLE_USER_HOME as absent and falls back
+    # to ~/.gradle, which is where setup-gradle restores the cache. The workflow-level
+    # /opt/gradle-home would resolve to an empty \opt\gradle-home here, and the
+    # auto-download=false of its GRADLE_OPTS would fight the JDK provisioning the leg asks for.
     env:
       GRADLE_USER_HOME: ''
       GRADLE_OPTS: ''
@@ -402,80 +379,38 @@ jobs:
       max-parallel: 10
       matrix: ${{ fromJSON(needs.discover.outputs.it_windows_matrix) }}
     steps:
-      - name: Exclude workspace from Windows Defender
-        shell: pwsh
-        # Real-time AV scanning taxes every file write; our tests write hundreds of thousands
-        # (ES unzips, node data dirs). Standard CI mitigation; runner VMs are ephemeral.
-        run: |
-          Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE"
-          Add-MpPreference -ExclusionPath "$env:RUNNER_TEMP"
-          Add-MpPreference -ExclusionProcess "java.exe"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
-        with: { distribution: temurin, java-version: '21' }
-      # Windows has no baked toolchains image: without this every leg cold-downloads the wrapper,
-      # deps + JDKs and cold-compiles Scala (~9 min). Develop runs write the cache; PRs read it.
-      # jdks: not in the action's default include set, but auto-download=true provisions there.
-      - uses: gradle/actions/setup-gradle@da187c8e6ffbd3802e00f2477aa5a822b25f2dda
-        with:
-          gradle-home-cache-includes: |
-            caches
-            notifications
-            jdks
-      - name: ${{ matrix.ES_MODULE }}
-        shell: pwsh
+      - uses: ./.github/actions/setup-windows-job
+      - name: integration_${{ matrix.ES_MODULE }}
+        # bash, not pwsh: the leg runs the same ci/run-pipeline.sh task as the Linux one, and
+        # windows-2025 carries Git Bash. Everything the two platforms do not share lives in that
+        # script, behind is_windows.
+        shell: bash
         env:
+          ROR_TASK: integration_${{ matrix.ES_MODULE }}
+          IT_PARALLELISM: '3'
+          ROR_BALANCED_SHARDS: 'true'
+          ROR_HEAVY_SUITE_PERMITS: '2'
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
           ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
           ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
           ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
           ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
-          ES_MODULE: ${{ matrix.ES_MODULE }}
-          # level packing (the random split gave 15/29/23 suites) + memory gate for native-ES spikes
-          ROR_BALANCED_SHARDS: 'true'
-          ROR_HEAVY_SUITE_PERMITS: '2'
-        run: |
-          # Override the Linux gradle.properties installations.paths and let Windows auto-provision JDKs.
-          # Sharded (3 workers) — same trick as the Linux legs; ES runs as native processes on
-          # Windows (no docker), 3 fit the 16GB box. 4 workers measured no faster (CPU-bound).
-          # ror-tools:test is NOT run per-leg: it took ~10 min/leg and every node install already
-          # exercises the patcher end-to-end; the suite still runs via unit_tests_windows.
-          # Cap the orchestrator heap for the same reason as the Linux legs (RORDEV-2156): it only
-          # spawns the shard processes, but without this it inherits gradle.properties' -Xmx6144m,
-          # on a 16GB box that already holds 3 shard JVMs, 3 test workers and 3 native ES nodes.
-          $gradleArgs = "--no-daemon", "--build-cache", "integration-tests:shardedTest", "-PshardCount=3", "-PesModule=$env:ES_MODULE",
-            "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m",
-            "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
-          .\gradlew @gradleArgs
-          if ($LASTEXITCODE -ne 0) {
-            Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object { Get-Content $_.FullName }
-            exit 1
-          }
+        run: ci/run-pipeline.sh
       - name: Publish test results
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: it-win-${{ matrix.ES_MODULE }}-results
-          path: '**/TEST*.xml'
-          if-no-files-found: ignore
-      - name: Shard logs (browsable)
+        # always(), as on the Linux legs: a green run also publishes its XMLs.
         if: always()
-        shell: pwsh
-        run: |
-          Get-ChildItem integration-tests/build/sharded-logs -Filter shard-*.log -ErrorAction SilentlyContinue | ForEach-Object {
-            Write-Output "::group::$($_.Name)"
-            Get-Content $_.FullName
-            Write-Output "::endgroup::"
-          }
-      - name: Publish per-shard logs
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/publish-test-results
         with:
-          name: sharded-logs-it-win-${{ matrix.ES_MODULE }}
-          path: integration-tests/build/sharded-logs/
-          if-no-files-found: ignore
+          id: it-win-${{ matrix.ES_MODULE }}
+      - name: Shard logs
+        if: always()
+        uses: ./.github/actions/shard-logs
+        with:
+          id: it-win-${{ matrix.ES_MODULE }}
+          log-dir: integration-tests/build/sharded-logs
 
 
   # ── TEST: unit tests on Windows (manual run_all_tests_on_windows only) ────
@@ -487,14 +422,14 @@ jobs:
     if: needs.ci_setup.outputs.manual_action == 'run_all_tests_on_windows'
     runs-on: windows-2025
     timeout-minutes: 150
+    # Same reason as it_windows, and the same reason it cannot live in setup-windows-job.
     env:
       GRADLE_USER_HOME: ''
       GRADLE_OPTS: ''
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
-        with: { distribution: temurin, java-version: '21' }
+      - uses: ./.github/actions/setup-windows-job
       - name: core:test on Windows
         shell: pwsh
         run: |
@@ -507,11 +442,9 @@ jobs:
           }
       - name: Publish test results
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/publish-test-results
         with:
-          name: win-unit-test-results
-          path: '**/TEST*.xml'
-          if-no-files-found: ignore
+          id: win-unit-test
 
   # ── E2E_ORDER_KBN_IMAGES (the other repo's build) ─────────────────────────
   # The ROR KBN repo builds the ROR KBN images. This job orders that build for all versions, then
