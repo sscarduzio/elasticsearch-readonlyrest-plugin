@@ -8,6 +8,17 @@ CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=ci/runner-detect.sh
 source "$CI_DIR/runner-detect.sh"
 
+# The repository this build works on. CI_DIR sits in it.
+ROR_REPO_ROOT=$(cd "$CI_DIR/.." && pwd)
+
+# A job that runs in a container works as root, while the checkout keeps the user id of the runner.
+# git refuses every command in a working tree of another user ("dubious ownership"), so a caller of
+# `git rev-parse` gets no commit and the job stops. The exception makes git usable again. It goes to
+# the global config of the job, and each job gets a new container, so no machine keeps it.
+if ! git -C "$ROR_REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  git config --global --add safe.directory "$ROR_REPO_ROOT" >/dev/null 2>&1 || true
+fi
+
 # Reads one key from gradle.properties, which holds the build's own values. The file sits beside this
 # one, so the caller's working directory does not matter.
 #
@@ -245,7 +256,11 @@ publish_ror_es_prebuild_plugin() {
 
   local ROR_VERSION GIT_SHA
   ROR_VERSION=$(gradle_property pluginVersion) || return 1
-  GIT_SHA=$(git rev-parse --short HEAD)
+  # The commit names the source of the image, so a missing one must stop the build with the cause.
+  if ! GIT_SHA=$(git rev-parse --short HEAD); then
+    echo "Cannot read the commit of the checkout, thus the image tag would name no source" >&2
+    return 1
+  fi
 
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 

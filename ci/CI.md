@@ -553,6 +553,12 @@ bakes the docker CLI and its buildx plugin, and `docker` from inside the contain
 daemon of the host over the socket the runner mounts — which is how `it_linux` starts its ES
 containers, and how `e2e_build_es_images` pushes its image.
 
+A job container works as root, and the checkout keeps the user id of the runner. git refuses a
+working tree that belongs to another user, thus a command such as `git rev-parse` stops the job with
+"dubious ownership". `ci/ci-lib.sh` adds the workspace to `safe.directory` when git cannot read the
+repository, so every script that sources the lib can use git. Each job gets a new container, so the
+exception ends with the job.
+
 `container: image:` can read a job output. The `ci_setup` job runs
 `ci/resolve-toolchains-image.sh` once, and the `&toolchains_container` anchor reads its output: the
 name to pull. That job holds no container itself, and it cannot: it is the job that picks one.
