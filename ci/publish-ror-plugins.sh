@@ -193,7 +193,7 @@ publish_ror_plugins() {
   # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
   local modules
   modules=$(list_es_modules "$es_major") || { echo "ERROR: cannot list es${es_major}x modules"; return 1; }
-  
+
   if [ -z "$modules" ]; then
     echo "ERROR: no es${es_major}x module to $mode; ES $es_major has no module owning it"
     return 1

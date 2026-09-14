@@ -18,10 +18,11 @@ against every long job a develop push starts: `it_linux`, `it_windows`, `e2e_tes
 KBN pre-build that `e2e_order_kbn_images` dispatches.
 
 **Some ES modules are not tested** — `UNTESTED_MODULES` in `TestMatrixPolicy` holds the current set.
-They are still **built and published** on every release: `build_es7xx` and `release_es7xx`
+They are still **built and published** on every release: `build_plugins` and `release_plugins`
 enumerate modules with the `printEsModules` Gradle task, which reads `settings.gradle`, not the CI
 matrix. Only integration-test coverage is gone, so a regression specific to one of those modules
-ships untested. Removing a name from that set gives it its tests back, and costs runner minutes.
+ships untested. Remove a name from that set to test that module again, at the price of runner
+minutes.
 
 The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standalone
 `mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
@@ -29,17 +30,23 @@ they push images and run for hours. `build-toolchains-image.yml` stays on `ubicl
 
 **Every job calls `ci/free-host-disk.sh` right after checkout**, including a new one. The script
 detects the runner and decides whether to reclaim disk; a job never decides that for it. A Windows
-job instead calls `./.github/actions/setup-windows-job` right after checkout — the Defender
-exclusions, the JDK of the wrapper and the gradle home cache, which a Windows job must not miss
-one of. The checkout stays in the job: a local action is resolvable only once the repository is on
-disk.
+job instead calls `./.github/actions/setup-windows-job` right after checkout. That action holds the
+three things every Windows job needs: the Defender exclusions, the JDK of the wrapper, and the
+gradle home cache. The checkout stays in the job: a local action is resolvable only once the
+repository is on disk.
 
-Every Linux job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this
-directory contain the build logic; the workflow only orchestrates. `it_windows` calls the same
-`integration_<module>` task through the Git Bash of the runner, so both platforms read one
-definition of the leg; what the two do differently sits behind `is_windows`
-(`ci/runner-detect.sh`): gradle provisions its own JDKs, the build cache of the runner is read,
-and the `ror-tools:test` gate is left to `unit_tests_windows`.
+Every job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this directory contain
+the build logic; the workflow only orchestrates. A Windows job calls the same task as its Linux
+counterpart, through the Git Bash of the runner, so one definition serves both platforms:
+`core_tests` for the unit suites, `integration_<module>` for an integration leg. What the two
+platforms do differently sits behind `is_windows` (`ci/runner-detect.sh`) — gradle provisions its
+own JDKs, it reads the build cache of the runner, and `core_tests` picks its suite set.
+
+`ror-tools:test` runs in `core_tests`, and in no other task. Its task is enabled only with
+`-PesModule` (`ror-tools/build.gradle`), and it starts an ES container, so one run per integration
+leg would cost minutes for one answer. The module comes from `printNewestEsModule`: the patcher is
+the same code for every module, and a module name written into a script is wrong at the next ES
+release.
 
 ## Jobs
 
@@ -49,20 +56,18 @@ and the `ror-tools:test` gate is left to `unit_tests_windows`.
 | `toolchains_verify` | sanity-checks the toolchains image | always (stops the run early when the image is broken) |
 | `discover` | decides which tests this run covers, and derives every matrix: the ES majors to build, the ES modules each test matrix covers, and — when the run covers e2e — the ELK version of each e2e module plus the build id; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
-| `unit_tests_linux` | `core:test` and friends | pushes + PRs |
+| `unit_tests_linux` | the unit suites: core, audit, build-base, and `ror-tools` (the only job that runs it) | pushes + PRs |
 | `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
 | `it_linux` | integration tests, one job per selected ES module | module selection follows the [test matrix policy](#test-matrix-policy) |
 | `it_windows` | integration tests on native-Windows ES | module selection follows the [test matrix policy](#test-matrix-policy) |
-| `unit_tests_windows` | `core:test` on Windows | manual `run_all_tests_on_windows` |
+| `unit_tests_windows` | the same `core_tests` task on Windows: core and `ror-tools`, whose patcher has native-Windows paths | manual `run_all_tests_on_windows` |
 | `e2e_order_kbn_images` | dispatches the ROR KBN dev image build **and waits for it** | selected runs |
 | `e2e_build_es_images` | builds + publishes this repo's ROR ES dev image, one job per module | selected runs |
 | `e2e_tests` | Cypress e2e suite, one job per selected ES module | selected runs; see the [test matrix policy](#test-matrix-policy) |
 | `build_ror` | builds all plugin zips + bytecode-reuse guard, one job per ES major | PRs |
 
-
 Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
-`run_all_tests_on_windows`, `run_e2e_tests`. Releasing without testing is no longer one of them —
-it has its own workflow, `manual-release.yml`.
+`run_all_tests_on_windows`, `run_e2e_tests`. To release without tests, dispatch `release.yml`.
 
 ## Where a release lives
 
@@ -73,10 +78,9 @@ it has its own workflow, `manual-release.yml`.
 | `workflow_run` | CI finished on develop or master | `workflow_run.conclusion == 'success'` — one value for the whole CI run |
 | `workflow_dispatch` | an operator releases without waiting for tests | branch must be develop or master, and the operator types the `pluginVersion` that branch carries |
 
-That single `conclusion` check is the whole reason for the split. Inside `ci.yml`, the manual path
-was the only run whose test jobs are skipped on purpose, and carrying it forced `!cancelled()` and
-a second branch into every release condition. `build_ror` is now the only job in `ci.yml` that needs
-`!cancelled()` at all.
+That single `conclusion` check is the reason for the split. A manual release skips the test jobs on
+purpose, and hosting it in `ci.yml` would force `!cancelled()` and a second branch into every
+release condition. `build_ror` is the only job in `ci.yml` that needs `!cancelled()`.
 
 `release.yml` mirrors `ci.yml`'s job names, because it asks the same questions. `release_setup`
 resolves the image, settles the branch, and on the manual path checks the version the operator
@@ -105,8 +109,8 @@ name. `release.yml` therefore checks `workflow_run.event == 'push'`, not just th
 
 ### What you give up
 
-Two runs, and the Actions graph draws no arrow between them. The release run's summary prints a link
-back to the CI run that earned it. That is a breadcrumb, not a graph.
+Two runs, and the Actions graph does not link them. The summary of the release run prints a link
+back to the CI run instead.
 
 Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
 above: `build-toolchains-image.yml` (rebuilds the image every CI job runs in — weekly cron and
@@ -197,7 +201,7 @@ release guard uses it to check the version the operator typed.
 
 Every matrix of a run comes from the `discover` job, and so does every decision about which tests
 the run covers. Nothing is written down twice: the modules that exist decide, so a new module or a
-new ES major joins the matrices by itself.
+new ES major needs no edit.
 
 A test job therefore carries no condition about the kind of run. An empty matrix skips its job, and
 that is the single mechanism: a draft PR gets no Windows and no e2e leg, and a manual
@@ -236,9 +240,9 @@ Both rules live in `build-base` and are unit-tested: `EsModuleFinder.allSupporte
 counts for the major of its newest supported version, the rule `printEsModules` uses) and
 `TestMatrixPolicy`.
 
-This replaces seven hand-written lists. A missed edit there did not fail. The leg for the missing
-module never ran, and CI stayed green. `run-pipeline.sh` and `publish-ror-plugins.sh` now also
-refuse a major with no module, instead of looping zero times and returning 0.
+A hand-written list fails silently instead: the leg for the missing module never runs, and CI stays
+green. `run-pipeline.sh` and `publish-ror-plugins.sh` also refuse a major with no module, instead of
+looping zero times and returning 0.
 
 ## Test matrix policy
 
@@ -255,10 +259,9 @@ module in the middle of that major's list, newest first.
 
 Windows integration tests and E2E tests do not run on ES 6. The modules in `UNTESTED_MODULES` run on
 neither platform. A selection still picks oldest, middle and newest by how many modules the major
-holds, and an untested pick moves to the nearest module that is tested — so the exclusion changes
-which modules run, never how many. If a major
-version has only one module, it is selected once. Manual actions can select the full supported Linux or Windows matrix. To release with no tests at
-all, use the `manual-release.yml` workflow, not this one.
+holds, and an untested pick moves to the nearest tested module — so the exclusion changes which
+modules run, never how many. A major with one module selects it once. A manual action can select the
+full Linux or Windows matrix. To release without tests, dispatch `release.yml`.
 
 To see what a change does to the matrices, run `./gradlew printTestMatrices --quiet`. To change the
 policy, change `TestMatrixPolicy` and this table together. Adding or removing a module changes which
@@ -541,6 +544,14 @@ The runner pulls the job `container:` image before step 1 starts. `ci/configure-
 reach that pull, so it sets neither the mirror nor the login for it. CI jobs and their matrix legs
 share the image, which makes it the most pulled image of a run. Docker Hub answered a whole run with
 `429 toomanyrequests` on 2026-08-26.
+
+Every Linux job runs in that image, except `e2e_tests`. That job shells out to the `runner.sh` of
+the e2e repo, which brings up a compose stack; Cypress then reads the ports that stack publishes on
+the host, and the localhost of a job container is not the host. It also needs node, yarn and the
+Cypress browsers, which the image does not hold. Every other Linux job takes the image, the image
+bakes the docker CLI and its buildx plugin, and `docker` from inside the container reaches the
+daemon of the host over the socket the runner mounts — which is how `it_linux` starts its ES
+containers, and how `e2e_build_es_images` pushes its image.
 
 `container: image:` can read a job output. The `ci_setup` job runs
 `ci/resolve-toolchains-image.sh` once, and the `&toolchains_container` anchor reads its output: the

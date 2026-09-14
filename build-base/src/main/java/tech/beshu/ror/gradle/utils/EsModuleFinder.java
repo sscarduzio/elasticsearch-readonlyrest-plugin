@@ -49,10 +49,7 @@ public final class EsModuleFinder {
     return EsVersions.of(esModule).newest;
   }
 
-  /**
-   * Every ES version ROR supports, oldest first, from each module's {@code supportedEsVersions}.
-   * The one source for anything that needs the full list.
-   */
+  /** Every ES version ROR supports, oldest first, from each module's {@code supportedEsVersions}. */
   public static List<String> allSupportedEsVersions(Project rootProject) {
     return esModulesSortedBy(rootProject, newestEsVersionComparator())
         .flatMap(module -> EsVersions.of(module).all.stream())
@@ -62,10 +59,9 @@ public final class EsModuleFinder {
 
   /**
    * Every ES major ROR builds, newest first. A module counts for the major of its NEWEST supported
-   * version, which is the rule {@code printEsModules} uses. A module that spans two majors thus
-   * counts once.
+   * version, the rule {@code printEsModules} uses, so a module that spans two majors counts once.
    *
-   * <p>CI builds its matrices from this list. A second, hand-written list would miss a new major.
+   * <p>CI builds its matrices from this list, which a hand-written one would drift from.
    */
   public static List<Integer> allSupportedEsMajors(Project rootProject) {
     return allEsModules(rootProject).stream()
@@ -73,6 +69,20 @@ public final class EsModuleFinder {
         .distinct()
         .sorted(Comparator.reverseOrder())
         .collect(Collectors.toList());
+  }
+
+  /**
+   * The newest ES module: the one whose newest supported version is the highest. A caller that
+   * needs ONE module asks here — a unit-test run, or a tool that reads a plugin descriptor. An
+   * integration-test leg instead names the module it covers.
+   *
+   * <p>Derived from {@code supportedEsVersions}, so a new module needs no edit.
+   */
+  public static String newestEsModuleName(Project rootProject) {
+    return esModulesSortedBy(rootProject, newestEsVersionComparator().reversed())
+        .map(Project::getName)
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("The build holds no esXXx module"));
   }
 
   /**
@@ -101,8 +111,8 @@ public final class EsModuleFinder {
   }
 
   /**
-   * Sorts a copy, never the list {@link #allEsModules} returns. {@code Collectors.toList()}
-   * promises no mutable list, so an in-place sort breaks the day it returns an immutable one.
+   * Sorts a copy, never the list {@link #allEsModules} returns: {@code Collectors.toList()} does
+   * not promise a mutable list.
    */
   private static Stream<Project> esModulesSortedBy(
       Project rootProject, Comparator<Project> comparator) {

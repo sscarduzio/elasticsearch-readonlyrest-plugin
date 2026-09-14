@@ -41,9 +41,7 @@ env:
 jobs:
 
   # ── RELEASE_SETUP ─────────────────────────────────────────────────────────
-  # May this run publish, and from which branch? `discover` decides WHAT to publish.
-  # The `event == 'push'` test matters: workflow_run also fires for CI runs on pull requests, and a
-  # pull request head_branch can be any name. This job holds no container: it is the job that picks one.
+  # May this run publish, and from which branch?
   release_setup:
     if: >-
       github.event_name == 'workflow_dispatch' ||
@@ -60,7 +58,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
       # Only the manual path needs a guard: the trigger already filtered the workflow_run path.
-      # ci-lib.sh is the one reader of gradle.properties, by its own rule.
+      # gradle_property is the one reader of gradle.properties.
       - name: Check the branch and the typed version
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -82,7 +80,7 @@ jobs:
       - id: branch
         run: |
           echo "is_master=$([ "$RELEASE_BRANCH" = master ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          # Two runs, and the Actions graph draws no arrow between them. This links them.
+          # The Actions graph does not link the CI run to this one. The summary does.
           {
             echo "Branch: $RELEASE_BRANCH"
             echo "Commit: $RELEASE_SHA"
@@ -90,8 +88,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ── DISCOVER ──────────────────────────────────────────────────────────────
-  # What to publish, and for which ES majors. Gradle answers both. This is also the first container
-  # job, so it verifies the image here: a bad image then stops one cheap job, not a self-hosted matrix.
+  # What to publish, and for which ES majors.
   discover:
     needs: release_setup
     runs-on: ubuntu-latest
@@ -110,10 +107,10 @@ jobs:
       - id: plan
         run: |
           set -eo pipefail
-          
+
           MAJORS_FILE=build/es-modules/es-majors.txt
           [ -s "$MAJORS_FILE" ] || { echo "::error::printEsMajors wrote no ES major."; exit 1; }
-          
+
           # ["9", ...] -> {"include":[{"ES_MAJOR":"9"}, ...]}, the matrix both jobs below read.
           MAJORS=$(awk 'BEGIN { printf "[" } { printf "%s\"%s\"", (NR > 1 ? "," : ""), $0 } END { print "]" }' "$MAJORS_FILE")
 
@@ -229,8 +226,8 @@ jobs:
           GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: ci/run-pipeline.sh
-      # An ephemeral VM took the key away with it. This runner does not, so remove it here — also
-      # when the publish fails or is cancelled.
+      # The self-hosted runner keeps the workspace, so remove the key here — also when the publish
+      # fails or is cancelled.
       - name: Remove the PGP signing key
         if: always()
         run: rm -f .travis/secret.pgp

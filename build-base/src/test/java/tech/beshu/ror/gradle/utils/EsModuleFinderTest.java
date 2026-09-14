@@ -18,6 +18,7 @@
 package tech.beshu.ror.gradle.utils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.gradle.api.Project;
@@ -135,6 +136,27 @@ class EsModuleFinderTest {
   @Test
   void majorVersionOfParsesAPreReleaseVersion() {
     assertEquals(9, EsModuleFinder.majorVersionOf("9.0.0-alpha1"));
+  }
+
+  // --- newestEsModuleName ---
+
+  @Test
+  void newestEsModuleIsTheOneWithTheHighestNewestVersion() {
+    Project root = rootWithModules("es816x:8.16.0", "es92x:9.2.0", "es818x:8.18.0, 8.19.0");
+    assertEquals("es92x", EsModuleFinder.newestEsModuleName(root));
+  }
+
+  @Test
+  void newestEsModuleReadsTheNewestVersionOfEachModule() {
+    Project root = rootWithModules("es818x:8.18.0, 9.1.0", "es90x:9.0.0");
+    assertEquals("es818x", EsModuleFinder.newestEsModuleName(root));
+  }
+
+  @Test
+  void newestEsModuleFailsWhenTheBuildHasNoEsModule() {
+    Project root = ProjectBuilder.builder().build();
+    ProjectBuilder.builder().withName("core").withParent(root).build();
+    assertThrows(IllegalStateException.class, () -> EsModuleFinder.newestEsModuleName(root));
   }
 
   // --- module ordering, through the methods that expose it ---

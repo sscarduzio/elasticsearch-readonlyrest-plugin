@@ -26,6 +26,40 @@ gradle_property() {
   printf '%s\n' "$value"
 }
 
+# The gradle args a Windows runner adds to every ./gradlew call. A Linux runner adds none.
+# `installations.paths` in gradle.properties names the JDKs of the Linux toolchains image, so gradle
+# provisions its own here, and reads the build cache of the runner, which no toolchains image fills.
+# One arg per line, for a caller to read into an array.
+windows_gradle_args() {
+  is_windows || return 0
+  printf '%s\n' \
+    --build-cache \
+    -Dorg.gradle.java.installations.paths= \
+    -Dorg.gradle.java.installations.auto-download=true
+}
+
+# The newest ES module (`printNewestEsModule`). Every caller that needs ONE module reads it from
+# here, because a module name written into a script or a workflow is wrong at the next ES release.
+# An integration-test leg is the other case — it covers the module its matrix row names.
+#
+# The task writes the answer to build/es-modules/newest-es-module.txt; read THAT, never gradle
+# stdout (configuration-time build-script logging can pollute it even under --quiet).
+newest_es_module() {
+  local module_file="build/es-modules/newest-es-module.txt"
+  local args=()
+  mapfile -t args < <(windows_gradle_args)
+  # rm first: a failed gradle run must yield an error, never a stale name from a previous run.
+  rm -f "$module_file"
+  ./gradlew printNewestEsModule "${args[@]}" --quiet </dev/null >&2 || return 1
+  cat "$module_file"
+}
+
+# Prints every JVM crash log under the working tree. A crashed JVM writes one and says nothing on
+# stdout, so a leg that ends with no test failure leaves this as its only evidence.
+dump_hs_err_files() {
+  find . -name 'hs_err*' -type f -exec cat {} + 2>/dev/null || true
+}
+
 # True when HEAD carries the same tree as master's tip and pluginVersion is a -pre version.
 # Fetches master from origin; needs no token on a public repo. False on any failure.
 is_merge_back_of_master() {

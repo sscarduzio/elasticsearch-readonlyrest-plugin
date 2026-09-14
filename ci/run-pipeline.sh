@@ -92,8 +92,8 @@ if [[ $ROR_TASK == "cve_check" ]]; then
     CVE_MODE="unknown"
   elif ! grep -qE '^(BUILD SUCCESSFUL|BUILD FAILED)' "$CVE_LOG"; then
     # Gradle writes one of these two lines when it ends, and it writes it after --continue has run
-    # the last task. No such line means that nothing ended the run in an orderly way: the job hit
-    # its timeout, or the runner killed the JVM. The reports on disk then cover only the
+    # the last task. No such line means that nothing ended the run in an orderly way: the timeout
+    # of the caller stopped it, or the runner killed the JVM. The reports on disk then cover only the
     # subprojects that came first. Such a run must not name its sources, because it does not know
     # what it did not read.
     CVE_MODE="unknown"
@@ -128,9 +128,31 @@ if [[ $ROR_TASK == "audit_build_check" ]]; then
   ./gradlew --no-daemon --stacktrace audit:crossBuildAssemble
 fi
 
+# The unit suites. ror-tools:test belongs to THIS task and to no other: it starts an ES container
+# and builds the ROR binaries, so one run per ES module would cost minutes for one answer. Its test
+# task also needs -PesModule, and the patcher is the same code for every module, so it takes the
+# newest one.
+#
+# Windows leaves out audit and build-base: audit is cross-compiled Scala with no platform of its
+# own, and `audit_build_check` already builds it. Windows adds ror-tools on a native ES install,
+# the platform the patcher has its own paths for.
+run_core_tests() {
+  local args=()
+  mapfile -t args < <(windows_gradle_args)
+
+  local module
+  module=$(newest_es_module) || { echo "ERROR: cannot resolve the newest ES module"; return 1; }
+
+  local suites=(core:test ror-tools:test)
+  is_windows || suites+=(audit:test build-base:test)
+
+  echo ">>> Running unit tests (${suites[*]}; ror-tools on $module).."
+  ./gradlew --no-daemon --stacktrace "${args[@]}" "${suites[@]}" "-PesModule=$module" \
+    || { dump_hs_err_files; return 1; }
+}
+
 if [[ $ROR_TASK == "core_tests" ]]; then
-  echo ">>> Running unit tests.."
-  ./gradlew --no-daemon --stacktrace core:test audit:test build-base:test
+  run_core_tests
 fi
 
 run_integration_tests() {
@@ -147,65 +169,44 @@ run_integration_tests() {
   local esArgs=("-PesModule=$ES_MODULE")
   [ -n "$ES_VERSION" ] && esArgs+=("-PesVersion=$ES_VERSION")
 
-  # Windows runs the same task, and only these differ:
-  #  * installations.paths of gradle.properties holds the Linux toolchains-image JDK paths, so
-  #    gradle must provision its own instead;
-  #  * the build cache of the runner is worth reading, because no toolchains image warms it.
+  # What a Windows runner adds to every gradle call here (nothing on Linux).
   local platformArgs=()
-  if is_windows; then
-    platformArgs+=(
-      --build-cache
-      -Dorg.gradle.java.installations.paths=
-      -Dorg.gradle.java.installations.auto-download=true
-    )
-  fi
+  mapfile -t platformArgs < <(windows_gradle_args)
 
-  # ror-tools:test is skipped on Windows: it took ~10 min per leg there, and every ES node install
-  # of the suites already exercises the patcher end to end. unit_tests_windows still runs it once.
-  local runToolsGate=true
-  is_windows && runToolsGate=false
-
-  echo ">>> $ES_MODULE => ror-tools:test gate: $runToolsGate, integration-tests:shardedTest (${parallelism} shard(s)).."
+  echo ">>> $ES_MODULE => integration-tests:shardedTest (${parallelism} shard(s)).."
 
   # Each gradle invocation runs in its OWN process group (setsid) so the trap can reap the whole tree;
   # appends the leader PID to GRADLE_PIDS (never pruned) and sets LAST_PID for the caller.
   LAST_PID=""
   run_one() {  # args: <gradle args...>
     # Cap the ORCHESTRATOR heap. These invocations only spawn the shard processes and build the ES
-    # image; without this they inherit gradle.properties' -Xmx6144m, which the compile jobs need and
-    # this one does not. The leg already holds, on a 16GB runner:
+    # image; without this they inherit gradle.properties' -Xmx6144m, which a compile task needs and
+    # this one does not. This task already holds, on a 16GB runner:
     #   K shard JVMs        K x (1024m heap + 512m metaspace)   (capped in ShardedGradlewTest)
     #   K test workers      K x 512m heap                       (itTestHeap)
     #   >= K ES nodes       512m heap each, ~1.1GB RSS each     (containers; native on Windows)
     # At K=4 that is already ~15GB, so a 6GB orchestrator ceiling on top is what tips the host into
     # OOM. A crashed daemon in integration_es80x reported daemonOpts=-Xmx6144m (RORDEV-2156).
     #
-    # Git Bash carries no setsid, thus no process group to signal on Windows. The SIGTERM trap
-    # still kills the leader; the runner ends the VM anyway, and the VM is ephemeral.
+    # Git Bash has no setsid, so Windows has no process group to signal. The SIGTERM trap still
+    # kills the leader, and the runner ends the ephemeral VM anyway.
     local launcher=()
     command -v setsid >/dev/null 2>&1 && launcher=(setsid)
     "${launcher[@]}" ./gradlew --no-daemon -Dorg.gradle.jvmargs="$IT_ORCHESTRATOR_JVMARGS" "${platformArgs[@]}" "$@" &
     LAST_PID=$!; GRADLE_PIDS+=("$LAST_PID")
   }
 
-  # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the CI job). Also warms :build-base/:buildSrc.
+  # All sharding orchestration lives in integration-tests:shardedTest (see its build.gradle):
+  # prebuild barrier via task deps, K child ./gradlew spawn/wait, ProcessHandle kill on cancel.
   local rc=0
-  if [ "$runToolsGate" = true ]; then
-    run_one ror-tools:test
-    wait "$LAST_PID"; rc=$?
-    if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
-  fi
-
-  # 2) All sharding orchestration lives in integration-tests:shardedTest (see its build.gradle):
-  #    prebuild barrier via task deps, K child ./gradlew spawn/wait, ProcessHandle kill on cancel.
   run_one integration-tests:shardedTest "${esArgs[@]}" -PshardCount="$parallelism"
   wait "$LAST_PID"; rc=$?
-  if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
+  if [ "$rc" -ne 0 ]; then dump_hs_err_files; return "$rc"; fi
 }
 
 # One dispatch for every es*x module: the task name is integration_<module>, and the module is the
-# only thing that varies. Adding an ES module therefore needs no edit here — only in the workflow
-# matrix, which is where the list of modules to run actually lives.
+# only thing that varies. The caller names the module in the task, so a new ES module needs no edit
+# here.
 if [[ $ROR_TASK =~ ^integration_(es[0-9]+x)$ ]]; then
   run_integration_tests "${BASH_REMATCH[1]}"
 fi
@@ -236,9 +237,8 @@ build_ror_plugins() {
   done <<< "$modules"
 }
 
-# Three tasks over the ES generations. Only the function the generation goes to differs. The
-# caller passes the generation in ES_MAJOR, so the major is any number and ES 10 needs no edit here.
-# The discover job tells the workflow which majors to run.
+# Three tasks over the ES generations, each with its own function. The caller passes the generation
+# in ES_MAJOR, so any major works and ES 10 needs no edit here.
 case "$ROR_TASK" in
   build_plugins)      build_ror_plugins   "${ES_MAJOR:?ES_MAJOR is not set}" ;;
   upload_pre_plugins) publish_ror_plugins "${ES_MAJOR:?ES_MAJOR is not set}" "upload_pre" ;;
@@ -267,7 +267,6 @@ check_maven_artifacts_exist() {
 }
 
 if [[ $ROR_TASK == "publish_maven_artifacts" ]]; then
-  # .travis/secret.pgp is decoded from the PGP_SECRET_KEY_B64 repo secret, see .github/workflows/ci.yml
   CURRENT_PLUGIN_VER=$(gradle_property pluginVersion) || exit 1
   PUBLISHED_PLUGIN_VER=$(gradle_property publishedPluginVersion) || exit 1
 
@@ -291,7 +290,8 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
     exit 1
   fi
 
-  # IMAGE_TAG is optional; its pipeline default is a single space, so normalize whitespace-only to empty.
+  # IMAGE_TAG is optional, and a caller may pass a whitespace-only value (the default of a
+  # workflow_dispatch input is one space), so normalize such a value to empty.
   IMAGE_TAG="$(echo "${IMAGE_TAG:-}" | tr -d '[:space:]')"
 
   IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
@@ -312,39 +312,41 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
 
 fi
 
-# Runs once per pipeline. Dispatches ONE ROR KBN pre-build for all versions, then waits for it in
-# the same shell. A failed ROR KBN build fails THIS job. A re-run of this job places a new order.
+# Call this task one time for a whole run. It dispatches ONE ROR KBN pre-build for all the
+# versions, then waits for it in the same shell. A failed ROR KBN build fails this task, and
+# another call of it places a new order.
 # Branches: ROR_KBN_TARGET_BRANCH and ROR_KBN_FALLBACK_BRANCH apply to the ROR KBN repo (not e2e).
 # FALLBACK defaults to empty on purpose: outside CI there is no base branch, and the fallback chain
 # in the e2e clone function already includes `develop` and `master`.
 if [[ $ROR_TASK == "order_e2e_kbn_images" ]]; then
   order_e2e_kbn_images \
-    "${E2E_ELK_VERSIONS:?E2E_ELK_VERSIONS is not set — in CI it is the ELK column of the e2e_matrix output of discover}" \
+    "${E2E_ELK_VERSIONS:?E2E_ELK_VERSIONS is not set — the caller passes the ELK versions to order}" \
     "${ROR_KBN_TARGET_BRANCH:?ROR_KBN_TARGET_BRANCH is not set}" \
     "${ROR_KBN_FALLBACK_BRANCH:-}" \
-    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the unique_build_id output of ci_setup}"
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — one build id names the dev images of a whole run, and the caller passes it (ci/CI.md#e2e-tests)}"
 fi
 
-# Runs once per ES module, while the order task waits. Publishes this repo's ROR ES dev image
-# under the per-run tag. The matrix carries the module, so this task derives the ELK version from
-# it. A caller that already knows the version passes E2E_ELK_VERSION instead.
+# Call this task one time for each ES module. It publishes this repo's ROR ES dev image under the
+# per-run tag. The caller names the module in E2E_ES_MODULE, and this task derives the ELK version
+# from it. A caller that already knows the version passes E2E_ELK_VERSION instead.
 if [[ $ROR_TASK == "build_e2e_es_image" ]]; then
   if [ -z "${E2E_ELK_VERSION:-}" ]; then
     E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
   fi
   build_e2e_es_image \
     "$E2E_ELK_VERSION" \
-    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the unique_build_id output of ci_setup}"
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — one build id names the dev images of a whole run, and the caller passes it (ci/CI.md#e2e-tests)}"
 fi
 
-# Runs once per ES module, after both image jobs. The branches (E2E_TARGET_BRANCH and
-# E2E_FALLBACK_BRANCH) apply to the e2e repo. The matrix carries the module, so this task derives
-# the ELK version from it. A caller that already knows the version passes E2E_ELK_VERSION instead.
+# Call this task one time for each ES module, after both images are published. The branches
+# (E2E_TARGET_BRANCH and E2E_FALLBACK_BRANCH) apply to the e2e repo. The caller names the module in
+# E2E_ES_MODULE, and this task derives the ELK version from it. A caller that already knows the
+# version passes E2E_ELK_VERSION instead.
 if [[ $ROR_TASK == "run_e2e_tests" ]]; then
   if [ -z "${E2E_ELK_VERSION:-}" ]; then
     E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
-    # The later steps of the job name their report folder after the version. `if`, not `&&`:
-    # outside GitHub Actions a false `&&` would end a `set -e` script with status 1.
+    # Publish the version, because a caller that collects the reports names their folder after it.
+    # `if`, not `&&`: outside GitHub Actions a false `&&` would end a `set -e` script with status 1.
     if [ -n "${GITHUB_ENV:-}" ]; then
       echo "E2E_ELK_VERSION=$E2E_ELK_VERSION" >> "$GITHUB_ENV"
     fi
@@ -353,5 +355,5 @@ if [[ $ROR_TASK == "run_e2e_tests" ]]; then
     "$E2E_ELK_VERSION" \
     "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
     "${E2E_FALLBACK_BRANCH:-}" \
-    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — in CI it comes from the unique_build_id output of ci_setup}"
+    "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — one build id names the dev images of a whole run, and the caller passes it (ci/CI.md#e2e-tests)}"
 fi

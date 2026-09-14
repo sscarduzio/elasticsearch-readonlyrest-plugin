@@ -28,28 +28,26 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Which ES modules a test run covers. See "Test matrix policy" in ci/CI.md, which this class
- * implements. The policy applies to each ES major on its own, so a new major joins every matrix by
- * itself.
+ * Which ES modules a test run covers. This class implements "Test matrix policy" in ci/CI.md. The
+ * policy applies to each ES major on its own, so a new major needs no edit.
  *
- * <p>A hand-written list would drift from the modules that exist, and from the policy it is
- * supposed to follow.
+ * <p>A hand-written list would drift from the modules that exist, and from the policy.
  */
 public final class TestMatrixPolicy {
 
   /**
-   * A ready PR adds a middle module once a major holds this many. Below it, oldest and newest
-   * already sit close together.
+   * A ready PR adds a middle module once a major holds this many. Below it, oldest and newest are
+   * already close.
    */
   private static final int MIDDLE_MODULE_THRESHOLD = 10;
 
   /**
    * ES modules that no integration test covers, on Linux or on Windows. They are still built and
-   * published, because {@code build_ror} and the release tasks group by major and enumerate modules
-   * with {@code printEsModules}. So a regression specific to one of these modules ships untested.
+   * published, because {@code build_ror} and the release tasks enumerate modules with
+   * {@code printEsModules}. So a regression specific to one of these modules ships untested.
    *
-   * <p>This is a choice about cost, not a fact the build can derive, which is why it is written
-   * down. Removing a name here gives that module its tests back, and costs runner minutes.
+   * <p>This is a choice about cost, not a fact the build can derive. Remove a name here to test
+   * that module again, at the price of runner minutes.
    */
   private static final Set<String> UNTESTED_MODULES =
       Set.of("es73x", "es74x", "es79x", "es711x", "es714x");

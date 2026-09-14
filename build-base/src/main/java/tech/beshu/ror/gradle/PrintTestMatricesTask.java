@@ -34,9 +34,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Builds every test matrix from the modules that exist, so a new module joins by itself: printed as
+ * Builds every test matrix from the modules that exist, so a new module needs no edit: printed as
  * {@code name=[...]} for humans, AND written to {@code build/ci-matrices/<name>.json} for the
- * workflow. The workflow must read the files -- never parse the stdout, which any
+ * workflow. The workflow must read the files — never parse the stdout, which any
  * configuration-time build-script logging can pollute even under {@code --quiet}.
  *
  * <p>This task decides what each matrix holds, never which matrix a run takes.
@@ -59,7 +59,8 @@ public class PrintTestMatricesTask extends DefaultTask {
     matrices.put("linux_it_pr_ready", modulesFor(Selection.READY_PR, EVERY_MAJOR));
     matrices.put("linux_it_pr_draft", modulesFor(Selection.NEWEST, EVERY_MAJOR));
     matrices.put("win_it_full", modulesFor(Selection.ALL, NO_WINDOWS_OR_E2E));
-    matrices.put("win_it_master_or_develop", modulesFor(Selection.OLDEST_AND_NEWEST, NO_WINDOWS_OR_E2E));
+    matrices.put(
+        "win_it_master_or_develop", modulesFor(Selection.OLDEST_AND_NEWEST, NO_WINDOWS_OR_E2E));
     matrices.put("win_it_pr_ready", modulesFor(Selection.NEWEST, NO_WINDOWS_OR_E2E));
     matrices.put("e2e_full", modulesFor(Selection.NEWEST, NO_WINDOWS_OR_E2E));
 
