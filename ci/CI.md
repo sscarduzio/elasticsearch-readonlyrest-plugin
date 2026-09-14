@@ -3,7 +3,7 @@
 CI runs on GitHub Actions: `.github/workflows/ci.yml`. The Linux **test and build** jobs run on
 **GitHub-hosted** `ubuntu-latest` runners inside the `beshultd/ror-ci-toolchains` image; Windows
 jobs run on GitHub-hosted `windows-2025`. The **release** jobs are the exception and stay on the
-shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` here, plus the standalone
+shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` in `release.yml`, plus the standalone
 `mirror-es-libs.yml` and `publish-pre-builds.yml`.
 
 `ubuntu-latest` is 4 vCPU / 16 GB. It is slower per core than the paid runners these jobs can also
@@ -28,25 +28,27 @@ The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standa
 `mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
 they push images and run for hours. `build-toolchains-image.yml` stays on `ubicloud-standard-4`.
 
-**Every job calls `ci/free-host-disk.sh` right after checkout**, including a new one. The script
-detects the runner and decides whether to reclaim disk; a job never decides that for it. A Windows
+**A job that builds or runs images calls `ci/free-host-disk.sh` right after checkout**, including a
+new one. The script detects the runner and decides whether to reclaim disk; a job never decides that
+for it. The jobs that only read the repository or start one gradle call skip it: `ci_setup`,
+`toolchains_verify`, `discover` and `build_ror`. A Windows
 job instead calls `./.github/actions/setup-windows-job` right after checkout. That action holds the
 three things every Windows job needs: the Defender exclusions, the JDK of the wrapper, and the
 gradle home cache. The checkout stays in the job: a local action is resolvable only once the
 repository is on disk.
 
 Every job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this directory contain
-the build logic; the workflow only orchestrates. A Windows job calls the same task as its Linux
+the build logic; the workflow only orchestrates. A task is a `task_<name>` function in that script,
+and one dispatch at the end of the file calls it. An unknown task fails the job. A Windows job calls the same task as its Linux
 counterpart, through the Git Bash of the runner, so one definition serves both platforms:
 `core_tests` for the unit suites, `integration_<module>` for an integration leg. What the two
 platforms do differently sits behind `is_windows` (`ci/runner-detect.sh`) — gradle provisions its
 own JDKs, it reads the build cache of the runner, and `core_tests` picks its suite set.
 
-`ror-tools:test` runs in `core_tests`, and in no other task. Its task is enabled only with
-`-PesModule` (`ror-tools/build.gradle`), and it starts an ES container, so one run per integration
-leg would cost minutes for one answer. The module comes from `printNewestEsModule`: the patcher is
-the same code for every module, and a module name written into a script is wrong at the next ES
-release.
+`ror-tools:test` runs in `core_tests`, and in no other task. It starts an ES container, so one run
+per integration leg would cost minutes for one answer. With no `-PesModule` it takes the newest
+module by itself (`ror-tools/build.gradle`): the patcher is the same code for every module, and a
+module name written into a script is wrong at the next ES release.
 
 ## Jobs
 
@@ -54,9 +56,9 @@ release.
 |---|---|---|
 | `ci_setup` | chooses where every `container:` job pulls the toolchains image from, and publishes the run flags the later `if:` conditions read | always |
 | `toolchains_verify` | sanity-checks the toolchains image | always (stops the run early when the image is broken) |
-| `discover` | decides which tests this run covers, and derives every matrix: the ES majors to build, the ES modules each test matrix covers, and — when the run covers e2e — the ELK version of each e2e module plus the build id; see the [test matrix policy](#test-matrix-policy) | always |
+| `discover` | decides which tests this run covers, and derives every matrix: the ES majors to build, and the ES modules each test matrix covers; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
-| `unit_tests_linux` | the unit suites: core, audit, build-base, and `ror-tools` (the only job that runs it) | pushes + PRs |
+| `unit_tests_linux` | the unit suites: core, audit, build-base, and `ror-tools` | pushes + PRs |
 | `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
 | `it_linux` | integration tests, one job per selected ES module | module selection follows the [test matrix policy](#test-matrix-policy) |
 | `it_windows` | integration tests on native-Windows ES | module selection follows the [test matrix policy](#test-matrix-policy) |
@@ -100,9 +102,15 @@ Both workflows share two composite actions rather than two copies:
 checkout in `release.yml` uses `env.RELEASE_SHA`, and the branch comes from `env.RELEASE_BRANCH`.
 Miss one and you release code nobody tested. Never write `github.ref` in that file.
 
-**GitHub only fires `workflow_run` for a copy of the file on the default branch**, which is `master`
-here. A change to `release.yml` does nothing until it lands there, so it will look broken while you
-develop it on a branch.
+**GitHub only fires `workflow_run` for a copy of the file on the default branch**, which is
+`develop` here. The branch of the CI run does not select the file. `branches: [ develop, master ]`
+selects which CI runs qualify, and the copy that runs is always develop's. So the `develop` copy
+publishes master releases too. A change to `release.yml` does nothing until it reaches `develop`, on
+a branch or on `master`.
+
+This is also why a merge to `master` that touches the release path needs its merge-back at once.
+Between the two merges, master's `ci.yml` holds no publish job and `develop` holds no `release.yml`.
+A push to `master` then tests green and publishes nothing, and no red job shows it.
 
 Also note `workflow_run` fires for CI runs on pull requests too, and their `head_branch` can be any
 name. `release.yml` therefore checks `workflow_run.event == 'push'`, not just the branch filter.
@@ -163,8 +171,8 @@ Two orchestration rules worth knowing before editing conditions:
   `manual_action`.
 
   `manual_action` stays in `ci_setup` for one reason beyond `discover`. It starts
-  `unit_tests_windows`, which no automatic run may start, and no Windows job may wait for
-  `discover` — that job runs in the Linux toolchains container.
+  `unit_tests_windows`, which no automatic run may start. That job has no matrix, so it reads
+  `manual_action` directly instead of waiting for `discover`.
 
   Always compare against the string `'true'`. An output is a string, so a bare
   `needs.ci_setup.outputs.is_release_branch` is truthy even when it holds `"false"`.
@@ -185,13 +193,13 @@ a module list:
 | `isPreReleaseVersion` | whether the configured `pluginVersion` is a pre-release (`-pre`) | stdout: `true` or `false` |
 
 The first two write files, and callers must read those, not gradle stdout — configuration-time
-logging can pollute it even under `--quiet`. `isPreReleaseVersion` prints one word instead, so its
-caller takes the last line and **fails on anything that is not `true` or `false`**. A silently wrong
-value there would publish a release as a pre-release, or the reverse.
+logging can pollute it even under `--quiet`. `isPreReleaseVersion` prints one word instead.
 
-`isPreReleaseVersion` is what decides `upload_pre_ror` against `release_ror`. That rule used to be a
-`grep -- '-pre'` inside the release workflow, where nothing tested it and nothing else could reach
-it. If the pre-release convention changes, change the task.
+`isPreReleaseVersion` is the only implementation of the `-pre` rule. It decides `upload_pre_ror`
+against `release_ror`, and it is the second half of the merge-back test. Both callers go through
+`is_pre_release_version` in `ci-lib.sh`. That function takes the last line and **fails on anything
+that is not `true` or `false`**. A silently wrong value publishes a release as a pre-release, or the
+reverse. If the pre-release convention changes, change the task, and nothing else.
 
 Reading a property from shell is a fourth case, and `ci-lib.sh`'s `gradle_property` owns it. Its own
 comment states the rule: every reader goes through there, because a second parser drifts. The manual
@@ -203,10 +211,11 @@ Every matrix of a run comes from the `discover` job, and so does every decision 
 the run covers. Nothing is written down twice: the modules that exist decide, so a new module or a
 new ES major needs no edit.
 
-A test job therefore carries no condition about the kind of run. An empty matrix skips its job, and
-that is the single mechanism: a draft PR gets no Windows and no e2e leg, and a manual
-`run_e2e_tests` gets neither a Linux nor a Windows one. Keep it that way — a second test in a job's
-`if:` would state the same rule in a second place, and the two would drift.
+A test job therefore carries no condition about the kind of run. Its only condition is the empty
+test: `if: needs.discover.outputs.<x>_matrix != '{"include":[]}'`. That is the single mechanism: a
+draft PR gets no Windows and no e2e leg, and a manual `run_e2e_tests` gets neither a Linux nor a
+Windows one. Keep it that way — a test about the kind of run in a job's `if:` would state the
+matrix rule in a second place, and the two would drift.
 
 `discover` publishes one ready matrix per job that fans out, so every consumer reads it the same way:
 
@@ -215,16 +224,22 @@ that is the single mechanism: a draft PR gets no Windows and no e2e leg, and a m
 | `build_matrix` | `build_ror` | `{"include":[{"ES_MAJOR":"9"},…]}` |
 | `it_linux_matrix` | `it_linux` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
 | `it_windows_matrix` | `it_windows` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
-| `e2e_matrix` | the three e2e jobs, and `build_ror` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
+| `e2e_matrix` | the three e2e jobs | `{"include":[{"ES_MODULE":"es94x"},…]}` |
 
-The `include` form matters. GitHub skips a matrix job whose include list is empty, so tests a run
-does not cover need no condition of their own: a draft PR emits an empty Windows and e2e matrix, and
-both jobs skip before a runner boots. A bare `KEY: []` would instead stop the run with "Matrix vector
-'KEY' does not contain any values".
+An empty matrix does not skip its job by itself. GitHub evaluates `strategy` before it creates the
+job, and `{"include":[]}` stops the run with "Matrix vector 'include' does not contain any values".
+The job never starts, so nothing inside it can handle the empty case. Every fan-out job therefore
+carries the test `if: needs.discover.outputs.<x>_matrix != '{"include":[]}'`. That turns the empty
+case into `skipped` before a runner boots, and `build_ror` accepts `skipped` from all of them.
 
-`e2e_matrix` holds the same one key as the others. `e2e_order_kbn_images` and `build_ror` compare
-it against `{"include":[]}` by value, because neither is a fan-out over it: the first has no matrix
-of its own, and the second must tell "no e2e in this run" from "e2e failed".
+The `include` form matters for the same reason: a bare `KEY: []` fails the run in the same way, and
+`{"include":[]}` is the shape the guard tests for. `PrintTestMatricesTask` emits that exact text, so
+the comparison stays a plain string test.
+
+`e2e_matrix` holds the same one key as the others. `e2e_order_kbn_images` also reads it, though it
+does not fan out over it: it has no matrix of its own, and one dispatch covers every version.
+`build_ror` reads no matrix here — it reads `needs.e2e_build_es_images.result == 'skipped'`, because
+it must tell "no e2e in this run" from "e2e failed".
 
 The ELK version of a module is not in the matrix. Every job that needs it derives it from the
 module, with `e2e_elk_version_for_module` in `ci/e2e-tests-lib.sh`

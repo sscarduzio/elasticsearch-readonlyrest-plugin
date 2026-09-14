@@ -154,9 +154,12 @@ publish_one_version() {
   local TAG="v${ror_version}_es${es_version}"
 
   if [ "$mode" = "release" ]; then
-    if ! checkTagNotExist "$TAG"; then
-      return 0
-    fi
+    checkTagNotExist "$TAG"
+    case $? in
+      0) ;;
+      1) return 0 ;;
+      *) return 1 ;;
+    esac
   fi
 
   # publish always - even if this is not a release
@@ -171,7 +174,10 @@ publish_one_version() {
       return 1
     fi
 
-    tag "$TAG"
+    if ! tag "$TAG"; then
+      echo "ERROR: cannot tag $module ES $es_version as $TAG"
+      return 1
+    fi
   fi
 
   return 0

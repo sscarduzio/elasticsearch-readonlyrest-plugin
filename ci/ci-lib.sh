@@ -38,8 +38,8 @@ gradle_property() {
 }
 
 # The gradle args a Windows runner adds to every ./gradlew call. A Linux runner adds none.
-# `installations.paths` in gradle.properties names the JDKs of the Linux toolchains image, so gradle
-# provisions its own here, and reads the build cache of the runner, which no toolchains image fills.
+# The toolchains image bakes its JDK paths into /opt/gradle-home/gradle.properties, which a Windows
+# job never reads. These args state the Windows answer anyway, for a caller that does inherit it.
 # One arg per line, for a caller to read into an array.
 windows_gradle_args() {
   is_windows || return 0
@@ -49,42 +49,38 @@ windows_gradle_args() {
     -Dorg.gradle.java.installations.auto-download=true
 }
 
-# The newest ES module (`printNewestEsModule`). Every caller that needs ONE module reads it from
-# here, because a module name written into a script or a workflow is wrong at the next ES release.
-# An integration-test leg is the other case — it covers the module its matrix row names.
-#
-# The task writes the answer to build/es-modules/newest-es-module.txt; read THAT, never gradle
-# stdout (configuration-time build-script logging can pollute it even under --quiet).
-newest_es_module() {
-  local module_file="build/es-modules/newest-es-module.txt"
-  local args=()
-  mapfile -t args < <(windows_gradle_args)
-  # rm first: a failed gradle run must yield an error, never a stale name from a previous run.
-  rm -f "$module_file"
-  ./gradlew printNewestEsModule "${args[@]}" --quiet </dev/null >&2 || return 1
-  cat "$module_file"
-}
-
 # Prints every JVM crash log under the working tree. A crashed JVM writes one and says nothing on
 # stdout, so a leg that ends with no test failure leaves this as its only evidence.
 dump_hs_err_files() {
   find . -name 'hs_err*' -type f -exec cat {} + 2>/dev/null || true
 }
 
+# Prints `true` or `false`: is the configured pluginVersion a pre-release? The `isPreReleaseVersion`
+# gradle task holds the only implementation of that rule. Take the last line, because
+# configuration-time logging pollutes stdout even under --quiet, and fail on any other word: a wrong
+# answer publishes a release as a pre-release.
+is_pre_release_version() {
+  local value
+  value=$(cd "$ROR_REPO_ROOT" && ./gradlew --no-daemon -q isPreReleaseVersion | tail -n 1) || return 1
+  case "$value" in
+    true|false) printf '%s\n' "$value" ;;
+    *) echo "isPreReleaseVersion printed '$value', not true or false" >&2; return 1 ;;
+  esac
+}
+
 # True when HEAD carries the same tree as master's tip and pluginVersion is a -pre version.
 # Fetches master from origin; needs no token on a public repo. False on any failure.
 is_merge_back_of_master() {
-  local master_tree here_tree plugin_version
+  local master_tree here_tree
   git fetch --quiet --no-tags --depth=1 origin master 2>/dev/null || return 1
   master_tree=$(git rev-parse --verify --quiet 'FETCH_HEAD^{tree}') || return 1
   here_tree=$(git rev-parse --verify --quiet 'HEAD^{tree}') || return 1
   echo ">>> HEAD tree $here_tree, master tree $master_tree" >&2
   [ "$here_tree" = "$master_tree" ] || return 1
-  plugin_version=$(gradle_property pluginVersion) || return 1
-  case "$plugin_version" in
-    *-pre*) return 0 ;;
-    *) echo ">>> release version $plugin_version - keeping the full matrix" >&2; return 1 ;;
-  esac
+  [ "$(is_pre_release_version)" = true ] || {
+    echo ">>> release version - keeping the full matrix" >&2
+    return 1
+  }
 }
 
 docker_image_exists() {
@@ -295,21 +291,34 @@ publish_ror_es_prebuild_plugin() {
   fi
 }
 
+# The tag on origin is the record that a version is published. Three answers: 0 absent, 1 present,
+# 2 no answer. A failed query read as "absent" publishes the whole release again.
+# Ask only the remote: a local tag survives an attempt that tagged and then failed to push.
 checkTagNotExist() {
   GIT_TAG="$1"
+  local refs
 
-  # Check only the remote to avoid false positives from stale local tags left by a
-  # previous attempt that created the local tag but failed before pushing it.
-  if git ls-remote --tags origin "refs/tags/${GIT_TAG}" 2>/dev/null | grep -q "${GIT_TAG}"; then
+  refs=$(git ls-remote --tags origin "refs/tags/${GIT_TAG}") || {
+    echo "ERROR: cannot read the tags of origin, so $GIT_TAG has no answer." >&2
+    return 2
+  }
+  if [ -n "$refs" ]; then
     echo "Git tag $GIT_TAG already exists on remote, exiting."
     return 1
   fi
 }
 
+# Writes that record. The status of the push is the status of this function: a tag that stays local
+# leaves the version published and unmarked, and the next run publishes it again.
 tag() {
   GIT_TAG="$1"
 
-  checkTagNotExist "$GIT_TAG" || return 0
+  checkTagNotExist "$GIT_TAG"
+  case $? in
+    0) ;;
+    1) return 0 ;;
+    *) return 1 ;;
+  esac
 
   echo "Tagging as $GIT_TAG"
   git config --global push.default matching
@@ -318,7 +327,6 @@ tag() {
   # -f overwrites any stale local tag from a previous failed push attempt
   git tag -fa "$GIT_TAG" -m "Generated tag from CI build $CI_BUILD_NUMBER"
   git push origin "$GIT_TAG"
-  return 0
 }
 
 # Upload a file to an S3-compatible store using the SigV4 curl uploader.

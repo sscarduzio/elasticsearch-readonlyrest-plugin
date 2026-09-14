@@ -26,17 +26,17 @@ echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task: $ROR_TASK"
 # Log file friendly Gradle output
 export TERM=dumb
 
-if [[ $ROR_TASK == "license_check" ]]; then
+task_license_check() {
   echo ">>> Check all license headers are in place"
   ./gradlew --no-daemon license
-fi
+}
 
-if [[ $ROR_TASK == "format_code_check" ]]; then
+task_format_code_check() {
   echo ">>> Running format check..."
   ./gradlew --no-daemon formatCodeCheck
-fi
+}
 
-if [[ $ROR_TASK == "cve_check" ]]; then
+task_cve_check() {
   echo ">>> Running CVE checks.."
   # Convert DEPENDENCY_CHECK_DATA_DIR to an absolute path before invoking Gradle.
   # H2 SHUTDOWN DEFRAG closes the DB during defrag; when dependency-check reopens
@@ -116,22 +116,21 @@ if [[ $ROR_TASK == "cve_check" ]]; then
   esac
 
   exit "$CVE_RC"
-fi
+}
 
-if [[ $ROR_TASK == "compile_codebase_check" ]]; then
+task_compile_codebase_check() {
   echo ">>> Running compile codebase.."
   ./gradlew --no-daemon classes
-fi
+}
 
-if [[ $ROR_TASK == "audit_build_check" ]]; then
+task_audit_build_check() {
   echo ">>> Running audit module cross build.."
   ./gradlew --no-daemon --stacktrace audit:crossBuildAssemble
-fi
+}
 
 # The unit suites. ror-tools:test belongs to THIS task and to no other: it starts an ES container
-# and builds the ROR binaries, so one run per ES module would cost minutes for one answer. Its test
-# task also needs -PesModule, and the patcher is the same code for every module, so it takes the
-# newest one.
+# and builds the ROR binaries, so one run per ES module would cost minutes for one answer. With no
+# -PesModule its test task takes the newest module by itself.
 #
 # Windows leaves out audit and build-base: audit is cross-compiled Scala with no platform of its
 # own, and `audit_build_check` already builds it. Windows adds ror-tools on a native ES install,
@@ -140,20 +139,17 @@ run_core_tests() {
   local args=()
   mapfile -t args < <(windows_gradle_args)
 
-  local module
-  module=$(newest_es_module) || { echo "ERROR: cannot resolve the newest ES module"; return 1; }
-
   local suites=(core:test ror-tools:test)
   is_windows || suites+=(audit:test build-base:test)
 
-  echo ">>> Running unit tests (${suites[*]}; ror-tools on $module).."
-  ./gradlew --no-daemon --stacktrace "${args[@]}" "${suites[@]}" "-PesModule=$module" \
+  echo ">>> Running unit tests (${suites[*]}).."
+  ./gradlew --no-daemon --stacktrace "${args[@]}" "${suites[@]}" \
     || { dump_hs_err_files; return 1; }
 }
 
-if [[ $ROR_TASK == "core_tests" ]]; then
+task_core_tests() {
   run_core_tests
-fi
+}
 
 run_integration_tests() {
   if [ "$#" -ne 1 ]; then
@@ -204,13 +200,6 @@ run_integration_tests() {
   if [ "$rc" -ne 0 ]; then dump_hs_err_files; return "$rc"; fi
 }
 
-# One dispatch for every es*x module: the task name is integration_<module>, and the module is the
-# only thing that varies. The caller names the module in the task, so a new ES module needs no edit
-# here.
-if [[ $ROR_TASK =~ ^integration_(es[0-9]+x)$ ]]; then
-  run_integration_tests "${BASH_REMATCH[1]}"
-fi
-
 build_ror_plugins() {
   if [ "$#" -ne 1 ]; then
     echo "What ES generation (major) should I verify plugins for?"
@@ -239,11 +228,9 @@ build_ror_plugins() {
 
 # Three tasks over the ES generations, each with its own function. The caller passes the generation
 # in ES_MAJOR, so any major works and ES 10 needs no edit here.
-case "$ROR_TASK" in
-  build_plugins)      build_ror_plugins   "${ES_MAJOR:?ES_MAJOR is not set}" ;;
-  upload_pre_plugins) publish_ror_plugins "${ES_MAJOR:?ES_MAJOR is not set}" "upload_pre" ;;
-  release_plugins)    publish_ror_plugins "${ES_MAJOR:?ES_MAJOR is not set}" "release" ;;
-esac
+task_build_plugins()      { build_ror_plugins   "${ES_MAJOR:?ES_MAJOR is not set}"; }
+task_upload_pre_plugins() { publish_ror_plugins "${ES_MAJOR:?ES_MAJOR is not set}" "upload_pre"; }
+task_release_plugins()    { publish_ror_plugins "${ES_MAJOR:?ES_MAJOR is not set}" "release"; }
 
 check_maven_artifacts_exist() {
   local CURRENT_VERSION="$1"
@@ -266,7 +253,7 @@ check_maven_artifacts_exist() {
   fi
 }
 
-if [[ $ROR_TASK == "publish_maven_artifacts" ]]; then
+task_publish_maven_artifacts() {
   CURRENT_PLUGIN_VER=$(gradle_property pluginVersion) || exit 1
   PUBLISHED_PLUGIN_VER=$(gradle_property publishedPluginVersion) || exit 1
 
@@ -281,9 +268,9 @@ if [[ $ROR_TASK == "publish_maven_artifacts" ]]; then
     echo ">>> Version mismatch: current=$CURRENT_PLUGIN_VER, published=$PUBLISHED_PLUGIN_VER"
     echo ">>> Skipping publishing audit module artifacts."
   fi
-fi
+}
 
-if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
+task_publish_pre_builds_docker_images() {
 
   if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
     echo "Error: BUILD_ROR_ES_VERSIONS is required"
@@ -310,7 +297,7 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
     fi
   done
 
-fi
+}
 
 # Call this task one time for a whole run. It dispatches ONE ROR KBN pre-build for all the
 # versions, then waits for it in the same shell. A failed ROR KBN build fails this task, and
@@ -318,31 +305,31 @@ fi
 # Branches: ROR_KBN_TARGET_BRANCH and ROR_KBN_FALLBACK_BRANCH apply to the ROR KBN repo (not e2e).
 # FALLBACK defaults to empty on purpose: outside CI there is no base branch, and the fallback chain
 # in the e2e clone function already includes `develop` and `master`.
-if [[ $ROR_TASK == "order_e2e_kbn_images" ]]; then
+task_order_e2e_kbn_images() {
   order_e2e_kbn_images \
     "${E2E_ELK_VERSIONS:?E2E_ELK_VERSIONS is not set — the caller passes the ELK versions to order}" \
     "${ROR_KBN_TARGET_BRANCH:?ROR_KBN_TARGET_BRANCH is not set}" \
     "${ROR_KBN_FALLBACK_BRANCH:-}" \
     "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — one build id names the dev images of a whole run, and the caller passes it (ci/CI.md#e2e-tests)}"
-fi
+}
 
 # Call this task one time for each ES module. It publishes this repo's ROR ES dev image under the
 # per-run tag. The caller names the module in E2E_ES_MODULE, and this task derives the ELK version
 # from it. A caller that already knows the version passes E2E_ELK_VERSION instead.
-if [[ $ROR_TASK == "build_e2e_es_image" ]]; then
+task_build_e2e_es_image() {
   if [ -z "${E2E_ELK_VERSION:-}" ]; then
     E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
   fi
   build_e2e_es_image \
     "$E2E_ELK_VERSION" \
     "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — one build id names the dev images of a whole run, and the caller passes it (ci/CI.md#e2e-tests)}"
-fi
+}
 
 # Call this task one time for each ES module, after both images are published. The branches
 # (E2E_TARGET_BRANCH and E2E_FALLBACK_BRANCH) apply to the e2e repo. The caller names the module in
 # E2E_ES_MODULE, and this task derives the ELK version from it. A caller that already knows the
 # version passes E2E_ELK_VERSION instead.
-if [[ $ROR_TASK == "run_e2e_tests" ]]; then
+task_run_e2e_tests() {
   if [ -z "${E2E_ELK_VERSION:-}" ]; then
     E2E_ELK_VERSION=$(e2e_elk_version_for_module "${E2E_ES_MODULE:?neither E2E_ELK_VERSION nor E2E_ES_MODULE is set}")
     # Publish the version, because a caller that collects the reports names their folder after it.
@@ -356,4 +343,16 @@ if [[ $ROR_TASK == "run_e2e_tests" ]]; then
     "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" \
     "${E2E_FALLBACK_BRANCH:-}" \
     "${E2E_BUILD_ID:?E2E_BUILD_ID is not set — one build id names the dev images of a whole run, and the caller passes it (ci/CI.md#e2e-tests)}"
+}
+
+# One dispatch point. A task is a `task_<name>` function, so a new task needs no edit here.
+# `integration_<module>` is the exception: the ES module is part of the name, and a new ES module
+# must not need an edit either.
+if declare -F "task_$ROR_TASK" >/dev/null; then
+  "task_$ROR_TASK"
+elif [[ $ROR_TASK =~ ^integration_(es[0-9]+x)$ ]]; then
+  run_integration_tests "${BASH_REMATCH[1]}"
+else
+  echo "::error::unknown ROR_TASK '$ROR_TASK'"
+  exit 1
 fi

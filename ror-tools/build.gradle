@@ -46,18 +46,16 @@ test {
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
 
     systemProperty "project.dir", rootProject.projectDir
-    enabled = project.hasProperty('esModule')
-    if (enabled) {
-        def module = project.properties['esModule']
-        systemProperty "esModule", module
-        def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
-        if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
-        tags {
-            exclude 'tech.beshu.tags.ExcludeESModule.' + module
-            exclude 'tech.beshu.tags.IgnoreOnWindows'
-        }
-        suite 'tech.beshu.ror.tools.*'
+    def module = project.findProperty('esModule')
+            ?: tech.beshu.ror.gradle.utils.EsModuleFinder.newestEsModuleName(rootProject)
+    systemProperty "esModule", module
+    def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
+    if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
+    tags {
+        exclude 'tech.beshu.tags.ExcludeESModule.' + module
+        exclude 'tech.beshu.tags.IgnoreOnWindows'
     }
+    suite 'tech.beshu.ror.tools.*'
     outputs.upToDateWhen { false }
     maxParallelForks = 1
 }

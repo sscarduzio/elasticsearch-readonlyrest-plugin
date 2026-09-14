@@ -18,9 +18,11 @@ on:
         required: true
         type: string
 
-# One release per branch, and never cancel one in flight.
+# One release per branch, and never cancel a running one. A group holds one run in progress and one
+# pending, and a third run cancels the pending one even with `cancel-in-progress: false`. So only a
+# run that can publish joins the branch group.
 concurrency:
-  group: release-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  group: release-${{ (github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'push') && (github.event.workflow_run.head_branch || github.ref_name) || github.run_id }}
   cancel-in-progress: false
 
 permissions:
@@ -107,6 +109,7 @@ jobs:
       - id: plan
         run: |
           set -eo pipefail
+          source ci/ci-lib.sh
 
           MAJORS_FILE=build/es-modules/es-majors.txt
           [ -s "$MAJORS_FILE" ] || { echo "::error::printEsMajors wrote no ES major."; exit 1; }
@@ -114,11 +117,14 @@ jobs:
           # ["9", ...] -> {"include":[{"ES_MAJOR":"9"}, ...]}, the matrix both jobs below read.
           MAJORS=$(awk 'BEGIN { printf "[" } { printf "%s\"%s\"", (NR > 1 ? "," : ""), $0 } END { print "]" }' "$MAJORS_FILE")
 
-          IS_PRE=$(./gradlew --no-daemon -q isPreReleaseVersion | tail -n 1)
-          case "$IS_PRE" in
-            true|false) ;;
-            *) echo "::error::isPreReleaseVersion printed '$IS_PRE', not true or false."; exit 1 ;;
-          esac
+          IS_PRE=$(is_pre_release_version) || { echo "::error::cannot tell if this is a pre-release."; exit 1; }
+
+          # A hand-dispatched pre-release publishes nothing: upload_pre_ror takes the automatic path
+          # only. Fail here, so the run does not end green with no artifact.
+          if [ "$IS_PRE" = true ] && [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            echo "::error::this is a pre-release. A pre-release publishes from CI only."
+            exit 1
+          fi
 
           {
             echo "majors_matrix=$(jq -c '{include: map({ES_MAJOR: .})}' <<< "$MAJORS")"
@@ -141,6 +147,7 @@ jobs:
     timeout-minutes: 600
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix: ${{ fromJSON(needs.discover.outputs.majors_matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -171,9 +178,13 @@ jobs:
       contents: write   # ci-lib.sh tags the release and pushes the tag via the checkout token
     runs-on: *self_hosted_runner
     container: *toolchains_container
-    timeout-minutes: 180
+    # 600, not the 180 of the other jobs: an ES 8 leg builds, tests and uploads 17 versions, and the
+    # last two releases took 4h15m and 5h09m. A killed leg leaves the release without that ES
+    # major's artifacts.
+    timeout-minutes: 600
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix: ${{ fromJSON(needs.discover.outputs.majors_matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

@@ -25,8 +25,8 @@ on:
           - run_all_tests_on_windows
           - run_e2e_tests
 
-# Cancel superseded PR runs. Branch pushes queue behind the running build so an in-flight release
-# is never cancelled.
+# Cancel superseded PR runs. Branch pushes queue instead, so every develop or master push completes
+# and can start release.yml. A cancelled run never starts it.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -67,14 +67,19 @@ jobs:
       - id: flags
         env:
           IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}
+          IS_DEVELOP_PUSH: ${{ github.ref == 'refs/heads/develop' }}
           IS_EPIC_BRANCH: ${{ contains(github.head_ref || github.ref_name, 'epic/') }}
           MANUAL_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.actionToPerform || '' }}
+          # No toolchains container here, so the gradle home of that image does not exist. The
+          # merge-back test below runs gradle, so clear both settings.
+          GRADLE_USER_HOME: ''
+          GRADLE_OPTS: ''
         run: |
-          # ci-lib.sh owns the merge-back test: same tree as master's tip, and a -pre version.
           source ci/ci-lib.sh
           MERGE_BACK=false
-          [ "$IS_RELEASE_BRANCH" = "true" ] && [ -z "$MANUAL_ACTION" ] \
+          [ "$IS_DEVELOP_PUSH" = "true" ] && [ -z "$MANUAL_ACTION" ] \
             && is_merge_back_of_master && MERGE_BACK=true
+          
           {
             echo "is_release_branch=$IS_RELEASE_BRANCH"
             echo "is_epic_branch=$IS_EPIC_BRANCH"
@@ -291,6 +296,10 @@ jobs:
   it_linux:
     name: it_linux_${{ matrix.ES_MODULE }}
     needs: [ discover, ci_setup, toolchains_verify ]
+    # An empty matrix is not a skip: GitHub rejects `{"include":[]}` when it evaluates `strategy`,
+    # and the whole run ends `failure`. The guard turns the empty case into `skipped`, which
+    # build_ror accepts.
+    if: needs.discover.outputs.it_linux_matrix != '{"include":[]}'
     runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 120
@@ -298,7 +307,6 @@ jobs:
       ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
     strategy:
       fail-fast: false
-      max-parallel: 20
       matrix: ${{ fromJSON(needs.discover.outputs.it_linux_matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -361,6 +369,8 @@ jobs:
   it_windows:
     name: it_win_${{ matrix.ES_MODULE }}
     needs: [ discover, toolchains_verify ]
+    # Same reason as it_linux: an empty matrix fails the run, so this guard skips the job.
+    if: needs.discover.outputs.it_windows_matrix != '{"include":[]}'
     runs-on: windows-2025
     timeout-minutes: 150
     # Clears the Linux toolchains-image Gradle settings: /opt/gradle-home resolves to an empty
@@ -485,6 +495,8 @@ jobs:
   e2e_build_es_images:
     name: build_es_${{ matrix.ES_MODULE }}
     needs: [ ci_setup, discover ]
+    # Same reason as it_linux: an empty matrix fails the run, so this guard skips the job.
+    if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
     runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 120
@@ -515,6 +527,8 @@ jobs:
   e2e_tests:
     name: e2e_${{ matrix.ES_MODULE }}
     needs: [ ci_setup, discover, e2e_order_kbn_images, e2e_build_es_images ]
+    # Same reason as it_linux: an empty matrix fails the run, so this guard skips the job.
+    if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     # The one Linux job with no container: Cypress reads the ports the compose stack of the e2e repo

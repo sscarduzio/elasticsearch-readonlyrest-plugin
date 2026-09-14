@@ -82,26 +82,9 @@ tasks.register("printEsMajors") {
     }
 }
 
-// Prints the newest ES module (the one whose newest supported ES version is the highest), and
-// writes it to build/es-modules/newest-es-module.txt. Scripts must read that file: configuration-time
-// logging can pollute stdout even under --quiet. Every caller that needs ONE module asks here,
-// because a module name written into a script is wrong at the next ES release.
-// Usage: ./gradlew printNewestEsModule --quiet
-tasks.register("printNewestEsModule") {
-    group = 'help'
-    description = 'Prints the newest ES module name'
-    outputs.upToDateWhen { false }
-    doLast {
-        def module = tech.beshu.ror.gradle.utils.EsModuleFinder.newestEsModuleName(rootProject)
-        println module
-        def moduleFile = layout.buildDirectory.file("es-modules/newest-es-module.txt").get().asFile
-        moduleFile.parentFile.mkdirs()
-        moduleFile.text = "$module\n"
-    }
-}
-
 // Is the configured pluginVersion a pre-release? Prints `true` or `false`, and nothing else.
-// A `-pre` suffix uploads a pre-release; anything else releases.
+// A `-pre` suffix uploads a pre-release; anything else releases. This task is the only
+// implementation of that rule; shell callers use `is_pre_release_version`.
 // Usage: ./gradlew isPreReleaseVersion --quiet
 tasks.register("isPreReleaseVersion") {
     group = 'help'

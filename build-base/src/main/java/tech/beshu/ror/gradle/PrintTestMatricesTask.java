@@ -18,6 +18,7 @@
 package tech.beshu.ror.gradle;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskAction;
 import tech.beshu.ror.gradle.utils.TestMatrixPolicy;
 import tech.beshu.ror.gradle.utils.TestMatrixPolicy.Selection;
@@ -54,29 +55,41 @@ public class PrintTestMatricesTask extends DefaultTask {
 
   @TaskAction
   public void printMatrices() {
+    matricesFor(getProject())
+        .forEach(
+            (name, modules) -> {
+              String json = asJsonArray(modules);
+              System.out.println(name + "=" + json);
+              writeMatrixFile(name, json);
+            });
+  }
+
+  /** Which selection each matrix name takes, and which majors it skips. */
+  static Map<String, List<String>> matricesFor(Project rootProject) {
     Map<String, List<String>> matrices = new LinkedHashMap<>();
-    matrices.put("linux_it_full", modulesFor(Selection.ALL, EVERY_MAJOR));
-    matrices.put("linux_it_pr_ready", modulesFor(Selection.READY_PR, EVERY_MAJOR));
-    matrices.put("linux_it_pr_draft", modulesFor(Selection.NEWEST, EVERY_MAJOR));
-    matrices.put("win_it_full", modulesFor(Selection.ALL, NO_WINDOWS_OR_E2E));
+    matrices.put("linux_it_full", modulesFor(rootProject, Selection.ALL, EVERY_MAJOR));
+    matrices.put("linux_it_pr_ready", modulesFor(rootProject, Selection.READY_PR, EVERY_MAJOR));
+    matrices.put("linux_it_pr_draft", modulesFor(rootProject, Selection.NEWEST, EVERY_MAJOR));
+    matrices.put("win_it_full", modulesFor(rootProject, Selection.ALL, NO_WINDOWS_OR_E2E));
     matrices.put(
-        "win_it_master_or_develop", modulesFor(Selection.OLDEST_AND_NEWEST, NO_WINDOWS_OR_E2E));
-    matrices.put("win_it_pr_ready", modulesFor(Selection.NEWEST, NO_WINDOWS_OR_E2E));
-    matrices.put("e2e_full", modulesFor(Selection.NEWEST, NO_WINDOWS_OR_E2E));
-
-    matrices.forEach(
-        (name, modules) -> {
-          String json = asJsonArray(modules);
-          System.out.println(name + "=" + json);
-          writeMatrixFile(name, json);
-        });
+        "win_it_master_or_develop",
+        modulesFor(rootProject, Selection.OLDEST_AND_NEWEST, NO_WINDOWS_OR_E2E));
+    matrices.put("win_it_pr_ready", modulesFor(rootProject, Selection.NEWEST, NO_WINDOWS_OR_E2E));
+    matrices.put("e2e_full", modulesFor(rootProject, Selection.NEWEST, NO_WINDOWS_OR_E2E));
+    return matrices;
   }
 
-  private List<String> modulesFor(Selection selection, Set<Integer> skippedMajors) {
-    return TestMatrixPolicy.modulesFor(getProject(), selection, skippedMajors);
+  private static List<String> modulesFor(
+      Project rootProject, Selection selection, Set<Integer> skippedMajors) {
+    return TestMatrixPolicy.modulesFor(rootProject, selection, skippedMajors);
   }
 
-  private static String asJsonArray(List<String> modules) {
+  // An empty list must give [], not [""]: a matrix of one empty module runs a task that matches no
+  // branch of run-pipeline.sh, and the leg ends green having tested nothing.
+  static String asJsonArray(List<String> modules) {
+    if (modules.isEmpty()) {
+      return "[]";
+    }
     return modules.stream().collect(Collectors.joining("\",\"", "[\"", "\"]"));
   }
 
