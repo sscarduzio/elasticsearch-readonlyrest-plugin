@@ -16,22 +16,20 @@
  */
 package tech.beshu.ror.es.utils
 
-import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
 import org.joor.Reflect.*
 import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.esql.Query.SourceLocation
-import tech.beshu.ror.es.esql.{EsqlIndexListsReader, IndexListRead, Query, Rejection, ReportedIndexList}
+import tech.beshu.ror.es.esql.{EsqlIndexListsReader, IndexListRead, Query, ReportedIndexList}
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
-import tech.beshu.ror.utils.slf4j.Logging
 
 import java.time.ZoneOffset
 import java.util.function.Predicate as JPredicate
@@ -39,17 +37,7 @@ import java.util.{List as JList, Locale}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
-class EsqlRequestHelper(esVersion: EsVersion) extends Logging {
-
-  def modifyIndicesOf(
-      request: CompositeIndicesRequest,
-      query: Query,
-      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Either[Rejection, Unit] = {
-    query
-      .narrowedTo(allowedIndices, readerFor(request))
-      .map(narrowed => setQuery(request, narrowed.stringify))
-  }
+class EsqlRequestHelper(esVersion: EsVersion) {
 
   def modifyResponseAccordingToFieldLevelSecurity(
       response: ActionResponse,
@@ -58,8 +46,14 @@ class EsqlRequestHelper(esVersion: EsVersion) extends Logging {
     new EsqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions).underlyingObject
   }
 
-  def esqlQueryOf(request: CompositeIndicesRequest): Query = {
+  def extractEsqlQueryFrom(request: CompositeIndicesRequest)(
+      implicit requestId: RequestId
+  ): Query = {
     Query.from(getQuery(request), readerFor(request))
+  }
+
+  def setEsqlQueryTo(request: CompositeIndicesRequest, query: Query): Unit = {
+    setQuery(request, query.stringify)
   }
 
   private def readerFor(request: CompositeIndicesRequest): EsqlIndexListsReader = {

@@ -466,7 +466,7 @@ class IndexListReplacerTest extends AnyWordSpec {
         readingFailureFor(
           "PROMQL step=1m rate(v)",
           allowed("metrics-1"),
-          from("PROMQL step=1m rate(v)", "*")
+          from("PROMQL step=1m rate(v)", "metrics-*")
         ) shouldBe PromqlLeaningOnDefaultIndex
       }
       "replace an index parameter, whose value lives outside the query text ES points at" in {

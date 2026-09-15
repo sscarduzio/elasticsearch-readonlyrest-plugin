@@ -51,7 +51,7 @@ class EsqlIndicesEsRequestContext private (
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  private lazy val esqlQuery = EsqlRequestHelper.esqlQueryOf(actionRequest)
+  private lazy val esqlQuery = EsqlRequestHelper.extractEsqlQueryFrom(actionRequest)
 
   override protected def requestedIndicesFrom(
       request: ActionRequest with CompositeIndicesRequest
@@ -65,13 +65,14 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    EsqlRequestHelper.modifyIndicesOf(request, esqlQuery, filteredRequestedIndices) match {
-      case Right(_) =>
+    esqlQuery.narrowedTo(filteredRequestedIndices) match {
+      case Right(narrowedQuery) =>
+        EsqlRequestHelper.setEsqlQueryTo(request, narrowedQuery)
         applyFieldLevelSecurityTo(request, fieldLevelSecurity)
         applyFilterTo(request, filter)
         UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
       case Left(rejection) =>
-        logger.warn(s"[${id.show}] ${rejection.show}")
+        logger.warn(rejection.show)
         ModificationResult.ShouldBeInterrupted
     }
   }

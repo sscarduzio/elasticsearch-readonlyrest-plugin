@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.toOps
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -63,16 +63,16 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](
         val nonExistingIndices = NonEmptyList
           .fromList(discoveredIndices.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
-        updateToNonexistentIndices(nonExistingIndices)
+        updateIndicesTo(nonExistingIndices)
       } else {
         ShouldBeInterrupted
       }
     } else {
-      updateToNonexistentIndices(NonEmptyList.of(discoveredIndices.randomNonexistentLocalIndex()))
+      updateIndicesTo(NonEmptyList.of(discoveredIndices.randomNonexistentLocalIndex()))
     }
   }
 
-  private def updateToNonexistentIndices(
+  private def updateIndicesTo(
       indices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): ModificationResult = {
     update(
@@ -80,10 +80,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](
       filteredRequestedIndices = indices,
       filter = None,
       fieldLevelSecurity = None
-    ) match {
-      case ShouldBeInterrupted => ShouldBeInterrupted
-      case _                   => Modified
-    }
+    )
   }
 
   override protected def modifyRequest(blockContext: FilterableRequestBlockContext): ModificationResult = {

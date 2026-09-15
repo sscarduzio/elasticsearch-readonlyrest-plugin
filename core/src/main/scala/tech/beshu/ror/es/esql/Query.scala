@@ -17,9 +17,9 @@
 package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.slf4j.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 sealed trait Query {
 
@@ -30,23 +30,26 @@ sealed trait Query {
   def indices: Set[RequestedIndex[ClusterIndexName]]
 
   def narrowedTo(
-      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      reader: EsqlIndexListsReader
+      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  )(
+      implicit requestId: RequestId
   ): Either[Rejection, Query]
 
 }
 
-object Query extends Logging {
+object Query extends RequestIdAwareLogging {
 
   private[esql] final case class TextSpan(start: Int, end: Int)
 
   /** A 1-based line and a 0-based column, the way ES reports them. */
   final case class SourceLocation(line: Int, column: Int)
 
-  def from(query: String, reader: EsqlIndexListsReader): Query = {
+  def from(query: String, reader: EsqlIndexListsReader)(
+      implicit requestId: RequestId
+  ): Query = {
     reader.indexListsIn(query) match {
       case Right(reported) =>
-        located(query, reported)
+        located(query, reader, reported)
       case Left(cause) =>
         logger.debug("Cannot parse the ES|QL statement", cause)
         Unreadable(query, Rejection.CannotParseQuery)
@@ -55,6 +58,7 @@ object Query extends Logging {
 
   final class WithIndices private[esql] (
       protected val text: String,
+      private val reader: EsqlIndexListsReader,
       private[esql] val indexLists: NonEmptyList[LocatedIndexList]
   ) extends Query {
 
@@ -62,8 +66,9 @@ object Query extends Logging {
       LocatedIndexList.requestedIndicesOf(indexLists)
 
     override def narrowedTo(
-        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-        reader: EsqlIndexListsReader
+        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+    )(
+        implicit requestId: RequestId
     ): Either[Rejection, Query] = {
       if (allowedIndices.toList.toCovariantSet == indices) Right(this)
       else {
@@ -72,7 +77,7 @@ object Query extends Logging {
           case Right(reported) =>
             replaced
               .checkedAgainst(reported.map(_.read).filterNot(_.indexListIsEmpty))
-              .flatMap(narrowed => confirmed(located(narrowed, reported)))
+              .flatMap(narrowed => confirmed(located(narrowed, reader, reported)))
           case Left(cause) =>
             logger.warn("Elasticsearch cannot parse the ES|QL query ReadonlyREST rewrote", cause)
             Left(Rejection.CannotParseRewrittenQuery(replaced.intendedIndexLists))
@@ -92,8 +97,9 @@ object Query extends Logging {
     override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
 
     override def narrowedTo(
-        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-        reader: EsqlIndexListsReader
+        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+    )(
+        implicit requestId: RequestId
     ): Either[Rejection, Query] = Right(this)
 
   }
@@ -103,8 +109,9 @@ object Query extends Logging {
     override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
 
     override def narrowedTo(
-        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-        reader: EsqlIndexListsReader
+        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+    )(
+        implicit requestId: RequestId
     ): Either[Rejection, Query] = {
       Either.cond[Rejection, Query](allowedIndices.toList.toCovariantSet == indices, this, reason)
     }
@@ -114,13 +121,13 @@ object Query extends Logging {
   private def allIndices: Set[RequestedIndex[ClusterIndexName]] =
     Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
-  private def located(query: String, reported: List[ReportedIndexList]): Query = {
+  private def located(query: String, reader: EsqlIndexListsReader, reported: List[ReportedIndexList]): Query = {
     IndexListLocator.locatedIn(query, reported) match {
       case Left(failure) =>
         Unreadable(query, Rejection.CannotExtractIndices(failure))
       case Right(indexLists) =>
         NonEmptyList.fromList(indexLists) match {
-          case Some(nonEmptyIndexLists) => new WithIndices(query, nonEmptyIndexLists)
+          case Some(nonEmptyIndexLists) => new WithIndices(query, reader, nonEmptyIndexLists)
           case None                     => WithoutIndices(query)
         }
     }
