@@ -52,8 +52,7 @@ class PrintTestMatricesTaskTest {
 
   // --- the name -> selection table ---
   //
-  // A swapped line here ships a draft PR that runs the full Linux matrix, or a ready PR that runs
-  // twice the Windows legs, and nothing reports it. So every name is pinned to its own answer.
+  // A swapped line ships a draft PR that runs the full Linux matrix, and nothing reports it.
 
   @Test
   void everyMatrixTakesItsOwnSelection() {

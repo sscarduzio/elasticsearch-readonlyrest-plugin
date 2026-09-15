@@ -70,10 +70,6 @@ jobs:
           IS_DEVELOP_PUSH: ${{ github.ref == 'refs/heads/develop' }}
           IS_EPIC_BRANCH: ${{ contains(github.head_ref || github.ref_name, 'epic/') }}
           MANUAL_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.actionToPerform || '' }}
-          # No toolchains container here, so the gradle home of that image does not exist. The
-          # merge-back test below runs gradle, so clear both settings.
-          GRADLE_USER_HOME: ''
-          GRADLE_OPTS: ''
         run: |
           source ci/ci-lib.sh
           MERGE_BACK=false
@@ -369,7 +365,7 @@ jobs:
   it_windows:
     name: it_win_${{ matrix.ES_MODULE }}
     needs: [ discover, toolchains_verify ]
-    # Same reason as it_linux: an empty matrix fails the run, so this guard skips the job.
+    # Same reason as it_linux.
     if: needs.discover.outputs.it_windows_matrix != '{"include":[]}'
     runs-on: windows-2025
     timeout-minutes: 150
@@ -495,7 +491,7 @@ jobs:
   e2e_build_es_images:
     name: build_es_${{ matrix.ES_MODULE }}
     needs: [ ci_setup, discover ]
-    # Same reason as it_linux: an empty matrix fails the run, so this guard skips the job.
+    # Same reason as it_linux.
     if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
     runs-on: ubuntu-latest
     container: *toolchains_container
@@ -527,7 +523,7 @@ jobs:
   e2e_tests:
     name: e2e_${{ matrix.ES_MODULE }}
     needs: [ ci_setup, discover, e2e_order_kbn_images, e2e_build_es_images ]
-    # Same reason as it_linux: an empty matrix fails the run, so this guard skips the job.
+    # Same reason as it_linux.
     if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
     runs-on: ubuntu-latest
     timeout-minutes: 120

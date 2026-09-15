@@ -57,8 +57,7 @@ dump_hs_err_files() {
 
 # Prints `true` or `false`: is the configured pluginVersion a pre-release? The `isPreReleaseVersion`
 # gradle task holds the only implementation of that rule. Take the last line, because
-# configuration-time logging pollutes stdout even under --quiet, and fail on any other word: a wrong
-# answer publishes a release as a pre-release.
+# configuration-time logging pollutes stdout even under --quiet, and fail on any other word.
 is_pre_release_version() {
   local value
   value=$(cd "$ROR_REPO_ROOT" && ./gradlew --no-daemon -q isPreReleaseVersion | tail -n 1) || return 1
@@ -68,7 +67,8 @@ is_pre_release_version() {
   esac
 }
 
-# True when HEAD carries the same tree as master's tip and pluginVersion is a -pre version.
+# True when HEAD carries the same tree as master's tip: on a develop push, only a merge-back does
+# that. The tree, not the commit, because a merge-back through a PR gets a merge commit.
 # Fetches master from origin; needs no token on a public repo. False on any failure.
 is_merge_back_of_master() {
   local master_tree here_tree
@@ -76,11 +76,7 @@ is_merge_back_of_master() {
   master_tree=$(git rev-parse --verify --quiet 'FETCH_HEAD^{tree}') || return 1
   here_tree=$(git rev-parse --verify --quiet 'HEAD^{tree}') || return 1
   echo ">>> HEAD tree $here_tree, master tree $master_tree" >&2
-  [ "$here_tree" = "$master_tree" ] || return 1
-  [ "$(is_pre_release_version)" = true ] || {
-    echo ">>> release version - keeping the full matrix" >&2
-    return 1
-  }
+  [ "$here_tree" = "$master_tree" ]
 }
 
 docker_image_exists() {

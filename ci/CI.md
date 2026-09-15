@@ -153,7 +153,7 @@ Two orchestration rules worth knowing before editing conditions:
   |---|---|---|
   | `is_release_branch` | develop, master | the NVD cache write in `optional_checks`; `discover`, ORed below |
   | `is_epic_branch` | `epic/**`, and PRs from one | `discover`, ORed with `is_release_branch` |
-  | `is_merge_back` | a develop push whose tree equals master's tip, on a `-pre` version | `discover` |
+  | `is_merge_back` | a develop push whose tree equals master's tip | `discover` |
   | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks` |
   | `manual_action` | — the chosen action, `''` on an automatic run | `discover`, `unit_tests_windows` |
   | `unique_build_id` | — `<run id>-<run attempt>`, the tag of every dev image of this run | the e2e jobs |
@@ -195,11 +195,11 @@ a module list:
 The first two write files, and callers must read those, not gradle stdout — configuration-time
 logging can pollute it even under `--quiet`. `isPreReleaseVersion` prints one word instead.
 
-`isPreReleaseVersion` is the only implementation of the `-pre` rule. It decides `upload_pre_ror`
-against `release_ror`, and it is the second half of the merge-back test. Both callers go through
-`is_pre_release_version` in `ci-lib.sh`. That function takes the last line and **fails on anything
-that is not `true` or `false`**. A silently wrong value publishes a release as a pre-release, or the
-reverse. If the pre-release convention changes, change the task, and nothing else.
+`isPreReleaseVersion` is the only implementation of the `-pre` rule, and it decides `upload_pre_ror`
+against `release_ror`. Its caller goes through `is_pre_release_version` in `ci-lib.sh`. That function
+takes the last line and **fails on anything that is not `true` or `false`**. A silently wrong value
+publishes a release as a pre-release, or the reverse. If the pre-release convention changes, change
+the task, and nothing else.
 
 Reading a property from shell is a fourth case, and `ci-lib.sh`'s `gradle_property` owns it. Its own
 comment states the rule: every reader goes through there, because a second parser drifts. The manual
