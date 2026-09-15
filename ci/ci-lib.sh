@@ -8,6 +8,17 @@ CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=ci/runner-detect.sh
 source "$CI_DIR/runner-detect.sh"
 
+# The repository this build works on. CI_DIR sits in it.
+ROR_REPO_ROOT=$(cd "$CI_DIR/.." && pwd)
+
+# A job that runs in a container works as root, while the checkout keeps the user id of the runner.
+# git refuses every command in a working tree of another user ("dubious ownership"), so a caller of
+# `git rev-parse` gets no commit and the job stops. The exception makes git usable again. It goes to
+# the global config of the job, and each job gets a new container, so no machine keeps it.
+if ! git -C "$ROR_REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  git config --global --add safe.directory "$ROR_REPO_ROOT" >/dev/null 2>&1 || true
+fi
+
 # Reads one key from gradle.properties, which holds the build's own values. The file sits beside this
 # one, so the caller's working directory does not matter.
 #
@@ -26,20 +37,46 @@ gradle_property() {
   printf '%s\n' "$value"
 }
 
-# True when HEAD carries the same tree as master's tip and pluginVersion is a -pre version.
+# The gradle args a Windows runner adds to every ./gradlew call. A Linux runner adds none.
+# The toolchains image bakes its JDK paths into /opt/gradle-home/gradle.properties, which a Windows
+# job never reads. These args state the Windows answer anyway, for a caller that does inherit it.
+# One arg per line, for a caller to read into an array.
+windows_gradle_args() {
+  is_windows || return 0
+  printf '%s\n' \
+    --build-cache \
+    -Dorg.gradle.java.installations.paths= \
+    -Dorg.gradle.java.installations.auto-download=true
+}
+
+# Prints every JVM crash log under the working tree. A crashed JVM writes one and says nothing on
+# stdout, so a leg that ends with no test failure leaves this as its only evidence.
+dump_hs_err_files() {
+  find . -name 'hs_err*' -type f -exec cat {} + 2>/dev/null || true
+}
+
+# Prints `true` or `false`: is the configured pluginVersion a pre-release? The `isPreReleaseVersion`
+# gradle task holds the only implementation of that rule. Take the last line, because
+# configuration-time logging pollutes stdout even under --quiet, and fail on any other word.
+is_pre_release_version() {
+  local value
+  value=$(cd "$ROR_REPO_ROOT" && ./gradlew --no-daemon -q isPreReleaseVersion | tail -n 1) || return 1
+  case "$value" in
+    true|false) printf '%s\n' "$value" ;;
+    *) echo "isPreReleaseVersion printed '$value', not true or false" >&2; return 1 ;;
+  esac
+}
+
+# True when HEAD carries the same tree as master's tip: on a develop push, only a merge-back does
+# that. The tree, not the commit, because a merge-back through a PR gets a merge commit.
 # Fetches master from origin; needs no token on a public repo. False on any failure.
 is_merge_back_of_master() {
-  local master_tree here_tree plugin_version
+  local master_tree here_tree
   git fetch --quiet --no-tags --depth=1 origin master 2>/dev/null || return 1
   master_tree=$(git rev-parse --verify --quiet 'FETCH_HEAD^{tree}') || return 1
   here_tree=$(git rev-parse --verify --quiet 'HEAD^{tree}') || return 1
   echo ">>> HEAD tree $here_tree, master tree $master_tree" >&2
-  [ "$here_tree" = "$master_tree" ] || return 1
-  plugin_version=$(gradle_property pluginVersion) || return 1
-  case "$plugin_version" in
-    *-pre*) return 0 ;;
-    *) echo ">>> release version $plugin_version - keeping the full matrix" >&2; return 1 ;;
-  esac
+  [ "$here_tree" = "$master_tree" ]
 }
 
 docker_image_exists() {
@@ -211,7 +248,11 @@ publish_ror_es_prebuild_plugin() {
 
   local ROR_VERSION GIT_SHA
   ROR_VERSION=$(gradle_property pluginVersion) || return 1
-  GIT_SHA=$(git rev-parse --short HEAD)
+  # The commit names the source of the image, so a missing one must stop the build with the cause.
+  if ! GIT_SHA=$(git rev-parse --short HEAD); then
+    echo "Cannot read the commit of the checkout, thus the image tag would name no source" >&2
+    return 1
+  fi
 
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 
@@ -246,30 +287,42 @@ publish_ror_es_prebuild_plugin() {
   fi
 }
 
+# The tag on origin is the record that a version is published. Three answers: 0 absent, 1 present,
+# 2 no answer. A failed query read as "absent" publishes the whole release again.
+# Ask only the remote: a local tag survives an attempt that tagged and then failed to push.
 checkTagNotExist() {
   GIT_TAG="$1"
+  local refs
 
-  # Check only the remote to avoid false positives from stale local tags left by a
-  # previous attempt that created the local tag but failed before pushing it.
-  if git ls-remote --tags origin "refs/tags/${GIT_TAG}" 2>/dev/null | grep -q "${GIT_TAG}"; then
+  refs=$(git ls-remote --tags origin "refs/tags/${GIT_TAG}") || {
+    echo "ERROR: cannot read the tags of origin, so $GIT_TAG has no answer." >&2
+    return 2
+  }
+  if [ -n "$refs" ]; then
     echo "Git tag $GIT_TAG already exists on remote, exiting."
     return 1
   fi
 }
 
+# Writes that record. The status of the push is the status of this function: a tag that stays local
+# leaves the version published and unmarked, and the next run publishes it again.
 tag() {
   GIT_TAG="$1"
 
-  checkTagNotExist "$GIT_TAG" || return 0
+  checkTagNotExist "$GIT_TAG"
+  case $? in
+    0) ;;
+    1) return 0 ;;
+    *) return 1 ;;
+  esac
 
   echo "Tagging as $GIT_TAG"
   git config --global push.default matching
   git config --global user.email "support@readonlyrest.com"
   git config --global user.name "CI"
   # -f overwrites any stale local tag from a previous failed push attempt
-  git tag -fa "$GIT_TAG" -m "Generated tag from CI build $TRAVIS_BUILD_NUMBER"
+  git tag -fa "$GIT_TAG" -m "Generated tag from CI build $CI_BUILD_NUMBER"
   git push origin "$GIT_TAG"
-  return 0
 }
 
 # Upload a file to an S3-compatible store using the SigV4 curl uploader.

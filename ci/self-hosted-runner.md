@@ -11,9 +11,9 @@ Jobs that need a self-hosted runner:
 
 | Workflow | Job | Shape |
 |---|---|---|
-| `ci.yml` | `upload_pre_ror` | 4-leg matrix, pre-release only |
-| `ci.yml` | `release_ror` | 4-leg matrix, release only |
-| `ci.yml` | `publish_mvn` | seconds, after `release_ror` |
+| `release.yml` | `upload_pre_ror` | 4-leg matrix, pre-release only |
+| `release.yml` | `release_ror` | 4-leg matrix, release only |
+| `release.yml` | `publish_mvn` | seconds, after `release_ror` |
 | `publish-pre-builds.yml` | `publish` | manual, long build-and-push |
 | `mirror-es-libs.yml` | `mirror` | manual, short |
 
@@ -23,10 +23,10 @@ To get the current numbers:
 
 ```bash
 gh run list --repo sscarduzio/elasticsearch-readonlyrest-plugin \
-  --workflow ci.yml --limit 50 --json databaseId \
+  --workflow release.yml --limit 50 --json databaseId \
   --jq '.[].databaseId' |
   xargs -I{} gh run view {} --repo sscarduzio/elasticsearch-readonlyrest-plugin \
-    --json jobs --jq '.jobs[] | select(.name|startswith("release_")) |
+    --json jobs --jq '.jobs[] | select(.name|startswith("release_ror")) |
       "\(.name) \(.startedAt) \(.completedAt)"'
 ```
 

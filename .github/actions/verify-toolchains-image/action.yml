@@ -1,0 +1,17 @@
+name: Verify the toolchains image
+description: >-
+  Proves the image the caller is running in is usable: the Gradle distribution is baked in, and the
+  wrapper starts. Run this before anything expensive, so a bad image fails one cheap job instead of
+  a whole matrix. The caller must be a container job using the image, and must check the repo out
+  first.
+
+runs:
+  using: composite
+  steps:
+    - name: Verify baked Gradle home
+      shell: bash
+      run: |
+        set -e
+        echo "Baked GRADLE_USER_HOME=$GRADLE_USER_HOME"
+        ls "$GRADLE_USER_HOME/wrapper/dists" || { echo "::error::No baked Gradle dist in image"; exit 1; }
+        ./gradlew --no-daemon -q help
