@@ -756,9 +756,6 @@ trait LogsShowInstances extends cats.instances.AllInstances {
       s"the indices [${indexList.show}] are read by a command that also holds a subquery, and Elasticsearch " +
         s"reports the two merged into a single list - so ReadonlyREST cannot tell which part of the query " +
         s"text to narrow down. Write the subquery as a separate command to have such a query authorized"
-    case ReadingFailure.PromqlLeaningOnDefaultIndex =>
-      "the PROMQL command names no [index] parameter, so it reads whichever indices Elasticsearch defaults to " +
-        "and the query text holds no index list to narrow down. Add [index=...] to have such a query authorized"
     case ReadingFailure.IndexListInAnonymousParameter =>
       "the indices are named by an anonymous query parameter ([?] or [??]), which Elasticsearch binds by the " +
         "order the parameters are written in - so narrowing it down would rebind every parameter written after " +

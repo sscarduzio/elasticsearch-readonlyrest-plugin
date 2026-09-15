@@ -462,12 +462,47 @@ class IndexListReplacerTest extends AnyWordSpec {
         rewrite("""PROMQL index="a,b" step=1m v""", allowed("b"), from(""""a,b"""", "a,b")) shouldBe
           "PROMQL index=b step=1m v"
       }
-      "refuse to read a command that leaves ES to pick the indices" in {
-        readingFailureFor(
+      "write an index parameter into a command that leaves ES to pick the indices" in {
+        rewrite(
           "PROMQL step=1m rate(v)",
           allowed("metrics-1"),
           from("PROMQL step=1m rate(v)", "metrics-*")
-        ) shouldBe PromqlLeaningOnDefaultIndex
+        ) shouldBe "PROMQL index=metrics-1 step=1m rate(v)"
+      }
+      "write every allowed index into the parameter it adds" in {
+        rewrite(
+          "PROMQL step=1m rate(v)",
+          allowed("metrics-1", "metrics-2"),
+          from("PROMQL step=1m rate(v)", "metrics-*")
+        ) should fullyMatch regex "PROMQL index=(metrics-1,metrics-2|metrics-2,metrics-1) step=1m rate\\(v\\)"
+      }
+      "mask the parameter it adds when the ACL allowed nothing the command can read" in {
+        rewrite(
+          "PROMQL step=1m rate(v)",
+          allowed("metrics-*", "-metrics-secret"),
+          from("PROMQL step=1m rate(v)", "metrics-*")
+        ) should fullyMatch regex s"PROMQL index=$maskedIndex step=1m rate\\(v\\)"
+      }
+      "write the parameter into a command whose keyword is written in lower case" in {
+        rewrite(
+          "promql step=1m rate(v)",
+          allowed("metrics-1"),
+          from("promql step=1m rate(v)", "metrics-*")
+        ) shouldBe "promql index=metrics-1 step=1m rate(v)"
+      }
+      "write the parameter before a comment the command starts with" in {
+        rewrite(
+          "PROMQL /* which /* even */ nests */ step=1m rate(v)",
+          allowed("metrics-1"),
+          from("PROMQL /* which /* even */ nests */ step=1m rate(v)", "metrics-*")
+        ) shouldBe "PROMQL index=metrics-1 /* which /* even */ nests */ step=1m rate(v)"
+      }
+      "leave the commands written after it in place" in {
+        rewrite(
+          "PROMQL step=1m rate(v) | LIMIT 10",
+          allowed("metrics-1"),
+          from("PROMQL step=1m rate(v)", "metrics-*")
+        ) shouldBe "PROMQL index=metrics-1 step=1m rate(v) | LIMIT 10"
       }
       "replace an index parameter, whose value lives outside the query text ES points at" in {
         rewrite(

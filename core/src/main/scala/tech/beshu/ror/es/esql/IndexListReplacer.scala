@@ -50,10 +50,12 @@ private[esql] object IndexListReplacer {
     val edits =
       sourceCommandIndices.map { indexList =>
         val allowed = allowedIndicesFor(indexList, allowedIndexNames, reachableOnlyThroughLookupJoin, scope)
-        Edit(indexList.span, IndexListRead.SourceCommand(indexListOf(allowed.getOrElse(masked(indexList)))))
+        val indices = indexListOf(allowed.getOrElse(masked(indexList)))
+        Edit(indexList.span, IndexListRead.SourceCommand(indices), textOf(indexList.writtenAs, indices))
       } ::: lookupJoinTargets.map { indexList =>
         val allowed = allowedIndicesFor(indexList, allowedIndexNames)
-        Edit(indexList.span, IndexListRead.LookupJoin(indexListOf(allowed.getOrElse(masked(indexList)))))
+        val index = indexListOf(allowed.getOrElse(masked(indexList)))
+        Edit(indexList.span, IndexListRead.LookupJoin(index), index)
       }
 
     ReplacedQuery(rewritten(query, edits), edits.map(_.intendedRead))
@@ -123,13 +125,18 @@ private[esql] object IndexListReplacer {
   private def indexListOf(indices: NonEmptyList[ClusterIndexName]): String =
     indices.toList.map(_.stringify).mkString(",")
 
+  private def textOf(syntax: IndexListSyntax, indexList: String): String = syntax match {
+    case IndexListSyntax.BareIndexList        => indexList
+    case IndexListSyntax.PromqlIndexParameter => s" index=$indexList"
+  }
+
   private def rewritten(query: String, edits: List[Edit]): String = {
     edits.sortBy(-_.span.start).foldLeft(query) { case (text, edit) =>
-      s"${text.substring(0, edit.span.start)}${edit.intendedRead.indexList}${text.substring(edit.span.end)}"
+      s"${text.substring(0, edit.span.start)}${edit.text}${text.substring(edit.span.end)}"
     }
   }
 
-  private final case class Edit(span: TextSpan, intendedRead: IndexListRead)
+  private final case class Edit(span: TextSpan, intendedRead: IndexListRead, text: String)
 
   private sealed trait SourceCommandScope
 

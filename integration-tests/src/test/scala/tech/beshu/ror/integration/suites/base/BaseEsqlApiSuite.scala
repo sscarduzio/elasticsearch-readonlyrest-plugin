@@ -490,6 +490,17 @@ trait BaseEsqlApiSuite
         result should have statusCode 200
         result.column("host").toList should contain only Str("metrics-app-host")
       }
+      "the index parameter is not written, so ReadonlyREST writes it with the allowed indices" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8x,
+        allEs9xBelowEs94x
+      ) in {
+        val result = metricsAppOnlyEsqlManager.execute("""PROMQL step=1m max by (host) (cpu)""")
+
+        result should have statusCode 200
+        result.column("host").toList should contain only Str("metrics-app-host")
+      }
     }
     "be bad request (implicitly forbidden)" when {
       "the index parameter names only an index the ACL does not allow" excludeES (
@@ -502,18 +513,6 @@ trait BaseEsqlApiSuite
 
         result should have statusCode 400
         result.responseJson("error").obj("reason").str should include("Unknown index")
-      }
-    }
-    "be rejected as forbidden" when {
-      "the index parameter is not written, so Elasticsearch picks the indices and ROR has no index list to narrow" excludeES (
-        allEs6x,
-        allEs7x,
-        allEs8x,
-        allEs9xBelowEs94x
-      ) in {
-        val result = metricsAppOnlyEsqlManager.execute("""PROMQL step=1m max by (host) (cpu)""")
-
-        result should have statusCode 403
       }
     }
     "be left to run as written" when {

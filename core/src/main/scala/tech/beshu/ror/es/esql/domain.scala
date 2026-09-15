@@ -18,6 +18,7 @@ package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
 import cats.syntax.traverse.*
+import enumeratum.{Enum, EnumEntry}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.esql.Query.SourceLocation
@@ -46,8 +47,6 @@ object ReadingFailure {
   final case class NotWhereEsReportedIt(reportedIndexList: String) extends ReadingFailure
 
   final case class SubqueryInSourceCommand(reportedIndexList: String) extends ReadingFailure
-
-  case object PromqlLeaningOnDefaultIndex extends ReadingFailure
 
   case object IndexListInAnonymousParameter extends ReadingFailure
 
@@ -79,6 +78,15 @@ object IndexListRead {
 
 final case class ReportedIndexList(read: IndexListRead, writtenAt: SourceLocation, writtenText: String)
 
+private[esql] sealed trait IndexListSyntax extends EnumEntry
+
+private[esql] object IndexListSyntax extends Enum[IndexListSyntax] {
+  case object BareIndexList extends IndexListSyntax
+  case object PromqlIndexParameter extends IndexListSyntax
+
+  override val values: IndexedSeq[IndexListSyntax] = findValues
+}
+
 private[esql] sealed trait LocatedIndexList {
   def span: Query.TextSpan
   def requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
@@ -88,7 +96,8 @@ private[esql] object LocatedIndexList {
 
   final case class SourceCommandIndices private (
       span: Query.TextSpan,
-      requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+      requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      writtenAs: IndexListSyntax
   ) extends LocatedIndexList {
 
     lazy val writtenPattern: PatternsMatcher[ClusterIndexName] =
@@ -96,8 +105,14 @@ private[esql] object LocatedIndexList {
   }
 
   object SourceCommandIndices {
-    def parse(span: Query.TextSpan, read: IndexListRead.SourceCommand): Option[SourceCommandIndices] =
-      requestedIndicesIn(read).map(SourceCommandIndices(span, _))
+
+    def parse(
+        span: Query.TextSpan,
+        read: IndexListRead.SourceCommand,
+        writtenAs: IndexListSyntax
+    ): Option[SourceCommandIndices] =
+      requestedIndicesIn(read).map(SourceCommandIndices(span, _, writtenAs))
+
   }
 
   final case class LookupJoinTarget private (span: Query.TextSpan, index: ClusterIndexName) extends LocatedIndexList {

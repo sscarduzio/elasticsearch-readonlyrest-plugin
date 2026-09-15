@@ -32,6 +32,11 @@ class QueryTest extends AnyWordSpec {
 
         query.indices.toList.map(_.name.stringify).sorted shouldBe List("logs-1", "logs-2")
       }
+      "read the indices Elasticsearch picks for a PROMQL command that names none" in {
+        val query = queryFrom("PROMQL step=1m rate(v)", from("PROMQL step=1m rate(v)", "metrics-*"))
+
+        query.indices.toList.map(_.name.stringify) shouldBe List("metrics-*")
+      }
       "have no indices when it names no index list" in {
         queryFrom("ROW a = 1") shouldBe Query.WithoutIndices("ROW a = 1")
       }
@@ -67,6 +72,16 @@ class QueryTest extends AnyWordSpec {
             "FROM logs-1 | LIMIT 10" -> List(from("FROM logs-1", "logs-1"))
           )
         ) shouldBe Right("FROM logs-1 | LIMIT 10")
+      }
+      "write an index parameter into a PROMQL command that leans on the Elasticsearch default" in {
+        narrow(
+          query = "PROMQL step=1m rate(v)",
+          allowed = allowed("metrics-1"),
+          reads = Map(
+            "PROMQL step=1m rate(v)" -> List(from("PROMQL step=1m rate(v)", "metrics-*")),
+            "PROMQL index=metrics-1 step=1m rate(v)" -> List(from("metrics-1", "metrics-1"))
+          )
+        ) shouldBe Right("PROMQL index=metrics-1 step=1m rate(v)")
       }
       "stay as written when the ACL allows exactly the indices it asks for" in {
         val reader = readerOf(Map("FROM logs-1 | LIMIT 10" -> List(from("FROM logs-1", "logs-1"))))

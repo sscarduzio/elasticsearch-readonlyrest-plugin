@@ -26,7 +26,8 @@ import scala.util.matching.Regex
  * ES reports an index list normalized (`FROM a, b` as `a,b`), so it cannot be searched for in the query - only the
  * source location ES keeps next to it turns it into a span to rewrite. A `LOOKUP JOIN` target is located exactly;
  * a source command is located whole (`FROM a, b METADATA _index`), so its list is picked out of the command text
- * literally - and either way, only once the span reads back as the list ES reported.
+ * literally - and either way, only once the span reads back as the list ES reported. A `PROMQL` command that writes
+ * no `index` parameter holds no list at all, so ROR writes the parameter itself, after the keyword.
  */
 private[esql] object IndexListLocator {
 
@@ -38,7 +39,7 @@ private[esql] object IndexListLocator {
   private val sourceCommandIndexList: Regex =
     """(?is)^\s*(?:FROM|TS)\s+(.*?[^\s,])(?:\s+METADATA\b.*|\s*\[\s*METADATA\b.*|\s*)$""".r
 
-  private val promqlCommand: Regex = """(?is)^\s*PROMQL\b.*""".r
+  private val promqlKeyword: Regex = """(?is)^\s*PROMQL\b""".r
 
   /** A parameter ES binds by its name (`?index`) or by its position (`?1`) - neither tied to where it is written. */
   private val boundQueryParameter: Regex = """^\s*\?\??[A-Za-z_0-9]+\s*$""".r
@@ -59,11 +60,20 @@ private[esql] object IndexListLocator {
     val commandText = withoutComments(reported.writtenText)
     for {
       writtenSpan <- writtenSpanOf(query, reported)
-      indexList <- indexListSpanIn(reported, commandText, writtenSpan)
-      _ <- checkHoldsReportedIndexList(reported.read, indexList.text)
-      locatedIndexList <- indexListAt(indexList.span, reported.read)
+      place <- indexListPlaceIn(reported, commandText, writtenSpan)
+      locatedIndexList <- locatedAt(place, reported.read)
     } yield locatedIndexList
   }
+
+  private def locatedAt(place: IndexListPlace, read: IndexListRead): Either[ReadingFailure, LocatedIndexList] =
+    place match {
+      case IndexListPlace.InQueryText(span, text) =>
+        checkHoldsReportedIndexList(read, text).flatMap(_ => indexListAt(span, read))
+      case IndexListPlace.PromqlIndexParameterToWrite(span, promqlRead) =>
+        LocatedIndexList.SourceCommandIndices
+          .parse(span, promqlRead, IndexListSyntax.PromqlIndexParameter)
+          .toRight(ReadingFailure.UnsupportedIndexList(promqlRead.indexList))
+    }
 
   private def writtenSpanOf(
       query: String,
@@ -92,31 +102,51 @@ private[esql] object IndexListLocator {
       .filter(_ <= query.length)
   }
 
-  private def indexListSpanIn(
+  private def indexListPlaceIn(
       reported: ReportedIndexList,
       commandText: String,
       writtenSpan: TextSpan
-  ): Either[ReadingFailure, IndexListSpan] = {
+  ): Either[ReadingFailure, IndexListPlace] = {
     reported.read match {
       case _: IndexListRead.LookupJoin =>
-        Right(IndexListSpan(writtenSpan, commandText))
-      case _: IndexListRead.SourceCommand =>
+        Right(IndexListPlace.InQueryText(writtenSpan, commandText))
+      case read: IndexListRead.SourceCommand =>
         sourceCommandIndexList.findFirstMatchIn(commandText) match {
           case Some(indexList) =>
             val span = TextSpan(writtenSpan.start + indexList.start(1), writtenSpan.start + indexList.end(1))
             Either.cond(
               // a subquery entry is merged into the reported list, leaving it no span of its own
               test = !indexList.group(1).contains('('),
-              right = IndexListSpan(span, indexList.group(1)),
-              left = ReadingFailure.SubqueryInSourceCommand(reported.read.indexList)
+              right = IndexListPlace.InQueryText(span, indexList.group(1)),
+              left = ReadingFailure.SubqueryInSourceCommand(read.indexList)
             )
-          case None if promqlCommand.matches(commandText) =>
-            Left(ReadingFailure.PromqlLeaningOnDefaultIndex)
           case None =>
-            // a `PROMQL` command's `index=` parameter: ES locates its value exactly
-            Right(IndexListSpan(writtenSpan, commandText))
+            // a `PROMQL` command's `index=` parameter, whose value ES locates exactly, unless the query writes none
+            Right(
+              promqlIndexParameterToWrite(commandText, writtenSpan, read)
+                .getOrElse(IndexListPlace.InQueryText(writtenSpan, commandText))
+            )
         }
     }
+  }
+
+  /**
+   * A `PROMQL` command with no `index` parameter reads whichever indices ES picks, so ES points at the whole command
+   * instead of at an index list. The parameter ROR writes in its place goes right after the keyword, since every
+   * parameter stands before the expression the command ends with.
+   */
+  private def promqlIndexParameterToWrite(
+      commandText: String,
+      writtenSpan: TextSpan,
+      read: IndexListRead.SourceCommand
+  ): Option[IndexListPlace.PromqlIndexParameterToWrite] = {
+    Option
+      .when(!sameIndexList(commandText, read.indexList))(commandText)
+      .flatMap(promqlKeyword.findFirstMatchIn)
+      .map { keyword =>
+        val writeAt = writtenSpan.start + keyword.end
+        IndexListPlace.PromqlIndexParameterToWrite(TextSpan(writeAt, writeAt), read)
+      }
   }
 
   /**
@@ -177,11 +207,20 @@ private[esql] object IndexListLocator {
   private def indexListAt(span: TextSpan, read: IndexListRead): Either[ReadingFailure, LocatedIndexList] = {
     val indexList = read match {
       case read: IndexListRead.LookupJoin    => LocatedIndexList.LookupJoinTarget.parse(span, read)
-      case read: IndexListRead.SourceCommand => LocatedIndexList.SourceCommandIndices.parse(span, read)
+      case read: IndexListRead.SourceCommand =>
+        LocatedIndexList.SourceCommandIndices.parse(span, read, IndexListSyntax.BareIndexList)
     }
     indexList.toRight(ReadingFailure.UnsupportedIndexList(read.indexList))
   }
 
-  private final case class IndexListSpan(span: TextSpan, text: String)
+  private sealed trait IndexListPlace
+
+  private object IndexListPlace {
+
+    final case class InQueryText(span: TextSpan, text: String) extends IndexListPlace
+
+    final case class PromqlIndexParameterToWrite(span: TextSpan, read: IndexListRead.SourceCommand)
+        extends IndexListPlace
+  }
 
 }
