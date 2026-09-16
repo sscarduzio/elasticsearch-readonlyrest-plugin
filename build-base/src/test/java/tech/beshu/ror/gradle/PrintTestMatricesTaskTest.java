@@ -18,11 +18,14 @@
 package tech.beshu.ror.gradle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.gradle.api.Project;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -102,6 +105,29 @@ class PrintTestMatricesTaskTest {
             "win_it_pr_ready",
             "e2e_full"),
         List.copyOf(PrintTestMatricesTask.matricesFor(threeMajors()).keySet()));
+  }
+
+  // --- the files ci.yml reads ---
+
+  @Test
+  void theTaskWritesOneJsonFilePerMatrix() throws Exception {
+    Project root = threeMajors();
+    PrintTestMatricesTask task =
+        root.getTasks().create("printTestMatricesUnderTest", PrintTestMatricesTask.class);
+
+    task.printMatrices();
+
+    Path dir =
+        root.getLayout().getBuildDirectory().get().getAsFile().toPath().resolve("ci-matrices");
+    Map<String, List<String>> matrices = PrintTestMatricesTask.matricesFor(root);
+    for (Map.Entry<String, List<String>> matrix : matrices.entrySet()) {
+      Path file = dir.resolve(matrix.getKey() + ".json");
+      assertTrue(Files.exists(file), file + " is missing");
+      assertEquals(
+          PrintTestMatricesTask.asJsonArray(matrix.getValue()),
+          Files.readString(file).strip(),
+          matrix.getKey());
+    }
   }
 
   // ES 9 holds ten modules, the size at which READY_PR adds a middle module. Below that it gives

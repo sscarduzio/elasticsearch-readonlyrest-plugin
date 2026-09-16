@@ -13,7 +13,7 @@ Jobs that need a self-hosted runner:
 |---|---|---|
 | `release.yml` | `upload_pre_ror` | 4-leg matrix, pre-release only |
 | `release.yml` | `release_ror` | 4-leg matrix, release only |
-| `release.yml` | `publish_mvn` | seconds, after `release_ror` |
+| `release.yml` | `publish_mvn` | short, in parallel with `release_ror` |
 | `publish-pre-builds.yml` | `publish` | manual, long build-and-push |
 | `mirror-es-libs.yml` | `mirror` | manual, short |
 
@@ -70,7 +70,8 @@ The host is a Ryzen 7 3700X: 8 cores / 16 threads, 62 GB RAM. Fourteen container
 capacity decision**: either cap the Kibana pool (stop 2–3 of `gh-ror-kbn-*`), or lower
 `limits.cpu` per container so the pools cannot all claim the whole machine.
 
-Two ES runners is the right number: the release matrices are capped at `max-parallel: 2`.
+Three ES runners is the right number: the release matrices are capped at `max-parallel: 2`, and the
+third slot serves `publish_mvn` and the pre-builds.
 
 ## Registering a runner
 
@@ -124,5 +125,7 @@ gh api repos/sscarduzio/elasticsearch-readonlyrest-plugin/actions/runners \
   ```
 
   Without it, a retry of a release leg would kill the Kibana runners' in-flight ELK stacks.
-- Three runners, and `release_ror` / `upload_pre_ror` keep `max-parallel: 2`. A release then never
-  takes every slot, so the pre-build that two repos wait on always finds one.
+- Three runners, and `release_ror` / `upload_pre_ror` keep `max-parallel: 2`. The legs that run for
+  hours then take two slots at most, and the pre-build that two repos wait on finds the third.
+  `publish_mvn` needs only `discover`, so it can hold that third slot for as long as the Sonatype
+  publish takes.

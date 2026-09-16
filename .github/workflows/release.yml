@@ -22,7 +22,7 @@ on:
 # pending, and a third run cancels the pending one even with `cancel-in-progress: false`. So only a
 # run that can publish joins the branch group.
 concurrency:
-  group: release-${{ (github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'push') && (github.event.workflow_run.head_branch || github.ref_name) || github.run_id }}
+  group: release-${{ (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')) && (github.event.workflow_run.head_branch || github.ref_name) || github.run_id }}
   cancel-in-progress: false
 
 permissions:
@@ -113,11 +113,7 @@ jobs:
           set -eo pipefail
           source ci/ci-lib.sh
 
-          MAJORS_FILE=build/es-modules/es-majors.txt
-          [ -s "$MAJORS_FILE" ] || { echo "::error::printEsMajors wrote no ES major."; exit 1; }
-
-          # ["9", ...] -> {"include":[{"ES_MAJOR":"9"}, ...]}, the matrix both jobs below read.
-          MAJORS=$(awk 'BEGIN { printf "[" } { printf "%s\"%s\"", (NR > 1 ? "," : ""), $0 } END { print "]" }' "$MAJORS_FILE")
+          MAJORS=$(es_majors_matrix) || { echo "::error::cannot derive the ES majors."; exit 1; }
 
           IS_PRE=$(is_pre_release_version) || { echo "::error::cannot tell if this is a pre-release."; exit 1; }
 
@@ -142,7 +138,7 @@ jobs:
           fi
 
           {
-            echo "majors_matrix=$(jq -c '{include: map({ES_MAJOR: .})}' <<< "$MAJORS")"
+            echo "majors_matrix=$MAJORS"
             echo "publish=$PUBLISH"
           } >> "$GITHUB_OUTPUT"
 
@@ -181,7 +177,7 @@ jobs:
           ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
         run: |
           set -e
           source ci/configure-docker.sh

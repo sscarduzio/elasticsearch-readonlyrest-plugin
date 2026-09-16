@@ -55,6 +55,15 @@ dump_hs_err_files() {
   find . -name 'hs_err*' -type f -exec cat {} + 2>/dev/null || true
 }
 
+# The ES-major matrix, from the file `printEsMajors` writes. Run that task first, in the gradle call
+# the job already makes. One reader: a workflow's shell has no test, so two hand-written copies of
+# this format drift without a failure.
+es_majors_matrix() {
+  local file=$ROR_REPO_ROOT/build/es-modules/es-majors.txt
+  [ -s "$file" ] || { echo "printEsMajors wrote no ES major" >&2; return 1; }
+  jq -Rc -s 'split("\n") | map(select(length > 0)) | {include: map({ES_MAJOR: .})}' < "$file"
+}
+
 # Prints `true` or `false`: is the configured pluginVersion a pre-release? The `isPreReleaseVersion`
 # gradle task holds the only implementation of that rule. Take the last line, because
 # configuration-time logging pollutes stdout even under --quiet, and fail on any other word.
@@ -287,20 +296,20 @@ publish_ror_es_prebuild_plugin() {
   fi
 }
 
-# The tag on origin is the record that a version is published. Three answers: 0 absent, 1 present,
-# 2 no answer. A failed query read as "absent" publishes the whole release again.
+# The tag on origin is the record that a version is published. Prints `absent` or `present`, and
+# fails only when it cannot ask: a query failure read as "absent" publishes the whole release again.
 # Ask only the remote: a local tag survives an attempt that tagged and then failed to push.
-checkTagNotExist() {
-  GIT_TAG="$1"
-  local refs
+remote_tag_state() {
+  local git_tag=$1 refs
 
-  refs=$(git ls-remote --tags origin "refs/tags/${GIT_TAG}") || {
-    echo "ERROR: cannot read the tags of origin, so $GIT_TAG has no answer." >&2
-    return 2
+  refs=$(git ls-remote --tags origin "refs/tags/${git_tag}") || {
+    echo "ERROR: cannot read the tags of origin, so $git_tag has no answer." >&2
+    return 1
   }
   if [ -n "$refs" ]; then
-    echo "Git tag $GIT_TAG already exists on remote, exiting."
-    return 1
+    printf 'present\n'
+  else
+    printf 'absent\n'
   fi
 }
 
@@ -308,13 +317,13 @@ checkTagNotExist() {
 # leaves the version published and unmarked, and the next run publishes it again.
 tag() {
   GIT_TAG="$1"
+  local state
 
-  checkTagNotExist "$GIT_TAG"
-  case $? in
-    0) ;;
-    1) return 0 ;;
-    *) return 1 ;;
-  esac
+  state=$(remote_tag_state "$GIT_TAG") || return 1
+  if [ "$state" = present ]; then
+    echo "Git tag $GIT_TAG already exists on remote, skipping."
+    return 0
+  fi
 
   echo "Tagging as $GIT_TAG"
   git config --global push.default matching

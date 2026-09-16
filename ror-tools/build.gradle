@@ -49,6 +49,10 @@ test {
     def module = project.findProperty('esModule')
             ?: tech.beshu.ror.gradle.utils.EsModuleFinder.newestEsModuleName(rootProject)
     systemProperty "esModule", module
+    // The suite starts a Docker ES container, so it skips in a bare aggregate build (build/check)
+    // and runs when the task is asked for. The same gate as integration-tests:test.
+    def explicitlyRequested = gradle.startParameter.taskNames.any { it.endsWith('ror-tools:test') }
+    onlyIf { project.hasProperty('esModule') || explicitlyRequested }
     def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
     if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
     tags {

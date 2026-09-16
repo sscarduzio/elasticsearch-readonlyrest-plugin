@@ -154,12 +154,12 @@ publish_one_version() {
   local TAG="v${ror_version}_es${es_version}"
 
   if [ "$mode" = "release" ]; then
-    checkTagNotExist "$TAG"
-    case $? in
-      0) ;;
-      1) return 0 ;;
-      *) return 1 ;;
-    esac
+    local tag_state
+    tag_state=$(remote_tag_state "$TAG") || return 1
+    if [ "$tag_state" = present ]; then
+      echo "$TAG is already on origin, so ES $es_version is published. Skipping."
+      return 0
+    fi
   fi
 
   # publish always - even if this is not a release

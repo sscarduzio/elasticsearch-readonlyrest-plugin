@@ -84,8 +84,8 @@ public class PrintTestMatricesTask extends DefaultTask {
     return TestMatrixPolicy.modulesFor(rootProject, selection, skippedMajors);
   }
 
-  // An empty list must give [], not [""]: a matrix of one empty module runs a task that matches no
-  // branch of run-pipeline.sh, and the leg ends green having tested nothing.
+  // An empty list must give [], not [""]: GitHub reads [] as an empty include list, and [""] as one
+  // matrix row whose module name is empty.
   static String asJsonArray(List<String> modules) {
     if (modules.isEmpty()) {
       return "[]";

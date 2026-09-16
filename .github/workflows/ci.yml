@@ -25,8 +25,9 @@ on:
           - run_all_tests_on_windows
           - run_e2e_tests
 
-# Cancel superseded PR runs. Branch pushes queue instead, so every develop or master push completes
-# and can start release.yml. A cancelled run never starts it.
+# Cancel superseded PR runs. A branch push queues instead of cancelling the run before it, because
+# only a run that completes can start release.yml. The group still holds one pending run, so the
+# middle of three quick pushes is cancelled.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -77,7 +78,7 @@ jobs:
           MERGE_BACK=false
           [ "$IS_DEVELOP_PUSH" = "true" ] && [ -z "$MANUAL_ACTION" ] \
             && is_merge_back_of_master && MERGE_BACK=true
-          
+
           {
             echo "is_release_branch=$IS_RELEASE_BRANCH"
             echo "is_epic_branch=$IS_EPIC_BRANCH"
@@ -133,6 +134,7 @@ jobs:
           MANUAL_RUN_ACTION: ${{ needs.ci_setup.outputs.manual_action }}
         run: |
           set -e
+          source ci/ci-lib.sh
 
           read_modules() {
             local file=build/ci-matrices/$1.json
@@ -150,9 +152,7 @@ jobs:
           # run only the chosen one.
           is_action_selected() { [ -z "$MANUAL_RUN_ACTION" ] || is_action_chosen "$1"; }
 
-          MAJORS_FILE=build/es-modules/es-majors.txt
-          [ -s "$MAJORS_FILE" ] || { echo "::error::printEsMajors wrote no ES major."; exit 1; }
-          MAJORS=$(awk 'BEGIN { printf "[" } { printf "%s\"%s\"", (NR > 1 ? "," : ""), $0 } END { print "]" }' "$MAJORS_FILE")
+          MAJORS=$(es_majors_matrix) || { echo "::error::cannot derive the ES majors."; exit 1; }
 
           if ! is_action_selected run_all_tests_on_linux; then
             LINUX='[]'
@@ -195,7 +195,7 @@ jobs:
           fi
 
           {
-            echo "build=$(as_matrix ES_MAJOR "$MAJORS")"
+            echo "build=$MAJORS"
             echo "linux=$(as_matrix ES_MODULE "$LINUX")"
             echo "windows=$(as_matrix ES_MODULE "$WINDOWS")"
             echo "e2e=$(as_matrix ES_MODULE "$E2E")"
@@ -450,9 +450,8 @@ jobs:
   # waits for it.
   e2e_order_kbn_images:
     needs: [ ci_setup, discover ]
-    if: >-
-      needs.discover.result == 'success' &&
-      needs.discover.outputs.e2e_matrix != '{"include":[]}'
+    # Same reason as it_linux.
+    if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
     runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 150

@@ -79,7 +79,7 @@ Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_li
 | Trigger | When | Guard |
 |---|---|---|
 | `workflow_run` | CI finished on develop or master | `workflow_run.conclusion == 'success'` — one value for the whole CI run |
-| `workflow_dispatch` | an operator releases without waiting for tests | branch must be develop or master, and the operator types the `pluginVersion` that branch carries |
+| `workflow_dispatch` | an operator releases without waiting for tests | branch must be develop or master, the operator types the `pluginVersion` that branch carries, and the version must not be a pre-release |
 
 That single `conclusion` check is the reason for the split. A manual release skips the test jobs on
 purpose, and hosting it in `ci.yml` would force `!cancelled()` and a second branch into every
@@ -197,8 +197,8 @@ Two orchestration rules worth knowing before editing conditions:
 ## What the build decides, not the workflow
 
 A workflow must not work out a fact the build already knows. Three Gradle tasks answer for both
-`ci.yml` and `release.yml`, so no YAML and no shell script parses `gradle.properties` or guesses at
-a module list:
+`ci.yml` and `release.yml`, so no YAML and no shell script but `gradle_property` parses
+`gradle.properties`, and none of them guesses at a module list:
 
 | Task | Answers | Written to |
 |---|---|---|
@@ -244,11 +244,14 @@ An empty matrix does not skip its job by itself. GitHub evaluates `strategy` bef
 job, and `{"include":[]}` stops the run with "Matrix vector 'include' does not contain any values".
 The job never starts, so nothing inside it can handle the empty case. Every fan-out job therefore
 carries the test `if: needs.discover.outputs.<x>_matrix != '{"include":[]}'`. That turns the empty
-case into `skipped` before a runner boots, and `build_ror` accepts `skipped` from all of them.
+case into `skipped` before a runner boots. `build_ror` accepts `skipped` from `it_windows` and
+`e2e_build_es_images`; `it_linux` must be `success`.
 
 The `include` form matters for the same reason: a bare `KEY: []` fails the run in the same way, and
-`{"include":[]}` is the shape the guard tests for. `PrintTestMatricesTask` emits that exact text, so
-the comparison stays a plain string test.
+`{"include":[]}` is the shape the guard tests for. `discover`'s `as_matrix` emits that exact text,
+with `jq -c` — keep the `-c`, because multi-line JSON matches no guard and every draft PR then goes
+red. `PrintTestMatricesTask` emits the bare `[]` that `as_matrix` wraps, and `discover` also assigns
+`[]` directly for a draft PR and for an unselected manual action.
 
 `e2e_matrix` holds the same one key as the others. `e2e_order_kbn_images` also reads it, though it
 does not fan out over it: it has no matrix of its own, and one dispatch covers every version.
@@ -285,6 +288,10 @@ module in the middle of that major's list, newest first.
 | Draft PR | Newest module for each ES major version | Not run | Not run |
 | Ready PR | Fewer than 10 modules: oldest and newest. 10 or more modules: oldest, middle, and newest | Newest module for each ES major version | Newest module for each ES major version |
 | `develop`, `master`, or `epic/**` | All modules | Oldest and newest modules for each ES major version | Newest module for each ES major version |
+| Merge-back of `master` into `develop` | The Ready-PR selection | Newest module for each ES major version | Newest module for each ES major version |
+
+The merge-back row is the exception to the row above it: the push carries master's tree, which CI
+already tested green on `master`, so the run repeats the Ready-PR selection instead of everything.
 
 Windows integration tests and E2E tests do not run on ES 6. The modules in `UNTESTED_MODULES` run on
 neither platform. A selection still picks oldest, middle and newest by how many modules the major
