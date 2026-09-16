@@ -62,6 +62,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - id: toolchains
         uses: ./.github/actions/resolve-toolchains-image
       - id: flags
@@ -96,6 +98,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - uses: ./.github/actions/verify-toolchains-image
 
   # ── DISCOVER ──────────────────────────────────────────────────────────────
@@ -115,6 +119,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       # One gradle call for both tasks. Each writes its answer to a file under build/.
       - name: Derive the ES majors and the test matrices
         run: ./gradlew --no-daemon -q printEsMajors printTestMatrices
@@ -307,7 +313,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Free host disk (no-op on self-hosted)
+      - name: Free host disk
         run: ci/free-host-disk.sh
       - name: Start memory telemetry
         uses: ./.github/actions/mem-telemetry-start
@@ -502,7 +508,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Free host disk (no-op on self-hosted)
+      - name: Free host disk
         run: ci/free-host-disk.sh
       - name: build_e2e_es_image
         env:
@@ -540,7 +546,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Free host disk (no-op on self-hosted)
+      - name: Free host disk
         run: ci/free-host-disk.sh
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: '24.11.0' }
@@ -609,6 +615,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: build_plugins
         env:
           ROR_TASK: build_plugins

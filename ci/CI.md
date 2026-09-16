@@ -28,12 +28,13 @@ The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standa
 `mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
 they push images and run for hours. `build-toolchains-image.yml` stays on `ubicloud-standard-4`.
 
-**A job that builds or runs images calls `ci/free-host-disk.sh` right after checkout**, including a
-new one. The script detects the runner and decides whether to reclaim disk; a job never decides that
-for it. The jobs that only read the repository or start one gradle call skip it: `ci_setup`,
-`toolchains_verify`, `discover` and `build_ror`. A Windows
-job instead calls `./.github/actions/setup-windows-job` right after checkout. That action holds the
-three things every Windows job needs: the Defender exclusions, the JDK of the wrapper, and the
+**Every job calls `ci/free-host-disk.sh` right after checkout**, including a new one. The script
+detects the runner and decides whether to reclaim disk; a job never decides that for it. It costs
+nothing when nothing is needed: it skips above 40GB free, and it fails closed when it cannot read
+the free space or cannot name the runner.
+
+A Windows job instead calls `./.github/actions/setup-windows-job` right after checkout. That action
+holds the three things every Windows job needs: the Defender exclusions, the JDK of the wrapper, and the
 gradle home cache. The checkout stays in the job: a local action is resolvable only once the
 repository is on disk.
 
@@ -85,9 +86,22 @@ purpose, and hosting it in `ci.yml` would force `!cancelled()` and a second bran
 release condition. `build_ror` is the only job in `ci.yml` that needs `!cancelled()`.
 
 `release.yml` mirrors `ci.yml`'s job names, because it asks the same questions. `release_setup`
-resolves the image, settles the branch, and on the manual path checks the version the operator
-typed. `discover` then asks the build what to publish — the ES majors from `printEsMajors`, and
-pre-release or release from `isPreReleaseVersion`.
+resolves the image, and on the manual path checks the version the operator typed. `discover` then
+asks the build what to publish — the ES majors from `printEsMajors`, and one `publish` output that
+the branch and the version decide together:
+
+| Branch | Version | `publish` | Job |
+|---|---|---|---|
+| `master` | `X.Y.Z` | `release` | `release_ror`, `publish_mvn` |
+| `master` | `X.Y.Z-preN` | — | none: `discover` fails the run |
+| `develop` | `X.Y.Z-preN` | `pre_release` | `upload_pre_ror` |
+| `develop` | `X.Y.Z` | `none` | none |
+
+One output, not a version flag plus a branch flag, because every job needs both halves and two
+flags let a job read one of them. The last row is the merge-back: it hands `develop` master's
+`gradle.properties`, so `develop` carries a release version until the next `-pre` bump, and those
+pushes must publish nothing. A `-pre` on `master` is a state the branching rules forbid, and
+`discover` is the first place that sees the branch and the version together.
 
 Both workflows share two composite actions rather than two copies:
 
@@ -195,8 +209,8 @@ a module list:
 The first two write files, and callers must read those, not gradle stdout — configuration-time
 logging can pollute it even under `--quiet`. `isPreReleaseVersion` prints one word instead.
 
-`isPreReleaseVersion` is the only implementation of the `-pre` rule, and it decides `upload_pre_ror`
-against `release_ror`. Its caller goes through `is_pre_release_version` in `ci-lib.sh`. That function
+`isPreReleaseVersion` is the only implementation of the `-pre` rule. It is one half of `discover`'s
+`publish` output; the branch is the other. Its caller goes through `is_pre_release_version` in `ci-lib.sh`. That function
 takes the last line and **fails on anything that is not `true` or `false`**. A silently wrong value
 publishes a release as a pre-release, or the reverse. If the pre-release convention changes, change
 the task, and nothing else.

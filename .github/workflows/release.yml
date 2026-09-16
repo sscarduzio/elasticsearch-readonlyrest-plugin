@@ -55,10 +55,11 @@ jobs:
     timeout-minutes: 10
     outputs:
       image: ${{ steps.toolchains.outputs.image }}
-      is_master: ${{ steps.branch.outputs.is_master }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       # Only the manual path needs a guard: the trigger already filtered the workflow_run path.
       # gradle_property is the one reader of gradle.properties.
       - name: Check the branch and the typed version
@@ -79,9 +80,8 @@ jobs:
           fi
       - id: toolchains
         uses: ./.github/actions/resolve-toolchains-image
-      - id: branch
+      - name: Summarise the run
         run: |
-          echo "is_master=$([ "$RELEASE_BRANCH" = master ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           # The Actions graph does not link the CI run to this one. The summary does.
           {
             echo "Branch: $RELEASE_BRANCH"
@@ -99,10 +99,12 @@ jobs:
     timeout-minutes: 10
     outputs:
       majors_matrix: ${{ steps.plan.outputs.majors_matrix }}
-      is_release_version: ${{ steps.plan.outputs.is_release_version }}
+      publish: ${{ steps.plan.outputs.publish }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - uses: ./.github/actions/verify-toolchains-image
       - name: Derive the ES majors
         run: ./gradlew --no-daemon -q printEsMajors
@@ -119,28 +121,41 @@ jobs:
 
           IS_PRE=$(is_pre_release_version) || { echo "::error::cannot tell if this is a pre-release."; exit 1; }
 
+          if [ "$RELEASE_BRANCH" = master ] && [ "$IS_PRE" = true ]; then
+            echo "::error::master carries the pre-release version $(gradle_property pluginVersion)."
+            exit 1
+          fi
+
+          if [ "$RELEASE_BRANCH" = master ]; then
+            PUBLISH=release
+          elif [ "$IS_PRE" = true ]; then
+            PUBLISH=pre_release
+          else
+            PUBLISH=none
+          fi
+
           # A hand-dispatched pre-release publishes nothing: upload_pre_ror takes the automatic path
           # only. Fail here, so the run does not end green with no artifact.
-          if [ "$IS_PRE" = true ] && [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+          if [ "$PUBLISH" = pre_release ] && [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             echo "::error::this is a pre-release. A pre-release publishes from CI only."
             exit 1
           fi
 
           {
             echo "majors_matrix=$(jq -c '{include: map({ES_MAJOR: .})}' <<< "$MAJORS")"
-            echo "is_release_version=$([ "$IS_PRE" = true ] && echo false || echo true)"
+            echo "publish=$PUBLISH"
           } >> "$GITHUB_OUTPUT"
 
           {
             echo "ES majors: $MAJORS"
-            echo "Pre-release: $IS_PRE"
+            echo "Publishes: $PUBLISH"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ── UPLOAD_PRE_ROR (pre-release versions, automatic path only) ────────────
   upload_pre_ror:
     needs: [ release_setup, discover ]
     if: >-
-      needs.discover.outputs.is_release_version == 'false' &&
+      needs.discover.outputs.publish == 'pre_release' &&
       github.event_name == 'workflow_run'
     runs-on: &self_hosted_runner [ self-hosted, Linux, X64 ]
     container: *toolchains_container
@@ -152,6 +167,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: upload_pre_plugins
         env:
           ROR_TASK: upload_pre_plugins
@@ -173,7 +190,7 @@ jobs:
   # ── RELEASE_ROR (release versions) ────────────────────────────────────────
   release_ror:
     needs: [ release_setup, discover ]
-    if: needs.discover.outputs.is_release_version == 'true'
+    if: needs.discover.outputs.publish == 'release'
     permissions:
       contents: write   # ci-lib.sh tags the release and pushes the tag via the checkout token
     runs-on: *self_hosted_runner
@@ -189,6 +206,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: true }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: release_plugins
         env:
           ROR_TASK: release_plugins
@@ -211,14 +230,14 @@ jobs:
   # ── PUBLISH_MVN_ARTIFACTS (master releases only) ──────────────────────────
   publish_mvn:
     needs: [ release_setup, discover ]
-    if: >-
-      needs.discover.outputs.is_release_version == 'true' &&
-      needs.release_setup.outputs.is_master == 'true'
+    if: needs.discover.outputs.publish == 'release'
     runs-on: *self_hosted_runner
     container: *toolchains_container
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: Install PGP signing key
         env:
           PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}
