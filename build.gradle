@@ -16,6 +16,7 @@
  */
 import tech.beshu.ror.gradle.RorTaskFinder
 import tech.beshu.ror.gradle.PrintEsModulesTask
+import tech.beshu.ror.gradle.PrintTestMatricesTask
 
 plugins {
     id 'base'
@@ -60,6 +61,39 @@ tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
 
 // Usage: ./gradlew printEsModules -PesMajor=8 --quiet
 tasks.register("printEsModules", PrintEsModulesTask)
+
+// Usage: ./gradlew printTestMatrices --quiet
+tasks.register("printTestMatrices", PrintTestMatricesTask)
+
+// Prints every ES major ROR builds, one per line, newest first, and writes them to
+// build/es-modules/es-majors.txt. Scripts must read that file: configuration-time logging can
+// pollute stdout even under --quiet. CI builds its matrices from this, so a new major needs no edit.
+// Usage: ./gradlew printEsMajors --quiet
+tasks.register("printEsMajors") {
+    group = 'help'
+    description = 'Prints every supported ES major version (one per line, newest first)'
+    outputs.upToDateWhen { false }
+    doLast {
+        def majors = tech.beshu.ror.gradle.utils.EsModuleFinder.allSupportedEsMajors(rootProject)
+        majors.each { println it }
+        def majorsFile = layout.buildDirectory.file("es-modules/es-majors.txt").get().asFile
+        majorsFile.parentFile.mkdirs()
+        majorsFile.text = majors.collect { "$it\n" }.join()
+    }
+}
+
+// Is the configured pluginVersion a pre-release? Prints `true` or `false`, and nothing else.
+// A `-pre` suffix uploads a pre-release; anything else releases. This task is the only
+// implementation of that rule; shell callers use `is_pre_release_version`.
+// Usage: ./gradlew isPreReleaseVersion --quiet
+tasks.register("isPreReleaseVersion") {
+    group = 'help'
+    description = 'Prints true if the configured pluginVersion is a pre-release, false otherwise'
+    outputs.upToDateWhen { false }
+    doLast {
+        println pluginVersion.toString().contains('-pre')
+    }
+}
 
 // Prints every ES version ROR supports, one per line, oldest first. The versions come from each es module's
 // `supportedEsVersions` (gradle.properties), so scripts that need the full list cannot drift from what CI

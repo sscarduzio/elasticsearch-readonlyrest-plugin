@@ -46,18 +46,21 @@ test {
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
 
     systemProperty "project.dir", rootProject.projectDir
-    enabled = project.hasProperty('esModule')
-    if (enabled) {
-        def module = project.properties['esModule']
-        systemProperty "esModule", module
-        def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
-        if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
-        tags {
-            exclude 'tech.beshu.tags.ExcludeESModule.' + module
-            exclude 'tech.beshu.tags.IgnoreOnWindows'
-        }
-        suite 'tech.beshu.ror.tools.*'
+    def module = project.findProperty('esModule')
+            ?: tech.beshu.ror.gradle.utils.EsModuleFinder.newestEsModuleName(rootProject)
+    systemProperty "esModule", module
+    // The suite starts a Docker ES container, so it skips in a bare aggregate build (build/check)
+    // and runs when the task is asked for. The module always has a default, so -PesModule does not
+    // enter the gate. The same gate as integration-tests:test.
+    def explicitlyRequested = gradle.startParameter.taskNames.any { it.endsWith('ror-tools:test') }
+    onlyIf { explicitlyRequested }
+    def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
+    if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
+    tags {
+        exclude 'tech.beshu.tags.ExcludeESModule.' + module
+        exclude 'tech.beshu.tags.IgnoreOnWindows'
     }
+    suite 'tech.beshu.ror.tools.*'
     outputs.upToDateWhen { false }
     maxParallelForks = 1
 }

@@ -11,9 +11,9 @@ Jobs that need a self-hosted runner:
 
 | Workflow | Job | Shape |
 |---|---|---|
-| `ci.yml` | `upload_pre_ror` | 4-leg matrix, pre-release only |
-| `ci.yml` | `release_ror` | 4-leg matrix, release only |
-| `ci.yml` | `publish_mvn` | seconds, after `release_ror` |
+| `release.yml` | `upload_pre_ror` | 4-leg matrix, pre-release only |
+| `release.yml` | `release_ror` | 4-leg matrix, release only |
+| `release.yml` | `publish_mvn` | short, in parallel with `release_ror` |
 | `publish-pre-builds.yml` | `publish` | manual, long build-and-push |
 | `mirror-es-libs.yml` | `mirror` | manual, short |
 
@@ -23,10 +23,10 @@ To get the current numbers:
 
 ```bash
 gh run list --repo sscarduzio/elasticsearch-readonlyrest-plugin \
-  --workflow ci.yml --limit 50 --json databaseId \
+  --workflow release.yml --limit 50 --json databaseId \
   --jq '.[].databaseId' |
   xargs -I{} gh run view {} --repo sscarduzio/elasticsearch-readonlyrest-plugin \
-    --json jobs --jq '.jobs[] | select(.name|startswith("release_")) |
+    --json jobs --jq '.jobs[] | select(.name|startswith("release_ror")) |
       "\(.name) \(.startedAt) \(.completedAt)"'
 ```
 
@@ -70,11 +70,12 @@ The host is a Ryzen 7 3700X: 8 cores / 16 threads, 62 GB RAM. Fourteen container
 capacity decision**: either cap the Kibana pool (stop 2–3 of `gh-ror-kbn-*`), or lower
 `limits.cpu` per container so the pools cannot all claim the whole machine.
 
-Two ES runners is the right number: the release matrices are capped at `max-parallel: 2`.
+Three ES runners is the right number: the release matrices are capped at `max-parallel: 2`, and the
+third slot serves `publish_mvn` and the pre-builds.
 
 ## Registering a runner
 
-Repeat for `N` in `1 2`, from the host:
+Repeat for `N` in `1 2 3`, from the host:
 
 ```bash
 # 1. clone the template
@@ -113,16 +114,12 @@ gh api repos/sscarduzio/elasticsearch-readonlyrest-plugin/actions/runners \
 
 - The `runner` user must be in the `docker` group; the release jobs build and push images.
 - Disk is the binding constraint, roughly 1.5 GB of base image per ES version. The 40 GB root disk
-  in the profile is enough for two runners only because `ci/free-host-disk.sh` prunes between legs.
-- Shared host, so the CI scripts must not sweep the whole Docker daemon. They detect the box by the
-  marker file `/etc/ror-shared-docker-host` and downgrade every prune to dangling layers and build
-  cache. Write the marker when you provision the runner:
-
-  ```bash
-  incus exec --project github-ci gh-ror-es-$N -- sh -c \
-    'echo "Runners for more than one repo share this box." > /etc/ror-shared-docker-host'
-  ```
-
-  Without it, a retry of a release leg would kill the Kibana runners' in-flight ELK stacks.
-- Three runners, and `release_ror` / `upload_pre_ror` keep `max-parallel: 2`. A release then never
-  takes every slot, so the pre-build that two repos wait on always finds one.
+  in the profile is enough only because `ci/free-host-disk.sh` prunes between legs.
+- Shared host, so the CI scripts must not sweep the whole Docker daemon. `is_shared_docker_host`
+  (`ci/runner-detect.sh`) reads `RUNNER_ENVIRONMENT`, which GitHub sets to `self-hosted` here and
+  which reaches a `container:` job. Every prune then drops to dangling layers and build cache. A
+  full sweep would kill the Kibana runners' in-flight ELK stacks. Nothing to provision.
+- Three runners, and `release_ror` / `upload_pre_ror` keep `max-parallel: 2`, so the legs that run
+  for hours take two slots at most. `publish_mvn` needs only `discover`, so a master release can
+  hold the third as well while it publishes to Sonatype. Outside that window the third slot serves
+  the pre-build that two repos wait on.

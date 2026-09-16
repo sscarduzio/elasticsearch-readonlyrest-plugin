@@ -301,6 +301,12 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .run("rm /etc/elasticsearch/elasticsearch.keystore")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
+      // A plugin copies its config files as root, and a COPY keeps the mode of the source. The ROR
+      // settings come from a JVM temporary file, which is 0600, so the elasticsearch user could not
+      // read /etc/elasticsearch/readonlyrest.yml and the node stopped at boot. The official image
+      // does the same chown after its plugin installation.
+      .user("root")
+      .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .user("elasticsearch")
   }
 
