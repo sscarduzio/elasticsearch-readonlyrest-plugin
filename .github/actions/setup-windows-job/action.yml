@@ -1,0 +1,35 @@
+name: 'Set up a Windows job'
+description: >-
+  The runner preparation every Windows job needs: the Defender exclusions, a JDK for the gradle
+  wrapper, and the gradle home cache. One definition, so a Windows job cannot miss one of the
+  three.
+
+  Call it right after `actions/checkout`. A local action is resolvable only once the repository is
+  on disk, which is why the checkout stays in the job and is not a step here.
+
+runs:
+  using: composite
+  steps:
+    # Real-time AV scanning taxes every file write, and the tests write hundreds of thousands
+    # (ES unzips, node data dirs). Standard CI mitigation; runner VMs are ephemeral. The files the
+    # checkout itself wrote are already on disk and get scanned — a few thousand, against the
+    # hundreds of thousands this saves.
+    - name: Exclude the workspace from Windows Defender
+      shell: pwsh
+      run: |
+        Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE"
+        Add-MpPreference -ExclusionPath "$env:RUNNER_TEMP"
+        Add-MpPreference -ExclusionProcess "java.exe"
+    # The JDK that runs the wrapper. The build compiles against its own toolchains, which
+    # auto-download=true provisions (see the gradle calls in ci/run-pipeline.sh).
+    - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+      with: { distribution: temurin, java-version: '21' }
+    # Windows has no baked toolchains image: without this every leg cold-downloads the wrapper,
+    # deps + JDKs and cold-compiles Scala (~9 min). Develop runs write the cache; PRs read it.
+    # jdks: not in the action's default include set, but auto-download=true provisions there.
+    - uses: gradle/actions/setup-gradle@da187c8e6ffbd3802e00f2477aa5a822b25f2dda
+      with:
+        gradle-home-cache-includes: |
+          caches
+          notifications
+          jdks
