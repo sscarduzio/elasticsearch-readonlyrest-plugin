@@ -5,7 +5,10 @@
 - `master` carries the released code. Its version in `gradle.properties` is always stable (`X.Y.Z`).
 - `develop` carries the code under development. Its version becomes unstable (`X.Y.Z-preN`) with the first change after a release, and stays unstable until the next release.
 
-A release merges `develop` into `master`. Version and artifact mechanics live in the `ror-release` skill.
+A release merges `develop` into `master`, and that merge carries the stable version. `master` never
+holds an `X.Y.Z-preN`: the Release workflow fails a push to `master` whose version is a pre-release,
+so a merge that defers the bump turns every later push to `master` red. Version and artifact
+mechanics live in the `ror-release` skill.
 
 ## Which branch does a PR target?
 
