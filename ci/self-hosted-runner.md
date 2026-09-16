@@ -75,7 +75,7 @@ third slot serves `publish_mvn` and the pre-builds.
 
 ## Registering a runner
 
-Repeat for `N` in `1 2`, from the host:
+Repeat for `N` in `1 2 3`, from the host:
 
 ```bash
 # 1. clone the template
@@ -114,18 +114,12 @@ gh api repos/sscarduzio/elasticsearch-readonlyrest-plugin/actions/runners \
 
 - The `runner` user must be in the `docker` group; the release jobs build and push images.
 - Disk is the binding constraint, roughly 1.5 GB of base image per ES version. The 40 GB root disk
-  in the profile is enough for two runners only because `ci/free-host-disk.sh` prunes between legs.
-- Shared host, so the CI scripts must not sweep the whole Docker daemon. They detect the box by the
-  marker file `/etc/ror-shared-docker-host` and downgrade every prune to dangling layers and build
-  cache. Write the marker when you provision the runner:
-
-  ```bash
-  incus exec --project github-ci gh-ror-es-$N -- sh -c \
-    'echo "Runners for more than one repo share this box." > /etc/ror-shared-docker-host'
-  ```
-
-  Without it, a retry of a release leg would kill the Kibana runners' in-flight ELK stacks.
-- Three runners, and `release_ror` / `upload_pre_ror` keep `max-parallel: 2`. The legs that run for
-  hours then take two slots at most, and the pre-build that two repos wait on finds the third.
-  `publish_mvn` needs only `discover`, so it can hold that third slot for as long as the Sonatype
-  publish takes.
+  in the profile is enough only because `ci/free-host-disk.sh` prunes between legs.
+- Shared host, so the CI scripts must not sweep the whole Docker daemon. `is_shared_docker_host`
+  (`ci/runner-detect.sh`) reads `RUNNER_ENVIRONMENT`, which GitHub sets to `self-hosted` here and
+  which reaches a `container:` job. Every prune then drops to dangling layers and build cache. A
+  full sweep would kill the Kibana runners' in-flight ELK stacks. Nothing to provision.
+- Three runners, and `release_ror` / `upload_pre_ror` keep `max-parallel: 2`, so the legs that run
+  for hours take two slots at most. `publish_mvn` needs only `discover`, so a master release can
+  hold the third as well while it publishes to Sonatype. Outside that window the third slot serves
+  the pre-build that two repos wait on.

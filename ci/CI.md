@@ -29,9 +29,10 @@ The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standa
 they push images and run for hours. `build-toolchains-image.yml` stays on `ubicloud-standard-4`.
 
 **Every job calls `ci/free-host-disk.sh` right after checkout**, including a new one. The script
-detects the runner and decides whether to reclaim disk; a job never decides that for it. It costs
-nothing when nothing is needed: it skips above 40GB free, and it fails closed when it cannot read
-the free space or cannot name the runner.
+detects the runner and decides whether to reclaim disk; a job never decides that for it. On the
+shared self-hosted box it prunes dangling layers and build cache, and nothing else. On a
+GitHub-hosted runner it deletes the preinstalled toolchains and sweeps the daemon, but only below
+40GB free. Anywhere else it does nothing, and it fails closed when it cannot read the free space.
 
 A Windows job instead calls `./.github/actions/setup-windows-job` right after checkout. That action
 holds the three things every Windows job needs: the Defender exclusions, the JDK of the wrapper, and the
@@ -146,8 +147,9 @@ when the version is already published).
 
 Two orchestration rules worth knowing before editing conditions:
 
-- `concurrency` auto-cancels superseded **PR** runs only; branch pushes queue, so a push
-  during a release run can never kill the release.
+- `concurrency` auto-cancels superseded **PR** runs only. A branch push queues instead, because
+  only a CI run that completes can start `release.yml`. The group still holds one pending run, so
+  the middle of three quick pushes is cancelled and that commit publishes nothing.
 - GitHub skips a job whose `needs` contains a failed **or skipped** job. That rule is implicit, and
   an `if:` only switches it off when the expression holds a status check function — `success()`,
   `failure()`, `cancelled()` or `always()`. An `if:` of plain conditions keeps it.
@@ -459,7 +461,7 @@ build cannot compile against jars that are not in the store yet.
 |---|---|
 | `ROR_S3_ACCESS_KEY_ID` / `ROR_S3_SECRET_ACCESS_KEY` | the one S3 key pair; writes `builds/`, `libs/` and `e2e_reports/` |
 | `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `configure-docker.sh` reads |
-| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. `unit_tests_linux` and `it_linux` map it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which authenticates the pulls their steps make. No `container:` pull uses it, because the runner makes that pull before step 1. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. `unit_tests_linux`, `it_linux` and `upload_pre_ror` map it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which authenticates the pulls their steps make. No `container:` pull uses it, because the runner makes that pull before step 1. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
 | `ROR_ENT_ACTIVATION_TOKEN` | ROR PRO/Enterprise key the e2e stack boots with. **The secret is renamed; the env var handed to the container stays `ROR_ACTIVATION_KEY`, which is the customer-facing name** |
 | `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, pushes docs |
 | `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |

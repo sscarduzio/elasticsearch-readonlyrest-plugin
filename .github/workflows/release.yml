@@ -130,11 +130,19 @@ jobs:
             PUBLISH=none
           fi
 
-          # A hand-dispatched pre-release publishes nothing: upload_pre_ror takes the automatic path
-          # only. Fail here, so the run does not end green with no artifact.
-          if [ "$PUBLISH" = pre_release ] && [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
-            echo "::error::this is a pre-release. A pre-release publishes from CI only."
-            exit 1
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            case "$PUBLISH" in
+              release)
+                ;;
+              pre_release)
+                echo "::error::$RELEASE_BRANCH carries a pre-release. A pre-release publishes from CI only."
+                exit 1
+                ;;
+              none)
+                echo "::error::$RELEASE_BRANCH carries $(gradle_property pluginVersion), which publishes nothing. A release runs from master."
+                exit 1
+                ;;
+            esac
           fi
 
           {
@@ -229,6 +237,7 @@ jobs:
     if: needs.discover.outputs.publish == 'release'
     runs-on: *self_hosted_runner
     container: *toolchains_container
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }

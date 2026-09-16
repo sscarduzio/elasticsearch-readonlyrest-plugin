@@ -28,8 +28,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 class PrintTestMatricesTaskTest {
 
@@ -109,25 +111,54 @@ class PrintTestMatricesTaskTest {
 
   // --- the files ci.yml reads ---
 
+  // Literal JSON on the right, never asJsonArray: a test that builds the expected text with the
+  // code under test passes every change to that code.
   @Test
-  void theTaskWritesOneJsonFilePerMatrix() throws Exception {
-    Project root = threeMajors();
-    PrintTestMatricesTask task =
-        root.getTasks().create("printTestMatricesUnderTest", PrintTestMatricesTask.class);
+  void theTaskWritesTheJsonEveryMatrixFileHolds() throws Exception {
+    Map<String, String> expected =
+        Map.of(
+            "linux_it_full",
+                "[\"es99x\",\"es98x\",\"es97x\",\"es96x\",\"es95x\",\"es94x\",\"es93x\","
+                    + "\"es92x\",\"es91x\",\"es90x\",\"es82x\",\"es81x\",\"es80x\",\"es61x\",\"es60x\"]",
+            "linux_it_pr_ready",
+                "[\"es99x\",\"es94x\",\"es90x\",\"es82x\",\"es80x\",\"es61x\",\"es60x\"]",
+            "linux_it_pr_draft", "[\"es99x\",\"es82x\",\"es61x\"]",
+            "win_it_full",
+                "[\"es99x\",\"es98x\",\"es97x\",\"es96x\",\"es95x\",\"es94x\",\"es93x\","
+                    + "\"es92x\",\"es91x\",\"es90x\",\"es82x\",\"es81x\",\"es80x\"]",
+            "win_it_master_or_develop", "[\"es99x\",\"es90x\",\"es82x\",\"es80x\"]",
+            "win_it_pr_ready", "[\"es99x\",\"es82x\"]",
+            "e2e_full", "[\"es99x\",\"es82x\"]");
 
-    task.printMatrices();
+    assertEquals(expected, writtenMatrixFiles(threeMajors()));
+  }
 
+  // The empty case reaches the file too, and `[]` is the text `discover` wraps into the
+  // `{"include":[]}` that every fan-out guard compares against.
+  @Test
+  void aProjectWithNoEsModuleWritesEmptyArrays() throws Exception {
+    Map<String, String> written = writtenMatrixFiles(ProjectBuilder.builder().build());
+
+    assertEquals(7, written.size());
+    written.forEach((name, json) -> assertEquals("[]", json, name));
+  }
+
+  private static Map<String, String> writtenMatrixFiles(Project root) throws Exception {
+    root.getTasks()
+        .create("printTestMatricesUnderTest", PrintTestMatricesTask.class)
+        .printMatrices();
     Path dir =
         root.getLayout().getBuildDirectory().get().getAsFile().toPath().resolve("ci-matrices");
-    Map<String, List<String>> matrices = PrintTestMatricesTask.matricesFor(root);
-    for (Map.Entry<String, List<String>> matrix : matrices.entrySet()) {
-      Path file = dir.resolve(matrix.getKey() + ".json");
-      assertTrue(Files.exists(file), file + " is missing");
-      assertEquals(
-          PrintTestMatricesTask.asJsonArray(matrix.getValue()),
-          Files.readString(file).strip(),
-          matrix.getKey());
+    Map<String, String> written = new LinkedHashMap<>();
+    try (Stream<Path> files = Files.list(dir)) {
+      for (Path file : files.sorted().toList()) {
+        String name = file.getFileName().toString();
+        assertTrue(name.endsWith(".json"), name);
+        written.put(
+            name.substring(0, name.length() - ".json".length()), Files.readString(file).strip());
+      }
     }
+    return written;
   }
 
   // ES 9 holds ten modules, the size at which READY_PR adds a middle module. Below that it gives

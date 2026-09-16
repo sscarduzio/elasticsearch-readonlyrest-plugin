@@ -84,8 +84,9 @@ public class PrintTestMatricesTask extends DefaultTask {
     return TestMatrixPolicy.modulesFor(rootProject, selection, skippedMajors);
   }
 
-  // An empty list must give [], not [""]: GitHub reads [] as an empty include list, and [""] as one
-  // matrix row whose module name is empty.
+  // An empty list must give [], because `discover` wraps it into the {"include":[]} that every
+  // fan-out guard compares against, and a matrix GitHub never sees is the only way to skip the job.
+  // [""] gives one row with an empty module name, and that leg fails on an unknown task.
   static String asJsonArray(List<String> modules) {
     if (modules.isEmpty()) {
       return "[]";
