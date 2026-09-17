@@ -18,7 +18,6 @@
 package tech.beshu.ror.gradle;
 
 import org.gradle.api.DefaultTask;
-import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskAction;
 import tech.beshu.ror.gradle.utils.EsModuleFinder;
 
@@ -27,7 +26,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Lists the names of all {@code esXXx} modules for one ES generation (major), newest module
@@ -45,13 +43,7 @@ public class PrintEsModulesTask extends DefaultTask {
   public void printModules() {
     int esMajor = Integer.parseInt(requiredProperty("esMajor"));
 
-    List<String> moduleNames =
-        EsModuleFinder.sortedEsModules(
-                getProject(), EsModuleFinder.newestEsVersionComparator().reversed())
-            .stream()
-            .filter(module -> majorVersionOf(EsModuleFinder.newestEsVersionFor(module)) == esMajor)
-            .map(Project::getName)
-            .collect(Collectors.toList());
+    List<String> moduleNames = EsModuleFinder.esModuleNamesForMajor(getProject(), esMajor);
 
     moduleNames.forEach(System.out::println);
     writeModulesFile(esMajor, moduleNames);
@@ -71,14 +63,6 @@ public class PrintEsModulesTask extends DefaultTask {
       Files.write(outputFile, moduleNames);
     } catch (IOException e) {
       throw new UncheckedIOException("Cannot write " + outputFile, e);
-    }
-  }
-
-  private static int majorVersionOf(String version) {
-    try {
-      return Integer.parseInt(version.split("\\.")[0]);
-    } catch (NumberFormatException e) {
-      throw new IllegalArgumentException("Cannot parse major version from: " + version, e);
     }
   }
 

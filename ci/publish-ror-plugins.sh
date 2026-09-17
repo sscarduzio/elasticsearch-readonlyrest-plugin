@@ -154,7 +154,10 @@ publish_one_version() {
   local TAG="v${ror_version}_es${es_version}"
 
   if [ "$mode" = "release" ]; then
-    if ! checkTagNotExist "$TAG"; then
+    local tag_state
+    tag_state=$(remote_tag_state "$TAG") || return 1
+    if [ "$tag_state" = present ]; then
+      echo "$TAG is already on origin, so ES $es_version is published. Skipping."
       return 0
     fi
   fi
@@ -171,17 +174,20 @@ publish_one_version() {
       return 1
     fi
 
-    tag "$TAG"
+    if ! tag "$TAG"; then
+      echo "ERROR: cannot tag $module ES $es_version as $TAG"
+      return 1
+    fi
   fi
 
   return 0
 }
 
 # Drives all ES modules in a generation through the publish flow, with per-module retry on failure.
-# Usage: publish_ror_plugins <es major: 6|7|8|9> <upload_pre|release>
+# Usage: publish_ror_plugins <es major> <upload_pre|release>
 publish_ror_plugins() {
   if [ "$#" -ne 2 ]; then
-    echo "Usage: publish_ror_plugins <es major: 6|7|8|9> <upload_pre|release>"
+    echo "Usage: publish_ror_plugins <es major> <upload_pre|release>"
     return 1
   fi
   local es_major=$1 mode=$2
@@ -193,6 +199,11 @@ publish_ror_plugins() {
   # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
   local modules
   modules=$(list_es_modules "$es_major") || { echo "ERROR: cannot list es${es_major}x modules"; return 1; }
+
+  if [ -z "$modules" ]; then
+    echo "ERROR: no es${es_major}x module to $mode; ES $es_major has no module owning it"
+    return 1
+  fi
 
   local module
   while IFS= read -r module; do

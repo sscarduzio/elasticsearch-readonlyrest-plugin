@@ -1,0 +1,36 @@
+name: 'Publish shard logs'
+description: >-
+  Prints every per-shard log of a sharded integration-test run as a collapsible group, then uploads
+  the whole directory as an artifact. Call it with `if: always()`: a failed shard is the one whose
+  log a reader wants.
+
+inputs:
+  id:
+    description: 'Names the artifact, so it must be unique in the run. Example: it-linux-es90x.'
+    required: true
+  log-dir:
+    description: 'Directory shardedTest wrote the shard-*.log files into.'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # bash, not pwsh, on every runner: windows-2025 carries Git Bash, and one implementation cannot
+    # drift from the other.
+    - shell: bash
+      env:
+        LOG_DIR: ${{ inputs.log-dir }}
+      run: |
+        for f in "$LOG_DIR"/shard-*.log; do
+          [ -f "$f" ] || continue
+          echo "::group::$(basename "$f")"
+          cat "$f"
+          echo "::endgroup::"
+        done
+    # Upload even when the print above failed: the logs are the point, the groups are a convenience.
+    - if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: sharded-logs-${{ inputs.id }}
+        path: ${{ inputs.log-dir }}/
+        if-no-files-found: ignore
