@@ -24,8 +24,8 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.EsVersion
-import tech.beshu.ror.es.esql.Query.SourceLocation
-import tech.beshu.ror.es.esql.{EsqlIndexListsReader, IndexListRead, Query, ReportedIndexList}
+import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.{IndexPatternInQuery, QueryIndices, SourceLocation}
+import tech.beshu.ror.es.esql.{EsqlQueryIndicesReader, Query}
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
 import tech.beshu.ror.syntax.*
@@ -56,7 +56,7 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     setQuery(request, query.stringify)
   }
 
-  private def readerFor(request: CompositeIndicesRequest): EsqlIndexListsReader = {
+  private def readerFor(request: CompositeIndicesRequest): EsqlQueryIndicesReader = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
     new EsqlParser(request)
   }
@@ -97,15 +97,15 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       request: CompositeIndicesRequest
   )(
       implicit classLoader: ClassLoader
-  ) extends EsqlIndexListsReader {
+  ) extends EsqlQueryIndicesReader {
 
     private lazy val underlyingObject =
       onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser"))
         .create()
         .get[Any]()
 
-    override def indexListsIn(query: String): Either[Throwable, List[ReportedIndexList]] = {
-      createStatement(query).map(statement => reportedIndexListsIn(planOf(statement)))
+    override def indicesIn(query: String): Either[Throwable, QueryIndices] = {
+      createStatement(query).map(statement => queryIndicesIn(planOf(statement)))
     }
 
     private def createStatement(query: String) = {
@@ -141,22 +141,23 @@ class EsqlRequestHelper(esVersion: EsVersion) {
      * deduplicates them by pattern text and keeps one source location per pattern, which is one span too few for
      * a query naming the same pattern twice.
      */
-    private def reportedIndexListsIn(plan: Any): List[ReportedIndexList] = {
+    private def queryIndicesIn(plan: Any): QueryIndices = {
       val isUnresolvedRelation: JPredicate[Any] = node => node.getClass.getSimpleName == "UnresolvedRelation"
-      on(plan)
+      val (lookupJoins, fromSources) = on(plan)
         .call("collect", isUnresolvedRelation)
         .get[java.util.List[Any]]()
         .asScala
         .toList
-        .map(reportedIndexListOf)
+        .partition(isLookupJoin)
+      QueryIndices(fromSources.map(indexPatternInQueryOf), lookupJoins.map(indexPatternInQueryOf))
     }
 
-    private def reportedIndexListOf(relation: Any): ReportedIndexList = {
+    private def indexPatternInQueryOf(relation: Any): IndexPatternInQuery = {
       val indexPattern = on(relation).call("indexPattern").get[Any]()
       val source = on(indexPattern).call("source").get[Any]()
       val location = on(source).call("source").get[Any]()
-      ReportedIndexList(
-        read = indexListReadOf(relation, on(indexPattern).call("indexPattern").get[String]()),
+      IndexPatternInQuery(
+        indexPattern = on(indexPattern).call("indexPattern").get[String](),
         writtenAt = SourceLocation(
           line = on(location).call("getLineNumber").get[Int](),
           column = on(location).call("getColumnNumber").get[Int]() - 1
@@ -165,11 +166,9 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       )
     }
 
-    private def indexListReadOf(relation: Any, indexList: String): IndexListRead = {
-      val isLookupJoin = Option(on(relation).call("indexMode").get[AnyRef])
+    private def isLookupJoin(relation: Any): Boolean =
+      Option(on(relation).call("indexMode").get[AnyRef])
         .exists(indexMode => on(indexMode).call("name").get[String]() == "LOOKUP")
-      if (isLookupJoin) IndexListRead.LookupJoin(indexList) else IndexListRead.SourceCommand(indexList)
-    }
 
   }
 

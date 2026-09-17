@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
-import tech.beshu.ror.es.esql.Query.TextSpan
 import tech.beshu.ror.syntax.*
 
 private[esql] object IndexListReplacer {
@@ -51,14 +50,14 @@ private[esql] object IndexListReplacer {
       sourceCommandIndices.map { indexList =>
         val allowed = allowedIndicesFor(indexList, allowedIndexNames, reachableOnlyThroughLookupJoin, scope)
         val indices = indexListOf(allowed.getOrElse(masked(indexList)))
-        Edit(indexList.span, IndexListRead.SourceCommand(indices), textOf(indexList.writtenAs, indices))
+        Edit(indexList.span, IndexPatternRole.FromSource.describe(indices), textOf(indexList.writtenAs, indices))
       } ::: lookupJoinTargets.map { indexList =>
         val allowed = allowedIndicesFor(indexList, allowedIndexNames)
         val index = indexListOf(allowed.getOrElse(masked(indexList)))
-        Edit(indexList.span, IndexListRead.LookupJoin(index), index)
+        Edit(indexList.span, IndexPatternRole.LookupJoin.describe(index), index)
       }
 
-    ReplacedQuery(rewritten(query, edits), edits.map(_.intendedRead))
+    ReplacedQuery(rewritten(query, edits), edits.map(_.intendedIndexList).sorted)
   }
 
   /**
@@ -136,7 +135,7 @@ private[esql] object IndexListReplacer {
     }
   }
 
-  private final case class Edit(span: TextSpan, intendedRead: IndexListRead, text: String)
+  private final case class Edit(span: TextSpan, intendedIndexList: String, text: String)
 
   private sealed trait SourceCommandScope
 

@@ -21,62 +21,32 @@ import cats.syntax.traverse.*
 import enumeratum.{Enum, EnumEntry}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.es.esql.Query.SourceLocation
+import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.QueryIndices
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-sealed trait Rejection
+private[esql] final case class TextSpan(start: Int, end: Int)
 
-object Rejection {
+private[esql] sealed trait IndexPatternRole extends EnumEntry {
 
-  case object CannotParseQuery extends Rejection
-
-  final case class CannotExtractIndices(failure: ReadingFailure) extends Rejection
-
-  final case class CannotParseRewrittenQuery(intendedIndexLists: List[String]) extends Rejection
-
-  final case class SubstitutionNotConfirmed(intendedIndexLists: List[String], readIndexLists: List[String])
-      extends Rejection
-
-}
-
-sealed trait ReadingFailure
-
-object ReadingFailure {
-
-  final case class NotWhereEsReportedIt(reportedIndexList: String) extends ReadingFailure
-
-  final case class SubqueryInSourceCommand(reportedIndexList: String) extends ReadingFailure
-
-  case object IndexListInAnonymousParameter extends ReadingFailure
-
-  final case class UnsupportedIndexList(reportedIndexList: String) extends ReadingFailure
-
-}
-
-sealed trait IndexListRead {
-
-  def indexList: String
-
-  /** ES reports an empty list for a source command of only subqueries. */
-  def indexListIsEmpty: Boolean = indexList.isBlank
-
-  def stringify: String = this match {
-    case IndexListRead.SourceCommand(indexList) => indexList
-    case IndexListRead.LookupJoin(indexList)    => s"LOOKUP JOIN ${indexList}"
+  def describe(indexPattern: String): String = this match {
+    case IndexPatternRole.FromSource => indexPattern
+    case IndexPatternRole.LookupJoin => s"LOOKUP JOIN ${indexPattern}"
   }
 
 }
 
-object IndexListRead {
+private[esql] object IndexPatternRole extends Enum[IndexPatternRole] {
+  case object FromSource extends IndexPatternRole
+  case object LookupJoin extends IndexPatternRole
 
-  final case class SourceCommand(indexList: String) extends IndexListRead
+  override val values: IndexedSeq[IndexPatternRole] = findValues
 
-  final case class LookupJoin(indexList: String) extends IndexListRead
+  def describedIndexListsOf(indices: QueryIndices): List[String] =
+    (indices.fromSources.filterNot(_.isEmpty).map(pattern => FromSource.describe(pattern.indexPattern)) ++
+      indices.lookupJoins.map(pattern => LookupJoin.describe(pattern.indexPattern))).sorted
 
 }
-
-final case class ReportedIndexList(read: IndexListRead, writtenAt: SourceLocation, writtenText: String)
 
 private[esql] sealed trait IndexListSyntax extends EnumEntry
 
@@ -88,14 +58,14 @@ private[esql] object IndexListSyntax extends Enum[IndexListSyntax] {
 }
 
 private[esql] sealed trait LocatedIndexList {
-  def span: Query.TextSpan
+  def span: TextSpan
   def requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
 }
 
 private[esql] object LocatedIndexList {
 
   final case class SourceCommandIndices private (
-      span: Query.TextSpan,
+      span: TextSpan,
       requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
       writtenAs: IndexListSyntax
   ) extends LocatedIndexList {
@@ -106,16 +76,12 @@ private[esql] object LocatedIndexList {
 
   object SourceCommandIndices {
 
-    def parse(
-        span: Query.TextSpan,
-        read: IndexListRead.SourceCommand,
-        writtenAs: IndexListSyntax
-    ): Option[SourceCommandIndices] =
-      requestedIndicesIn(read).map(SourceCommandIndices(span, _, writtenAs))
+    def parse(span: TextSpan, indexPattern: String, writtenAs: IndexListSyntax): Option[SourceCommandIndices] =
+      requestedIndicesIn(indexPattern).map(SourceCommandIndices(span, _, writtenAs))
 
   }
 
-  final case class LookupJoinTarget private (span: Query.TextSpan, index: ClusterIndexName) extends LocatedIndexList {
+  final case class LookupJoinTarget private (span: TextSpan, index: ClusterIndexName) extends LocatedIndexList {
     override def requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]] =
       NonEmptyList.one(RequestedIndex(index, excluded = false))
   }
@@ -123,8 +89,8 @@ private[esql] object LocatedIndexList {
   object LookupJoinTarget {
 
     /** A join reads one index, named in full: ES resolves neither a wildcard nor a remote cluster here. */
-    def parse(span: Query.TextSpan, read: IndexListRead.LookupJoin): Option[LookupJoinTarget] =
-      requestedIndicesIn(read).collect {
+    def parse(span: TextSpan, indexPattern: String): Option[LookupJoinTarget] =
+      requestedIndicesIn(indexPattern).collect {
         case NonEmptyList(RequestedIndex(index @ ClusterIndexName.Local(_: IndexName.Full), false), Nil) =>
           LookupJoinTarget(span, index)
       }
@@ -135,8 +101,8 @@ private[esql] object LocatedIndexList {
     indexLists.toList.flatMap(_.requestedIndices.toList).toCovariantSet
 
   /** All of them or none: an entry ROR cannot read is an index it would leave the ACL unaware of. */
-  private def requestedIndicesIn(read: IndexListRead): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
-    read.indexList
+  private def requestedIndicesIn(indexPattern: String): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
+    indexPattern
       .split(',')
       .asSafeList
       .filter(_.nonEmpty)
@@ -145,13 +111,11 @@ private[esql] object LocatedIndexList {
 
 }
 
-private[esql] final case class ReplacedQuery(query: String, intendedReads: List[IndexListRead]) {
-
-  def intendedIndexLists: List[String] = intendedReads.map(_.stringify).sorted
+private[esql] final case class ReplacedQuery(query: String, intendedIndexLists: List[String]) {
 
   /** Held to what ES reads back out of the rewrite - the only thing saying which indices it will really run against. */
-  def checkedAgainst(esReads: List[IndexListRead]): Either[Rejection, String] = {
-    val read = esReads.map(_.stringify).sorted
+  def checkedAgainst(esIndices: QueryIndices): Either[Rejection, String] = {
+    val read = IndexPatternRole.describedIndexListsOf(esIndices)
     Either.cond(
       test = intendedIndexLists == read,
       right = query,

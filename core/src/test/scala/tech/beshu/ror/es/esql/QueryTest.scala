@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
-import tech.beshu.ror.es.esql.Query.SourceLocation
+import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.{IndexPatternInQuery, QueryIndices, SourceLocation}
 import tech.beshu.ror.syntax.*
 
 class QueryTest extends AnyWordSpec {
@@ -46,7 +46,7 @@ class QueryTest extends AnyWordSpec {
       }
       "be unreadable when its index list is not where Elasticsearch reported it" in {
         val reader = readerReading(_ =>
-          List(ReportedIndexList(IndexListRead.SourceCommand("logs-1"), SourceLocation(1, 0), "FROM elsewhere"))
+          QueryIndices(List(IndexPatternInQuery("logs-1", SourceLocation(1, 0), "FROM elsewhere")), lookupJoins = Nil)
         )
 
         Query.from("FROM logs-1 | LIMIT 10", reader) shouldBe
@@ -107,7 +107,7 @@ class QueryTest extends AnyWordSpec {
       "be rejected when Elasticsearch cannot parse the rewrite" in {
         val reader = new StubReader({
           case "FROM logs-* | LIMIT 10" =>
-            Right(List(from("FROM logs-*", "logs-*").at("FROM logs-* | LIMIT 10")))
+            Right(fromSourcesOnly(List(from("FROM logs-*", "logs-*").at("FROM logs-* | LIMIT 10"))))
           case _ =>
             Left(new IllegalArgumentException("cannot parse"))
         })
@@ -133,7 +133,7 @@ class QueryTest extends AnyWordSpec {
     NonEmptyList.one(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   private def queryFrom(query: String, reported: ReadWrittenAs*): Query =
-    Query.from(query, readerReading(q => reported.toList.map(_.at(q))))
+    Query.from(query, readerReading(q => fromSourcesOnly(reported.toList.map(_.at(q)))))
 
   private def narrow(
       query: String,
@@ -144,31 +144,34 @@ class QueryTest extends AnyWordSpec {
     Query.from(query, reader).narrowedTo(allowed).map(_.stringify)
   }
 
-  private def readerOf(reads: Map[String, List[ReadWrittenAs]]): EsqlIndexListsReader =
+  private def readerOf(reads: Map[String, List[ReadWrittenAs]]): EsqlQueryIndicesReader =
     new StubReader({
-      case q if reads.contains(q) => Right(reads(q).map(_.at(q)))
+      case q if reads.contains(q) => Right(fromSourcesOnly(reads(q).map(_.at(q))))
       case q                      => throw new IllegalStateException(s"unexpected query: $q")
     })
 
-  private def readerReading(reads: String => List[ReportedIndexList]): EsqlIndexListsReader =
+  private def readerReading(reads: String => QueryIndices): EsqlQueryIndicesReader =
     new StubReader(query => Right(reads(query)))
 
-  private def readerFailingWith(cause: Throwable): EsqlIndexListsReader =
+  private def readerFailingWith(cause: Throwable): EsqlQueryIndicesReader =
     new StubReader(_ => Left(cause))
 
-  private def from(writtenText: String, indexList: String): ReadWrittenAs =
-    ReadWrittenAs(writtenText, IndexListRead.SourceCommand(indexList))
+  private def from(writtenText: String, indexPattern: String): ReadWrittenAs =
+    ReadWrittenAs(writtenText, indexPattern)
+
+  private def fromSourcesOnly(indexPatterns: List[IndexPatternInQuery]): QueryIndices =
+    QueryIndices(indexPatterns, lookupJoins = Nil)
 
   private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] =
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))
 
-  private final case class ReadWrittenAs(writtenText: String, read: IndexListRead) {
+  private final case class ReadWrittenAs(writtenText: String, indexPattern: String) {
 
-    def at(query: String): ReportedIndexList = {
+    def at(query: String): IndexPatternInQuery = {
       val offset = query.indexOf(writtenText)
       val before = query.take(offset)
-      ReportedIndexList(
-        read = read,
+      IndexPatternInQuery(
+        indexPattern = indexPattern,
         writtenAt =
           SourceLocation(line = before.count(_ == '\n') + 1, column = offset - (before.lastIndexOf('\n') + 1)),
         writtenText = writtenText
@@ -177,10 +180,9 @@ class QueryTest extends AnyWordSpec {
 
   }
 
-  private final class StubReader(reads: String => Either[Throwable, List[ReportedIndexList]])
-      extends EsqlIndexListsReader {
+  private final class StubReader(reads: String => Either[Throwable, QueryIndices]) extends EsqlQueryIndicesReader {
 
-    override def indexListsIn(query: String): Either[Throwable, List[ReportedIndexList]] = reads(query)
+    override def indicesIn(query: String): Either[Throwable, QueryIndices] = reads(query)
   }
 
 }

@@ -23,8 +23,8 @@ import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.es.esql.Query.SourceLocation
-import tech.beshu.ror.es.esql.{EsqlIndexListsReader, IndexListRead, Query, ReportedIndexList}
+import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.{IndexPatternInQuery, QueryIndices, SourceLocation}
+import tech.beshu.ror.es.esql.{EsqlQueryIndicesReader, Query}
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
 import tech.beshu.ror.syntax.*
@@ -54,7 +54,7 @@ object EsqlRequestHelper {
     setQuery(request, query.stringify)
   }
 
-  private def readerFor(request: CompositeIndicesRequest): EsqlIndexListsReader = {
+  private def readerFor(request: CompositeIndicesRequest): EsqlQueryIndicesReader = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
     new EsqlParser(request)
   }
@@ -75,15 +75,15 @@ object EsqlRequestHelper {
       request: CompositeIndicesRequest
   )(
       implicit classLoader: ClassLoader
-  ) extends EsqlIndexListsReader {
+  ) extends EsqlQueryIndicesReader {
 
     private lazy val underlyingObject =
       onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser"))
         .create()
         .get[Any]()
 
-    override def indexListsIn(query: String): Either[Throwable, List[ReportedIndexList]] = {
-      createStatement(query).map(statement => reportedIndexListsIn(planOf(statement)))
+    override def indicesIn(query: String): Either[Throwable, QueryIndices] = {
+      createStatement(query).map(statement => queryIndicesIn(planOf(statement)))
     }
 
     private def createStatement(query: String) = {
@@ -102,27 +102,28 @@ object EsqlRequestHelper {
      * deduplicates them by pattern text and keeps one source location per pattern, which is one span too few for
      * a query naming the same pattern twice.
      */
-    private def reportedIndexListsIn(plan: Any): List[ReportedIndexList] = {
+    private def queryIndicesIn(plan: Any): QueryIndices = {
       val isUnresolvedRelation: JPredicate[Any] = node =>
         node.getClass.getSimpleName match {
           case "UnresolvedRelation" | "EsqlUnresolvedRelation" => true
           case _                                               => false
         }
-      on(plan)
+      val relations = on(plan)
         .call("collect", isUnresolvedRelation)
         .get[java.util.List[Any]]()
         .asScala
         .toList
-        .map(reportedIndexListOf)
+        .map(indexPatternInQueryOf)
+      // `LOOKUP JOIN` arrived in ES 8.18
+      QueryIndices(fromSources = relations, lookupJoins = Nil)
     }
 
-    /** Every relation is read by a source command - `LOOKUP JOIN` arrived in ES 8.18. */
-    private def reportedIndexListOf(relation: Any): ReportedIndexList = {
+    private def indexPatternInQueryOf(relation: Any): IndexPatternInQuery = {
       val table = on(relation).call("table").get[Any]()
       val source = on(table).call("source").get[Any]()
       val location = on(source).call("source").get[Any]()
-      ReportedIndexList(
-        read = IndexListRead.SourceCommand(on(table).call("index").get[String]()),
+      IndexPatternInQuery(
+        indexPattern = on(table).call("index").get[String](),
         writtenAt = SourceLocation(
           line = on(location).call("getLineNumber").get[Int](),
           column = on(location).call("getColumnNumber").get[Int]() - 1

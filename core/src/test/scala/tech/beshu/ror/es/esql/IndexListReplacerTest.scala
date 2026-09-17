@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.esql.Query.SourceLocation
+import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.{IndexPatternInQuery, QueryIndices, SourceLocation}
 import tech.beshu.ror.es.esql.ReadingFailure.*
 
 class IndexListReplacerTest extends AnyWordSpec {
@@ -579,7 +579,7 @@ class IndexListReplacerTest extends AnyWordSpec {
         verify(
           "FROM logs-* | LIMIT 10",
           allowed("logs-1"),
-          esReads = List(IndexListRead.SourceCommand("logs-1")),
+          esReads = esReadsOf(fromSources = List("logs-1")),
           from("FROM logs-*", "logs-*")
         ) shouldBe Right("FROM logs-1 | LIMIT 10")
       }
@@ -587,7 +587,7 @@ class IndexListReplacerTest extends AnyWordSpec {
         verify(
           "FROM a, // and\n b | LIMIT 10",
           allowed("b"),
-          esReads = List(IndexListRead.SourceCommand("b,b")),
+          esReads = esReadsOf(fromSources = List("b,b")),
           from("FROM a, // and\n b", "a,b")
         ) shouldBe Left(Rejection.SubstitutionNotConfirmed(List("b"), List("b,b")))
       }
@@ -595,7 +595,7 @@ class IndexListReplacerTest extends AnyWordSpec {
         verify(
           "FROM logs-* | LIMIT 10",
           allowed("logs-1"),
-          esReads = List.empty,
+          esReads = esReadsOf(fromSources = Nil),
           from("FROM logs-*", "logs-*")
         ) shouldBe Left(Rejection.SubstitutionNotConfirmed(List("logs-1"), List.empty))
       }
@@ -603,10 +603,7 @@ class IndexListReplacerTest extends AnyWordSpec {
         verify(
           "FROM src | LOOKUP JOIN lookup_idx ON key",
           allowed("src", "lookup_idx"),
-          esReads = List(
-            IndexListRead.SourceCommand("src"),
-            IndexListRead.LookupJoin("lookup_idx")
-          ),
+          esReads = esReadsOf(fromSources = List("src"), lookupJoins = List("lookup_idx")),
           from("FROM src", "src"),
           join("lookup_idx", "lookup_idx")
         ) shouldBe Right("FROM src | LOOKUP JOIN lookup_idx ON key")
@@ -615,10 +612,7 @@ class IndexListReplacerTest extends AnyWordSpec {
         verify(
           "FROM src | LOOKUP JOIN lookup_idx ON key",
           allowed("src", "lookup_idx"),
-          esReads = List(
-            IndexListRead.SourceCommand("src"),
-            IndexListRead.SourceCommand("lookup_idx")
-          ),
+          esReads = esReadsOf(fromSources = List("src", "lookup_idx")),
           from("FROM src", "src"),
           join("lookup_idx", "lookup_idx")
         ) shouldBe Left(
@@ -665,7 +659,7 @@ class IndexListReplacerTest extends AnyWordSpec {
   private def verify(
       query: String,
       allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      esReads: List[IndexListRead],
+      esReads: QueryIndices,
       reported: ReportedBy*
   ): Either[Rejection, String] = {
     val indexLists = indexListsIn(query, reported)
@@ -679,37 +673,51 @@ class IndexListReplacerTest extends AnyWordSpec {
       reported: Seq[ReportedBy]
   ): Either[ReadingFailure, NonEmptyList[LocatedIndexList]] = {
     val relations = reported.toList
-      .foldLeft((0, List.empty[ReportedIndexList])) { case ((claimedUpTo, relations), relation) =>
+      .foldLeft((0, List.empty[(IndexPatternRole, IndexPatternInQuery)])) { case ((claimedUpTo, relations), relation) =>
         val offset = relation.forcedOffset.getOrElse(query.indexOf(relation.writtenText, claimedUpTo))
-        (offset + 1, relations :+ relation.reportedAt(query, offset))
+        (offset + 1, relations :+ (relation.role, relation.reportedAt(query, offset)))
       }
       ._2
+    val indices = QueryIndices(
+      fromSources = relations.collect { case (IndexPatternRole.FromSource, pattern) => pattern },
+      lookupJoins = relations.collect { case (IndexPatternRole.LookupJoin, pattern) => pattern }
+    )
     IndexListLocator
-      .locatedIn(query, relations)
+      .locatedIn(query, indices)
       .map(lists => NonEmptyList.fromListUnsafe(lists))
   }
 
-  private def from(writtenText: String, indexList: String): ReportedBy =
-    ReportedBy(writtenText, IndexListRead.SourceCommand(indexList), forcedOffset = None)
+  private def from(writtenText: String, indexPattern: String): ReportedBy =
+    ReportedBy(writtenText, IndexPatternRole.FromSource, indexPattern, forcedOffset = None)
 
-  private def join(writtenText: String, indexList: String): ReportedBy =
-    ReportedBy(writtenText, IndexListRead.LookupJoin(indexList), forcedOffset = None)
+  private def join(writtenText: String, indexPattern: String): ReportedBy =
+    ReportedBy(writtenText, IndexPatternRole.LookupJoin, indexPattern, forcedOffset = None)
 
-  private def at(offset: Int, writtenText: String, indexList: String): ReportedBy =
-    ReportedBy(writtenText, IndexListRead.SourceCommand(indexList), forcedOffset = Some(offset))
+  private def at(offset: Int, writtenText: String, indexPattern: String): ReportedBy =
+    ReportedBy(writtenText, IndexPatternRole.FromSource, indexPattern, forcedOffset = Some(offset))
 
-  private def joinAt(offset: Int, writtenText: String, indexList: String): ReportedBy =
-    ReportedBy(writtenText, IndexListRead.LookupJoin(indexList), forcedOffset = Some(offset))
+  private def joinAt(offset: Int, writtenText: String, indexPattern: String): ReportedBy =
+    ReportedBy(writtenText, IndexPatternRole.LookupJoin, indexPattern, forcedOffset = Some(offset))
+
+  private def esReadsOf(fromSources: List[String], lookupJoins: List[String] = Nil): QueryIndices = {
+    def readBack(indexPattern: String) = IndexPatternInQuery(indexPattern, SourceLocation(1, 0), indexPattern)
+    QueryIndices(fromSources.map(readBack), lookupJoins.map(readBack))
+  }
 
   private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] =
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))
 
-  private final case class ReportedBy(writtenText: String, read: IndexListRead, forcedOffset: Option[Int]) {
+  private final case class ReportedBy(
+      writtenText: String,
+      role: IndexPatternRole,
+      indexPattern: String,
+      forcedOffset: Option[Int]
+  ) {
 
-    def reportedAt(query: String, offset: Int): ReportedIndexList = {
+    def reportedAt(query: String, offset: Int): IndexPatternInQuery = {
       val before = query.take(offset)
-      ReportedIndexList(
-        read = read,
+      IndexPatternInQuery(
+        indexPattern = indexPattern,
         writtenAt = SourceLocation(
           line = before.count(_ == '\n') + 1,
           column = offset - (before.lastIndexOf('\n') + 1)
