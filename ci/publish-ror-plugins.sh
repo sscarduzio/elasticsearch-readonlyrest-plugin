@@ -78,7 +78,7 @@ pending_versions() {
 # Builds the module's base version once and verifies bytecode reuse for the newest version.
 # Then it repackages and publishes each ES version that origin has not tagged yet.
 #   $1 mode (upload_pre|release)  $2 ror_version  $3 module
-publish_module_versions() {
+publish_module() {
   local mode=$1 ror_version=$2 module=$3
   local dist_dir="${module}/build/distributions"
   local es_jars_dir
@@ -134,7 +134,7 @@ publish_module_versions() {
 
     local attempt published=0
     for attempt in 1 2 3; do
-      if publish_one_version "$mode" "$ror_version" "$module" "$version" "$zip"; then
+      if publish_version_artifacts "$mode" "$ror_version" "$module" "$version" "$zip"; then
         published=1
         break
       fi
@@ -171,7 +171,7 @@ publish_module_versions() {
 }
 
 # Pushes the ES+ROR Docker image for one version
-release_ror_docker_image() {
+push_ror_docker_image() {
   local es_version=$1 module=$2
 
   if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${es_version}" >/dev/null 2>&1; then
@@ -194,7 +194,7 @@ release_ror_docker_image() {
 
 # Publishes one already-derived version: S3 upload + (release) Docker image. Tagging is the
 # caller's job.
-publish_one_version() {
+publish_version_artifacts() {
   local mode=$1 ror_version=$2 module=$3 es_version=$4 zip=$5
 
   # publish always - even if this is not a release
@@ -204,7 +204,7 @@ publish_one_version() {
   fi
 
   if [ "$mode" = "release" ]; then
-    if ! release_ror_docker_image "$es_version" "$module"; then
+    if ! push_ror_docker_image "$es_version" "$module"; then
       echo "ERROR: docker release failed for $module ES $es_version"
       return 1
     fi
@@ -214,10 +214,10 @@ publish_one_version() {
 }
 
 # Drives all ES modules in a generation through the publish flow, with per-module retry on failure.
-# Usage: publish_ror_plugins <es major> <upload_pre|release>
-publish_ror_plugins() {
+# Usage: publish_es_major <es major> <upload_pre|release>
+publish_es_major() {
   if [ "$#" -ne 2 ]; then
-    echo "Usage: publish_ror_plugins <es major> <upload_pre|release>"
+    echo "Usage: publish_es_major <es major> <upload_pre|release>"
     return 1
   fi
   local es_major=$1 mode=$2
@@ -241,7 +241,7 @@ publish_ror_plugins() {
 
     local attempt
     for attempt in 1 2 3; do
-      if time publish_module_versions "$mode" "$ror_version" "$module"; then
+      if time publish_module "$mode" "$ror_version" "$module"; then
         break
       fi
       if [ "$attempt" -lt 3 ]; then

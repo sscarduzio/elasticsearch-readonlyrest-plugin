@@ -229,8 +229,8 @@ build_ror_plugins() {
 # Three tasks over the ES generations, each with its own function. The caller passes the generation
 # in ES_MAJOR, so any major works and ES 10 needs no edit here.
 task_build_plugins()      { build_ror_plugins   "${ES_MAJOR:?ES_MAJOR is not set}"; }
-task_upload_pre_plugins() { publish_ror_plugins "${ES_MAJOR:?ES_MAJOR is not set}" "upload_pre"; }
-task_release_plugins()    { publish_ror_plugins "${ES_MAJOR:?ES_MAJOR is not set}" "release"; }
+task_upload_pre_plugins() { publish_es_major "${ES_MAJOR:?ES_MAJOR is not set}" "upload_pre"; }
+task_release_plugins()    { publish_es_major "${ES_MAJOR:?ES_MAJOR is not set}" "release"; }
 
 check_maven_artifacts_exist() {
   local CURRENT_VERSION="$1"
