@@ -12,7 +12,9 @@ import argparse, io, json, re, subprocess, sys, zipfile
 from datetime import datetime, timezone
 
 def gh(path, raw=False):
-    out = subprocess.run(["gh", "api", path], capture_output=True, check=True).stdout
+    # job logs carry terminal escape sequences, which `gh api` refuses without the flag
+    args = ["gh", "api", path] + (["--allow-escape-sequences"] if raw else [])
+    out = subprocess.run(args, capture_output=True, check=True).stdout
     return out if raw else json.loads(out)
 
 def ts(s):
