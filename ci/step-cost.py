@@ -50,6 +50,24 @@ def at(samples, t):
             return c0 + f * (c1 - c0), i0 + f * (i1 - i0)
     return samples[-1][1], samples[-1][2]
 
+IDLE = 0.10  # an interval below this utilisation counts as a gap
+
+def gaps(samples, t0, t1, cpus):
+    """(idle seconds, longest idle stretch) inside [t0, t1], from the interval series."""
+    if not cpus:
+        return 0, 0
+    idle = longest = run = 0
+    for (ta, ca, _), (tb, cb, _) in zip(samples, samples[1:]):
+        if tb <= t0 or ta >= t1 or tb == ta:
+            continue
+        util = (cb - ca) / 1e6 / ((tb - ta) * cpus)
+        dt = min(tb, t1) - max(ta, t0)
+        if util < IDLE:
+            idle += dt; run += dt; longest = max(longest, run)
+        else:
+            run = 0
+    return idle, longest
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("targets", nargs="+", help="owner/repo:workflow.yml")
@@ -73,9 +91,11 @@ def main():
                     if wall < a.min_wall or t1 < samples[0][0] or t0 > samples[-1][0]:
                         continue
                     (c0, i0), (c1, i1) = at(samples, t0), at(samples, t1)
+                    gap, longest = gaps(samples, t0, t1, cpus)
                     key = (repo.split("/")[1], job["name"], st["name"], ",".join(job["labels"]))
-                    r = rows.setdefault(key, {"n": 0, "wall": 0, "cpu": 0, "io": 0, "cpus": cpus})
+                    r = rows.setdefault(key, {"n": 0, "wall": 0, "cpu": 0, "io": 0, "cpus": cpus, "gap": 0, "longest": 0})
                     r["n"] += 1; r["wall"] += wall; r["cpu"] += (c1 - c0) / 1e6; r["io"] += (i1 - i0) / 1e6
+                    r["gap"] += gap; r["longest"] = max(r["longest"], longest)
     if not rows:
         sys.exit("no instrumented jobs found (no 'resource samples' group in any job log)")
     out = []
@@ -83,6 +103,7 @@ def main():
         n = r["n"]; wall, cpu, iow = r["wall"]/n, r["cpu"]/n, r["io"]/n
         cap = wall * r["cpus"] if r["cpus"] else 0
         out.append(dict(repo=repo, job=job, step=step, labels=labels, n=n, wall=wall, cpu=cpu, io=iow,
+                        gap=r["gap"]/n, longest=r["longest"],
                         io_per_cpu=iow / cpu if cpu > 0 else float("inf"),
                         cpu_util=cpu / cap if cap else 0))
     def table(title, key, fmt):
@@ -94,6 +115,14 @@ def main():
     table("IO wait / CPU time", lambda r: (r["io_per_cpu"], r["wall"]), lambda r: f"{r['io_per_cpu']:.2f}")
     table("idle CPU: wall×cpus − cpu, seconds (what you pay for and do not use)",
           lambda r: r["wall"] * (1 - r["cpu_util"]), lambda r: f"{r['wall']*(1-r['cpu_util']):.0f}")
+    # busy steps with holes: the ratio column is idle-gap seconds (intervals under 10% CPU);
+    # the last column is the longest single gap. A high mean utilisation with a large gap
+    # is a step that waits for something in the middle of its work.
+    print(f"\n== CPU gaps inside steps: seconds of intervals under {IDLE:.0%} CPU (top {a.top}) ==")
+    print(f"{'gap s':>7} {'wall':>6} {'util':>5} {'longest':>8}  repo/job/step [labels]")
+    for r in sorted(out, key=lambda r: r["gap"], reverse=True)[: a.top]:
+        print(f"{r['gap']:>7.0f} {r['wall']:>6.0f} {r['cpu_util']*100:>4.0f}% {r['longest']:>7.0f}s  "
+              f"{r['repo']}/{r['job']}/{r['step']} [{r['labels']}] n={r['n']}")
 
 if __name__ == "__main__":
     main()
