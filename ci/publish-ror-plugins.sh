@@ -47,8 +47,36 @@ list_es_module_versions() {
   ./gradlew ":${module}:printEsVersionsForModule" --quiet </dev/null
 }
 
-# Builds the module's base version once, verifies bytecode reuse for the newest version,
-# then repackages and publishes every supported ES version.
+release_tag() {
+  printf 'v%s_es%s\n' "$1" "$2"
+}
+
+# Prints the versions from $3.. that still need publishing, one per line. Release mode skips
+# any version origin already tagged. upload_pre never tags. It keeps every version there.
+#   $1 mode  $2 ror_version  $3.. versions
+pending_versions() {
+  local mode=$1 ror_version=$2
+  shift 2
+  local versions=("$@") version git_tag tag_state
+
+  if [ "$mode" != release ]; then
+    printf '%s\n' "${versions[@]}"
+    return 0
+  fi
+
+  for version in "${versions[@]}"; do
+    git_tag=$(release_tag "$ror_version" "$version")
+    tag_state=$(remote_tag_state "$git_tag") || return 1
+    if [ "$tag_state" = present ]; then
+      echo ">>> $git_tag is already on origin. Skipping ES $version." >&2
+    else
+      printf '%s\n' "$version"
+    fi
+  done
+}
+
+# Builds the module's base version once and verifies bytecode reuse for the newest version.
+# Then it repackages and publishes each ES version that origin has not tagged yet.
 #   $1 mode (upload_pre|release)  $2 ror_version  $3 module
 publish_module_versions() {
   local mode=$1 ror_version=$2 module=$3
@@ -68,6 +96,21 @@ publish_module_versions() {
   echo ""
   echo ">>> Module $module: base ES $base_version, ${#versions[@]} version(s): ${versions[*]}"
 
+  # Publish newest-to-oldest so the most recent version is available first.
+  mapfile -t versions < <(printf '%s\n' "${versions[@]}" | tac)
+
+  # Checking is a git query. Building and repackaging costs minutes. Filtering here, before any
+  # build, skips that cost for every version already published.
+  local pending_output
+  pending_output=$(pending_versions "$mode" "$ror_version" "${versions[@]}") || return 1
+  local -a pending=()
+  [ -n "$pending_output" ] && mapfile -t pending <<< "$pending_output"
+
+  if [ "${#pending[@]}" -eq 0 ]; then
+    echo ">>> Module $module: every version is already published. Nothing to build."
+    return 0
+  fi
+
   if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
     return 1
   fi
@@ -77,11 +120,8 @@ publish_module_versions() {
     return 1
   fi
 
-  # Publish newest-to-oldest so the most recent version is available first.
-  mapfile -t versions < <(printf '%s\n' "${versions[@]}" | tac)
-
   local version
-  for version in "${versions[@]}"; do
+  for version in "${pending[@]}"; do
     if [ "$version" != "$base_version" ]; then
       if ! ./gradlew ":${module}:repackageRorPluginForVersion" \
             "-PesVersion=${base_version}" "-PtargetVersion=${version}" "-PesJarsDir=${es_jars_dir}" </dev/null; then
@@ -105,6 +145,11 @@ publish_module_versions() {
     done
     if [ "$published" -ne 1 ]; then
       echo "ERROR: publish of $module ES $version failed after 3 attempts"
+      return 1
+    fi
+
+    if [ "$mode" = "release" ] && ! tag "$(release_tag "$ror_version" "$version")"; then
+      echo "ERROR: cannot tag $module ES $version"
       return 1
     fi
 
@@ -147,20 +192,10 @@ release_ror_docker_image() {
   fi
 }
 
-# Publishes one already-derived version: S3 upload + (release) Docker image and git tag.
+# Publishes one already-derived version: S3 upload + (release) Docker image. Tagging is the
+# caller's job.
 publish_one_version() {
   local mode=$1 ror_version=$2 module=$3 es_version=$4 zip=$5
-
-  local TAG="v${ror_version}_es${es_version}"
-
-  if [ "$mode" = "release" ]; then
-    local tag_state
-    tag_state=$(remote_tag_state "$TAG") || return 1
-    if [ "$tag_state" = present ]; then
-      echo "$TAG is already on origin, so ES $es_version is published. Skipping."
-      return 0
-    fi
-  fi
 
   # publish always - even if this is not a release
   if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
@@ -171,11 +206,6 @@ publish_one_version() {
   if [ "$mode" = "release" ]; then
     if ! release_ror_docker_image "$es_version" "$module"; then
       echo "ERROR: docker release failed for $module ES $es_version"
-      return 1
-    fi
-
-    if ! tag "$TAG"; then
-      echo "ERROR: cannot tag $module ES $es_version as $TAG"
       return 1
     fi
   fi
