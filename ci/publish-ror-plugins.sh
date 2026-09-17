@@ -89,10 +89,11 @@ pending_versions() {
 }
 
 # Builds the module's base version once and verifies bytecode reuse for the newest version.
-# Then it repackages and publishes each ES version that origin has not tagged yet.
-#   $1 mode (upload_pre|release)  $2 ror_version  $3 module  $4 origin_tags (newline-separated tags)
+# Then it repackages and publishes each ES version. Release mode skips any version origin
+# already tagged. upload_pre publishes every version regardless.
+#   $1 mode (upload_pre|release)  $2 ror_version  $3 module
 publish_module() {
-  local mode=$1 ror_version=$2 module=$3 origin_tags=$4
+  local mode=$1 ror_version=$2 module=$3
   local dist_dir="${module}/build/distributions"
   local es_jars_dir
   es_jars_dir=$(mktemp -d)
@@ -111,6 +112,13 @@ publish_module() {
 
   # Publish newest-to-oldest so the most recent version is available first.
   mapfile -t versions < <(printf '%s\n' "${versions[@]}" | tac)
+
+  # Fresh on every attempt: a retry of this module must see the tags an earlier attempt already
+  # wrote, or it rebuilds and re-uploads a version this run already published.
+  local origin_tags=""
+  if [ "$mode" = release ]; then
+    origin_tags=$(origin_release_tags "$ror_version") || return 1
+  fi
 
   # Checking is a git query. Building and repackaging costs minutes. Filtering here, before any
   # build, skips that cost for every version already published.
@@ -237,11 +245,6 @@ publish_es_major() {
   local ror_version
   ror_version=$(gradle_property pluginVersion) || return 1
 
-  local origin_tags=""
-  if [ "$mode" = release ]; then
-    origin_tags=$(origin_release_tags "$ror_version") || return 1
-  fi
-
   export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || echo 1704067200)}"
 
   # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
@@ -259,7 +262,7 @@ publish_es_major() {
 
     local attempt
     for attempt in 1 2 3; do
-      if time publish_module "$mode" "$ror_version" "$module" "$origin_tags"; then
+      if time publish_module "$mode" "$ror_version" "$module"; then
         break
       fi
       if [ "$attempt" -lt 3 ]; then
