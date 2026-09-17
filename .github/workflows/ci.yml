@@ -225,6 +225,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Start the resource sampler
+        run: ci/resource-sampler.sh start
+
       - name: Free host disk
         run: ci/free-host-disk.sh
       - name: ${{ matrix.OPTIONAL_CHECK }}
@@ -238,6 +241,10 @@ jobs:
           nvd-api-key: ${{ secrets.NVD_API_KEY }}
           oss-index-username: ${{ secrets.OSS_INDEX_USERNAME }}
           oss-index-password: ${{ secrets.OSS_INDEX_PASSWORD }}
+
+      - name: Resource sampler report
+        if: always()
+        run: ci/resource-sampler.sh report
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
@@ -253,6 +260,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Start the resource sampler
+        run: ci/resource-sampler.sh start
+
       - name: Free host disk
         run: ci/free-host-disk.sh
       - name: ${{ matrix.REQUIRED_CHECK }}
@@ -266,6 +276,10 @@ jobs:
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
         run: ci/run-pipeline.sh
 
+      - name: Resource sampler report
+        if: always()
+        run: ci/resource-sampler.sh report
+
   # ── TEST: unit tests on Linux ─────────────────────────────────────────────
   unit_tests_linux:
     needs: [ ci_setup, toolchains_verify ]
@@ -278,6 +292,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Start the resource sampler
+        run: ci/resource-sampler.sh start
+
       - name: Free host disk
         run: ci/free-host-disk.sh
       - name: core_tests
@@ -293,6 +310,10 @@ jobs:
         uses: ./.github/actions/publish-test-results
         with:
           id: unit-test
+
+      - name: Resource sampler report
+        if: always()
+        run: ci/resource-sampler.sh report
 
   # ── TEST: Linux integration tests ─────────────────────────────────────────
   it_linux:
@@ -313,6 +334,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Start the resource sampler
+        run: ci/resource-sampler.sh start
+
       - name: Free host disk
         run: ci/free-host-disk.sh
       - name: Start memory telemetry
@@ -366,6 +390,10 @@ jobs:
         with:
           id: it-linux-${{ matrix.ES_MODULE }}
           log-dir: integration-tests/build/sharded-logs
+
+      - name: Resource sampler report
+        if: always()
+        run: ci/resource-sampler.sh report
 
   # ── TEST: Windows integration tests ───────────────────────────────────────
   it_windows:
@@ -458,6 +486,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Start the resource sampler
+        run: ci/resource-sampler.sh start
+
       - name: Free host disk
         run: ci/free-host-disk.sh
       - name: Resolve the ELK version of every e2e module
@@ -491,6 +522,10 @@ jobs:
           source ci/configure-docker.sh
           ci/run-pipeline.sh
 
+      - name: Resource sampler report
+        if: always()
+        run: ci/resource-sampler.sh report
+
   # ── E2E_BUILD_ES_IMAGES (this repo's build) ───────────────────────────────
   # Builds and publishes this repo's ROR ES dev image. One job per module, under the per-run tag.
   e2e_build_es_images:
@@ -507,6 +542,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Start the resource sampler
+        run: ci/resource-sampler.sh start
+
       - name: Free host disk
         run: ci/free-host-disk.sh
       - name: build_e2e_es_image
@@ -520,6 +558,10 @@ jobs:
           set -e
           source ci/configure-docker.sh
           ci/run-pipeline.sh
+
+      - name: Resource sampler report
+        if: always()
+        run: ci/resource-sampler.sh report
 
   # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
   # Cypress e2e suite, one job per module. Both dev images are already in the registry:
@@ -545,6 +587,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Start the resource sampler
+        run: ci/resource-sampler.sh start
+
       - name: Free host disk
         run: ci/free-host-disk.sh
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -592,6 +637,10 @@ jobs:
             "${E2E_TESTS_DIR:?run_e2e_tests did not publish the e2e clone path}/results" \
             "${{ matrix.ES_MODULE }}_${E2E_ELK_VERSION:?run_e2e_tests did not publish the ELK version}"
 
+      - name: Resource sampler report
+        if: always()
+        run: ci/resource-sampler.sh report
+
   # ── BUILD_ROR ─────────────────────────────────────────────────────────────
   build_ror:
     name: build_es${{ matrix.ES_MAJOR }}xx
@@ -614,6 +663,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Start the resource sampler
+        run: ci/resource-sampler.sh start
+
       - name: Free host disk
         run: ci/free-host-disk.sh
       - name: build_plugins
@@ -621,3 +673,7 @@ jobs:
           ROR_TASK: build_plugins
           ES_MAJOR: ${{ matrix.ES_MAJOR }}
         run: ci/run-pipeline.sh
+
+      - name: Resource sampler report
+        if: always()
+        run: ci/resource-sampler.sh report
