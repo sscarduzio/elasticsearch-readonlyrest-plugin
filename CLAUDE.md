@@ -76,6 +76,8 @@ ES module entry point pattern: `es{version}x/src/main/scala/tech/beshu/ror/es/Re
 - **Strict compilation**: `-Xfatal-warnings` with unused imports/params/locals/privates checks — no warnings are acceptable
 - **License headers**: GNU GPL v3 headers required on all source files. Pre-commit hook runs `./gradlew license --rerun-tasks` automatically
 - **Code formatting**: scalafmt (Scala) + Google Java Format (Java) via Spotless. Pre-commit hook formats staged files automatically. Run `./gradlew formatCode` manually or `./gradlew formatCodeCheck` to verify.
+- **Comments**: a comment explains the current state, not the change that made it — history belongs to the commit message and the PR. Full rule: `docs/dev/code-style.md`
+- **Writing style**: comments, commit messages, PR descriptions, review comments and answers to the user all use Simplified Technical English (ASD-STE100) plus Zinsser — one idea per sentence, active voice, no metaphor. See `docs/dev/writing-style.md`
 - **Internal Scala APIs**: avoid `scala.runtime.ScalaRunTime._*` and other `_`-prefixed runtime methods — they are implementation details
 - **Plugin ZIP output**: `es{version}x/build/distributions/readonlyrest-{pluginVersion}_es{esVersion}.zip`
 
@@ -100,7 +102,7 @@ Settings can be loaded from a local file (`FileSettingsSource`) or from an ES in
 
 - Main branches: `master` (stable releases), `develop` (active development)
 - Feature branches: `feature/RORDEV-{issue}` pattern
-- PRs target `develop`
+- Which branch a PR targets, and what to do after a merge to `master`: `docs/dev/branching.md`
 
 ## Code Review
 

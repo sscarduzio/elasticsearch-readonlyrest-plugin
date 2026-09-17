@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Finds the {@code esXXx} module responsible for a given ES version by checking whether the version
@@ -48,24 +49,77 @@ public final class EsModuleFinder {
     return EsVersions.of(esModule).newest;
   }
 
-  /**
-   * Every ES version ROR supports, oldest first, from each module's {@code supportedEsVersions}. The
-   * single source of truth for anything that needs the full list (see {@code printAllSupportedEsVersions}).
-   */
+  /** Every ES version ROR supports, oldest first, from each module's {@code supportedEsVersions}. */
   public static List<String> allSupportedEsVersions(Project rootProject) {
-    return sortedEsModules(rootProject, newestEsVersionComparator()).stream()
+    return esModulesSortedBy(rootProject, newestEsVersionComparator())
         .flatMap(module -> EsVersions.of(module).all.stream())
         .distinct()
         .collect(Collectors.toList());
   }
 
-  public static List<Project> sortedEsModules(Project rootProject, Comparator<Project> comparator) {
-    List<Project> esModules = allEsModules(rootProject);
-    esModules.sort(comparator);
-    return esModules;
+  /**
+   * Every ES major ROR builds, newest first. A module counts for the major of its NEWEST supported
+   * version, the rule {@code printEsModules} uses, so a module that spans two majors counts once.
+   *
+   * <p>CI builds its matrices from this list, which a hand-written one would drift from.
+   */
+  public static List<Integer> allSupportedEsMajors(Project rootProject) {
+    return allEsModules(rootProject).stream()
+        .map(EsModuleFinder::majorOf)
+        .distinct()
+        .sorted(Comparator.reverseOrder())
+        .collect(Collectors.toList());
   }
 
-  public static Comparator<Project> newestEsVersionComparator() {
+  /**
+   * The newest ES module: the one whose newest supported version is the highest. A caller that
+   * needs ONE module asks here — a unit-test run, or a tool that reads a plugin descriptor. An
+   * integration-test leg instead names the module it covers.
+   *
+   * <p>Derived from {@code supportedEsVersions}, so a new module needs no edit.
+   */
+  public static String newestEsModuleName(Project rootProject) {
+    return esModulesSortedBy(rootProject, newestEsVersionComparator().reversed())
+        .map(Project::getName)
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("The build holds no esXXx module"));
+  }
+
+  /**
+   * The modules of one ES major, newest first. A module counts for the major of its newest supported
+   * version, so a module that spans two majors appears under one of them only.
+   */
+  public static List<String> esModuleNamesForMajor(Project rootProject, int esMajor) {
+    return esModulesSortedBy(rootProject, newestEsVersionComparator().reversed())
+        .filter(module -> majorOf(module) == esMajor)
+        .map(Project::getName)
+        .collect(Collectors.toList());
+  }
+
+  /** The major part of an ES version. For {@code 10.0.1} this is 10. */
+  public static int majorVersionOf(String version) {
+    try {
+      return Integer.parseInt(version.split("\\.")[0]);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Cannot parse major version from: " + version, e);
+    }
+  }
+
+  /** A module counts for the major of its newest supported version. */
+  private static int majorOf(Project esModule) {
+    return majorVersionOf(newestEsVersionFor(esModule));
+  }
+
+  /**
+   * Sorts a copy, never the list {@link #allEsModules} returns: {@code Collectors.toList()} does
+   * not promise a mutable list.
+   */
+  private static Stream<Project> esModulesSortedBy(
+      Project rootProject, Comparator<Project> comparator) {
+    return allEsModules(rootProject).stream().sorted(comparator);
+  }
+
+  private static Comparator<Project> newestEsVersionComparator() {
     return Comparator.comparing(EsModuleFinder::newestEsVersionFor, EsVersions.VERSION_COMPARATOR);
   }
 

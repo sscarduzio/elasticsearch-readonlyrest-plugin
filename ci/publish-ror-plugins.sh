@@ -4,6 +4,16 @@
 # Sourced by ci/run-pipeline.sh.
 
 cleanup_docker_and_build() {
+  # On the shared box the daemon also serves the readonlyrest_kbn runners, which hold running ELK
+  # stacks. The full sweep below would delete them, so reclaim only what this build left behind.
+  if is_shared_docker_host; then
+    echo ">>> shared docker host: pruning only dangling images and build cache"
+    docker image prune -f || true
+    docker builder prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" || true
+    find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+    return 0
+  fi
+
   # Exclude the container this script is running inside (prevents self-removal in DinD setups).
   local SELF_ID
   SELF_ID=$(hostname 2>/dev/null || true)
@@ -144,7 +154,10 @@ publish_one_version() {
   local TAG="v${ror_version}_es${es_version}"
 
   if [ "$mode" = "release" ]; then
-    if ! checkTagNotExist "$TAG"; then
+    local tag_state
+    tag_state=$(remote_tag_state "$TAG") || return 1
+    if [ "$tag_state" = present ]; then
+      echo "$TAG is already on origin, so ES $es_version is published. Skipping."
       return 0
     fi
   fi
@@ -161,17 +174,20 @@ publish_one_version() {
       return 1
     fi
 
-    tag "$TAG"
+    if ! tag "$TAG"; then
+      echo "ERROR: cannot tag $module ES $es_version as $TAG"
+      return 1
+    fi
   fi
 
   return 0
 }
 
 # Drives all ES modules in a generation through the publish flow, with per-module retry on failure.
-# Usage: publish_ror_plugins <es major: 6|7|8|9> <upload_pre|release>
+# Usage: publish_ror_plugins <es major> <upload_pre|release>
 publish_ror_plugins() {
   if [ "$#" -ne 2 ]; then
-    echo "Usage: publish_ror_plugins <es major: 6|7|8|9> <upload_pre|release>"
+    echo "Usage: publish_ror_plugins <es major> <upload_pre|release>"
     return 1
   fi
   local es_major=$1 mode=$2
@@ -183,6 +199,11 @@ publish_ror_plugins() {
   # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
   local modules
   modules=$(list_es_modules "$es_major") || { echo "ERROR: cannot list es${es_major}x modules"; return 1; }
+
+  if [ -z "$modules" ]; then
+    echo "ERROR: no es${es_major}x module to $mode; ES $es_major has no module owning it"
+    return 1
+  fi
 
   local module
   while IFS= read -r module; do

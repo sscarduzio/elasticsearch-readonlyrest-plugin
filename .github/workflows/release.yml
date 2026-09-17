@@ -1,0 +1,268 @@
+# Publishing. A green CI run starts it, or an operator does.
+#
+# On a workflow_run, `github.ref` and `github.sha` name the default branch, not the commit CI
+# tested. Use RELEASE_SHA and RELEASE_BRANCH. Never `github.ref`. ci/CI.md holds the rest.
+name: Release
+
+on:
+  workflow_run:
+    workflows: [ CI ]
+    types: [ completed ]
+    branches: [ develop, master ]
+  workflow_dispatch:
+    inputs:
+      confirm_version:
+        description: >-
+          Type the pluginVersion from gradle.properties, exactly. The run stops if it does not match
+          the branch you launched from. This is the only guard against an accidental release.
+        required: true
+        type: string
+
+# One release per branch, and never cancel a running one. A group holds one run in progress and one
+# pending, and a third run cancels the pending one even with `cancel-in-progress: false`. So only a
+# run that can publish joins the branch group.
+concurrency:
+  group: release-${{ (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')) && (github.event.workflow_run.head_branch || github.ref_name) || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # The commit CI tested, or the commit the operator dispatched from. Order matters: on a
+  # workflow_run, github.sha is the default branch and would release untested code.
+  RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+  RELEASE_BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+  GRADLE_USER_HOME: /opt/gradle-home
+  GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
+
+jobs:
+
+  # ── RELEASE_SETUP ─────────────────────────────────────────────────────────
+  # May this run publish, and from which branch?
+  release_setup:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.conclusion == 'success'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      image: ${{ steps.toolchains.outputs.image }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      # Only the manual path needs a guard: the trigger already filtered the workflow_run path.
+      # gradle_property is the one reader of gradle.properties.
+      - name: Check the branch and the typed version
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          CONFIRM_VERSION: ${{ inputs.confirm_version }}
+        run: |
+          set -e
+          case "$RELEASE_BRANCH" in
+            develop|master) ;;
+            *) echo "::error::A release runs from develop or master only. This is $RELEASE_BRANCH."; exit 1 ;;
+          esac
+          . ci/ci-lib.sh
+          ACTUAL=$(gradle_property pluginVersion)
+          if [ "$CONFIRM_VERSION" != "$ACTUAL" ]; then
+            echo "::error::You typed '$CONFIRM_VERSION'. $RELEASE_BRANCH carries '$ACTUAL'."
+            exit 1
+          fi
+      - id: toolchains
+        uses: ./.github/actions/resolve-toolchains-image
+      - name: Summarise the run
+        run: |
+          # The Actions graph does not link the CI run to this one. The summary does.
+          {
+            echo "Branch: $RELEASE_BRANCH"
+            echo "Commit: $RELEASE_SHA"
+            echo "${{ github.event.workflow_run.html_url && format('Triggered by CI run {0}', github.event.workflow_run.html_url) || 'Dispatched by hand. No tests ran.' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── DISCOVER ──────────────────────────────────────────────────────────────
+  # What to publish, and for which ES majors.
+  discover:
+    needs: release_setup
+    runs-on: ubuntu-latest
+    container: &toolchains_container
+      image: ${{ needs.release_setup.outputs.image }}
+    timeout-minutes: 10
+    outputs:
+      majors_matrix: ${{ steps.plan.outputs.majors_matrix }}
+      publish: ${{ steps.plan.outputs.publish }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - uses: ./.github/actions/verify-toolchains-image
+      - name: Derive the ES majors
+        run: ./gradlew --no-daemon -q printEsMajors
+      - id: plan
+        run: |
+          set -eo pipefail
+          source ci/ci-lib.sh
+
+          MAJORS=$(es_majors_matrix) || { echo "::error::cannot derive the ES majors."; exit 1; }
+
+          IS_PRE=$(is_pre_release_version) || { echo "::error::cannot tell if this is a pre-release."; exit 1; }
+
+          if [ "$RELEASE_BRANCH" = master ] && [ "$IS_PRE" = true ]; then
+            echo "::error::master carries the pre-release version $(gradle_property pluginVersion)."
+            exit 1
+          fi
+
+          if [ "$RELEASE_BRANCH" = master ]; then
+            PUBLISH=release
+          elif [ "$IS_PRE" = true ]; then
+            PUBLISH=pre_release
+          else
+            PUBLISH=none
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            case "$PUBLISH" in
+              release)
+                ;;
+              pre_release)
+                echo "::error::$RELEASE_BRANCH carries a pre-release. A pre-release publishes from CI only."
+                exit 1
+                ;;
+              none)
+                echo "::error::$RELEASE_BRANCH carries $(gradle_property pluginVersion), which publishes nothing. A release runs from master."
+                exit 1
+                ;;
+            esac
+          fi
+
+          {
+            echo "majors_matrix=$MAJORS"
+            echo "publish=$PUBLISH"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "ES majors: $MAJORS"
+            echo "Publishes: $PUBLISH"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── UPLOAD_PRE_ROR (pre-release versions, automatic path only) ────────────
+  upload_pre_ror:
+    needs: [ release_setup, discover ]
+    if: >-
+      needs.discover.outputs.publish == 'pre_release' &&
+      github.event_name == 'workflow_run'
+    runs-on: &self_hosted_runner [ self-hosted, Linux, X64 ]
+    container: *toolchains_container
+    timeout-minutes: 600
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.discover.outputs.majors_matrix) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: upload_pre_plugins
+        env:
+          ROR_TASK: upload_pre_plugins
+          ES_MAJOR: ${{ matrix.ES_MAJOR }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+        run: |
+          set -e
+          source ci/configure-docker.sh
+          ci/run-pipeline.sh
+
+  # ── RELEASE_ROR (release versions) ────────────────────────────────────────
+  release_ror:
+    needs: [ release_setup, discover ]
+    if: needs.discover.outputs.publish == 'release'
+    permissions:
+      contents: write   # ci-lib.sh tags the release and pushes the tag via the checkout token
+    runs-on: *self_hosted_runner
+    container: *toolchains_container
+    # 600, not the 180 of the other jobs: an ES 8 leg builds, tests and uploads 17 versions, and the
+    # last two releases took 4h15m and 5h09m. A killed leg leaves the release without that ES
+    # major's artifacts.
+    timeout-minutes: 600
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.discover.outputs.majors_matrix) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: true }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: release_plugins
+        env:
+          ROR_TASK: release_plugins
+          ES_MAJOR: ${{ matrix.ES_MAJOR }}
+          CI_BUILD_NUMBER: ${{ github.run_number }}
+          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
+          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
+          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
+          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+        run: |
+          set -e
+          source ci/configure-docker.sh
+          ci/run-pipeline.sh
+
+  # ── PUBLISH_MVN_ARTIFACTS (master releases only) ──────────────────────────
+  publish_mvn:
+    needs: [ release_setup, discover ]
+    if: needs.discover.outputs.publish == 'release'
+    runs-on: *self_hosted_runner
+    container: *toolchains_container
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { ref: "${{ env.RELEASE_SHA }}", fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: Install PGP signing key
+        env:
+          PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}
+        run: |
+          mkdir -p .travis
+          # The workspace outlives the job on a persistent runner, and the next checkout only cleans
+          # it when the next job starts. Keep the private key unreadable to anything else meanwhile.
+          install -m 600 /dev/null .travis/secret.pgp
+          echo "$PGP_SECRET_KEY_B64" | base64 -d > .travis/secret.pgp
+      - name: publish_maven_artifacts
+        env:
+          ROR_TASK: publish_maven_artifacts
+          MAVEN_REPO_USER: ${{ secrets.MAVEN_REPO_USER }}
+          MAVEN_REPO_PASSWORD: ${{ secrets.MAVEN_REPO_PASSWORD }}
+          MAVEN_STAGING_PROFILE_ID: ${{ secrets.MAVEN_STAGING_PROFILE_ID }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: ci/run-pipeline.sh
+      # The self-hosted runner keeps the workspace, so remove the key here — also when the publish
+      # fails or is cancelled.
+      - name: Remove the PGP signing key
+        if: always()
+        run: rm -f .travis/secret.pgp

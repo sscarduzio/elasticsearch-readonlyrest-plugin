@@ -28,9 +28,9 @@
 # ci/toolchains/JdkToolchains.Dockerfile.dockerignore file.)
 #
 # The tag encodes the two things that force a rebuild: the JDK set and the Gradle version.
-# Bump it (and azure-pipelines.yml `container:`) when: a supported ES major adds a new JVM, the
-# Gradle version changes (gradle/wrapper/gradle-wrapper.properties), or dependencies drift enough
-# that the primed offline cache misses often.
+# Bump it and the `TOOLCHAINS_IMAGE` anchor in .github/workflows/ci.yml when a supported ES major
+# adds a new JVM, the Gradle version changes (gradle/wrapper/gradle-wrapper.properties), or
+# dependencies drift enough that the primed offline cache misses often.
 
 # Every FROM below names a Docker Hub image, and Docker Hub rejects a pull with a bare
 # `429 Too Many Requests` when the runner's address is over the abuse rate limit. MIRROR puts a
@@ -75,8 +75,8 @@ RUN GH_DIR="gh_${GH_CLI_VERSION}_linux_${TARGETARCH}" \
  && gh --version
 
 # Docker CLIENT only: UPLOAD_PRE_ROR/RELEASE_ROR run `docker login` / `publishEsRorDockerImage`
-# from inside this container and talk to the agent host's Docker daemon over the bind-mounted
-# /var/run/docker.sock (the self-hosted az-ror-es agents mount it).
+# from inside this container and talk to the runner host's Docker daemon over the bind-mounted
+# /var/run/docker.sock.
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 # buildx CLI plugin: RELEASE_ROR's `prepareMultiplatformBuilder` Gradle task and ci-lib.sh's
 # `retag_dev_image` (UPLOAD_PRE_ROR) call `docker buildx`. The plain docker binary above does NOT
@@ -149,8 +149,8 @@ RUN cd /tmp/ror-src \
  && touch "$GRADLE_USER_HOME/.ror-ci-baked" \
  && rm -rf "$GRADLE_USER_HOME"/caches/*/scripts "$GRADLE_USER_HOME"/daemon \
  && find "$GRADLE_USER_HOME" -name "*.lock" -delete 2>/dev/null || true \
- # The Azure container job may run as a non-root user; make the baked Gradle home writable so
- # Gradle can write lockfiles/outputs into it at CI time without needing a copy-to-workspace step.
+ # Container jobs may run as a non-root user; make the baked Gradle home writable so Gradle can
+ # write lockfiles and outputs without needing a copy-to-workspace step.
  && chmod -R a+rwX "$GRADLE_USER_HOME"
 
 # ---- final image: toolchains + the primed Gradle home, WITHOUT the repo sources ------------
@@ -158,9 +158,8 @@ FROM base
 COPY --from=gradle-prime /opt/gradle-home /opt/gradle-home
 # The prime-stage `chmod -R a+rwX` makes the home's CONTENTS writable, but a cross-stage COPY
 # materializes the freshly-created top-level dir as root:root 0755 — the prime-stage bit on the
-# dir itself does NOT survive it. The Azure container job runs as a non-root user (vsts, UID 1001),
-# and `daemon/` was deleted during priming, so even `gradlew --no-daemon` (which still creates the
-# daemon registry dir $GRADLE_USER_HOME/daemon/<version>) can't write into a root-owned top dir.
+# dir itself does NOT survive it. A non-root container user cannot create the daemon registry
+# directory $GRADLE_USER_HOME/daemon/<version> in a root-owned top-level directory.
 # Make the top dir world-writable so the non-root CI user can create daemon/ + lockfiles here.
 RUN chmod a+rwx /opt/gradle-home
 # At CI time: point GRADLE_USER_HOME at /opt/gradle-home — warm-cache builds make no network

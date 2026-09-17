@@ -8,9 +8,6 @@ on:
       - '.claude/**'
       - '**/*.md'
   pull_request:
-    # Draft PRs run a reduced test matrix, so marking a draft "ready for review" must start a run
-    # with the full PR matrix. That only happens if ready_for_review is listed here — it is not
-    # part of the default trigger types (opened, synchronize, reopened).
     types: [ opened, synchronize, reopened, ready_for_review ]
     branches: [ master, develop, 'epic/**', '**/epic/**' ]
     paths-ignore:
@@ -27,11 +24,10 @@ on:
           - run_all_tests_on_linux
           - run_all_tests_on_windows
           - run_e2e_tests
-          - release_without_testing
-          - run_disk_probe
 
-# Replaces SUPERSEDE_GUARD. cancel-in-progress ONLY for PRs (Azure pr.autoCancel); branch pushes
-# queue behind the running build (Azure trigger.batch) so an in-flight release is never cancelled.
+# Cancel superseded PR runs. A branch push queues instead of cancelling the run before it, because
+# only a run that completes can start release.yml. The group still holds one pending run, so the
+# middle of three quick pushes is cancelled.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -39,214 +35,229 @@ concurrency:
 permissions:
   contents: read
 
-# Container jobs default run: steps to `sh`, where `source` (configure-docker.sh) fails with 127.
-# Windows jobs are unaffected — their steps declare `shell: pwsh` explicitly.
 defaults:
   run:
     shell: bash
 
 env:
-  # TOOLCHAINS_IMAGE is not here. It lives in ci/toolchains/image.env, which the two jobs that
-  # need it source. One file holds the tag, and every workflow reads that file.
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  # 4 shards per leg + HeavySuiteGate (max 2 concurrent multi-cluster suites, machine-wide).
-  # k=5 was measured faster on es94x (20.6 vs ~21.3 min) but host-OOM'd 4 of 10 modules on the
-  # full-matrix run (es80x/es810x/es818x/es90x, exit 137) — those legs run suites es94x excludes,
-  # so their memory peaks are higher. Fleet wall time is set by the slowest leg anyway: k=4.
   IT_PARALLELISM: '4'
-  # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
-  AGENT_ISSELFHOSTED: '1'
 
 jobs:
 
-  # ── Gate helpers ──────────────────────────────────────────────────────────
-  # Branch/reason booleans + the IT matrices (Azure computed these as pipeline variables and
-  # encoded the PR-vs-branch split as three separate matrix jobs; here one job emits the right
-  # matrix JSON so skipped legs never boot a runner).
-  setup:
-    runs-on: ubuntu-latest   # trivial job; GH-hosted so it runs even if the Ubicloud app is down
+  # ── CI_SETUP ──────────────────────────────────────────────────────────────
+  # Resolves the toolchains image to pull, and the facts about this run: the branch it is on, and
+  # whether an operator started it. These are job outputs, not workflow `env`, because a job-level
+  # `if:` cannot read the `env` context.
+  ci_setup:
+    runs-on: ubuntu-latest
     outputs:
-      is_master:  ${{ steps.flags.outputs.is_master }}
-      is_develop: ${{ steps.flags.outputs.is_develop }}
-      is_epic:    ${{ steps.flags.outputs.is_epic }}
-      action:     ${{ github.event.inputs.actionToPerform || 'run_all_tests_on_linux' }}
-      it_linux_matrix:   ${{ steps.matrices.outputs.linux }}
-      it_windows_matrix: ${{ steps.matrices.outputs.windows }}
-      e2e_modules:       ${{ steps.matrices.outputs.e2e }}
-      toolchains_image: ${{ steps.toolchains.outputs.image }}
+      image:                      ${{ steps.toolchains.outputs.image }}
+      is_release_branch:          ${{ steps.flags.outputs.is_release_branch }}
+      is_epic_branch:             ${{ steps.flags.outputs.is_epic_branch }}
+      is_merge_back:              ${{ steps.flags.outputs.is_merge_back }}
+      is_automatic_run:           ${{ steps.flags.outputs.is_automatic_run }}
+      manual_action:              ${{ steps.flags.outputs.manual_action }}
+      unique_build_id:            ${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - id: toolchains
+        uses: ./.github/actions/resolve-toolchains-image
       - id: flags
         env:
-          REF: ${{ github.head_ref || github.ref_name }}
+          IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}
+          IS_DEVELOP_PUSH: ${{ github.ref == 'refs/heads/develop' }}
+          IS_EPIC_BRANCH: ${{ contains(github.head_ref || github.ref_name, 'epic/') }}
+          MANUAL_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.actionToPerform || '' }}
         run: |
-          echo "is_master=${{ github.ref == 'refs/heads/master' }}"   >> "$GITHUB_OUTPUT"
-          echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
-          # contains() semantics, matching Azure's isEpicBranchOrPr
-          case "$REF" in *epic/*)  echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
-      - id: matrices
-        env:
-          # Deliberately also true for epic/** refs — they get the same full matrices as master/develop.
-          IS_MASTER_OR_DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
-          IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
-          MANUAL_RUN_ACTION: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.actionToPerform || '') }}
-        run: |
-          LINUX_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x","es67x"]'
-          LINUX_IT_PR_READY_SET='["es94x","es90x","es818x","es816x","es810x","es80x","es717x","es710x","es70x","es67x"]'
-          LINUX_IT_PR_DRAFT_SET='["es94x","es818x","es717x","es67x"]'
-          WIN_IT_FULL_SET='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
-          WIN_IT_MASTER_OR_DEVELOP_SET='["es94x","es90x","es818x","es80x","es717x","es70x"]'
-          WIN_IT_PR_READY_SET='["es94x","es818x","es717x"]'
-          WIN_IT_PR_DRAFT_SET='[]'
-          E2E_FULL_SET='["es94x","es818x","es717x"]'
-          E2E_PR_DRAFT_SET='[]'
+          source ci/ci-lib.sh
+          MERGE_BACK=false
+          [ "$IS_DEVELOP_PUSH" = "true" ] && [ -z "$MANUAL_ACTION" ] \
+            && is_merge_back_of_master && MERGE_BACK=true
 
-          if [ "$IS_PR_DRAFT" = "true" ]; then
-            echo "linux=$LINUX_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
-          elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_linux" ] || [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
-            echo "linux=$LINUX_IT_FULL_SET" >> "$GITHUB_OUTPUT"
-          else
-            echo "linux=$LINUX_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [ "$IS_PR_DRAFT" = "true" ]; then
-            echo "windows=$WIN_IT_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
-          elif [ "$MANUAL_RUN_ACTION" = "run_all_tests_on_windows" ]; then
-            echo "windows=$WIN_IT_FULL_SET" >> "$GITHUB_OUTPUT"
-          elif [ "$IS_MASTER_OR_DEVELOP" = "true" ]; then
-            echo "windows=$WIN_IT_MASTER_OR_DEVELOP_SET" >> "$GITHUB_OUTPUT"
-          else
-            echo "windows=$WIN_IT_PR_READY_SET" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [ "$IS_PR_DRAFT" = "true" ]; then
-            echo "e2e=$E2E_PR_DRAFT_SET" >> "$GITHUB_OUTPUT"
-          else
-            echo "e2e=$E2E_FULL_SET" >> "$GITHUB_OUTPUT"
-          fi
-      # The runner pulls the container: image before step 1, so ci/configure-docker.sh cannot reach
-      # it. This job can: container: image: reads a job output. The Build toolchains image workflow
-      # put the digest of the last push in the cache below. The key holds the tag, so a new tag
-      # reads no entry.
-      - name: Read the toolchains image tag
-        run: |
-          . ci/toolchains/image.env
-          [ -n "${TOOLCHAINS_IMAGE:-}" ] || { echo "::error::ci/toolchains/image.env sets no tag."; exit 1; }
-          echo "TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE" >> "$GITHUB_ENV"
-      - id: digest_key
-        # Two hyphens. One would also match a tag that extends this one, such as -9.2.1-arm64.
-        run: echo "prefix=toolchains-digest-${TOOLCHAINS_IMAGE##*:}--" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .toolchains-digest
-          # An exact key needs the rebuild's run id. The prefix gives its newest entry.
-          key: ${{ steps.digest_key.outputs.prefix }}
-          restore-keys: ${{ steps.digest_key.outputs.prefix }}
-      - id: toolchains
-        run: ci/resolve-toolchains-image.sh
-
-  # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
-  disk_probe:
-    needs: setup
-    if: >-
-      github.event_name == 'workflow_dispatch' &&
-      needs.setup.outputs.action == 'run_disk_probe'
-    runs-on: ubicloud-standard-4
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: Probe host disk
-        run: ci/probe-host-disk.sh
+          {
+            echo "is_release_branch=$IS_RELEASE_BRANCH"
+            echo "is_epic_branch=$IS_EPIC_BRANCH"
+            echo "manual_action=$MANUAL_ACTION"
+            echo "is_automatic_run=$([ -z "$MANUAL_ACTION" ] && echo true || echo false)"
+            echo "is_merge_back=$MERGE_BACK"
+          } >> "$GITHUB_OUTPUT"
 
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
+  # Fails fast when the toolchains image is broken: one cheap job runs the checks that every heavy
+  # job depends on.
   toolchains_verify:
-    needs: setup
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
-    # The runner pulls this image before step 1 runs, so ci/configure-docker.sh reaches neither the
-    # mirror nor the login for it. ci/resolve-toolchains-image.sh settles the name in the setup job.
-    # A mirrored name carries the digest, so every job of a run pulls the same bytes.
-    #
-    # The pull sends no credentials. A Docker Hub login against mirror.gcr.io fails, so the block
-    # must be absent on the mirrored path. An empty value does not remove it. GitHub rejects it with
-    # "Unexpected value ''" and stops the run before step 1. YAML cannot drop a key on a condition,
-    # so the block is absent on both paths.
-    #
-    # Docker Hub then counts the fallback pull against the runner's address, not against our
-    # account. The mirror serves the normal path.
+    needs: ci_setup
+    runs-on: ubuntu-latest
     container: &toolchains_container
-      image: ${{ needs.setup.outputs.toolchains_image }}
+      image: ${{ needs.ci_setup.outputs.image }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Verify baked Gradle home
-        run: |
-          set -e
-          echo "Baked GRADLE_USER_HOME=$GRADLE_USER_HOME"
-          ls "$GRADLE_USER_HOME/wrapper/dists" || { echo "No baked Gradle dist in image"; exit 1; }
-          ./gradlew --no-daemon -q help
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - uses: ./.github/actions/verify-toolchains-image
 
-  # ── OPTIONAL_CHECKS: CVE (non-blocking) ───────────────────────────────────
-  # Azure's OPTIONAL_CHECKS stage: failures annotate the run but never block it
-  # (continue-on-error = Azure's "warning, stage passes"). Matrix for symmetry with
-  # required_checks; cve_check is currently its only member.
-  optional_checks:
-    needs: [ setup, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'workflow_dispatch'
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
+  # ── DISCOVER ──────────────────────────────────────────────────────────────
+  # Picks the work of this run: which ES majors get a plugin build, and which ES modules the Linux,
+  # Windows and e2e tests cover. TestMatrixPolicy (build-base) holds the rules, so a new ES module
+  # needs no edit here.
+  discover:
+    needs: [ ci_setup, toolchains_verify ]
+    runs-on: ubuntu-latest
     container: *toolchains_container
-    continue-on-error: true
-    # Without this limit, the job uses the GitHub default of 6 hours. dependency-check does not
-    # treat a Sonatype 429 or 5xx as fatal. It sends the OSS Index request again for each
-    # dependency. A Sonatype outage can thus use all 6 hours. A good run takes a few minutes.
-    timeout-minutes: 30
-    name: ${{ matrix.ROR_TASK }}
-    strategy:
-      fail-fast: false
-      matrix:
-        ROR_TASK: [ cve_check ]
+    timeout-minutes: 15
+    outputs:
+      build_matrix:      ${{ steps.matrices.outputs.build }}
+      it_linux_matrix:   ${{ steps.matrices.outputs.linux }}
+      it_windows_matrix: ${{ steps.matrices.outputs.windows }}
+      e2e_matrix:        ${{ steps.matrices.outputs.e2e }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: ${{ matrix.ROR_TASK }}
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      # One gradle call for both tasks. Each writes its answer to a file under build/.
+      - name: Derive the ES majors and the test matrices
+        run: ./gradlew --no-daemon -q printEsMajors printTestMatrices
+      - id: matrices
+        env:
+          IS_RELEASE_BRANCH: ${{ needs.ci_setup.outputs.is_release_branch }}
+          IS_EPIC_BRANCH: ${{ needs.ci_setup.outputs.is_epic_branch }}
+          IS_PR_DRAFT: ${{ github.event.pull_request.draft == true }}
+          IS_MERGE_BACK: ${{ needs.ci_setup.outputs.is_merge_back }}
+          MANUAL_RUN_ACTION: ${{ needs.ci_setup.outputs.manual_action }}
+        run: |
+          set -e
+          source ci/ci-lib.sh
+
+          read_modules() {
+            local file=build/ci-matrices/$1.json
+            [ -s "$file" ] || { echo "::error::printTestMatrices wrote no $1 matrix." >&2; return 1; }
+            cat "$file"
+          }
+
+          # ["es94x", ...] -> {"include":[{"ES_MODULE":"es94x"}, ...]}, the matrix each leg reads.
+          as_matrix() { jq -c --arg key "$1" '{include: map({($key): .})}' <<< "$2"; }
+
+          # Did the operator choose this action? No automatic run matches.
+          is_action_chosen() { [ "$MANUAL_RUN_ACTION" = "$1" ]; }
+
+          # Is this action selected for the run? An automatic run selects every action, a manual
+          # run only the chosen one.
+          is_action_selected() { [ -z "$MANUAL_RUN_ACTION" ] || is_action_chosen "$1"; }
+
+          MAJORS=$(es_majors_matrix) || { echo "::error::cannot derive the ES majors."; exit 1; }
+
+          if ! is_action_selected run_all_tests_on_linux; then
+            LINUX='[]'
+          elif [ "$IS_PR_DRAFT" = "true" ]; then
+            LINUX=$(read_modules linux_it_pr_draft)
+          elif [ "$IS_MERGE_BACK" = "true" ]; then
+            LINUX=$(read_modules linux_it_pr_ready)
+          elif is_action_chosen run_all_tests_on_linux; then
+            LINUX=$(read_modules linux_it_full)
+          elif [ "$IS_RELEASE_BRANCH" = "true" ]; then
+            LINUX=$(read_modules linux_it_full)
+          elif [ "$IS_EPIC_BRANCH" = "true" ]; then
+            LINUX=$(read_modules linux_it_full)
+          else
+            LINUX=$(read_modules linux_it_pr_ready)
+          fi
+
+          if ! is_action_selected run_all_tests_on_windows; then
+            WINDOWS='[]'
+          elif [ "$IS_PR_DRAFT" = "true" ]; then
+            WINDOWS='[]'
+          elif [ "$IS_MERGE_BACK" = "true" ]; then
+            WINDOWS=$(read_modules win_it_pr_ready)
+          elif is_action_chosen run_all_tests_on_windows; then
+            WINDOWS=$(read_modules win_it_full)
+          elif [ "$IS_RELEASE_BRANCH" = "true" ]; then
+            WINDOWS=$(read_modules win_it_master_or_develop)
+          elif [ "$IS_EPIC_BRANCH" = "true" ]; then
+            WINDOWS=$(read_modules win_it_master_or_develop)
+          else
+            WINDOWS=$(read_modules win_it_pr_ready)
+          fi
+
+          if ! is_action_selected run_e2e_tests; then
+            E2E='[]'
+          elif [ "$IS_PR_DRAFT" = "true" ]; then
+            E2E='[]'
+          else
+            E2E=$(read_modules e2e_full)
+          fi
+
+          {
+            echo "build=$MAJORS"
+            echo "linux=$(as_matrix ES_MODULE "$LINUX")"
+            echo "windows=$(as_matrix ES_MODULE "$WINDOWS")"
+            echo "e2e=$(as_matrix ES_MODULE "$E2E")"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "ES majors: $MAJORS"
+            echo "Linux IT: $LINUX"
+            echo "Windows IT: $WINDOWS"
+            echo "E2E: $E2E"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── OPTIONAL_CHECKS: CVE ───────────────────────────────────────────────────
+  # Failures annotate the run, and never block it. The matrix mirrors required_checks.
+  optional_checks:
+    name: ${{ matrix.OPTIONAL_CHECK }}
+    needs: [ ci_setup, toolchains_verify ]
+    if: needs.ci_setup.outputs.is_automatic_run == 'true'
+    runs-on: ubuntu-latest
+    container: *toolchains_container
+    continue-on-error: true
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        OPTIONAL_CHECK: [ cve_check ]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: ${{ matrix.OPTIONAL_CHECK }}
         uses: ./.github/actions/cve-check
         with:
-          ror-task: ${{ matrix.ROR_TASK }}
           # The caller decides who writes the NVD database cache. Pushes to develop and to master
           # occur often, and thus keep the cache fresh. A PR run only reads the cache.
           save-nvd-cache: >-
             ${{ github.event_name == 'push' &&
-                (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master') }}
+                needs.ci_setup.outputs.is_release_branch == 'true' }}
           nvd-api-key: ${{ secrets.NVD_API_KEY }}
           oss-index-username: ${{ secrets.OSS_INDEX_USERNAME }}
           oss-index-password: ${{ secrets.OSS_INDEX_PASSWORD }}
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
-    needs: [ setup, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      github.event_name != 'workflow_dispatch'
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
+    name: ${{ matrix.REQUIRED_CHECK }}
+    needs: [ ci_setup, toolchains_verify ]
+    if: needs.ci_setup.outputs.is_automatic_run == 'true'
+    runs-on: ubuntu-latest
     container: *toolchains_container
-    name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
       matrix:
-        ROR_TASK: [ license_check, compile_codebase_check, audit_build_check, format_code_check ]
+        REQUIRED_CHECK: [ license_check, compile_codebase_check, audit_build_check, format_code_check ]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: ${{ matrix.ROR_TASK }}
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: ${{ matrix.REQUIRED_CHECK }}
         env:
-          ROR_TASK: ${{ matrix.ROR_TASK }}
+          ROR_TASK: ${{ matrix.REQUIRED_CHECK }}
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
           ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
           ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
@@ -255,19 +266,20 @@ jobs:
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
         run: ci/run-pipeline.sh
 
-  # ── TEST: unit (Linux) ────────────────────────────────────────────────────
+  # ── TEST: unit tests on Linux ─────────────────────────────────────────────
   unit_tests_linux:
-    needs: [ setup, toolchains_verify ]
+    needs: [ ci_setup, toolchains_verify ]
     if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
+      needs.ci_setup.outputs.is_automatic_run == 'true' ||
+      needs.ci_setup.outputs.manual_action == 'run_all_tests_on_linux'
+    runs-on: ubuntu-latest
     container: *toolchains_container
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
       - name: core_tests
         env:
           ROR_TASK: core_tests
@@ -278,46 +290,40 @@ jobs:
           ci/run-pipeline.sh
       - name: Publish test results
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/publish-test-results
         with:
-          name: unit-test-results
-          path: '**/TEST*.xml'
-          if-no-files-found: ignore
+          id: unit-test
 
-  # ── TEST: Linux integration tests (Ubicloud) ──────────────────────────────
-  # Matrix comes from setup: full 34-version set on develop/master/epic + manual run, the
-  # 10-version representative subset on plain PRs (same split Azure encoded as separate jobs).
+  # ── TEST: Linux integration tests ─────────────────────────────────────────
   it_linux:
-    needs: [ setup, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      needs.setup.outputs.it_linux_matrix != '[]' &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubicloud-standard-4
+    name: it_linux_${{ matrix.ES_MODULE }}
+    needs: [ discover, ci_setup, toolchains_verify ]
+    # An empty matrix is not a skip: GitHub rejects `{"include":[]}` when it evaluates `strategy`,
+    # and the whole run ends `failure`. The guard turns the empty case into `skipped`, which
+    # build_ror accepts.
+    if: needs.discover.outputs.it_linux_matrix != '{"include":[]}'
+    runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 120
-    # "it_linux_es94x", not the truncated "it_linux (es94x)" composite, in the graph view. Same
-    # <leg>_<module> shape as it_win_* and e2e_*, so the three test families sort together.
-    name: it_linux_${{ matrix.ES_MODULE }}
+    env:
+      ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
     strategy:
       fail-fast: false
-      max-parallel: 20
-      matrix:
-        ES_MODULE: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
+      matrix: ${{ fromJSON(needs.discover.outputs.it_linux_matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Free host disk (no-op on self-hosted)
+      - name: Free host disk
         run: ci/free-host-disk.sh
       - name: Start memory telemetry
-        run: ci/mem-telemetry.sh start integration-tests/build/mem-telemetry-${{ matrix.ROR_TASK }}.log > "$RUNNER_TEMP/mem-telemetry.pid"
+        uses: ./.github/actions/mem-telemetry-start
+        with:
+          id: ${{ matrix.ES_MODULE }}
+          log-dir: integration-tests/build
       - name: integration_${{ matrix.ES_MODULE }}
         env:
-          # The pipeline task name run-pipeline.sh dispatches on — unchanged, only the matrix now
-          # carries the bare module (see setup).
+          # The task name run-pipeline.sh dispatches on. The matrix carries the bare module.
           ROR_TASK: integration_${{ matrix.ES_MODULE }}
-          ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
           # Balanced (level) shard packing + the memory gate that makes it survivable on 16GB.
           # 2 permits, not 3: at k=4 with 3 permits the worst case (3 heavies x 3 nodes + a
           # single-node suite + 4 gradle JVMs) grazes 16GB and host-OOM'd es90x — and balanced
@@ -341,277 +347,218 @@ jobs:
       - name: Publish test results
         # always(): green-run XMLs feed suite-timings.json regeneration (duration-balanced sharding)
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/publish-test-results
         with:
-          name: it-linux-${{ matrix.ES_MODULE }}-results
-          path: '**/TEST*.xml'
-          if-no-files-found: ignore
-      # Shard stdout goes to shard-<i>.log files during the run (live interleaving would be
-      # unreadable); print them afterwards as collapsible groups so they are browsable in the UI.
-      - name: Shard logs (browsable)
-        if: always()
-        run: |
-          for f in integration-tests/build/sharded-logs/shard-*.log; do
-            [ -f "$f" ] || continue
-            echo "::group::$(basename "$f")"
-            cat "$f"
-            echo "::endgroup::"
-          done
+          id: it-linux-${{ matrix.ES_MODULE }}
       - name: Memory telemetry report
         if: always()
-        env:
-          ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
-        run: |
-          [ -f "$RUNNER_TEMP/mem-telemetry.pid" ] && ci/mem-telemetry.sh stop "$(cat "$RUNNER_TEMP/mem-telemetry.pid")" || true
-          for f in integration-tests/build/mem-telemetry-*.log; do
-            [ -f "$f" ] || continue
-            echo "::group::$(basename "$f") report"
-            ci/mem-telemetry.sh report "$f"
-            echo "::endgroup::"
-          done
-      - name: Publish memory telemetry
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/mem-telemetry-report
         with:
-          name: mem-telemetry-${{ matrix.ROR_TASK }}
-          path: integration-tests/build/mem-telemetry-*.log
-          if-no-files-found: ignore
-      # Drift guard for duration-balanced sharding: warns when measured suite times diverge from
-      # the committed suite-timings.json and uploads a regenerated file (regeneration = download
-      # the artifact, commit it). One leg only — es90x (the first ES 9 module: a stable reference
-      # that never moves when a newer es9Xx module is added).
+          id: ${{ matrix.ES_MODULE }}
+          log-dir: integration-tests/build
+      # es90x is the reference leg: the first ES 9 module, and thus a stable baseline.
       - name: Suite-timings drift check
         if: always() && matrix.ES_MODULE == 'es90x'
-        run: ./gradlew integration-tests:regenerateSuiteTimings || true
-      - name: Publish regenerated suite timings
-        if: always() && matrix.ES_MODULE == 'es90x'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: suite-timings-regenerated
-          path: integration-tests/build/suite-timings-regenerated.json
-          if-no-files-found: ignore
-      - name: Publish per-shard logs
+        uses: ./.github/actions/suite-timings-drift
+      - name: Shard logs
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/shard-logs
         with:
-          name: sharded-logs-it-linux-${{ matrix.ES_MODULE }}
-          path: integration-tests/build/sharded-logs/
-          if-no-files-found: ignore
+          id: it-linux-${{ matrix.ES_MODULE }}
+          log-dir: integration-tests/build/sharded-logs
 
-
-  # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
-  # Matrix from setup: 6-version subset on develop/master/epic, 3 on ready PRs, none on draft
-  # PRs (job skipped), full 33 on manual run_all_tests_on_windows.
+  # ── TEST: Windows integration tests ───────────────────────────────────────
   it_windows:
-    # toolchains_verify is in needs even though Windows doesn't use the image: Azure's TEST stage
-    # depended on TOOLCHAINS_VERIFY, so a broken image fails fast instead of running doomed legs.
-    needs: [ setup, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      needs.setup.outputs.it_windows_matrix != '[]' &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')
+    name: it_win_${{ matrix.ES_MODULE }}
+    needs: [ discover, toolchains_verify ]
+    # Same reason as it_linux.
+    if: needs.discover.outputs.it_windows_matrix != '{"include":[]}'
     runs-on: windows-2025
     timeout-minutes: 150
-    # Clear the Linux toolchains-image Gradle settings at JOB scope (Azure did the same): the
-    # workflow-level GRADLE_USER_HOME=/opt/gradle-home would otherwise leak into gradlew here.
+    # Clears the Linux toolchains-image Gradle settings: /opt/gradle-home resolves to an empty
+    # \opt\gradle-home here, and its auto-download=false blocks the JDK provisioning this leg needs.
+    # Empty, and not a path: gradle reads a blank GRADLE_USER_HOME as absent and falls back to
+    # ~/.gradle, where setup-gradle restores the cache. It stays at job scope, because a
+    # workflow-level `env:` beats the GITHUB_ENV an action writes.
     env:
       GRADLE_USER_HOME: ''
       GRADLE_OPTS: ''
-    # "it_win_es94x", not the truncated "it_windows (es94x)" composite, in the graph view. Same
-    # <leg>_<module> shape as it_linux_* and e2e_*, so the three test families sort together.
-    name: it_win_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
       max-parallel: 10
-      matrix:
-        ES_MODULE: ${{ fromJSON(needs.setup.outputs.it_windows_matrix) }}
+      matrix: ${{ fromJSON(needs.discover.outputs.it_windows_matrix) }}
     steps:
-      - name: Exclude workspace from Windows Defender
-        shell: pwsh
-        # Real-time AV scanning taxes every file write; our tests write hundreds of thousands
-        # (ES unzips, node data dirs). Standard CI mitigation; runner VMs are ephemeral.
-        run: |
-          Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE"
-          Add-MpPreference -ExclusionPath "$env:RUNNER_TEMP"
-          Add-MpPreference -ExclusionProcess "java.exe"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
-        with: { distribution: temurin, java-version: '21' }
-      # Windows has no baked toolchains image: without this every leg cold-downloads the wrapper,
-      # deps + JDKs and cold-compiles Scala (~9 min). Develop runs write the cache; PRs read it.
-      # jdks: not in the action's default include set, but auto-download=true provisions there.
-      - uses: gradle/actions/setup-gradle@da187c8e6ffbd3802e00f2477aa5a822b25f2dda
-        with:
-          gradle-home-cache-includes: |
-            caches
-            notifications
-            jdks
-      - name: ${{ matrix.ES_MODULE }}
-        shell: pwsh
+      - uses: ./.github/actions/setup-windows-job
+      - name: integration_${{ matrix.ES_MODULE }}
+        # bash, not pwsh: this leg runs the same ci/run-pipeline.sh task as the Linux one, and
+        # windows-2025 carries Git Bash. What the two platforms do differently sits behind
+        # is_windows.
+        shell: bash
         env:
+          ROR_TASK: integration_${{ matrix.ES_MODULE }}
+          IT_PARALLELISM: '3'
+          ROR_BALANCED_SHARDS: 'true'
+          ROR_HEAVY_SUITE_PERMITS: '2'
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
           ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
           ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
           ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
           ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
-          ES_MODULE: ${{ matrix.ES_MODULE }}
-          # level packing (the random split gave 15/29/23 suites) + memory gate for native-ES spikes
-          ROR_BALANCED_SHARDS: 'true'
-          ROR_HEAVY_SUITE_PERMITS: '2'
-        run: |
-          # Override the Linux gradle.properties installations.paths and let Windows auto-provision JDKs.
-          # Sharded (3 workers) — same trick as the Linux legs; ES runs as native processes on
-          # Windows (no docker), 3 fit the 16GB box. 4 workers measured no faster (CPU-bound).
-          # ror-tools:test is NOT run per-leg: it took ~10 min/leg and every node install already
-          # exercises the patcher end-to-end; the suite still runs via unit_tests_windows.
-          # Cap the orchestrator heap for the same reason as the Linux legs (RORDEV-2156): it only
-          # spawns the shard processes, but without this it inherits gradle.properties' -Xmx6144m,
-          # on a 16GB box that already holds 3 shard JVMs, 3 test workers and 3 native ES nodes.
-          $gradleArgs = "--no-daemon", "--build-cache", "integration-tests:shardedTest", "-PshardCount=3", "-PesModule=$env:ES_MODULE",
-            "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m",
-            "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
-          .\gradlew @gradleArgs
-          if ($LASTEXITCODE -ne 0) {
-            Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object { Get-Content $_.FullName }
-            exit 1
-          }
+        run: ci/run-pipeline.sh
       - name: Publish test results
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: it-win-${{ matrix.ES_MODULE }}-results
-          path: '**/TEST*.xml'
-          if-no-files-found: ignore
-      - name: Shard logs (browsable)
+        # always(), as on the Linux legs: a green run also publishes its XMLs.
         if: always()
-        shell: pwsh
-        run: |
-          Get-ChildItem integration-tests/build/sharded-logs -Filter shard-*.log -ErrorAction SilentlyContinue | ForEach-Object {
-            Write-Output "::group::$($_.Name)"
-            Get-Content $_.FullName
-            Write-Output "::endgroup::"
-          }
-      - name: Publish per-shard logs
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/publish-test-results
         with:
-          name: sharded-logs-it-win-${{ matrix.ES_MODULE }}
-          path: integration-tests/build/sharded-logs/
-          if-no-files-found: ignore
+          id: it-win-${{ matrix.ES_MODULE }}
+      - name: Shard logs
+        if: always()
+        uses: ./.github/actions/shard-logs
+        with:
+          id: it-win-${{ matrix.ES_MODULE }}
+          log-dir: integration-tests/build/sharded-logs
 
-
-  # ── TEST: unit tests on Windows (manual run_all_tests_on_windows only) ────
+  # ── TEST: unit tests on Windows ───────────────────────────────────────────
   unit_tests_windows:
-    needs: setup
-    if: >-
-      github.event_name == 'workflow_dispatch' &&
-      needs.setup.outputs.action == 'run_all_tests_on_windows'
+    needs: ci_setup
+    if: needs.ci_setup.outputs.manual_action == 'run_all_tests_on_windows'
     runs-on: windows-2025
     timeout-minutes: 150
+    # Same reason as it_windows, and the same reason it cannot live in setup-windows-job.
     env:
       GRADLE_USER_HOME: ''
       GRADLE_OPTS: ''
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
-        with: { distribution: temurin, java-version: '21' }
-      - name: core:test on Windows
-        shell: pwsh
-        run: |
-          .\gradlew --no-daemon core:test ror-tools:test "-PesModule=es94x" `
-            "-Dorg.gradle.java.installations.paths=" `
-            "-Dorg.gradle.java.installations.auto-download=true"
-          if ($LASTEXITCODE -ne 0) {
-            Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object { Get-Content $_.FullName }
-            exit 1
-          }
+      - uses: ./.github/actions/setup-windows-job
+      - name: core_tests
+        env:
+          ROR_TASK: core_tests
+        run: ci/run-pipeline.sh
       - name: Publish test results
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/publish-test-results
         with:
-          name: win-unit-test-results
-          path: '**/TEST*.xml'
-          if-no-files-found: ignore
+          id: win-unit-test
 
-  # ── E2E_PREPARE (setup for the e2e matrix) ────────────────────────────────
-  # Takes the newest ES version of every ES module picked for e2e, and starts ONE build of the ROR
-  # KBN dev image for all of them. Outputs those versions as the matrix the e2e_tests jobs run on,
-  # plus the build's run id so they know which build to wait for.
-  e2e_prepare:
-    needs: [ setup, toolchains_verify ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      needs.setup.outputs.e2e_modules != '[]' &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
+  # ── E2E_ORDER_KBN_IMAGES (the other repo's build) ─────────────────────────
+  # The ROR KBN repo builds the ROR KBN images. This job orders that build for all versions, then
+  # waits for it.
+  e2e_order_kbn_images:
+    needs: [ ci_setup, discover ]
+    # Same reason as it_linux.
+    if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
     runs-on: ubuntu-latest
     container: *toolchains_container
-    timeout-minutes: 30
-    outputs:
-      matrix: ${{ steps.prepare.outputs.matrix }}
-      build_id: ${{ steps.prepare.outputs.build_id }}
-      kbn_run_id: ${{ steps.prepare.outputs.kbn_run_id }}
-      kbn_run_url: ${{ steps.prepare.outputs.kbn_run_url }}
-      kbn_wait_timeout_seconds: ${{ steps.prepare.outputs.kbn_wait_timeout_seconds }}
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: prepare_e2e_kbn_images
-        id: prepare
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: Resolve the ELK version of every e2e module
+        id: versions
         env:
-          ROR_TASK: prepare_e2e_kbn_images
-          E2E_ES_MODULES: ${{ join(fromJSON(needs.setup.outputs.e2e_modules), ' ') }}
+          E2E_ES_MODULES: ${{ join(fromJSON(needs.discover.outputs.e2e_matrix).include.*.ES_MODULE, ' ') }}
+        run: |
+          set -e
+          source ci/e2e-tests-lib.sh
+          VERSIONS=""
+          for module in $E2E_ES_MODULES; do
+            version=$(e2e_elk_version_for_module "$module") || exit $?
+            echo ">>> $module -> ELK $version"
+            VERSIONS="${VERSIONS:+$VERSIONS }$version"
+          done
+          echo "elk_versions=$VERSIONS" >> "$GITHUB_OUTPUT"
+      - name: order_e2e_kbn_images
+        id: order
+        env:
+          ROR_TASK: order_e2e_kbn_images
+          E2E_ELK_VERSIONS: ${{ steps.versions.outputs.elk_versions }}
           ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          E2E_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
-        run: ci/run-pipeline.sh
+          ROR_KBN_WAIT_TIMEOUT_SECONDS: 7200
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+        run: |
+          set -e
+          source ci/configure-docker.sh
+          ci/run-pipeline.sh
+
+  # ── E2E_BUILD_ES_IMAGES (this repo's build) ───────────────────────────────
+  # Builds and publishes this repo's ROR ES dev image. One job per module, under the per-run tag.
+  e2e_build_es_images:
+    name: build_es_${{ matrix.ES_MODULE }}
+    needs: [ ci_setup, discover ]
+    # Same reason as it_linux.
+    if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
+    runs-on: ubuntu-latest
+    container: *toolchains_container
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.e2e_matrix) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: build_e2e_es_image
+        env:
+          ROR_TASK: build_e2e_es_image
+          E2E_ES_MODULE: ${{ matrix.ES_MODULE }}
+          E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+        run: |
+          set -e
+          source ci/configure-docker.sh
+          ci/run-pipeline.sh
 
   # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
-  # Cypress e2e suite (one job per module). Each job builds and publishes the ROR ES image for its
-  # version, waits for the ROR KBN image, then runs the test suite against both (see ci/e2e-tests-lib.sh).
+  # Cypress e2e suite, one job per module. Both dev images are already in the registry:
+  # e2e_order_kbn_images checked the ROR KBN one, e2e_build_es_images published the ROR ES one.
+  # Each job starts the stack and runs the suite. See ci/e2e-tests-lib.sh.
   e2e_tests:
-    needs: [ setup, toolchains_verify, e2e_prepare ]
-    if: >-
-      !cancelled() &&
-      needs.e2e_prepare.result == 'success' &&
-      needs.toolchains_verify.result == 'success' &&
-      needs.setup.outputs.e2e_modules != '[]' &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_e2e_tests')
-    runs-on: ubicloud-standard-4
+    name: e2e_${{ matrix.ES_MODULE }}
+    needs: [ ci_setup, discover, e2e_order_kbn_images, e2e_build_es_images ]
+    # Same reason as it_linux.
+    if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
+    runs-on: ubuntu-latest
     timeout-minutes: 120
+    # The one Linux job with no container: Cypress reads the ports the compose stack of the e2e repo
+    # publishes on the HOST, and the localhost of a job container is not the host. The image also
+    # holds no node, yarn or Cypress browser. So there is no toolchains-image Gradle home here, and
+    # gradle runs once, to derive the ELK version of this row's module.
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
-    name: e2e_${{ matrix.module }}
     strategy:
       fail-fast: false
-      max-parallel: 99
-      matrix: ${{ fromJSON(needs.e2e_prepare.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.discover.outputs.e2e_matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Free host disk (no-op on self-hosted)
+      - name: Free host disk
         run: ci/free-host-disk.sh
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
-        with: { distribution: temurin, java-version: '17' }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: '24.11.0' }
+      # run_e2e_tests derives E2E_ELK_VERSION from the module, and that is a Gradle call.
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with: { distribution: temurin, java-version: '17' }
       - name: run_e2e_tests
         env:
           ROR_TASK: run_e2e_tests
-          E2E_ES_MODULE: ${{ matrix.module }}
-          E2E_ELK_VERSION: ${{ matrix.elk }}
+          E2E_ES_MODULE: ${{ matrix.ES_MODULE }}
           E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
-          E2E_BUILD_ID: ${{ needs.e2e_prepare.outputs.build_id }}
-          ROR_KBN_PREBUILD_RUN_ID: ${{ needs.e2e_prepare.outputs.kbn_run_id }}
-          ROR_KBN_PREBUILD_RUN_URL: ${{ needs.e2e_prepare.outputs.kbn_run_url }}
-          ROR_KBN_WAIT_TIMEOUT_SECONDS: ${{ needs.e2e_prepare.outputs.kbn_wait_timeout_seconds }}
+          E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
@@ -623,15 +570,11 @@ jobs:
            # The e2e repo pins yarn in "packageManager". Corepack reads and uses that.
           corepack enable
           source ci/configure-docker.sh
-          echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE (ELK $E2E_ELK_VERSION)"
+          echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE"
           ci/run-pipeline.sh
-
-      # Upload test videos/screenshots to S3 (not GitHub artifacts, to save the Actions quota).
-      # E2E_TESTS_DIR is set by run_e2e_tests.
       - name: Upload Cypress artifacts to S3 on failure
         if: failure()
         continue-on-error: true
-        # One S3 credential set serves every store; only the path prefix differs per store.
         env:
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
           ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
@@ -647,14 +590,13 @@ jobs:
           export ROR_S3_PATH_E2E_REPORTS="${BASE}$(date -u +%Y-%m-%d)/build_${{ github.run_id }}"
           ci/upload-cypress-artifacts-to-s3.sh \
             "${E2E_TESTS_DIR:?run_e2e_tests did not publish the e2e clone path}/results" \
-            "${{ matrix.module }}_${{ matrix.elk }}"
+            "${{ matrix.ES_MODULE }}_${E2E_ELK_VERSION:?run_e2e_tests did not publish the ELK version}"
 
-  # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────
-  # it_windows / e2e_tests may legitimately not run (draft PRs get reduced matrices, and no e2e at
-  # all). e2e is tolerated via setup's empty list rather than a 'skipped' result, so that a FAILED
-  # e2e_prepare — which also leaves e2e_tests 'skipped' — still blocks this job.
+  # ── BUILD_ROR ─────────────────────────────────────────────────────────────
   build_ror:
-    needs: [ setup, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
+    name: build_es${{ matrix.ES_MAJOR }}xx
+    needs: [ ci_setup, discover, required_checks, unit_tests_linux, it_linux, it_windows,
+             e2e_build_es_images, e2e_tests ]
     if: >-
       !cancelled() &&
       github.event_name == 'pull_request' &&
@@ -662,189 +604,20 @@ jobs:
       needs.unit_tests_linux.result == 'success' &&
       needs.it_linux.result == 'success' &&
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
-      (needs.e2e_tests.result == 'success' || needs.setup.outputs.e2e_modules == '[]')
-    runs-on: ubicloud-standard-4
-    container: *toolchains_container
-    timeout-minutes: 180
-    name: ${{ matrix.ROR_TASK }}
-    strategy:
-      fail-fast: false
-      matrix:
-        ROR_TASK: [ build_es9xx, build_es8xx, build_es7xx, build_es6xx ]
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: ${{ matrix.ROR_TASK }}
-        env:
-          ROR_TASK: ${{ matrix.ROR_TASK }}
-        run: ci/run-pipeline.sh
-
-  # ── DETERMINE_CI_TYPE (develop/master) ────────────────────────────────────
-  # Two arms, like Azure: auto (push with all tests green) OR manual release_without_testing
-  # (tests intentionally skipped — hence the explicit result checks instead of implicit success()).
-  determine_ci_type:
-    needs: [ setup, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
-    if: >-
-      !cancelled() &&
-      (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
-      (
-        (
-          github.event_name != 'workflow_dispatch' &&
-          needs.required_checks.result == 'success' &&
-          needs.unit_tests_linux.result == 'success' &&
-          needs.it_linux.result == 'success' &&
-          needs.it_windows.result == 'success' &&
-          needs.e2e_tests.result == 'success'
-        ) ||
-        (
-          github.event_name == 'workflow_dispatch' &&
-          needs.setup.outputs.action == 'release_without_testing'
-        )
-      )
+      (needs.e2e_tests.result == 'success' || needs.e2e_build_es_images.result == 'skipped')
     runs-on: ubuntu-latest
-    outputs:
-      is_release: ${{ steps.release_check.outputs.is_release }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - id: release_check
-        run: |
-          IS_RELEASE=true
-          if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep -- '-pre'; then
-            IS_RELEASE=false
-          fi
-          echo "is_release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
-
-  # ── UPLOAD_PRE_ROR (pre-release develop/master, auto only) ────────────────
-  upload_pre_ror:
-    needs: [ setup, determine_ci_type ]
-    if: >-
-      !cancelled() &&
-      needs.determine_ci_type.result == 'success' &&
-      needs.determine_ci_type.outputs.is_release == 'false' &&
-      (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
-      github.event_name != 'workflow_dispatch'
-    runs-on: ubicloud-standard-4
-    container: *toolchains_container
-    timeout-minutes: 600
-    strategy:
-      fail-fast: false
-      matrix:
-        ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: ${{ matrix.ROR_TASK }}
-        env:
-          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
-          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
-          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
-          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
-          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
-          ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
-          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
-          ROR_TASK: ${{ matrix.ROR_TASK }}
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-        run: |
-          set -e
-          source ci/configure-docker.sh
-          ci/run-pipeline.sh
-
-  # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
-  release_ror:
-    needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
-    permissions:
-      contents: write   # ci-lib.sh tags the release and pushes the tag via the checkout token
-    if: >-
-      !cancelled() &&
-      needs.determine_ci_type.result == 'success' &&
-      needs.determine_ci_type.outputs.is_release == 'true' &&
-      (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
-      (
-        (
-          github.event_name != 'workflow_dispatch' &&
-          needs.required_checks.result == 'success' &&
-          needs.unit_tests_linux.result == 'success' &&
-          needs.it_linux.result == 'success' &&
-          needs.it_windows.result == 'success' &&
-          needs.e2e_tests.result == 'success'
-        ) ||
-        (
-          github.event_name == 'workflow_dispatch' &&
-          needs.setup.outputs.action == 'release_without_testing' &&
-          needs.toolchains_verify.result == 'success'
-        )
-      )
-    runs-on: ubicloud-standard-4
     container: *toolchains_container
     timeout-minutes: 180
     strategy:
       fail-fast: false
-      matrix:
-        ROR_TASK: [ release_es9xx, release_es8xx, release_es7xx, release_es6xx ]
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: true }
-      - name: ${{ matrix.ROR_TASK }}
-        env:
-          ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}
-          ROR_S3_REGION: ${{ vars.ROR_S3_REGION }}
-          ROR_S3_BUCKET: ${{ vars.ROR_S3_BUCKET }}
-          ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
-          ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
-          ROR_S3_PATH_ARTIFACTS: ${{ vars.ROR_S3_PATH_ARTIFACTS }}
-          ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
-          ROR_TASK: ${{ matrix.ROR_TASK }}
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-          # ci-lib.sh interpolates this into the tag message (was the Azure/Travis build number)
-          TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
-        run: |
-          set -e
-          source ci/configure-docker.sh
-          ci/run-pipeline.sh
-
-  # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
-  publish_mvn:
-    needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows, e2e_tests ]
-    if: >-
-      !cancelled() &&
-      needs.determine_ci_type.result == 'success' &&
-      needs.determine_ci_type.outputs.is_release == 'true' &&
-      needs.setup.outputs.is_master == 'true' &&
-      (
-        (
-          github.event_name != 'workflow_dispatch' &&
-          needs.required_checks.result == 'success' &&
-          needs.unit_tests_linux.result == 'success' &&
-          needs.it_linux.result == 'success' &&
-          needs.it_windows.result == 'success' &&
-          needs.e2e_tests.result == 'success'
-        ) ||
-        (
-          github.event_name == 'workflow_dispatch' &&
-          needs.setup.outputs.action == 'release_without_testing' &&
-          needs.toolchains_verify.result == 'success'
-        )
-      )
-    runs-on: ubicloud-standard-4
-    container: *toolchains_container
+      matrix: ${{ fromJSON(needs.discover.outputs.build_matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Install PGP signing key
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+      - name: build_plugins
         env:
-          PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}
-        run: |
-          mkdir -p .travis
-          echo "$PGP_SECRET_KEY_B64" | base64 -d > .travis/secret.pgp
-      - name: publish_maven_artifacts
-        env:
-          ROR_TASK: publish_maven_artifacts
-          MAVEN_REPO_USER: ${{ secrets.MAVEN_REPO_USER }}
-          MAVEN_REPO_PASSWORD: ${{ secrets.MAVEN_REPO_PASSWORD }}
-          MAVEN_STAGING_PROFILE_ID: ${{ secrets.MAVEN_STAGING_PROFILE_ID }}
-          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          ROR_TASK: build_plugins
+          ES_MAJOR: ${{ matrix.ES_MAJOR }}
         run: ci/run-pipeline.sh
