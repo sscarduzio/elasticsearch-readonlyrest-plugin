@@ -82,6 +82,9 @@
 #    That priority is safe here, because both halves use the same credentials. It is not safe if
 #    you add a second login with different credentials. Use this script instead.
 
+# shellcheck source=ci/log.sh
+source "$(dirname "${BASH_SOURCE[0]}")/log.sh"
+
 ROR_DOCKER_HUB_MIRROR_HOST="mirror.gcr.io"
 
 # Always returns 0. A mirror is an optimisation, and it must never stop a job.
@@ -97,7 +100,7 @@ _ror_docker_mirror() {
       } >> "$GITHUB_ENV"
     fi
 
-    echo "[CI] Docker Hub mirror is OFF."
+    ci_log "Docker Hub mirror is OFF."
     return 0
   fi
 
@@ -113,7 +116,7 @@ _ror_docker_mirror() {
     } >> "$GITHUB_ENV"
   fi
 
-  echo "[CI] Docker Hub mirror is ON: ${ROR_DOCKER_HUB_MIRROR_HOST}."
+  ci_log "Docker Hub mirror is ON: ${ROR_DOCKER_HUB_MIRROR_HOST}."
   return 0
 }
 
@@ -145,11 +148,11 @@ _ror_docker_auth_fork_pull_request() {
 _ror_docker_auth_no_credentials() {
   local required=${DOCKER_AUTH_REQUIRED:-}
 
-  echo "[CI] Docker authentication is OFF. Cause: $1"
+  ci_log "Docker authentication is OFF. Cause: $1"
 
   if [ -z "$required" ]; then
     if _ror_docker_auth_fork_pull_request; then
-      echo "[CI] This is a pull request from a fork, and GitHub gives it no secrets."
+      ci_log "This is a pull request from a fork, and GitHub gives it no secrets."
       required=false
     else
       required=true
@@ -159,20 +162,18 @@ _ror_docker_auth_no_credentials() {
   # Compare against "false", not "true". Every other value stops the job, "False" and a typing
   # error included. The safe direction is to stop.
   if [ "$required" != "false" ]; then
-    # ::error:: puts an annotation on the job, as the inline logins did before.
-    [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::Docker authentication failed: $1"
-    echo "[CI] The job needs credentials, so it stops here." >&2
+    ci_log "Docker authentication failed: $1"
+    ci_log "The job needs credentials, so it stops here."
     return 1
   fi
-  echo "[CI] The job continues. Its pulls are anonymous, and Docker Hub limits their rate."
+  ci_log "The job continues. Its pulls are anonymous, and Docker Hub limits their rate."
   return 0
 }
 
 # The job supplied credentials, but the script cannot use them. The job always stops here.
 # DOCKER_AUTH_REQUIRED does not apply, because an anonymous pull must never hide a broken login.
 _ror_docker_auth_failed() {
-  echo "[CI] Docker authentication FAILED. Cause: $1" >&2
-  [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::Docker authentication failed: $1"
+  ci_log "Docker authentication FAILED. Cause: $1"
   return 1
 }
 
@@ -233,7 +234,7 @@ _ror_docker_auth() {
     echo "DOCKER_AUTH_CONFIG=$DOCKER_AUTH_CONFIG" >> "$GITHUB_ENV"
   fi
 
-  echo "[CI] Docker authentication is ON. User '$user'. The docker CLI and testcontainers use them."
+  ci_log "Docker authentication is ON. User '$user'. The docker CLI and testcontainers use them."
   return 0
 }
 

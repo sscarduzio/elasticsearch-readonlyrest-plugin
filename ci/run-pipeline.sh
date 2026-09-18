@@ -11,7 +11,7 @@ source "$(dirname "$0")/e2e-tests-lib.sh"
 # corrupt `123` vs `1234`). Never pruned — kill on a dead PID is a no-op.
 GRADLE_PIDS=()
 terminate() {
-  echo ">>> Termination signal received — killing gradle tree(s) + reaping this CI job's containers..."
+  ci_log "Termination signal received. Killing the gradle trees, and reaping the containers of this CI job."
   # Negative PID = signal the whole process group (gradle + its worker JVMs).
   for pid in "${GRADLE_PIDS[@]}"; do kill -TERM -- "-$pid" 2>/dev/null || true; done
   sleep 5
@@ -21,30 +21,30 @@ terminate() {
 }
 trap terminate SIGTERM SIGINT
 
-echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task: $ROR_TASK"
+ci_log "Running the CI task $ROR_TASK ($0)."
 
 # Log file friendly Gradle output
 export TERM=dumb
 
 task_license_check() {
-  echo ">>> Check all license headers are in place"
+  ci_log "Checking that every source file has a license header."
   ./gradlew --no-daemon license
 }
 
 task_format_code_check() {
-  echo ">>> Running format check..."
+  ci_log "Running the format check."
   ./gradlew --no-daemon formatCodeCheck
 }
 
 task_cve_check() {
-  echo ">>> Running CVE checks.."
+  ci_log "Running the CVE checks."
   # Convert DEPENDENCY_CHECK_DATA_DIR to an absolute path before invoking Gradle.
   # H2 SHUTDOWN DEFRAG closes the DB during defrag; when dependency-check reopens
   # it in read-only mode for analysis, a relative path fails the isFile() check
   # because the CWD context is lost after H2 closes the connection.
   if [[ -n "$DEPENDENCY_CHECK_DATA_DIR" ]]; then
     export DEPENDENCY_CHECK_DATA_DIR="$(cd "$DEPENDENCY_CHECK_DATA_DIR" 2>/dev/null && pwd || echo "$(pwd)/$DEPENDENCY_CHECK_DATA_DIR")"
-    echo "    DEPENDENCY_CHECK_DATA_DIR resolved to: $DEPENDENCY_CHECK_DATA_DIR"
+    ci_log "DEPENDENCY_CHECK_DATA_DIR resolves to $DEPENDENCY_CHECK_DATA_DIR."
   fi
   CVE_LOG="$(pwd)/build/cve-scan.log"
   CVE_MODE_FILE="$(pwd)/build/cve-scan-mode.txt"
@@ -107,24 +107,24 @@ task_cve_check() {
   echo "$CVE_MODE" > "$CVE_MODE_FILE"
 
   case "$CVE_MODE" in
-    full)                    echo ">>> CVE scan sources: NVD + OSS Index" ;;
-    nvd-only)                echo ">>> CVE scan sources: NVD only — OSS Index was unavailable:"
-                             grep -F 'Sonatype OSS Index / Guide' "$CVE_LOG" | sort -u | head -3 ;;
-    nvd-only-no-credentials) echo ">>> CVE scan sources: NVD only — no OSS Index credentials (expected on fork PRs)" ;;
-    nvd-only-disabled)       echo ">>> CVE scan sources: NVD only — OSS Index disabled via ROR_CVE_OSS_INDEX=false" ;;
-    unknown)                 echo ">>> CVE scan sources: unknown — the scan did not run to the end" ;;
+    full)                    ci_log "CVE scan sources: NVD and OSS Index." ;;
+    nvd-only)                ci_log "CVE scan sources: NVD only. OSS Index did not answer:"
+                             grep -F 'Sonatype OSS Index / Guide' "$CVE_LOG" | sort -u | head -3 >&2 ;;
+    nvd-only-no-credentials) ci_log "CVE scan sources: NVD only. There are no OSS Index credentials, which a fork PR expects." ;;
+    nvd-only-disabled)       ci_log "CVE scan sources: NVD only. ROR_CVE_OSS_INDEX=false disables OSS Index." ;;
+    unknown)                 ci_log "CVE scan sources: unknown. The scan did not run to the end." ;;
   esac
 
   exit "$CVE_RC"
 }
 
 task_compile_codebase_check() {
-  echo ">>> Running compile codebase.."
+  ci_log "Compiling the codebase."
   ./gradlew --no-daemon classes
 }
 
 task_audit_build_check() {
-  echo ">>> Running audit module cross build.."
+  ci_log "Cross building the audit module."
   ./gradlew --no-daemon --stacktrace audit:crossBuildAssemble
 }
 
@@ -142,7 +142,7 @@ run_core_tests() {
   local suites=(core:test ror-tools:test)
   is_windows || suites+=(audit:test build-base:test)
 
-  echo ">>> Running unit tests (${suites[*]}).."
+  ci_log "Running the unit tests (${suites[*]})."
   ./gradlew --no-daemon --stacktrace "${args[@]}" "${suites[@]}" \
     || { dump_hs_err_files; return 1; }
 }
@@ -153,7 +153,7 @@ task_core_tests() {
 
 run_integration_tests() {
   if [ "$#" -ne 1 ]; then
-    echo "What ES module should I run integration tests for?"
+    ci_log "Usage: run_integration_tests <es module>"
     return 1
   fi
 
@@ -169,7 +169,7 @@ run_integration_tests() {
   local platformArgs=()
   mapfile -t platformArgs < <(windows_gradle_args)
 
-  echo ">>> $ES_MODULE => integration-tests:shardedTest (${parallelism} shard(s)).."
+  ci_log "$ES_MODULE runs integration-tests:shardedTest on ${parallelism} shard(s)."
 
   # Each gradle invocation runs in its OWN process group (setsid) so the trap can reap the whole tree;
   # appends the leader PID to GRADLE_PIDS (never pruned) and sets LAST_PID for the caller.
@@ -202,7 +202,7 @@ run_integration_tests() {
 
 build_ror_plugins() {
   if [ "$#" -ne 1 ]; then
-    echo "What ES generation (major) should I verify plugins for?"
+    ci_log "Usage: build_ror_plugins <es major>"
     return 1
   fi
 
@@ -210,10 +210,10 @@ build_ror_plugins() {
 
   # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
   local modules
-  modules=$(list_es_modules "$es_major") || { echo "ERROR: cannot list es${es_major}x modules"; return 1; }
+  modules=$(list_es_modules "$es_major") || { ci_log "Cannot list the es${es_major}x modules."; return 1; }
 
   if [ -z "$modules" ]; then
-    echo "ERROR: no es${es_major}x module to build; ES $es_major has no module owning it"
+    ci_log "No es${es_major}x module exists, so there is nothing to build."
     return 1
   fi
 
@@ -236,19 +236,19 @@ check_maven_artifacts_exist() {
   local CURRENT_VERSION="$1"
 
   local ARTIFACT_URL="https://repo1.maven.org/maven2/tech/beshu/ror/audit_3/$CURRENT_VERSION/"
-  echo ">>> Checking if Maven artifacts already exist at: $ARTIFACT_URL"
+  ci_log "Checking for Maven artifacts at $ARTIFACT_URL."
   
   local MVN_STATUS=$(curl -L --write-out '%{http_code}' --silent --output /dev/null "$ARTIFACT_URL" || echo "000")
   
   if [[ $MVN_STATUS == "404" ]]; then
-    echo ">>> Maven artifacts not found"
+    ci_log "Maven Central has no artifact for this version."
     return 1
   elif [[ $MVN_STATUS == "200" ]]; then
-    echo ">>> Maven artifacts for version $CURRENT_VERSION already exist."
+    ci_log "Maven Central already holds the artifacts of version $CURRENT_VERSION."
     return 0
   else
-    echo ">>> ERROR: Unexpected HTTP status $MVN_STATUS when checking Maven repository"
-    echo ">>> Cannot determine if artifacts exist, failing to avoid potential issues"
+    ci_log "Maven Central answered HTTP $MVN_STATUS, so this run cannot tell whether the artifacts exist."
+    ci_log "The run stops here, rather than publish over an artifact that exists."
     exit 1
   fi
 }
@@ -259,21 +259,21 @@ task_publish_maven_artifacts() {
 
   if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
     if check_maven_artifacts_exist "$CURRENT_PLUGIN_VER"; then
-      echo ">>> Skipping publishing audit module artifacts"
+      ci_log "The artifacts exist, so this run publishes no audit module artifact."
     else
-      echo ">>> Publishing audit module artifacts to sonatype repo"
+      ci_log "Publishing the audit module artifacts to the sonatype repo."
       ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
     fi
   else
-    echo ">>> Version mismatch: current=$CURRENT_PLUGIN_VER, published=$PUBLISHED_PLUGIN_VER"
-    echo ">>> Skipping publishing audit module artifacts."
+    ci_log "pluginVersion is $CURRENT_PLUGIN_VER and publishedPluginVersion is $PUBLISHED_PLUGIN_VER."
+    ci_log "The two versions differ, so this run publishes no audit module artifact."
   fi
 }
 
 task_publish_pre_builds_docker_images() {
 
   if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
-    echo "Error: BUILD_ROR_ES_VERSIONS is required"
+    ci_log "BUILD_ROR_ES_VERSIONS is not set. The caller passes the ES versions to build."
     exit 1
   fi
 
@@ -353,6 +353,6 @@ if declare -F "task_$ROR_TASK" >/dev/null; then
 elif [[ $ROR_TASK =~ ^integration_(es[0-9]+x)$ ]]; then
   run_integration_tests "${BASH_REMATCH[1]}"
 else
-  echo "::error::unknown ROR_TASK '$ROR_TASK'"
+  ci_log "Unknown ROR_TASK '$ROR_TASK'."
   exit 1
 fi

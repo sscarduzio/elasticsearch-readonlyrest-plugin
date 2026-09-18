@@ -23,6 +23,9 @@
 set -uo pipefail
 
 CI_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=ci/log.sh
+source "$CI_DIR/log.sh"
+
 STORE=E2E_REPORTS
 
 # Credentials are flat; only the key prefix is resolved through the store name, as in ci-lib.sh
@@ -37,7 +40,7 @@ PREFIX_VAR="ROR_S3_PATH_${STORE}"
 
 require_env() {
   if [ -z "${!1:-}" ]; then
-    echo "ERROR: $1 is not set (required to upload the Cypress artifacts)"
+    ci_log "ERROR: $1 is not set (required to upload the Cypress artifacts)"
     return 1
   fi
 }
@@ -59,8 +62,8 @@ SOURCE_DIR="${1:?Usage: upload-cypress-artifacts-to-s3.sh <results dir> <s3 subf
 S3_SUBFOLDER="${2:?Usage: upload-cypress-artifacts-to-s3.sh <results dir> <s3 subfolder>}"
 
 if [ ! -d "$SOURCE_DIR" ]; then
-  echo "No Cypress results directory at $SOURCE_DIR — nothing to upload."
-  echo "(the suite may have failed before producing any, e.g. while the stack was starting)"
+  ci_log "No Cypress results directory at $SOURCE_DIR - nothing to upload."
+  ci_log "(the suite may have failed before producing any, e.g. while the stack was starting)"
   exit 0
 fi
 
@@ -110,22 +113,22 @@ while IFS= read -r -d '' FILE; do
     continue
   fi
 
-  echo "WARNING: upload failed for $FILE (continuing)"
+  ci_log "WARNING: upload failed for $FILE (continuing)"
   FAILED=$((FAILED + 1))
   # s3-uploader.sh uses `curl -f`, which hides the server's error body. On the FIRST failure only,
   # re-run it with S3_UPLOADER_DEBUG=1 to capture the actual S3 error XML (AccessDenied /
   # SignatureDoesNotMatch / a policy condition) — without it a 403 is unattributable.
   if [ "$DIAGNOSED" = false ]; then
     DIAGNOSED=true
-    echo "----- S3 failure diagnostic: re-uploading $REL to capture the error body -----"
-    (S3_UPLOADER_DEBUG=1 upload_one "$FILE" "${S3_PATH}${REL}" "$MIME" 2>&1 | sed 's/^/[s3-debug] /') || true
-    echo "----- end diagnostic -----"
+    ci_log "----- S3 failure diagnostic: re-uploading $REL to capture the error body -----"
+    (S3_UPLOADER_DEBUG=1 upload_one "$FILE" "${S3_PATH}${REL}" "$MIME" 2>&1 | sed 's/^/[s3-debug] /' >&2) || true
+    ci_log "----- end diagnostic -----"
   fi
 done < <(find "$SOURCE_DIR" -type f -print0)
 
-echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"
+ci_log "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"
 if [ "$UPLOADED" -gt 0 ]; then
-  echo "Uploaded $UPLOADED Cypress artifact(s) to s3://${BUCKET}/${S3_PATH}"
+  ci_log "Uploaded $UPLOADED Cypress artifact(s) to s3://${BUCKET}/${S3_PATH}"
 elif [ "$FAILED" -eq 0 ]; then
-  echo "No Cypress artifacts found in $SOURCE_DIR — nothing to upload."
+  ci_log "No Cypress artifacts found in $SOURCE_DIR - nothing to upload."
 fi

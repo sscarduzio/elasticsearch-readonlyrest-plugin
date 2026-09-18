@@ -13,14 +13,17 @@
 # Usage: ci/utils/flake-ledger.sh [--branch B] [--runs N] [--with-tests]
 set -uo pipefail
 
+# shellcheck source=ci/log.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../log.sh"
+
 for tool in gh python3; do
-  command -v "$tool" >/dev/null 2>&1 || { echo "error: '$tool' is required but not on PATH"; exit 2; }
+  command -v "$tool" >/dev/null 2>&1 || { ci_log "error: '$tool' is required but not on PATH"; exit 2; }
 done
-gh auth status >/dev/null 2>&1 || { echo "error: 'gh' is not authenticated (run: gh auth login)"; exit 2; }
+gh auth status >/dev/null 2>&1 || { ci_log "error: 'gh' is not authenticated (run: gh auth login)"; exit 2; }
 # `gh run download --pattern` landed in 2.11.0.
 gh_version=$(gh --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 if [ -n "$gh_version" ] && [ "$(printf '%s\n2.11.0\n' "$gh_version" | sort -V | head -1)" != "2.11.0" ]; then
-  echo "error: gh $gh_version is too old; 'gh run download --pattern' needs 2.11.0+"; exit 2
+  ci_log "error: gh $gh_version is too old; 'gh run download --pattern' needs 2.11.0+"; exit 2
 fi
 
 BRANCH=""
@@ -29,25 +32,25 @@ WITH_TESTS=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --branch)
-      [ -n "${2-}" ] || { echo "error: --branch requires a value"; exit 2; }
+      [ -n "${2-}" ] || { ci_log "error: --branch requires a value"; exit 2; }
       BRANCH="$2"; shift 2 ;;
     --runs)
       case "${2-}" in
-        ''|0|*[!0-9]*) echo "error: --runs requires a positive integer"; exit 2 ;;
+        ''|0|*[!0-9]*) ci_log "error: --runs requires a positive integer"; exit 2 ;;
       esac
       RUNS="$2"; shift 2 ;;
     --with-tests) WITH_TESTS=true; shift ;;
     -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
-    *) echo "error: unknown argument '$1'"; exit 2 ;;
+    *) ci_log "error: unknown argument '$1'"; exit 2 ;;
   esac
 done
 
 list_args=(--workflow ci.yml --limit "$RUNS" --json databaseId)
 [ -n "$BRANCH" ] && list_args+=(--branch "$BRANCH")
 
-echo ">>> scanning the last $RUNS ci.yml runs${BRANCH:+ of $BRANCH}"
-run_ids=$(gh run list "${list_args[@]}" -q '.[].databaseId') || { echo "error: cannot list runs"; exit 1; }
-[ -z "$run_ids" ] && { echo "no runs found"; exit 1; }
+ci_log "scanning the last $RUNS ci.yml runs${BRANCH:+ of $BRANCH}"
+run_ids=$(gh run list "${list_args[@]}" -q '.[].databaseId') || { ci_log "error: cannot list runs"; exit 1; }
+[ -z "$run_ids" ] && { ci_log "no runs found"; exit 1; }
 
 JOBS_TSV=$(mktemp)
 WORK=$(mktemp -d)
@@ -73,7 +76,7 @@ done
 downloaded=0
 download_failures=""
 if [ "$WITH_TESTS" = true ]; then
-  echo ">>> downloading junit artifacts (slow)"
+  ci_log "downloading junit artifacts (slow)"
   for r in $run_ids; do
     mkdir -p "$WORK/$r"
     if gh run download "$r" -D "$WORK/$r" -p "it-*-results" >/dev/null 2>&1; then

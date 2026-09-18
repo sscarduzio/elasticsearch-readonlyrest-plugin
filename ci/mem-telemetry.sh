@@ -14,7 +14,13 @@
 #   ci/mem-telemetry.sh start <logfile>    prints the sampler PID; runs until stopped or 3h
 #   ci/mem-telemetry.sh stop <pid>
 #   ci/mem-telemetry.sh report <logfile>   worst-pressure sample + end-of-run OOM forensics
+#
+# `start` prints the sampler PID to standard output, because its caller captures it. Every other
+# message of this script is a diagnostic, and goes to standard error.
 set -u
+
+# shellcheck source=ci/log.sh
+source "$(dirname "${BASH_SOURCE[0]}")/log.sh"
 
 INTERVAL_S=10
 MAX_LIFETIME_S=10800   # self-terminate after 3h: never outlive a hung/cancelled job
@@ -71,6 +77,9 @@ case "${1:-}" in
 
   report)
     LOG=${2:?usage: mem-telemetry.sh report <logfile>}
+    # The whole report is a diagnostic, and no caller reads it as a value, so every line below
+    # goes to standard error. One redirect covers the awk and docker pipelines as well.
+    exec >&2
     if [ ! -s "$LOG" ]; then echo "no telemetry recorded at $LOG"; exit 0; fi
     echo "##### Worst memory-pressure sample (lowest host MemAvailable) #####"
     # Block = one sample (=== header + P/D lines). Print the block with the lowest avail_mb.
@@ -119,6 +128,6 @@ case "${1:-}" in
     ;;
 
   *)
-    echo "usage: $0 start <logfile> | stop <pid> | report <logfile>"; exit 2
+    ci_log "Usage: $0 start <logfile> | stop <pid> | report <logfile>"; exit 2
     ;;
 esac

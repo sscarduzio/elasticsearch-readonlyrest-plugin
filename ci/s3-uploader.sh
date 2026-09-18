@@ -1,8 +1,11 @@
 #!/bin/bash -e
 
+# shellcheck source=ci/log.sh
+source "$(dirname "${BASH_SOURCE[0]}")/log.sh"
+
 usage()
 {
-    cat <<USAGE
+    cat >&2 <<USAGE
 ##########################################################################
 Originally adapted from https://www.aws.ps/how-to-upload-file-to-s3-using-curl
 (since modified for ROR: custom S3_ENDPOINT_URL, SigV4 date-scope fix, no ACL/MD5).
@@ -41,7 +44,9 @@ Examples:
     `basename $0` '' '' storage ~/blog/image.png x/y.png
 
 USAGE
-    exit 0
+    # Non-zero: the only caller of this function is the argument check, and a caller that reads 0
+    # counts a file as uploaded that nothing sent.
+    exit 2
 }
 
 guessmime()
@@ -130,7 +135,7 @@ else
 fi
 
 # Upload. Supports anonymous upload if bucket is public-writable, and keys are set to ''.
-echo "Uploading: $srcfile ($mime) to $upload_url$targfile"
+ci_log "Uploading: $srcfile ($mime) to $upload_url$targfile"
 # Set S3_UPLOADER_DEBUG=1 to debug: adds `-v` (verbose, incl. the full TLS handshake trace —
 # very noisy on curl 8.x/OpenSSL). `-v` is deliberately OFF by default, otherwise every upload
 # floods the CI log with TLS traces.
@@ -163,7 +168,7 @@ case "$http_code" in
         rm -f "$response_body"
         ;;
     *)
-        echo "ERROR: upload of $srcfile to ${upload_url}${targfile} failed (HTTP $http_code, curl exit $curl_status)" >&2
+        ci_log "ERROR: upload of $srcfile to ${upload_url}${targfile} failed (HTTP $http_code, curl exit $curl_status)"
         cat "$response_body" >&2
         rm -f "$response_body"
         exit 1

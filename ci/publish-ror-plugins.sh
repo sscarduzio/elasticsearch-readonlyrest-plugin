@@ -7,7 +7,7 @@ cleanup_docker_and_build() {
   # On the shared box the daemon also serves the readonlyrest_kbn runners, which hold running ELK
   # stacks. The full sweep below would delete them, so reclaim only what this build left behind.
   if is_shared_docker_host; then
-    echo ">>> shared docker host: pruning only dangling images and build cache"
+    ci_log "Shared docker host, so this cleanup removes only dangling images and the build cache."
     docker image prune -f || true
     docker builder prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" || true
     find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
@@ -60,8 +60,8 @@ release_tag() {
 #   $1 ror_version
 origin_release_tags() {
   local ror_version=$1 refs
-  refs=$(git ls-remote --tags origin "refs/tags/v${ror_version}_es*") || {
-    echo "ERROR: cannot read the tags of origin for v${ror_version}." >&2
+  refs=$(retry_with_backoff git ls-remote --tags origin "refs/tags/v${ror_version}_es*") || {
+    ci_log "Cannot read the tags of origin for v${ror_version}."
     return 1
   }
   printf '%s\n' "$refs" | awk '{print $2}' | sed -e 's#^refs/tags/##' -e 's/\^{}$//' | sort -u
@@ -84,7 +84,7 @@ pending_versions() {
   for version in "${versions[@]}"; do
     git_tag=$(release_tag "$ror_version" "$version")
     if grep -qFx "$git_tag" <<< "$origin_tags"; then
-      echo ">>> $git_tag is already on origin. Skipping ES $version." >&2
+      ci_log "$git_tag is already on origin, so this run skips ES $version."
     else
       printf '%s\n' "$version"
     fi
@@ -106,12 +106,11 @@ publish_module() {
   local base_version versions
   { read -r base_version; read -r -a versions; } < <(list_es_module_versions "$module")
   if [ -z "$base_version" ]; then
-    echo "ERROR: no versions for module $module"
+    ci_log "Module $module has no ES version."
     return 1
   fi
 
-  echo ""
-  echo ">>> Module $module: base ES $base_version, ${#versions[@]} version(s): ${versions[*]}"
+  ci_log "Module $module builds from base ES $base_version, and publishes ${#versions[@]} versions: ${versions[*]}."
 
   # Publish newest-to-oldest so the most recent version is available first.
   mapfile -t versions < <(printf '%s\n' "${versions[@]}" | tac)
@@ -131,7 +130,7 @@ publish_module() {
   [ -n "$pending_output" ] && mapfile -t pending <<< "$pending_output"
 
   if [ "${#pending[@]}" -eq 0 ]; then
-    echo ">>> Module $module: every version is already published. Nothing to build."
+    ci_log "Module $module has every version on origin, so this run builds nothing."
     return 0
   fi
 
@@ -140,7 +139,7 @@ publish_module() {
   fi
 
   if ! ./gradlew ":${module}:buildRorPluginZip" "-PesVersion=${base_version}" </dev/null; then
-    echo "ERROR: base build failed for $module @ $base_version"
+    ci_log "The base build of $module failed at ES $base_version."
     return 1
   fi
 
@@ -149,7 +148,7 @@ publish_module() {
     if [ "$version" != "$base_version" ]; then
       if ! ./gradlew ":${module}:repackageRorPluginForVersion" \
             "-PesVersion=${base_version}" "-PtargetVersion=${version}" "-PesJarsDir=${es_jars_dir}" </dev/null; then
-        echo "ERROR: repackage failed for $module @ $version"
+        ci_log "The repackage of $module failed at ES $version."
         return 1
       fi
     fi
@@ -163,17 +162,17 @@ publish_module() {
         break
       fi
       if [ "$attempt" -lt 3 ]; then
-        echo "WARN: publish of $module ES $version failed (attempt $attempt/3); backing off..."
+        ci_log "The publish of $module ES $version failed on attempt $attempt of 3. The next attempt starts after a delay."
         sleep $((attempt * 15))
       fi
     done
     if [ "$published" -ne 1 ]; then
-      echo "ERROR: publish of $module ES $version failed after 3 attempts"
+      ci_log "The publish of $module ES $version failed on all 3 attempts."
       return 1
     fi
 
     if [ "$mode" = "release" ] && ! tag "$(release_tag "$ror_version" "$version")"; then
-      echo "ERROR: cannot tag $module ES $version"
+      ci_log "Cannot tag $module ES $version."
       return 1
     fi
 
@@ -204,7 +203,7 @@ push_ror_docker_image() {
   if [ "$base_image_state" = absent ]; then
     # Elastic published no image for some ES patch versions. There is no base to build on, so a
     # skip is correct here, not an error.
-    echo "WARN: Skipping ES+ROR image for $es_version (no Elasticsearch base image in registry)"
+    ci_log "Elastic published no base image for ES $es_version, so this run skips the ES+ROR image."
     return 0
   fi
 
@@ -212,7 +211,7 @@ push_ror_docker_image() {
   # a failure is repeated. A broken build fails at once.
   if ! retry_with_backoff --retry-if is_docker_registry_error \
        ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
-    echo "Failed to publish plugin Docker image for ES $es_version"
+    ci_log "Cannot publish the ROR Docker image for ES $es_version."
     return 4
   fi
   # Reclaim the ES base image layers pulled by BuildKit — each version is ~1.5 GB and
@@ -227,13 +226,13 @@ publish_version_artifacts() {
 
   # publish always - even if this is not a release
   if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
-    echo "ERROR: S3 upload failed for $module ES $es_version"
+    ci_log "The S3 upload of $module ES $es_version failed."
     return 1
   fi
 
   if [ "$mode" = "release" ]; then
     if ! push_ror_docker_image "$es_version" "$module"; then
-      echo "ERROR: docker release failed for $module ES $es_version"
+      ci_log "The docker release of $module ES $es_version failed."
       return 1
     fi
   fi
@@ -245,7 +244,7 @@ publish_version_artifacts() {
 # Usage: publish_es_major <es major> <upload_pre|release>
 publish_es_major() {
   if [ "$#" -ne 2 ]; then
-    echo "Usage: publish_es_major <es major> <upload_pre|release>"
+    ci_log "Usage: publish_es_major <es major> <upload_pre|release>"
     return 1
   fi
   local es_major=$1 mode=$2
@@ -256,10 +255,10 @@ publish_es_major() {
 
   # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
   local modules
-  modules=$(list_es_modules "$es_major") || { echo "ERROR: cannot list es${es_major}x modules"; return 1; }
+  modules=$(list_es_modules "$es_major") || { ci_log "Cannot list the es${es_major}x modules."; return 1; }
 
   if [ -z "$modules" ]; then
-    echo "ERROR: no es${es_major}x module to $mode; ES $es_major has no module owning it"
+    ci_log "No es${es_major}x module exists, so there is nothing to $mode."
     return 1
   fi
 
@@ -273,12 +272,12 @@ publish_es_major() {
         break
       fi
       if [ "$attempt" -lt 3 ]; then
-        echo "WARN: module $module failed (attempt $attempt/3), retrying after cleanup..."
+        ci_log "Module $module failed on attempt $attempt of 3. The next attempt starts after a cleanup."
         log_disk_usage "before retry cleanup ($module attempt $attempt)"
         cleanup_docker_and_build
         log_disk_usage "after retry cleanup ($module attempt $attempt)"
       else
-        echo "ERROR: module $module failed after 3 attempts"
+        ci_log "Module $module failed on all 3 attempts."
         return 1
       fi
     done

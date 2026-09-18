@@ -49,8 +49,13 @@ jq -r '.[] | select(.filename | test("(^|/)build\\.gradle$")) | .patch // ""' \
 failed=0
 # Reporting only. `fail` records the failure and lets the remaining checks still run, so one run
 # reports everything that is wrong instead of only the first thing.
-pass() { echo "ok:   $1"; }
-fail() { echo "FAIL: $1"; failed=1; }
+# The runner owns the output, so a check reports through these three and never prints for itself.
+# Everything goes to standard error, with every other diagnostic of this repository. The workflow
+# checks out ci/pr-conventions alone, so this runner cannot source ci/log.sh.
+pass() { echo "ok:   $1" >&2; }
+fail() { echo "FAIL: $1" >&2; failed=1; }
+# What a check had to assume. It is not a result, so it changes no exit status.
+note() { echo "note: $1" >&2; }
 
 shopt -s nullglob
 checks=("$CHECKS_DIR"/*.sh)

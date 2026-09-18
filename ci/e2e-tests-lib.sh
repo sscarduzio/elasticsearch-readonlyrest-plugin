@@ -21,6 +21,9 @@
 # This file holds only what belongs to this repo: the ROR ES image and the test suite.
 # Note: docker_image_exists is defined in the shared file and replaces the copy in ci-lib.sh.
 
+# shellcheck source=ci/log.sh
+source "$(dirname "${BASH_SOURCE[0]}")/log.sh"
+
 E2E_TESTS_REPO="https://github.com/beshu-tech/readonlyrest-e2e-tests.git"
 # Path to the shared helpers in the e2e tests clone.
 E2E_PREBUILD_IMAGES_LIB="ci/prebuild-images-lib.sh"
@@ -28,7 +31,7 @@ E2E_PREBUILD_IMAGES_LIB="ci/prebuild-images-lib.sh"
 # Per-run image tag. Every entry point reads it from here, so they all name the same images.
 e2e_run_tag() {
   if [ "$#" -ne 1 ] || [ -z "$1" ]; then
-    echo "Usage: e2e_run_tag <build id>" >&2
+    ci_log "Usage: e2e_run_tag <build id>"
     return 1
   fi
   echo "run-$1"
@@ -39,7 +42,7 @@ e2e_run_tag() {
 # `develop` must use the `develop` suite, not `master`.
 clone_e2e_tests_repo() {
   if [ "$#" -ne 2 ]; then
-    echo "Usage: clone_e2e_tests_repo <target branch> <fallback branch>" >&2
+    ci_log "Usage: clone_e2e_tests_repo <target branch> <fallback branch>"
     return 1
   fi
 
@@ -64,19 +67,18 @@ clone_e2e_tests_repo() {
     [ -n "$BRANCH" ] && ! printf '%s\n' "${CANDIDATES[@]}" | grep -qxF "$BRANCH" && CANDIDATES+=("$BRANCH")
   done
 
-  echo "" >&2
   for BRANCH in "${CANDIDATES[@]}"; do
     # Clean the temp dir before each attempt (git refuses to clone into a non-empty dir).
     rm -rf "${E2E_DIR:?}" && mkdir -p "$E2E_DIR" || return 2
     if git "${GIT_CONFIG_ARGS[@]}" clone --depth 1 --branch "$BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" >/dev/null; then
-      echo ">>> Cloned e2e tests repo (branch: $BRANCH) into $E2E_DIR" >&2
+      ci_log "Cloned branch $BRANCH of the e2e tests repo into $E2E_DIR."
       echo "$E2E_DIR"
       return 0
     fi
-    echo ">>> Could not clone e2e tests branch '$BRANCH'" >&2
+    ci_log "Cannot clone branch '$BRANCH' of the e2e tests repo."
   done
 
-  echo "ERROR: none of the e2e repo branches [${CANDIDATES[*]}] could be cloned" >&2
+  ci_log "Cannot clone any of these e2e repo branches: ${CANDIDATES[*]}."
   return 3
 }
 
@@ -84,15 +86,14 @@ clone_e2e_tests_repo() {
 # from the e2e tests repo clone.
 load_kbn_prebuild_helpers() {
   if [ "$#" -ne 1 ]; then
-    echo "Usage: load_kbn_prebuild_helpers <e2e tests dir>"
+    ci_log "Usage: load_kbn_prebuild_helpers <e2e tests dir>"
     return 1
   fi
 
   local LIB="$1/$E2E_PREBUILD_IMAGES_LIB"
   if [ ! -f "$LIB" ]; then
-    echo "ERROR: $E2E_PREBUILD_IMAGES_LIB not found in the e2e tests clone ($1)"
-    echo "       The ROR KBN pre-build dispatch and wait helpers are owned by $E2E_TESTS_REPO."
-    echo "       The checked-out e2e branch predates them — merge/rebase it so the file is present."
+    ci_log "The e2e tests clone ($1) has no $E2E_PREBUILD_IMAGES_LIB."
+    ci_log "$E2E_TESTS_REPO owns the ROR KBN dispatch and wait helpers. The e2e branch in the clone is older than they are, so merge or rebase it."
     return 2
   fi
 
@@ -100,11 +101,10 @@ load_kbn_prebuild_helpers() {
   . "$LIB" || return 3
 }
 
-# Get the ELK version for an e2e module: the newest ES version it supports. Gradle may print extra
-# output, so use only the last line and check that it looks like a version.
+# Get the ELK version for an e2e module: the newest ES version it supports.
 e2e_elk_version_for_module() {
   if [ "$#" -ne 1 ] || [ -z "$1" ]; then
-    echo "Usage: e2e_elk_version_for_module <es module>" >&2
+    ci_log "Usage: e2e_elk_version_for_module <es module>"
     return 1
   fi
 
@@ -113,11 +113,11 @@ e2e_elk_version_for_module() {
   # rm first: a failed gradle run must yield an error, never a stale version from a previous run.
   rm -f "$VERSION_FILE"
   ./gradlew --quiet ":${MODULE}:printNewestEsVersionForModule" </dev/null >&2 || {
-    echo "ERROR: could not resolve the newest ES version of module '$MODULE'" >&2
+    ci_log "Cannot resolve the newest ES version of module '$MODULE'."
     return 2
   }
   if [ ! -s "$VERSION_FILE" ]; then
-    echo "ERROR: ':${MODULE}:printNewestEsVersionForModule' wrote no version" >&2
+    ci_log "':${MODULE}:printNewestEsVersionForModule' wrote no version."
     return 3
   fi
   VERSION=$(cat "$VERSION_FILE")
@@ -137,31 +137,29 @@ _report_kbn_order_failure() {
 
   if [ "$PHASE" = dispatch ]; then
     case "$CODE" in
-      1) REASON="the ROR KBN pre-build was not dispatched: no run tag, so its run could not be named" ;;
-      3) REASON="the ROR KBN pre-build workflow could not be dispatched (check that it exists on the default branch of the ROR KBN repo and that its inputs match)" ;;
-      4) REASON="the ROR KBN pre-build was dispatched, but the run it created could not be identified — that build continues; re-run this job" ;;
-      *) REASON="dispatching the ROR KBN pre-build failed (exit $CODE)" ;;
+      1) REASON="no run tag names its run, so the dispatch did not start" ;;
+      3) REASON="the dispatch of the ROR KBN pre-build workflow failed (check that it exists on the default branch of the ROR KBN repo, and that its inputs match)" ;;
+      4) REASON="the dispatch started a run, but this job cannot identify it — that build continues, so re-run this job" ;;
+      *) REASON="the dispatch of the ROR KBN pre-build failed (exit $CODE)" ;;
     esac
   else
     case "$CODE" in
-      3) REASON="there was no ROR KBN pre-build run to follow" ;;
-      4) REASON="the ROR KBN pre-build run did not finish within the wait timeout" ;;
-      5) REASON="the ROR KBN pre-build run succeeded, but at least one image is missing from the registry" ;;
-      6) REASON="the ROR KBN pre-build run FAILED — the problem is in the ROR KBN repo, not here" ;;
-      7) REASON="the registry could not be queried (rate limit, login or network), so the images could not be verified" ;;
-      8) REASON="the ROR KBN pre-build run could not be read — check that ROR_GH_TOKEN still grants actions:read" ;;
-      *) REASON="waiting for the ROR KBN pre-build failed (exit $CODE)" ;;
+      3) REASON="no ROR KBN pre-build run exists to follow" ;;
+      4) REASON="the ROR KBN pre-build run did not end before the wait timeout" ;;
+      5) REASON="the ROR KBN pre-build run succeeded, but the registry has no image for at least one version" ;;
+      6) REASON="the ROR KBN pre-build run failed, and the fault is in the ROR KBN repo, not here" ;;
+      7) REASON="this job cannot query the registry (rate limit, login or network), so it cannot verify the images" ;;
+      8) REASON="this job cannot read the ROR KBN pre-build run — check that ROR_GH_TOKEN still grants actions:read" ;;
+      *) REASON="the wait for the ROR KBN pre-build failed (exit $CODE)" ;;
     esac
   fi
 
-  local LINE="KBN dev images NOT ordered: $REASON."
+  local LINE="This job did not order the KBN dev images: $REASON."
   [ -n "$RUN_URL" ] && LINE="$LINE Run: $RUN_URL"
 
-  echo ""
-  echo "ERROR: $LINE"
-  echo "       The e2e test jobs are skipped, because there is nothing to test against."
-  echo "       Re-run the failed jobs. That re-runs THIS job and places a new order under the same"
-  echo "       run tag. The ES images already published stay valid."
+  ci_log "$LINE"
+  ci_log "The e2e test jobs are skipped, because there is nothing to test against."
+  ci_log "Re-run the failed jobs. That re-runs this job, and places a new order under the same run tag. The ES images already published stay valid."
 
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
     {
@@ -186,7 +184,7 @@ _report_kbn_order_failure() {
 #   build id        — names the images this order produces; see the header
 order_e2e_kbn_images() {
   if [ "$#" -ne 4 ]; then
-    echo "Usage: order_e2e_kbn_images <elk versions> <target branch> <fallback branch> <build id>"
+    ci_log "Usage: order_e2e_kbn_images <elk versions> <target branch> <fallback branch> <build id>"
     return 1
   fi
 
@@ -197,7 +195,7 @@ order_e2e_kbn_images() {
   RUN_TAG=$(e2e_run_tag "$4") || return $?
 
   if [ -z "${ELK_VERSIONS// /}" ]; then
-    echo "ERROR: no ELK version to order ROR KBN images for. The caller passes the list."
+    ci_log "No ELK version to order ROR KBN images for. The caller passes the list."
     return 2
   fi
 
@@ -208,7 +206,7 @@ order_e2e_kbn_images() {
   local WAIT_TIMEOUT=${ROR_KBN_WAIT_TIMEOUT_SECONDS:-7200}
   export ROR_KBN_WAIT_TIMEOUT_SECONDS=$WAIT_TIMEOUT
 
-  echo ">>> Ordering e2e ROR KBN dev images: ELK [$ELK_VERSIONS], run tag: $RUN_TAG, wait up to ${WAIT_TIMEOUT}s"
+  ci_log "Ordering the e2e ROR KBN dev images: ELK [$ELK_VERSIONS], run tag $RUN_TAG, wait up to ${WAIT_TIMEOUT}s."
 
   # Clone the e2e repo only to load the shared dispatch and wait helpers. The test jobs clone it
   # again, for the runner.
@@ -246,14 +244,14 @@ order_e2e_kbn_images() {
 # Args: <elk version> <build id>
 build_e2e_es_image() {
   if [ "$#" -ne 2 ]; then
-    echo "Usage: build_e2e_es_image <elk version> <build id>"
+    ci_log "Usage: build_e2e_es_image <elk version> <build id>"
     return 1
   fi
 
   local RUN_TAG
   RUN_TAG=$(e2e_run_tag "$2") || return $?
 
-  echo ">>> Building the ROR ES dev image: ELK $1, run tag: $RUN_TAG"
+  ci_log "Building the ROR ES dev image: ELK $1, run tag $RUN_TAG."
   publish_ror_es_prebuild_plugin "$1" "$RUN_TAG"
 }
 
@@ -261,7 +259,7 @@ build_e2e_es_image() {
 # (ROR ES and ROR KBN with the same run tag).
 run_e2e_against_dev_images() {
   if [ "$#" -ne 3 ]; then
-    echo "Usage: run_e2e_against_dev_images <e2e tests dir> <elk version> <run tag>"
+    ci_log "Usage: run_e2e_against_dev_images <e2e tests dir> <elk version> <run tag>"
     return 1
   fi
 
@@ -270,8 +268,8 @@ run_e2e_against_dev_images() {
   local RUN_TAG=$3
 
   if [ -z "${ROR_ACTIVATION_KEY:-}" ] || [[ "${ROR_ACTIVATION_KEY}" == '$('* ]]; then
-    echo "ERROR: ROR_ACTIVATION_KEY is empty or was not expanded (the e2e Cypress tests need it)"
-    echo "       Make sure ROR_ACTIVATION_KEY is defined as a secret variable in the CI."
+    ci_log "ROR_ACTIVATION_KEY is empty, or the shell did not expand it. The e2e Cypress tests need it."
+    ci_log "Define ROR_ACTIVATION_KEY as a secret variable in the CI."
     return 2
   fi
 
@@ -283,8 +281,7 @@ run_e2e_against_dev_images() {
   if [ "${mem_kb:-0}" -gt 0 ] && [ "$mem_kb" -lt 12000000 ]; then
     apply_limits=true
   fi
-  echo ""
-  echo ">>> Running e2e tests: ELK $ELK_VERSION, image tag: $RUN_TAG (MemTotal=${mem_kb}kB, APPLY_RESOURCE_LIMITS=$apply_limits)"
+  ci_log "Running the e2e tests: ELK $ELK_VERSION, image tag $RUN_TAG (MemTotal=${mem_kb}kB, APPLY_RESOURCE_LIMITS=$apply_limits)."
   (
     cd "$E2E_DIR" || exit 1
     APPLY_RESOURCE_LIMITS="$apply_limits" ./runner.sh \
@@ -308,7 +305,7 @@ run_e2e_against_dev_images() {
 #   build id        — names the images to test; see the header
 run_e2e_tests() {
   if [ "$#" -ne 4 ]; then
-    echo "Usage: run_e2e_tests <elk version> <target branch> <fallback branch> <build id>"
+    ci_log "Usage: run_e2e_tests <elk version> <target branch> <fallback branch> <build id>"
     return 1
   fi
 
@@ -320,11 +317,11 @@ run_e2e_tests() {
 
   # Validate version format early (before network calls).
   if ! [[ $ELK_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
-    echo "Invalid ELK version format. Expected format: X.Y.Z"
+    ci_log "'$ELK_VERSION' is not an ELK version. The format is X.Y.Z."
     return 2
   fi
 
-  echo ">>> Running e2e tests: ELK $ELK_VERSION, run tag: $RUN_TAG"
+  ci_log "Running the e2e tests: ELK $ELK_VERSION, run tag $RUN_TAG."
 
   # Clone the e2e repo for the test runner.
   local E2E_DIR

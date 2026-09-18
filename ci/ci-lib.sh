@@ -8,6 +8,9 @@ CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=ci/runner-detect.sh
 source "$CI_DIR/runner-detect.sh"
 
+# shellcheck source=ci/log.sh
+source "$CI_DIR/log.sh"
+
 # The repository this build works on. CI_DIR sits in it.
 ROR_REPO_ROOT=$(cd "$CI_DIR/.." && pwd)
 
@@ -19,6 +22,7 @@ if ! git -C "$ROR_REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
   git config --global --add safe.directory "$ROR_REPO_ROOT" >/dev/null 2>&1 || true
 fi
 
+
 # Reads one key from gradle.properties, which holds the build's own values. The file sits beside this
 # one, so the caller's working directory does not matter.
 #
@@ -28,10 +32,10 @@ fi
 # The value is everything after the first `=`, because a value such as `-Dkey=value` holds one too.
 # A key that the file states twice keeps the last line, which is the value gradle itself reads.
 gradle_property() {
-  local key=$1 file=$CI_DIR/../gradle.properties value
+  local key=$1 file=$ROR_REPO_ROOT/gradle.properties value
   value=$(awk -F= -v k="$key" '$1==k {line=$0} END {sub(/^[^=]*=/, "", line); print line}' "$file")
   if [ -z "$value" ]; then
-    echo "$file has no $key" >&2
+    ci_log "$file has no key '$key'."
     return 1
   fi
   printf '%s\n' "$value"
@@ -60,7 +64,7 @@ dump_hs_err_files() {
 # this format drift without a failure.
 es_majors_matrix() {
   local file=$ROR_REPO_ROOT/build/es-modules/es-majors.txt
-  [ -s "$file" ] || { echo "printEsMajors wrote no ES major" >&2; return 1; }
+  [ -s "$file" ] || { ci_log "printEsMajors wrote no ES major to $file."; return 1; }
   jq -Rc -s 'split("\n") | map(select(length > 0)) | {include: map({ES_MAJOR: .})}' < "$file"
 }
 
@@ -72,7 +76,7 @@ is_pre_release_version() {
   value=$(cd "$ROR_REPO_ROOT" && ./gradlew --no-daemon -q isPreReleaseVersion | tail -n 1) || return 1
   case "$value" in
     true|false) printf '%s\n' "$value" ;;
-    *) echo "isPreReleaseVersion printed '$value', not true or false" >&2; return 1 ;;
+    *) ci_log "isPreReleaseVersion must print true or false. It printed '$value'."; return 1 ;;
   esac
 }
 
@@ -84,7 +88,7 @@ is_merge_back_of_master() {
   git fetch --quiet --no-tags --depth=1 origin master 2>/dev/null || return 1
   master_tree=$(git rev-parse --verify --quiet 'FETCH_HEAD^{tree}') || return 1
   here_tree=$(git rev-parse --verify --quiet 'HEAD^{tree}') || return 1
-  echo ">>> HEAD tree $here_tree, master tree $master_tree" >&2
+  ci_log "HEAD tree $here_tree, master tree $master_tree."
   [ "$here_tree" = "$master_tree" ]
 }
 
@@ -106,7 +110,7 @@ docker_image_state() {
     printf 'absent\n'
     return 0
   fi
-  echo "ERROR: cannot read $image from the registry." >&2
+  ci_log "Cannot read $image from the registry."
   cat "$log" >&2
   rm -f "$log"
   return 1
@@ -126,6 +130,8 @@ docker_image_exists() {
 # of 0 from the function means "repeat this".
 #
 #   retry_with_backoff --retry-if is_docker_registry_error ./gradlew pushRorDockerImage
+#
+# A caller can capture the output: only the command writes to standard output.
 #
 # --retry-if also captures the output, so the command then runs in a pipeline, thus in a subshell,
 # and its standard error joins its standard output. Give it an external command. A shell function
@@ -154,19 +160,19 @@ retry_with_backoff() {
   done
 
   if [ "$#" -eq 0 ]; then
-    echo "[CI] retry_with_backoff needs a command."
+    ci_log "retry_with_backoff needs a command."
     return 2
   fi
   if ! [[ $attempts =~ ^[0-9]+$ ]] || [ "$attempts" -lt 1 ]; then
-    echo "[CI] ROR_RETRY_ATTEMPTS must be a positive integer, got '$attempts'."
+    ci_log "ROR_RETRY_ATTEMPTS must be a positive integer. Its value is '$attempts'."
     return 2
   fi
   if ! [[ $delay =~ ^[0-9]+$ ]]; then
-    echo "[CI] ROR_RETRY_DELAY_SECONDS must be a non-negative integer, got '$delay'."
+    ci_log "ROR_RETRY_DELAY_SECONDS must be a non-negative integer. Its value is '$delay'."
     return 2
   fi
   if [ -n "$retry_if" ] && ! declare -F "$retry_if" >/dev/null; then
-    echo "[CI] --retry-if needs the name of a function, got '$retry_if'."
+    ci_log "--retry-if needs the name of a function. Its value is '$retry_if'."
     return 2
   fi
 
@@ -192,16 +198,16 @@ retry_with_backoff() {
       return 0
     fi
     if [ -n "$retry_if" ] && ! "$retry_if" "$log" "$status"; then
-      echo "[CI] '$1' failed, and this failure is not one to repeat."
+      ci_log "'$1' failed. Another attempt gives the same result."
       rm -f "$log"
       return "$status"
     fi
     if [ "$attempt" -ge "$attempts" ]; then
-      echo "[CI] '$1' failed on all $attempts attempts."
+      ci_log "'$1' failed on all $attempts attempts."
       [ -n "$log" ] && rm -f "$log"
       return "$status"
     fi
-    echo "[CI] '$1' failed (attempt $attempt of $attempts). Next attempt in ${delay}s."
+    ci_log "'$1' failed (attempt $attempt of $attempts). Next attempt in ${delay}s."
     sleep "$delay"
     attempt=$((attempt + 1))
     delay=$((delay * 2))
@@ -234,13 +240,13 @@ ES_DEV_IMAGE_REPO="$(gradle_property dockerImageNamespace)/elasticsearch-readonl
 # Copies a registry image manifest to a new tag without pulling/rebuilding (multi-platform safe).
 retag_dev_image() {
   if [ "$#" -ne 2 ]; then
-    echo "Usage: retag_dev_image <source tag> <target tag>"
+    ci_log "Usage: retag_dev_image <source tag> <target tag>"
     return 1
   fi
 
   local SOURCE_TAG=$1
   local TARGET_TAG=$2
-  echo ">>> Tagging ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG} as ${ES_DEV_IMAGE_REPO}:${TARGET_TAG}"
+  ci_log "Tagging ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG} as ${ES_DEV_IMAGE_REPO}:${TARGET_TAG}."
   docker buildx imagetools create \
     -t "${ES_DEV_IMAGE_REPO}:${TARGET_TAG}" \
     "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"
@@ -259,7 +265,7 @@ retag_dev_image() {
 #   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
 publish_ror_es_prebuild_plugin() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    echo "Usage: publish_ror_es_prebuild_plugin <ES version> [image tag]"
+    ci_log "Usage: publish_ror_es_prebuild_plugin <ES version> [image tag]"
     return 1
   fi
 
@@ -267,12 +273,12 @@ publish_ror_es_prebuild_plugin() {
   local IMAGE_TAG="${2:-}"
 
   if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
-    echo "Invalid ES version format. Expected format: X.Y.Z"
+    ci_log "'$ES_VERSION' is not an ES version. The format is X.Y.Z."
     return 2
   fi
 
   if ! docker info >/dev/null 2>&1; then
-    echo "Docker daemon not running or not logged in"
+    ci_log "The docker daemon does not answer."
     return 3
   fi
 
@@ -280,28 +286,27 @@ publish_ror_es_prebuild_plugin() {
   ROR_VERSION=$(gradle_property pluginVersion) || return 1
   # The commit names the source of the image, so a missing one must stop the build with the cause.
   if ! GIT_SHA=$(git rev-parse --short HEAD); then
-    echo "Cannot read the commit of the checkout, thus the image tag would name no source" >&2
+    ci_log "Cannot read the commit of the checkout. The image tag would then name no source."
     return 1
   fi
 
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 
-  echo ""
-  echo "PUBLISHING ROR PRE-BUILD for ES $ES_VERSION (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}):"
+  ci_log "Publishing the ROR pre-build image for ES $ES_VERSION (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG})."
 
   # Normalize workflow and shell inputs before comparing.
-  local FORCE_REBUILD_NORM
-  FORCE_REBUILD_NORM=$(echo "${FORCE_REBUILD:-false}" | tr '[:upper:]' '[:lower:]')
+  local FORCE_REBUILD_NORM=${FORCE_REBUILD:-false}
+  FORCE_REBUILD_NORM=${FORCE_REBUILD_NORM,,}
 
   if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"; then
-    echo ">>> Sources unchanged (image for this commit already published), skipping build"
+    ci_log "The sources did not change. The image for this commit exists, so this run skips the build."
   else
     # A registry can answer 429 to the pull or the push. Only that failure is repeated.
     # One buildx push writes both tags, so the commit tag always names this build's image.
     if ! retry_with_backoff --retry-if is_docker_registry_error \
          ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
          "-PadditionalImageTag=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
-      echo "Failed to publish plugin prebuild Docker image"
+      ci_log "Cannot publish the ROR pre-build image for ES $ES_VERSION."
       return 4
     fi
   fi
@@ -311,7 +316,7 @@ publish_ror_es_prebuild_plugin() {
   # (the commit identity), and the imagetools exit status guarantees it was created before we return.
   if [ -n "$IMAGE_TAG" ]; then
     if ! retag_dev_image "$SOURCE_TAG" "${ES_VERSION}-ror-${IMAGE_TAG}"; then
-      echo "Failed to tag prebuild Docker image as ${ES_DEV_IMAGE_REPO}:${ES_VERSION}-ror-${IMAGE_TAG}"
+      ci_log "Cannot tag the ROR pre-build image as ${ES_DEV_IMAGE_REPO}:${ES_VERSION}-ror-${IMAGE_TAG}."
       return 6
     fi
   fi
@@ -324,7 +329,7 @@ remote_tag_state() {
   local git_tag=$1 refs
 
   refs=$(git ls-remote --tags origin "refs/tags/${git_tag}") || {
-    echo "ERROR: cannot read the tags of origin, so $git_tag has no answer." >&2
+    ci_log "Cannot read the tags of origin, so $git_tag has no answer."
     return 1
   }
   if [ -n "$refs" ]; then
@@ -342,11 +347,11 @@ tag() {
 
   state=$(remote_tag_state "$GIT_TAG") || return 1
   if [ "$state" = present ]; then
-    echo "Git tag $GIT_TAG already exists on remote, skipping."
+    ci_log "Git tag $GIT_TAG is already on origin. This run skips it."
     return 0
   fi
 
-  echo "Tagging as $GIT_TAG"
+  ci_log "Tagging as $GIT_TAG."
   git config --global push.default matching
   git config --global user.email "support@readonlyrest.com"
   git config --global user.name "CI"
@@ -380,7 +385,7 @@ function _upload_to_s3_target {
   local BUCKET PATH_PREFIX
 
   if [[ ! -f "$LOCAL_FILE" ]]; then
-    echo "ERROR: artifact to upload not found (or not a regular file): $LOCAL_FILE"
+    ci_log "Cannot upload '$LOCAL_FILE'. It is not a file."
     return 1
   fi
 
@@ -417,25 +422,29 @@ function upload_using_aws_s3_uploader_to_key {
   _upload_to_s3_target "$1" "$2" "${3:-ARTIFACTS}" "${4:-}"
 }
 
+# Writes a disk report to standard error, where every message of this file goes. One stream for the
+# whole report: df, du and docker write most of it, and a header must stay above its own section.
 log_disk_usage() {
   local label="${1:-}"
-  echo "=== Disk usage ($label) ==="
-  df -h / || true
-  df -i / || true
+  {
+    echo "=== Disk usage ($label) ==="
+    df -h / || true
+    df -i / || true
 
-  echo "--- Docker ---"
-  docker system df || true
-  docker ps -a || true
-  docker volume ls || true
+    echo "--- Docker ---"
+    docker system df || true
+    docker ps -a || true
+    docker volume ls || true
 
-  echo "--- Workspace build dirs ---"
-  du -sh */build 2>/dev/null || true
+    echo "--- Workspace build dirs ---"
+    du -sh */build 2>/dev/null || true
 
-  echo "--- Temp dirs ---"
-  du -sh /tmp 2>/dev/null || true
+    echo "--- Temp dirs ---"
+    du -sh /tmp 2>/dev/null || true
 
-  echo "--- Gradle ---"
-  du -sh "$GRADLE_USER_HOME/caches" 2>/dev/null || du -sh "$HOME/.gradle/caches" 2>/dev/null || true
+    echo "--- Gradle ---"
+    du -sh "$GRADLE_USER_HOME/caches" 2>/dev/null || du -sh "$HOME/.gradle/caches" 2>/dev/null || true
 
-  echo "=== End disk usage ==="
+    echo "=== End disk usage ==="
+  } >&2
 }
