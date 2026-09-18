@@ -1,0 +1,43 @@
+name: 'Report host telemetry'
+description: >-
+  Stops the two samplers that host-telemetry-start started under this id, prints their reports as
+  collapsible groups and uploads the memory log. Call it with `if: always()`: a job that ran out of
+  memory, or one that spent its wall time waiting on IO, is the job whose telemetry a reader wants.
+
+  The resource sampler reports last, because its report closes the sample series: the memory report
+  above it is inside the measured window.
+
+  The memory report lists the containers of this job when ROR_CI_JOB_ID is in the job environment,
+  and says it cannot when it is not.
+
+inputs:
+  id:
+    description: 'The id the start action was given. It names the PID file, the log and the artifact.'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        LOG_ID: ${{ inputs.id }}
+      run: |
+        DIR="$RUNNER_TEMP/host-telemetry"
+        PID_FILE="$DIR/mem-telemetry-$LOG_ID.pid"
+        if [ -f "$PID_FILE" ]; then
+          ci/telemetry/mem-telemetry.sh stop "$(cat "$PID_FILE")" || true
+        fi
+        LOG="$DIR/mem-telemetry-$LOG_ID.log"
+        if [ -f "$LOG" ]; then
+          echo "::group::$(basename "$LOG") report"
+          ci/telemetry/mem-telemetry.sh report "$LOG"
+          echo "::endgroup::"
+        fi
+        ci/telemetry/resource-sampler.sh report
+    # Upload even when the reports above failed: the log is the point, the report is a summary.
+    - if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: mem-telemetry-${{ inputs.id }}
+        path: ${{ runner.temp }}/host-telemetry/mem-telemetry-${{ inputs.id }}.log
+        if-no-files-found: ignore
