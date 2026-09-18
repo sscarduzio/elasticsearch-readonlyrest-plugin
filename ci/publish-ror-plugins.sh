@@ -7,7 +7,7 @@ cleanup_docker_and_build() {
   # On the shared box the daemon also serves the readonlyrest_kbn runners, which hold running ELK
   # stacks. The full sweep below would delete them, so reclaim only what this build left behind.
   if is_shared_docker_host; then
-    echo ">>> shared docker host: pruning only dangling images and build cache"
+    ci_log "Shared docker host, so this cleanup removes only dangling images and the build cache."
     docker image prune -f || true
     docker builder prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" || true
     find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
@@ -44,67 +44,113 @@ list_es_modules() {
 # Emits two lines: the base ES version on line 1, all supported versions space-separated on line 2.
 list_es_module_versions() {
   local module=$1
-  ./gradlew ":${module}:printEsVersionsForModule" --quiet </dev/null
+  local versions_file="${module}/build/es-modules/versions.txt"
+  rm -f "$versions_file"
+  ./gradlew ":${module}:printEsVersionsForModule" --quiet </dev/null >&2 || return 1
+  cat "$versions_file"
 }
 
-# Builds the module's base version once, verifies bytecode reuse for the newest version,
-# then repackages and publishes every supported ES version.
+# Prints the versions from $3.. that still need publishing, one per line. It leaves out a version
+# whose tag the file $2 holds. An empty file keeps every version, which is what upload_pre hands
+# over: that mode writes no tag.
+#   $1 ror_version  $2 file of origin tags  $3.. versions
+pending_versions() {
+  local ror_version=$1 origin_tags_file=$2
+  shift 2
+  local versions=("$@") version git_tag
+
+  # An unreadable file would leave every version pending, and a release would publish them all again.
+  if [ ! -r "$origin_tags_file" ]; then
+    ci_log "Cannot read the tag list at $origin_tags_file."
+    return 1
+  fi
+
+  for version in "${versions[@]}"; do
+    git_tag=$(release_tag "$ror_version" "$version")
+    if grep -qFx "$git_tag" "$origin_tags_file"; then
+      ci_log "$git_tag is already on origin, so this run skips ES $version."
+    else
+      printf '%s\n' "$version"
+    fi
+  done
+}
+
+# Verifies bytecode reuse, builds the base version once, then repackages and publishes every ES
+# version from that base zip. Release mode leaves out a version origin already tagged. It builds the
+# base zip all the same, because a repackage starts from it. upload_pre publishes every version.
 #   $1 mode (upload_pre|release)  $2 ror_version  $3 module
-publish_module_versions() {
+publish_module() {
   local mode=$1 ror_version=$2 module=$3
   local dist_dir="${module}/build/distributions"
-  local es_jars_dir
-  es_jars_dir=$(mktemp -d)
+  # The scratch space of one module run: the ES jars of the repackage, and the tag list. The trap
+  # removes it on every exit path, an early return included.
+  local module_tmp_dir
+  module_tmp_dir=$(mktemp -d)
 
-  trap 'if [ -n "${es_jars_dir:-}" ]; then rm -rf "$es_jars_dir"; fi' RETURN
+  trap 'if [ -n "${module_tmp_dir:-}" ]; then rm -rf "$module_tmp_dir"; fi' RETURN
 
   local base_version versions
   { read -r base_version; read -r -a versions; } < <(list_es_module_versions "$module")
   if [ -z "$base_version" ]; then
-    echo "ERROR: no versions for module $module"
+    ci_log "Module $module has no ES version."
     return 1
   fi
 
-  echo ""
-  echo ">>> Module $module: base ES $base_version, ${#versions[@]} version(s): ${versions[*]}"
+  ci_log "Module $module owns ${#versions[@]} versions, and builds from base ES $base_version: ${versions[*]}."
+
+  # Publish newest-to-oldest so the most recent version is available first.
+  mapfile -t versions < <(printf '%s\n' "${versions[@]}" | tac)
+
+  # Fresh on every attempt: a retry of this module must see the tags an earlier attempt already
+  # wrote, or it rebuilds and re-uploads a version this run already published.
+  local origin_tags_file="$module_tmp_dir/origin-tags.txt"
+  : > "$origin_tags_file"
+  if [ "$mode" = release ]; then
+    origin_tags "$(release_tag "$ror_version" '*')" > "$origin_tags_file" || return 1
+  fi
+
+  # Checking is a git query. Building and repackaging costs minutes. Filtering here, before any
+  # build, skips that cost for every version already published.
+  local pending_output
+  pending_output=$(pending_versions "$ror_version" "$origin_tags_file" "${versions[@]}") || return 1
+  local -a pending=()
+  [ -n "$pending_output" ] && mapfile -t pending <<< "$pending_output"
+
+  if [ "${#pending[@]}" -eq 0 ]; then
+    ci_log "Module $module has every version on origin, so this run builds nothing."
+    return 0
+  fi
+
+  ci_log "Module $module publishes ${#pending[@]} of them: ${pending[*]}."
 
   if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
     return 1
   fi
 
   if ! ./gradlew ":${module}:buildRorPluginZip" "-PesVersion=${base_version}" </dev/null; then
-    echo "ERROR: base build failed for $module @ $base_version"
+    ci_log "The base build of $module failed at ES $base_version."
     return 1
   fi
 
-  # Publish newest-to-oldest so the most recent version is available first.
-  mapfile -t versions < <(printf '%s\n' "${versions[@]}" | tac)
-
   local version
-  for version in "${versions[@]}"; do
+  for version in "${pending[@]}"; do
     if [ "$version" != "$base_version" ]; then
       if ! ./gradlew ":${module}:repackageRorPluginForVersion" \
-            "-PesVersion=${base_version}" "-PtargetVersion=${version}" "-PesJarsDir=${es_jars_dir}" </dev/null; then
-        echo "ERROR: repackage failed for $module @ $version"
+            "-PesVersion=${base_version}" "-PtargetVersion=${version}" "-PesJarsDir=${module_tmp_dir}" </dev/null; then
+        ci_log "The repackage of $module failed at ES $version."
         return 1
       fi
     fi
 
     local zip="${dist_dir}/readonlyrest-${ror_version}_es${version}.zip"
 
-    local attempt published=0
-    for attempt in 1 2 3; do
-      if publish_one_version "$mode" "$ror_version" "$module" "$version" "$zip"; then
-        published=1
-        break
-      fi
-      if [ "$attempt" -lt 3 ]; then
-        echo "WARN: publish of $module ES $version failed (attempt $attempt/3); backing off..."
-        sleep $((attempt * 15))
-      fi
-    done
-    if [ "$published" -ne 1 ]; then
-      echo "ERROR: publish of $module ES $version failed after 3 attempts"
+    if ! publish_version_artifacts "$mode" "$ror_version" "$module" "$version" "$zip"; then
+      ci_log "The publish of $module ES $version failed."
+      return 1
+    fi
+
+    if [ "$mode" = "release" ] && ! tag "$(release_tag "$ror_version" "$version")"; then
+      ci_log "Cannot tag $module ES $version."
       return 1
     fi
 
@@ -126,56 +172,45 @@ publish_module_versions() {
 }
 
 # Pushes the ES+ROR Docker image for one version
-release_ror_docker_image() {
+push_ror_docker_image() {
   local es_version=$1 module=$2
+  local base_image="docker.elastic.co/elasticsearch/elasticsearch:${es_version}"
+  local base_image_state
 
-  if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${es_version}" >/dev/null 2>&1; then
-    # This build pulls base images and pushes the result, so a registry can answer 429. Only such
-    # a failure is repeated. A broken build fails at once.
-    if ! retry_with_backoff --retry-if is_docker_registry_error \
-         ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
-      echo "Failed to publish plugin Docker image for ES $es_version"
-      return 4
-    fi
-    # Reclaim the ES base image layers pulled by BuildKit — each version is ~1.5 GB and
-    # they don't share layers, so keeping them in the cache has no benefit and exhausts disk.
-    docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-1GB}" >/dev/null 2>&1 || true
-  else
-    # Some ES patch versions have no image in docker.elastic.co (Elastic never published one for them), so
-    # there is no base to build a ROR image on -- skipping here is expected, not a failure.
-    echo "WARN: Skipping ES+ROR image for $es_version (no Elasticsearch base image in registry)"
+  base_image_state=$(docker_image_state "$base_image") || return 4
+  if [ "$base_image_state" = absent ]; then
+    # Elastic published no image for some ES patch versions. There is no base to build on, so a
+    # skip is correct here, not an error.
+    ci_log "Elastic published no base image for ES $es_version, so this run skips the ES+ROR image."
+    return 0
   fi
+
+  # This build pulls base images and pushes the result, so a registry can answer 429. Only such
+  # a failure is repeated. A broken build fails at once.
+  if ! retry_with_backoff --retry-if is_docker_registry_error \
+       ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
+    ci_log "Cannot publish the ROR Docker image for ES $es_version."
+    return 4
+  fi
+  # Reclaim the ES base image layers pulled by BuildKit — each version is ~1.5 GB and
+  # they don't share layers, so keeping them in the cache has no benefit and exhausts disk.
+  docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-1GB}" >/dev/null 2>&1 || true
 }
 
-# Publishes one already-derived version: S3 upload + (release) Docker image and git tag.
-publish_one_version() {
+# Publishes one already-derived version: S3 upload + (release) Docker image. Tagging is the
+# caller's job.
+publish_version_artifacts() {
   local mode=$1 ror_version=$2 module=$3 es_version=$4 zip=$5
 
-  local TAG="v${ror_version}_es${es_version}"
-
-  if [ "$mode" = "release" ]; then
-    local tag_state
-    tag_state=$(remote_tag_state "$TAG") || return 1
-    if [ "$tag_state" = present ]; then
-      echo "$TAG is already on origin, so ES $es_version is published. Skipping."
-      return 0
-    fi
-  fi
-
   # publish always - even if this is not a release
-  if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
-    echo "ERROR: S3 upload failed for $module ES $es_version"
+  if ! retry_with_backoff ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
+    ci_log "The S3 upload of $module ES $es_version failed."
     return 1
   fi
 
   if [ "$mode" = "release" ]; then
-    if ! release_ror_docker_image "$es_version" "$module"; then
-      echo "ERROR: docker release failed for $module ES $es_version"
-      return 1
-    fi
-
-    if ! tag "$TAG"; then
-      echo "ERROR: cannot tag $module ES $es_version as $TAG"
+    if ! push_ror_docker_image "$es_version" "$module"; then
+      ci_log "The docker release of $module ES $es_version failed."
       return 1
     fi
   fi
@@ -184,10 +219,10 @@ publish_one_version() {
 }
 
 # Drives all ES modules in a generation through the publish flow, with per-module retry on failure.
-# Usage: publish_ror_plugins <es major> <upload_pre|release>
-publish_ror_plugins() {
+# Usage: publish_es_major <es major> <upload_pre|release>
+publish_es_major() {
   if [ "$#" -ne 2 ]; then
-    echo "Usage: publish_ror_plugins <es major> <upload_pre|release>"
+    ci_log "Usage: publish_es_major <es major> <upload_pre|release>"
     return 1
   fi
   local es_major=$1 mode=$2
@@ -198,10 +233,10 @@ publish_ror_plugins() {
 
   # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
   local modules
-  modules=$(list_es_modules "$es_major") || { echo "ERROR: cannot list es${es_major}x modules"; return 1; }
+  modules=$(list_es_modules "$es_major") || { ci_log "Cannot list the es${es_major}x modules."; return 1; }
 
   if [ -z "$modules" ]; then
-    echo "ERROR: no es${es_major}x module to $mode; ES $es_major has no module owning it"
+    ci_log "No es${es_major}x module exists, so there is nothing to $mode."
     return 1
   fi
 
@@ -211,16 +246,16 @@ publish_ror_plugins() {
 
     local attempt
     for attempt in 1 2 3; do
-      if time publish_module_versions "$mode" "$ror_version" "$module"; then
+      if time publish_module "$mode" "$ror_version" "$module"; then
         break
       fi
       if [ "$attempt" -lt 3 ]; then
-        echo "WARN: module $module failed (attempt $attempt/3), retrying after cleanup..."
+        ci_log "Module $module failed on attempt $attempt of 3. The next attempt starts after a cleanup."
         log_disk_usage "before retry cleanup ($module attempt $attempt)"
         cleanup_docker_and_build
         log_disk_usage "after retry cleanup ($module attempt $attempt)"
       else
-        echo "ERROR: module $module failed after 3 attempts"
+        ci_log "Module $module failed on all 3 attempts."
         return 1
       fi
     done
