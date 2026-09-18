@@ -11,9 +11,9 @@
 #   * docker stats for all containers (the ES/deps containers are siblings on the host daemon)
 #
 # Usage:
-#   ci/mem-telemetry.sh start <logfile>    prints the sampler PID; runs until stopped or 3h
-#   ci/mem-telemetry.sh stop <pid>
-#   ci/mem-telemetry.sh report <logfile>   worst-pressure sample + end-of-run OOM forensics
+#   ci/telemetry/mem-telemetry.sh start <logfile>    prints the sampler PID; runs until stopped or 3h
+#   ci/telemetry/mem-telemetry.sh stop <pid>
+#   ci/telemetry/mem-telemetry.sh report <logfile>   worst-pressure sample + end-of-run OOM forensics
 set -u
 
 INTERVAL_S=10

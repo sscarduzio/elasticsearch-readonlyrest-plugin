@@ -15,7 +15,7 @@
 # show the host, shared by every runner on it, so there the container's own
 # cgroup supplies both counters and iowait is not available.
 set -u
-dir="${RUNNER_TEMP:-/tmp}/resource-sampler"
+dir="${RUNNER_TEMP:-/tmp}/host-telemetry/resource-sampler"
 
 sample() {
   local cpu iowait io
@@ -43,6 +43,7 @@ case "${1:-}" in
     echo "resource sampler started: pid $(cat "$dir/pid"), $(nproc) cpus"
     ;;
   report)
+    if [ ! -s "$dir/samples" ]; then echo "no resource samples: the sampler did not start"; exit 0; fi
     kill "$(cat "$dir/pid" 2>/dev/null)" 2>/dev/null
     sample >>"$dir/samples"
     read -r t0 c0 i0 w0 < <(head -1 "$dir/samples")

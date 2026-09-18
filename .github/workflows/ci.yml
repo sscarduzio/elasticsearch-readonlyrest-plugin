@@ -225,8 +225,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Start the resource sampler
-        run: ci/resource-sampler.sh start
+      - name: Start host telemetry
+        uses: ./.github/actions/host-telemetry-start
+        with:
+          id: ${{ matrix.OPTIONAL_CHECK }}
 
       - name: Free host disk
         run: ci/free-host-disk.sh
@@ -242,9 +244,11 @@ jobs:
           oss-index-username: ${{ secrets.OSS_INDEX_USERNAME }}
           oss-index-password: ${{ secrets.OSS_INDEX_PASSWORD }}
 
-      - name: Resource sampler report
+      - name: Host telemetry report
         if: always()
-        run: ci/resource-sampler.sh report
+        uses: ./.github/actions/host-telemetry-report
+        with:
+          id: ${{ matrix.OPTIONAL_CHECK }}
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
@@ -260,8 +264,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Start the resource sampler
-        run: ci/resource-sampler.sh start
+      - name: Start host telemetry
+        uses: ./.github/actions/host-telemetry-start
+        with:
+          id: ${{ matrix.REQUIRED_CHECK }}
 
       - name: Free host disk
         run: ci/free-host-disk.sh
@@ -276,9 +282,11 @@ jobs:
           ROR_S3_PATH_LIBS: ${{ vars.ROR_S3_PATH_LIBS }}
         run: ci/run-pipeline.sh
 
-      - name: Resource sampler report
+      - name: Host telemetry report
         if: always()
-        run: ci/resource-sampler.sh report
+        uses: ./.github/actions/host-telemetry-report
+        with:
+          id: ${{ matrix.REQUIRED_CHECK }}
 
   # ── TEST: unit tests on Linux ─────────────────────────────────────────────
   unit_tests_linux:
@@ -292,8 +300,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Start the resource sampler
-        run: ci/resource-sampler.sh start
+      - name: Start host telemetry
+        uses: ./.github/actions/host-telemetry-start
+        with:
+          id: unit_tests_linux
 
       - name: Free host disk
         run: ci/free-host-disk.sh
@@ -311,9 +321,11 @@ jobs:
         with:
           id: unit-test
 
-      - name: Resource sampler report
+      - name: Host telemetry report
         if: always()
-        run: ci/resource-sampler.sh report
+        uses: ./.github/actions/host-telemetry-report
+        with:
+          id: unit_tests_linux
 
   # ── TEST: Linux integration tests ─────────────────────────────────────────
   it_linux:
@@ -334,16 +346,13 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Start the resource sampler
-        run: ci/resource-sampler.sh start
+      - name: Start host telemetry
+        uses: ./.github/actions/host-telemetry-start
+        with:
+          id: it_linux_${{ matrix.ES_MODULE }}
 
       - name: Free host disk
         run: ci/free-host-disk.sh
-      - name: Start memory telemetry
-        uses: ./.github/actions/mem-telemetry-start
-        with:
-          id: ${{ matrix.ES_MODULE }}
-          log-dir: integration-tests/build
       - name: integration_${{ matrix.ES_MODULE }}
         env:
           # The task name run-pipeline.sh dispatches on. The matrix carries the bare module.
@@ -374,12 +383,6 @@ jobs:
         uses: ./.github/actions/publish-test-results
         with:
           id: it-linux-${{ matrix.ES_MODULE }}
-      - name: Memory telemetry report
-        if: always()
-        uses: ./.github/actions/mem-telemetry-report
-        with:
-          id: ${{ matrix.ES_MODULE }}
-          log-dir: integration-tests/build
       # es90x is the reference leg: the first ES 9 module, and thus a stable baseline.
       - name: Suite-timings drift check
         if: always() && matrix.ES_MODULE == 'es90x'
@@ -391,9 +394,11 @@ jobs:
           id: it-linux-${{ matrix.ES_MODULE }}
           log-dir: integration-tests/build/sharded-logs
 
-      - name: Resource sampler report
+      - name: Host telemetry report
         if: always()
-        run: ci/resource-sampler.sh report
+        uses: ./.github/actions/host-telemetry-report
+        with:
+          id: it_linux_${{ matrix.ES_MODULE }}
 
   # ── TEST: Windows integration tests ───────────────────────────────────────
   it_windows:
@@ -486,8 +491,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Start the resource sampler
-        run: ci/resource-sampler.sh start
+      - name: Start host telemetry
+        uses: ./.github/actions/host-telemetry-start
+        with:
+          id: e2e_order_kbn_images
 
       - name: Free host disk
         run: ci/free-host-disk.sh
@@ -522,9 +529,11 @@ jobs:
           source ci/configure-docker.sh
           ci/run-pipeline.sh
 
-      - name: Resource sampler report
+      - name: Host telemetry report
         if: always()
-        run: ci/resource-sampler.sh report
+        uses: ./.github/actions/host-telemetry-report
+        with:
+          id: e2e_order_kbn_images
 
   # ── E2E_BUILD_ES_IMAGES (this repo's build) ───────────────────────────────
   # Builds and publishes this repo's ROR ES dev image. One job per module, under the per-run tag.
@@ -542,8 +551,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Start the resource sampler
-        run: ci/resource-sampler.sh start
+      - name: Start host telemetry
+        uses: ./.github/actions/host-telemetry-start
+        with:
+          id: e2e_build_es_${{ matrix.ES_MODULE }}
 
       - name: Free host disk
         run: ci/free-host-disk.sh
@@ -559,9 +570,11 @@ jobs:
           source ci/configure-docker.sh
           ci/run-pipeline.sh
 
-      - name: Resource sampler report
+      - name: Host telemetry report
         if: always()
-        run: ci/resource-sampler.sh report
+        uses: ./.github/actions/host-telemetry-report
+        with:
+          id: e2e_build_es_${{ matrix.ES_MODULE }}
 
   # ── E2E_TESTS (docker env) ────────────────────────────────────────────────
   # Cypress e2e suite, one job per module. Both dev images are already in the registry:
@@ -587,8 +600,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Start the resource sampler
-        run: ci/resource-sampler.sh start
+      - name: Start host telemetry
+        uses: ./.github/actions/host-telemetry-start
+        with:
+          id: e2e_tests_${{ matrix.ES_MODULE }}
 
       - name: Free host disk
         run: ci/free-host-disk.sh
@@ -637,9 +652,11 @@ jobs:
             "${E2E_TESTS_DIR:?run_e2e_tests did not publish the e2e clone path}/results" \
             "${{ matrix.ES_MODULE }}_${E2E_ELK_VERSION:?run_e2e_tests did not publish the ELK version}"
 
-      - name: Resource sampler report
+      - name: Host telemetry report
         if: always()
-        run: ci/resource-sampler.sh report
+        uses: ./.github/actions/host-telemetry-report
+        with:
+          id: e2e_tests_${{ matrix.ES_MODULE }}
 
   # ── BUILD_ROR ─────────────────────────────────────────────────────────────
   build_ror:
@@ -663,8 +680,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - name: Start the resource sampler
-        run: ci/resource-sampler.sh start
+      - name: Start host telemetry
+        uses: ./.github/actions/host-telemetry-start
+        with:
+          id: build_es${{ matrix.ES_MAJOR }}xx
 
       - name: Free host disk
         run: ci/free-host-disk.sh
@@ -674,6 +693,8 @@ jobs:
           ES_MAJOR: ${{ matrix.ES_MAJOR }}
         run: ci/run-pipeline.sh
 
-      - name: Resource sampler report
+      - name: Host telemetry report
         if: always()
-        run: ci/resource-sampler.sh report
+        uses: ./.github/actions/host-telemetry-report
+        with:
+          id: build_es${{ matrix.ES_MAJOR }}xx
