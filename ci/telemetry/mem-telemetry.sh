@@ -1,13 +1,14 @@
 #!/bin/bash
-# Memory telemetry for the integration CI legs.
+# Memory telemetry for every Linux CI job.
 #
-# A leg runs ~9 JVMs plus up to 8 ES containers on a 16GB runner. When the tail of that sum
-# crosses physical RAM, the kernel OOM killer SIGKILLs the fattest process and the job dies
-# with a bare "exit code 137" and no evidence. This sampler records, every 10 seconds:
+# An integration leg runs ~9 JVMs plus up to 8 ES containers on a 16GB runner. When the tail of
+# that sum crosses physical RAM, the kernel OOM killer SIGKILLs the fattest process and the job
+# dies with a bare "exit code 137" and no evidence. This sampler records, every 10 seconds:
 #   * host MemAvailable/SwapFree (/proc/meminfo is not namespaced, so the values are host-wide
-#     even though the job runs inside the toolchains container)
+#     even though most jobs run inside the toolchains container)
 #   * memory PSI (pressure-stall, /proc/pressure/memory) where the kernel exposes it
-#   * the top processes by RSS in the job container's PID namespace (the gradle/JVM stack)
+#   * the top processes by RSS, inside the job container where the job has one and on the VM
+#     where it has none (e2e_tests is the one Linux job with no container)
 #   * docker stats for all containers (the ES/deps containers are siblings on the host daemon)
 #
 # Usage:

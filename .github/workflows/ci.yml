@@ -603,7 +603,7 @@ jobs:
       - name: Start host telemetry
         uses: ./.github/actions/host-telemetry-start
         with:
-          id: e2e_tests_${{ matrix.ES_MODULE }}
+          id: e2e_${{ matrix.ES_MODULE }}
 
       - name: Free host disk
         run: ci/free-host-disk.sh
@@ -656,7 +656,7 @@ jobs:
         if: always()
         uses: ./.github/actions/host-telemetry-report
         with:
-          id: e2e_tests_${{ matrix.ES_MODULE }}
+          id: e2e_${{ matrix.ES_MODULE }}
 
   # ── BUILD_ROR ─────────────────────────────────────────────────────────────
   build_ror:

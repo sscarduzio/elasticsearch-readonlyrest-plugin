@@ -43,8 +43,9 @@ case "${1:-}" in
     echo "resource sampler started: pid $(cat "$dir/pid"), $(nproc) cpus"
     ;;
   report)
-    if [ ! -s "$dir/samples" ]; then echo "no resource samples: the sampler did not start"; exit 0; fi
+    # Stop first, print second: a sampler with an empty series is still a sampler to stop.
     kill "$(cat "$dir/pid" 2>/dev/null)" 2>/dev/null
+    if [ ! -s "$dir/samples" ]; then echo "no resource samples recorded"; exit 0; fi
     sample >>"$dir/samples"
     read -r t0 c0 i0 w0 < <(head -1 "$dir/samples")
     read -r t1 c1 i1 w1 < <(tail -1 "$dir/samples")

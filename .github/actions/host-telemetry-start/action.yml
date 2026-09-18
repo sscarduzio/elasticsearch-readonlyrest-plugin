@@ -15,9 +15,11 @@ description: >-
 inputs:
   id:
     description: >-
-      What tells this job's telemetry from another's once the artifacts are downloaded side by side:
-      the job name, plus the matrix leg where the job has one. The report action names its artifact
-      after it, so it must be unique in the run.
+      What tells this job's telemetry from another's once the artifacts are downloaded side by side.
+      The report action names its artifact after it, so it must be unique in the run, and it must say
+      which job the telemetry comes from. The job name plus the matrix leg does both, except where
+      the job name reads like another job's: the e2e image build is named build_es_<module>, which a
+      reader takes for a build_ror leg, so its id is e2e_build_es_<module>.
     required: true
 
 runs:
