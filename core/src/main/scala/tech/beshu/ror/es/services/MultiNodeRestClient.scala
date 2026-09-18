@@ -48,7 +48,6 @@ object MultiNodeRestClient {
 
   object FailoverDecision {
     case object TryNextNode extends FailoverDecision
-
     case object Stop extends FailoverDecision
   }
 
@@ -79,7 +78,8 @@ final class FailoverClient[Req, Resp] private (
 
   override def perform(request: Req)(
       using RequestId
-  ): Task[Resp] = Task.defer(performWithFailover(selectNodes(), request))
+  ): Task[Resp] =
+    Task.defer(performWithFailover(selectNodes(), request))
 
   override def close(): Unit = nodeClients.toList.foreach {
     _.executor.close()

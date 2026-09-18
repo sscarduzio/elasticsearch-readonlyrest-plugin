@@ -804,10 +804,10 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
           }.leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
           maybeIgnoreProblems <- c.downFieldAs[Option[Boolean]]("ignore_es_connectivity_problems")
         } yield AuditCluster.RemoteAuditCluster(
-          clusterNodes,
-          mode,
-          maybeCredentials,
-          maybeIgnoreProblems.getOrElse(false)
+          nodes = clusterNodes,
+          mode = mode,
+          credentials = maybeCredentials,
+          ignoreClusterConnectivityProblems = maybeIgnoreProblems.getOrElse(false)
         )
     }
   }

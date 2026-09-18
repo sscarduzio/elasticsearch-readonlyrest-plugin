@@ -32,7 +32,7 @@ sealed trait AuditOutputServiceCreator extends RequestIdAwareLogging {
       cluster: AuditCluster,
       httpClientsFactory: HttpClientsFactory,
       create: Task[AUDIT_SERVICE]
-  ): Task[Either[AuditOutputServiceCreator.InitializationError, AUDIT_SERVICE]] = {
+  ): Task[Either[InitializationError, AUDIT_SERVICE]] = {
     cluster match {
       case AuditCluster.LocalAuditCluster =>
         create.map(Right(_))
@@ -43,25 +43,24 @@ sealed trait AuditOutputServiceCreator extends RequestIdAwareLogging {
             case Right(()) =>
               create.map(Right(_))
             case Left(error: ConnectivityError) if remote.ignoreClusterConnectivityProblems =>
-              Task
-                .delay(
-                  noRequestIdLogger.info(
-                    s"Audit cluster connectivity check failed, but 'ignore_es_connectivity_problems: true' is set, so auditing will proceed: ${error.message}"
-                  )
+              for {
+                service <- create
+                _ <- noRequestIdLogger.dInfo(
+                  s"Audit cluster connectivity check failed, but 'ignore_es_connectivity_problems: true' is set, so auditing will proceed: ${error.message}"
                 )
-                .flatMap(_ => create.map(Right(_)))
+              } yield Right(service)
             case Left(error: ConnectivityError) =>
-              Task.pure(
-                Left(
-                  InitializationError(
-                    s"${error.message}. You can disable this check by setting 'ignore_es_connectivity_problems: true' in the audit cluster configuration"
-                  )
-                )
+              initializationError(
+                s"${error.message}. You can disable this check by setting 'ignore_es_connectivity_problems: true' in the audit cluster configuration"
               )
             case Left(error: AuditRemoteClusterConnectivityCheck.Error.ConfigurationError) =>
-              Task.pure(Left(InitializationError(error.message)))
+              initializationError(error.message)
           }
     }
+  }
+
+  private def initializationError(message: String) = {
+    Task.pure(Left(InitializationError(message)))
   }
 
 }
@@ -79,7 +78,7 @@ trait IndexBasedAuditOutputServiceCreator extends AuditOutputServiceCreator {
   final def createIndexService(
       cluster: AuditCluster,
       httpClientsFactory: HttpClientsFactory
-  ): Task[Either[AuditOutputServiceCreator.InitializationError, IndexBasedAuditOutputService]] =
+  ): Task[Either[InitializationError, IndexBasedAuditOutputService]] =
     withConnectivityCheck(cluster, httpClientsFactory, Task.delay(index(cluster)))
 
 }
@@ -91,7 +90,7 @@ trait DataStreamBasedAuditOutputServiceCreator extends AuditOutputServiceCreator
   final def createDataStreamService(
       cluster: AuditCluster,
       httpClientsFactory: HttpClientsFactory
-  ): Task[Either[AuditOutputServiceCreator.InitializationError, DataStreamBasedAuditOutputService]] =
+  ): Task[Either[InitializationError, DataStreamBasedAuditOutputService]] =
     withConnectivityCheck(cluster, httpClientsFactory, Task.delay(dataStream(cluster)))
 
 }
