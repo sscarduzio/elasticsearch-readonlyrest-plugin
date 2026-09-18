@@ -94,7 +94,6 @@ upload_one() {
 UPLOADED=0
 SKIPPED_EMPTY=0
 FAILED=0
-DIAGNOSED=false
 
 # -print0/read -d '' so paths with spaces survive; the relative path becomes the key, keeping the
 # videos/ vs screenshots/ split visible in the bucket.
@@ -113,17 +112,10 @@ while IFS= read -r -d '' FILE; do
     continue
   fi
 
-  ci_log "WARNING: upload failed for $FILE (continuing)"
+  # The uploader prints the answer of S3 on every failure, so the log already names the cause of
+  # this one: AccessDenied, SignatureDoesNotMatch, or a policy condition.
+  ci_log "The upload of $FILE failed. The run continues with the next file."
   FAILED=$((FAILED + 1))
-  # s3-uploader.sh uses `curl -f`, which hides the server's error body. On the FIRST failure only,
-  # re-run it with S3_UPLOADER_DEBUG=1 to capture the actual S3 error XML (AccessDenied /
-  # SignatureDoesNotMatch / a policy condition) — without it a 403 is unattributable.
-  if [ "$DIAGNOSED" = false ]; then
-    DIAGNOSED=true
-    ci_log "----- S3 failure diagnostic: re-uploading $REL to capture the error body -----"
-    (S3_UPLOADER_DEBUG=1 upload_one "$FILE" "${S3_PATH}${REL}" "$MIME" 2>&1 | sed 's/^/[s3-debug] /' >&2) || true
-    ci_log "----- end diagnostic -----"
-  fi
 done < <(find "$SOURCE_DIR" -type f -print0)
 
 ci_log "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"

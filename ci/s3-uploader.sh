@@ -168,8 +168,9 @@ case "$http_code" in
         rm -f "$response_body"
         ;;
     *)
-        ci_log "ERROR: upload of $srcfile to ${upload_url}${targfile} failed (HTTP $http_code, curl exit $curl_status)"
-        cat "$response_body" >&2
+        ci_log "The upload of $srcfile to ${upload_url}${targfile} failed (HTTP $http_code, curl exit $curl_status)."
+        # The answer of S3 names the cause. It carries no closing newline, so print one.
+        [ -s "$response_body" ] && printf '%s\n' "$(<"$response_body")" >&2
         rm -f "$response_body"
         exit 1
         ;;
