@@ -100,8 +100,6 @@ docker_image_state() {
   local image=$1 log
 
   log=$(mktemp) || return 1
-  # --retry-if merges the output of the command into its standard output, so the redirect below
-  # catches both streams, and the messages of retry_with_backoff stay out of the file.
   if retry_with_backoff --retry-if is_docker_registry_error \
        docker manifest inspect "$image" >"$log"; then
     rm -f "$log"
@@ -365,9 +363,13 @@ tag() {
   GIT_TAG="$1"
   local state
 
+  # The caller filtered the published versions before it built anything, so this tag was absent
+  # minutes ago. It can be here only because somebody pushed it while this run worked, and this run
+  # then published the version a second time. Say so: a push would fail here anyway, because the
+  # annotated tag below is a new object, and origin holds another one under that name.
   state=$(remote_tag_state "$GIT_TAG") || return 1
   if [ "$state" = present ]; then
-    ci_log "Git tag $GIT_TAG is already on origin. This run skips it."
+    ci_log "Git tag $GIT_TAG reached origin while this run worked, so this run published ES ${GIT_TAG#*_es} a second time."
     return 0
   fi
 
