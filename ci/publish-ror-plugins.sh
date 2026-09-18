@@ -75,9 +75,9 @@ pending_versions() {
   done
 }
 
-# Builds the module's base version once and verifies bytecode reuse for the newest version.
-# Then it repackages and publishes each ES version. Release mode skips any version origin
-# already tagged. upload_pre publishes every version regardless.
+# Verifies bytecode reuse, builds the base version once, then repackages and publishes every ES
+# version from that base zip. Release mode leaves out a version origin already tagged. It builds the
+# base zip all the same, because a repackage starts from it. upload_pre publishes every version.
 #   $1 mode (upload_pre|release)  $2 ror_version  $3 module
 publish_module() {
   local mode=$1 ror_version=$2 module=$3
@@ -96,7 +96,7 @@ publish_module() {
     return 1
   fi
 
-  ci_log "Module $module builds from base ES $base_version, and publishes ${#versions[@]} versions: ${versions[*]}."
+  ci_log "Module $module owns ${#versions[@]} versions, and builds from base ES $base_version: ${versions[*]}."
 
   # Publish newest-to-oldest so the most recent version is available first.
   mapfile -t versions < <(printf '%s\n' "${versions[@]}" | tac)
@@ -120,6 +120,8 @@ publish_module() {
     ci_log "Module $module has every version on origin, so this run builds nothing."
     return 0
   fi
+
+  ci_log "Module $module publishes ${#pending[@]} of them: ${pending[*]}."
 
   if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
     return 1

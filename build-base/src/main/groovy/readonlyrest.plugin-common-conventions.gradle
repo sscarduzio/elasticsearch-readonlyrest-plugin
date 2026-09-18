@@ -364,7 +364,7 @@ tasks.register('packageRorPlugin') {
 // Usage: ./gradlew :es818x:printEsVersionsForModule --quiet
 tasks.register('printEsVersionsForModule') {
     group = 'help'
-    description = "Prints base version and all supported versions for ${project.name} to stdout"
+    description = "Prints base version and all supported versions for ${project.name}, and writes build/es-modules/versions.txt"
     outputs.upToDateWhen { false }
     doLast {
         def esVersions = EsVersions.of(project)
@@ -382,7 +382,7 @@ tasks.register('printEsVersionsForModule') {
 // Usage: ./gradlew :es94x:printNewestEsVersionForModule --quiet
 tasks.register('printNewestEsVersionForModule') {
     group = 'help'
-    description = "Prints the newest supported ES version for ${project.name} to stdout"
+    description = "Prints the newest supported ES version for ${project.name}, and writes build/es-modules/newest-version.txt"
     outputs.upToDateWhen { false }
     doLast {
         def newest = EsVersions.of(project).newest.toString()

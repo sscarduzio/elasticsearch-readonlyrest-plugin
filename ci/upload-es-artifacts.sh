@@ -25,9 +25,9 @@ ci_log "($0) UPLOADING ES ARTIFACTS ..."
 
 VERSIONS_INPUT="${ES_VERSIONS_TO_UPLOAD:-}"
 
-# Not an error here: this script is runnable by hand, and "show me what it would do" should not fail.
-# It is announced loudly all the same — a silent no-op is exactly what used to be mistaken for a
-# successful upload. The workflow turns the same state into an error before it ever gets here.
+# Not an error here: this script is runnable by hand, and "show me what it would do" should not
+# fail. The log says what did not happen. The workflow rejects the same state before a CI run ever
+# reaches this branch.
 if [ -z "$(echo "$VERSIONS_INPUT" | tr -d '[:space:],')" ]; then
   ci_log "ES_VERSIONS_TO_UPLOAD is empty - NO ES artifacts were uploaded to the libs store."
   ci_log "Set it (e.g. ES_VERSIONS_TO_UPLOAD='9.5.1 9.4.5') to mirror an ES version's jars."

@@ -11,11 +11,9 @@
 #   e.g. upload-cypress-artifacts-to-s3.sh "$E2E_TESTS_DIR/results" es818x_8.19.19
 #
 # Uploads to the E2E_REPORTS store — the bucket's `e2e_reports/` tree, a sibling of the `builds/`
-# (ARTIFACTS) and `libs/` (LIBS) trees. Same env-var family as those, per ci-lib.sh's
-# one credential set: ROR_S3_{ACCESS_KEY_ID,SECRET_ACCESS_KEY,BUCKET,
-# REGION,ENDPOINT_URL,PATH_PREFIX}. It gets its own credentials because the gateway authorizes each
-# prefix separately — the publishing creds are 403ed here, and these must not be able to write to
-# the customer-facing builds/ tree.
+# (ARTIFACTS) and `libs/` (LIBS) trees. One credential set serves every store, and the store name
+# selects the key prefix alone: ROR_S3_{ACCESS_KEY_ID,SECRET_ACCESS_KEY,BUCKET,REGION,ENDPOINT_URL}
+# plus ROR_S3_PATH_E2E_REPORTS.
 #
 # Final key: <PATH_PREFIX>/<s3 subfolder>/<path within results dir>.
 

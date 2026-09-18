@@ -6,20 +6,20 @@
 
 History belongs to the commit message and the PR description. `git log -S <symbol>` finds it there, forever, with the diff next to it. A comment that tells the story of a line that no longer exists gets no such support. Six months later nobody knows if it is still true.
 
-Example — a comment that tells the story of a line in `.github/workflows/ci.yml`:
+Example — a comment on the disk reclaim of a shared runner:
 
-```yaml
-# Bad: the reader sees a line that is already there, plus a story about how it got there.
-# AGENT_ISSELFHOSTED was moved up to the workflow level in an earlier PR, because the
-# jobs kept forgetting it. Its only reader is ci/free-host-disk.sh...
-AGENT_ISSELFHOSTED: '1'
+```bash
+# Bad: the reader sees a guard that is already there, plus a story about how it got there.
+# This branch used to read AGENT_ISSELFHOSTED, until a runner without that variable
+# deleted the box's system directories. is_shared_docker_host replaced it...
+if is_shared_docker_host; then
 ```
 
 ```bash
 # Good: the rule sits at the guard that enforces it.
-#   shared self-hosted   the system directories belong to the box, so never touch them.
-elif [ "${AGENT_ISSELFHOSTED:-0}" != "1" ]; then
-  echo ">>> [host] freeing preinstalled toolchains to fit ES image builds"
+# The system directories of a shared box belong to every repository on it, so never touch them.
+if is_shared_docker_host; then
+  ci_log "[host] shared self-hosted box: reclaiming only our own docker leftovers"
 ```
 
 ### Where a comment goes

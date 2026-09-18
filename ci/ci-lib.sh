@@ -323,6 +323,8 @@ publish_ror_es_prebuild_plugin() {
   fi
 }
 
+# The tag of one published version, from a ROR version $1 and an ES version $2. The release docs
+# quote this shape, so a change here needs a change there.
 release_tag() {
   printf 'v%s_es%s\n' "$1" "$2"
 }
