@@ -358,8 +358,10 @@ tasks.register('packageRorPlugin') {
     }
 }
 
-// Prints two lines to stdout: the base ES version (EsVersions.oldest) on line 1, then all supported
-// versions oldest-first space-separated on line 2. Invoke with --quiet to suppress Gradle noise.
+// Gives the base ES version (EsVersions.oldest) on line 1 and all supported versions, oldest first
+// and space-separated, on line 2: printed to stdout for humans, AND written to
+// build/es-modules/versions.txt for scripts. Scripts must read the file — never parse the stdout,
+// which any configuration-time build-script logging can pollute even under --quiet.
 // Usage: ./gradlew :es818x:printEsVersionsForModule --quiet
 tasks.register('printEsVersionsForModule') {
     group = 'help'
@@ -367,20 +369,28 @@ tasks.register('printEsVersionsForModule') {
     outputs.upToDateWhen { false }
     doLast {
         def esVersions = EsVersions.of(project)
-        println esVersions.oldest
-        println esVersions.all.join(' ')
+        def lines = [esVersions.oldest.toString(), esVersions.all.join(' ')]
+        lines.each { println it }
+        def versionsFile = project.layout.buildDirectory.file("es-modules/versions.txt").get().asFile
+        versionsFile.parentFile.mkdirs()
+        versionsFile.text = lines.join('\n') + '\n'
     }
 }
 
-// Prints a single line to stdout: the newest supported ES version for this module.
-// Invoke with --quiet to suppress Gradle noise so the output is the bare version string.
+// Gives the newest supported ES version for this module: printed to stdout for humans, AND written
+// to build/es-modules/newest-version.txt for scripts. Scripts must read the file — never parse the
+// stdout, which any configuration-time build-script logging can pollute even under --quiet.
 // Usage: ./gradlew :es94x:printNewestEsVersionForModule --quiet
 tasks.register('printNewestEsVersionForModule') {
     group = 'help'
     description = "Prints the newest supported ES version for ${project.name} to stdout"
     outputs.upToDateWhen { false }
     doLast {
-        println EsVersions.of(project).newest
+        def newest = EsVersions.of(project).newest.toString()
+        println newest
+        def versionFile = project.layout.buildDirectory.file("es-modules/newest-version.txt").get().asFile
+        versionFile.parentFile.mkdirs()
+        versionFile.text = newest + '\n'
     }
 }
 

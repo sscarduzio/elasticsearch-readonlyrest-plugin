@@ -44,7 +44,10 @@ list_es_modules() {
 # Emits two lines: the base ES version on line 1, all supported versions space-separated on line 2.
 list_es_module_versions() {
   local module=$1
-  ./gradlew ":${module}:printEsVersionsForModule" --quiet </dev/null
+  local versions_file="${module}/build/es-modules/versions.txt"
+  rm -f "$versions_file"
+  ./gradlew ":${module}:printEsVersionsForModule" --quiet </dev/null >&2 || return 1
+  cat "$versions_file"
 }
 
 release_tag() {

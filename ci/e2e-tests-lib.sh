@@ -108,18 +108,19 @@ e2e_elk_version_for_module() {
     return 1
   fi
 
-  local MODULE=$1 OUTPUT VERSION
-  OUTPUT=$(./gradlew --quiet ":${MODULE}:printNewestEsVersionForModule" </dev/null) || {
+  local MODULE=$1 VERSION
+  local VERSION_FILE="${MODULE}/build/es-modules/newest-version.txt"
+  # rm first: a failed gradle run must yield an error, never a stale version from a previous run.
+  rm -f "$VERSION_FILE"
+  ./gradlew --quiet ":${MODULE}:printNewestEsVersionForModule" </dev/null >&2 || {
     echo "ERROR: could not resolve the newest ES version of module '$MODULE'" >&2
     return 2
   }
-  VERSION=$(echo "$OUTPUT" | sed '/^[[:space:]]*$/d' | tail -n 1 | tr -d '[:space:]')
-
-  if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
-    echo "ERROR: ':${MODULE}:printNewestEsVersionForModule' did not print a version. Got:" >&2
-    echo "$OUTPUT" >&2
+  if [ ! -s "$VERSION_FILE" ]; then
+    echo "ERROR: ':${MODULE}:printNewestEsVersionForModule' wrote no version" >&2
     return 3
   fi
+  VERSION=$(cat "$VERSION_FILE")
 
   echo "$VERSION"
 }

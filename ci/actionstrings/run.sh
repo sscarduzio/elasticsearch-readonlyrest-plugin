@@ -12,12 +12,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-ES_VERSIONS=$(./gradlew --quiet printAllSupportedEsVersions)
+VERSIONS_FILE=build/es-modules/es-versions.txt
+# rm first: a failed gradle run must yield an error, never a stale list from a previous run.
+rm -f "$VERSIONS_FILE"
+./gradlew --quiet printAllSupportedEsVersions >&2
 
-if [ -z "$ES_VERSIONS" ]; then
+if [ ! -s "$VERSIONS_FILE" ]; then
   echo "::error::no supported ES versions returned by printAllSupportedEsVersions"
   exit 1
 fi
+ES_VERSIONS=$(cat "$VERSIONS_FILE")
 
 failed=()
 for VERSION in $ES_VERSIONS; do

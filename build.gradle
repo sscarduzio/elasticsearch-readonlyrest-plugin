@@ -95,16 +95,21 @@ tasks.register("isPreReleaseVersion") {
     }
 }
 
-// Prints every ES version ROR supports, one per line, oldest first. The versions come from each es module's
-// `supportedEsVersions` (gradle.properties), so scripts that need the full list cannot drift from what CI
-// actually builds and tests. Invoke with --quiet to suppress Gradle's own output.
+// Gives every ES version ROR supports, one per line, oldest first: printed to stdout for humans, and
+// written to build/es-modules/es-versions.txt for scripts. Scripts must read that file: configuration-time
+// logging can pollute stdout even under --quiet. The versions come from each es module's
+// `supportedEsVersions` (gradle.properties), so a script cannot drift from what CI builds and tests.
 // Usage: ./gradlew printAllSupportedEsVersions --quiet
 tasks.register("printAllSupportedEsVersions") {
     group = 'help'
     description = 'Prints every supported ES version (one per line, oldest first)'
     outputs.upToDateWhen { false }
     doLast {
-        tech.beshu.ror.gradle.utils.EsModuleFinder.allSupportedEsVersions(rootProject).each { println it }
+        def versions = tech.beshu.ror.gradle.utils.EsModuleFinder.allSupportedEsVersions(rootProject)
+        versions.each { println it }
+        def versionsFile = layout.buildDirectory.file("es-modules/es-versions.txt").get().asFile
+        versionsFile.parentFile.mkdirs()
+        versionsFile.text = versions.collect { "$it\n" }.join()
     }
 }
 
