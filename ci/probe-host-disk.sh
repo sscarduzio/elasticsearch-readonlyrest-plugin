@@ -2,6 +2,10 @@
 # Reports Docker storage placement and large preinstalled toolchain directories on the runner.
 set -uo pipefail
 
+# The whole probe is a diagnostic, and no caller reads it as a value, so every line below goes to
+# standard error. One redirect covers the df, du and awk pipelines as well.
+exec >&2
+
 echo "================ HOST DISK PROBE ================"
 echo "## mounts (which filesystem holds /var/lib/docker?)"
 DOCKER_ROOT=$(docker info -f '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)

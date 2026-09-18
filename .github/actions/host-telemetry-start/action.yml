@@ -31,6 +31,6 @@ runs:
       run: |
         DIR="$RUNNER_TEMP/host-telemetry"
         mkdir -p "$DIR"
-        ci/telemetry/resource-sampler.sh start
+        ci/telemetry/resource-sampler.sh start "$DIR/resource-sampler"
         ci/telemetry/mem-telemetry.sh start "$DIR/mem-telemetry-$LOG_ID.log" \
           > "$DIR/mem-telemetry-$LOG_ID.pid"

@@ -14,8 +14,28 @@
 # container. On a self-hosted Incus container /proc/stat and /proc/pressure
 # show the host, shared by every runner on it, so there the container's own
 # cgroup supplies both counters and iowait is not available.
+#
+# The caller names the directory that holds the series, the PID and the totals, so nothing here
+# reads the environment of a CI provider.
+#
+#   resource-sampler.sh start <dir>    samples until `report` stops it, or for 4 hours
+#   resource-sampler.sh report <dir>   prints the series, and writes <dir>/totals
+#
+# `report` prints the series to standard output, for a caller that collects or folds it. The one
+# line of totals goes to <dir>/totals, for a caller that publishes it. Every message is a
+# diagnostic, and goes to standard error.
 set -u
-dir="${RUNNER_TEMP:-/tmp}/host-telemetry/resource-sampler"
+
+# shellcheck source=ci/log.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../log.sh"
+
+usage() {
+  ci_log "Usage: $0 start <dir> | report <dir>"
+  exit 2
+}
+
+dir=${2:-}
+[ -n "${1:-}" ] && [ -n "$dir" ] || usage
 
 sample() {
   local cpu iowait io
@@ -40,23 +60,21 @@ case "${1:-}" in
     ) >"$dir/samples" 2>/dev/null &
     echo $! >"$dir/pid"
     disown
-    echo "resource sampler started: pid $(cat "$dir/pid"), $(nproc) cpus"
+    ci_log "Resource sampler started: pid $(cat "$dir/pid"), $(nproc) cpus."
     ;;
   report)
     # Stop first, print second: a sampler with an empty series is still a sampler to stop.
     kill "$(cat "$dir/pid" 2>/dev/null)" 2>/dev/null
-    if [ ! -s "$dir/samples" ]; then echo "no resource samples recorded"; exit 0; fi
+    if [ ! -s "$dir/samples" ]; then ci_log "No resource sample was recorded."; exit 0; fi
     sample >>"$dir/samples"
     read -r t0 c0 i0 w0 < <(head -1 "$dir/samples")
     read -r t1 c1 i1 w1 < <(tail -1 "$dir/samples")
     line="resource totals: wall=$((t1 - t0))s cpu=$(( (c1 - c0) / 1000000 ))s io_stall=$(( (i1 - i0) / 1000000 ))s iowait=$(( (w1 - w0) / 1000000 ))s cpus=$(nproc)"
-    echo "$line"
-    echo "::group::resource samples (epoch cpu_usec io_stall_usec iowait_usec)"
+    ci_log "$line"
+    printf '%s\n' "$line" >"$dir/totals"
     cat "$dir/samples"
-    echo "::endgroup::"
-    [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '%s\n' "$line" >>"$GITHUB_STEP_SUMMARY"
     exit 0
     ;;
   *)
-    echo "usage: $0 start|report" >&2; exit 2 ;;
+    usage ;;
 esac

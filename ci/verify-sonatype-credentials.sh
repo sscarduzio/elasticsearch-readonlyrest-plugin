@@ -7,12 +7,18 @@
 #   verify_credentials         — ask the staging API whether it still accepts our identity
 #   report_credentials_failure — put a failed check where someone reads it
 
+# shellcheck source=ci/log.sh
+source "$(dirname "${BASH_SOURCE[0]}")/log.sh"
+
 API="https://ossrh-staging-api.central.sonatype.com/service/local"
 
+# Reports why the check failed, and stops. Each argument is one line of the message.
 fail() {
-  echo ">>> ERROR: $1"
-  echo ">>> Fix it before the next release. The publish job cannot recover from this by retrying:"
-  echo ">>>   a 401 here is a rejected identity, not a busy server."
+  local line
+  for line in "$@"; do
+    ci_log "$line"
+  done
+  ci_log "Fix it before the next release. A retry cannot clear it, because a 401 here is a rejected identity, not a busy server."
   exit 1
 }
 
@@ -38,26 +44,25 @@ verify_credentials() {
     "$API/staging/profiles")" || fail "Cannot reach $API/staging/profiles."
 
   case "$status" in
-    200) echo ">>> Sonatype credentials accepted." ;;
+    200) ci_log "The staging API accepts the Sonatype credentials." ;;
     401|403)
-      fail "The staging API rejected the credentials with HTTP $status.
->>>   The API wants a Central Portal user token (central.sonatype.com -> Account -> Generate
->>>   User Token), not the legacy OSSRH login. Set MAVEN_REPO_USER and MAVEN_REPO_PASSWORD in
->>>   the Doppler project ror_ci (config prd). A direct edit in GitHub is overwritten by the sync."
+      fail "The staging API rejected the credentials with HTTP $status." \
+           "The API wants a Central Portal user token (central.sonatype.com -> Account -> Generate User Token), not the legacy OSSRH login." \
+           "Set MAVEN_REPO_USER and MAVEN_REPO_PASSWORD in the Doppler project ror_ci (config prd). The sync overwrites a direct edit in GitHub."
       ;;
     *) fail "Unexpected HTTP $status from $API/staging/profiles." ;;
   esac
 
   if [ -n "${MAVEN_STAGING_PROFILE_ID:-}" ]; then
     if grep -q "$MAVEN_STAGING_PROFILE_ID" "$body"; then
-      echo ">>> MAVEN_STAGING_PROFILE_ID belongs to this account."
+      ci_log "MAVEN_STAGING_PROFILE_ID names a profile this account owns."
     else
-      fail "MAVEN_STAGING_PROFILE_ID is not a profile this account owns.
->>>   build.gradle sends it to the create-staging-repository call, which then fails.
->>>   Take the id from the staging API instead of the old OSSRH console, and set it in Doppler."
+      fail "MAVEN_STAGING_PROFILE_ID is not a profile this account owns." \
+           "build.gradle sends it to the create-staging-repository call, which then fails." \
+           "Take the id from the staging API, not from the old OSSRH console, and set it in Doppler."
     fi
   else
-    echo ">>> MAVEN_STAGING_PROFILE_ID is empty; the publish plugin will look the profile up."
+    ci_log "MAVEN_STAGING_PROFILE_ID is empty, so the publish plugin looks the profile up itself."
   fi
 }
 
@@ -83,10 +88,10 @@ first thing that finds out. The job log says which credential the staging API re
 set it."
 
   if [ -n "$existing" ]; then
-    echo ">>> Issue #$existing is already open; adding a comment."
+    ci_log "Issue #$existing is already open, so this run adds a comment to it."
     gh issue comment "$existing" --body "$body"
   else
-    echo ">>> Opening an issue."
+    ci_log "Opening an issue."
     gh issue create --title "$title" --body "$body"
   fi
 }

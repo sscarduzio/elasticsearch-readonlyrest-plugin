@@ -111,6 +111,42 @@ Both workflows share two composite actions rather than two copies:
 | `resolve-toolchains-image` | picks the mirror or Docker Hub, and returns the image | `ci_setup`, `release_setup` |
 | `verify-toolchains-image` | proves the baked Gradle home works | `toolchains_verify` (a whole job, to fail fast before the CI matrices), `discover` in `release.yml` (a step, being its first container job) |
 
+### The tag is the publish record
+
+A release tags every version it publishes, on origin: `v<pluginVersion>_es<esVersion>`. The next
+release reads those tags before it builds anything. It then skips the build, the repackage, the S3
+upload and the Docker push of every version a tag already covers. A release that adds one ES version
+to a major therefore rebuilds only the base zip of the module that owns it, plus that version. Every
+other module builds nothing, and runs one gradle configure, which is how a module reports the ES
+versions it owns.
+
+There is no force flag. `FORCE_REBUILD` applies to the pre-build images, not to a release.
+
+To publish one version again, after a corrupt zip or a build from the wrong commit, delete its tag
+on origin and run the release again:
+
+```bash
+git push origin :refs/tags/v1.71.0_es8.18.1
+```
+
+The release then counts that version as unpublished: it builds it, uploads it over the old
+artifact, and writes the tag again. Every other version of the major stays skipped. Delete only the
+tags of the versions you want rebuilt.
+
+Four facts go with that recipe:
+
+- **The re-run decides which commit you get.** "Re-run jobs" on the original run rebuilds the commit
+  that run tested, because `RELEASE_SHA` comes from the event. A new dispatch builds the tip of the
+  branch. A rebuild that must not repeat a bad commit takes the dispatch.
+- **A failed or cancelled leg needs no deletion.** Re-run the job. The run reads the tags again, and
+  resumes at the first version with no tag.
+- **A tag can stand for a version with no Docker image.** Elastic publishes no base image for some ES
+  patch versions, so the release skips the ES+ROR image and still writes the tag. If Elastic
+  publishes that base image later, only a tag deletion builds the ROR image for it.
+- **Every push to master ends in a release run**, a CI-only merge included: the push runs CI, and a
+  green CI run starts the release. That run reads the tags, and a published version stays skipped,
+  so such a push publishes nothing.
+
 ### Two traps in `workflow_run`
 
 **`github.ref` and `github.sha` point at the default branch**, not at the commit CI tested. Every
@@ -198,18 +234,23 @@ Two orchestration rules worth knowing before editing conditions:
 
 ## What the build decides, not the workflow
 
-A workflow must not work out a fact the build already knows. Three Gradle tasks answer for both
+A workflow must not work out a fact the build already knows. These Gradle tasks answer for both
 `ci.yml` and `release.yml`, so no YAML and no shell script but `gradle_property` parses
 `gradle.properties`, and none of them guesses at a module list:
 
 | Task | Answers | Written to |
 |---|---|---|
 | `printEsMajors` | which ES majors get built, uploaded and released | `build/es-modules/es-majors.txt` |
+| `printEsModules` | which modules one ES major holds, newest first | `build/es-modules/es<major>x.txt` |
+| `printEsVersionsForModule` | the base version and every version of one module | `<module>/build/es-modules/versions.txt` |
+| `printNewestEsVersionForModule` | the newest version of one module | `<module>/build/es-modules/newest-version.txt` |
+| `printAllSupportedEsVersions` | every ES version ROR supports | `build/es-modules/es-versions.txt` |
 | `printTestMatrices` | which ES modules each test matrix covers, per [policy](#test-matrix-policy) | `build/ci-matrices/<name>.json` |
 | `isPreReleaseVersion` | whether the configured `pluginVersion` is a pre-release (`-pre`) | stdout: `true` or `false` |
 
-The first two write files, and callers must read those, not gradle stdout — configuration-time
-logging can pollute it even under `--quiet`. `isPreReleaseVersion` prints one word instead.
+Every task but the last writes a file, and a caller must read that file, not gradle stdout —
+configuration-time logging can pollute it even under `--quiet`. `isPreReleaseVersion` prints one
+word instead, which its caller validates.
 
 `isPreReleaseVersion` is the only implementation of the `-pre` rule. It is one half of `discover`'s
 `publish` output; the branch is the other. Its caller goes through `is_pre_release_version` in `ci-lib.sh`. That function
@@ -571,7 +612,7 @@ ES image build, and every image the e2e stack takes from the cache.
 
 Two more things stay off the mirror by themselves, and both must remain so:
 
-- `docker manifest inspect` (`docker_image_exists`) and `docker buildx imagetools create`. They read
+- `docker manifest inspect` (`docker_image_state`) and `docker buildx imagetools create`. They read
   a tag we pushed seconds ago. Both run in the CLI, which reads neither `buildkitd.toml` nor any of
   the variables above, so both address Docker Hub by themselves.
 - Every push. A pull-through cache is read-only, so `beshultd/*` images go to Docker Hub.
