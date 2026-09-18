@@ -571,7 +571,7 @@ ES image build, and every image the e2e stack takes from the cache.
 
 Two more things stay off the mirror by themselves, and both must remain so:
 
-- `docker manifest inspect` (`docker_image_exists`) and `docker buildx imagetools create`. They read
+- `docker manifest inspect` (`docker_image_state`) and `docker buildx imagetools create`. They read
   a tag we pushed seconds ago. Both run in the CLI, which reads neither `buildkitd.toml` nor any of
   the variables above, so both address Docker Hub by themselves.
 - Every push. A pull-through cache is read-only, so `beshultd/*` images go to Docker Hub.

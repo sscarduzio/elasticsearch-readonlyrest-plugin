@@ -88,12 +88,33 @@ is_merge_back_of_master() {
   [ "$here_tree" = "$master_tree" ]
 }
 
+# Asks a registry about one image. Prints `present` or `absent`, and fails when it cannot ask, so
+# no caller reads an unreachable registry as an image that does not exist.
+#
+# Pass a name that carries no mirror: a cache can hold a stale answer for a tag we pushed a moment ago.
+docker_image_state() {
+  local image=$1 log
+
+  log=$(mktemp) || return 1
+  if docker manifest inspect "$image" >"$log" 2>&1; then
+    rm -f "$log"
+    printf 'present\n'
+    return 0
+  fi
+  if grep -Eqi 'no such manifest|manifest unknown|manifest for .+ not found' "$log"; then
+    rm -f "$log"
+    printf 'absent\n'
+    return 0
+  fi
+  echo "ERROR: cannot read $image from the registry." >&2
+  cat "$log" >&2
+  rm -f "$log"
+  return 1
+}
+
+# True only when the registry holds the image, false also when it cannot answer.
 docker_image_exists() {
-  # This answer decides whether we skip an expensive rebuild, so it must come from Docker Hub and
-  # never from a cache: a cache can hold a stale answer for a tag we pushed a moment ago. `docker
-  # manifest inspect` reads the name it is given, and this one carries no mirror, so the answer
-  # comes from Docker Hub. Keep it that way.
-  docker manifest inspect "$1" >/dev/null 2>&1
+  [ "$(docker_image_state "$1")" = present ]
 }
 
 # Runs a command again after a failure. The delay doubles each time.

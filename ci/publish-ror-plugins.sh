@@ -194,23 +194,27 @@ publish_module() {
 # Pushes the ES+ROR Docker image for one version
 push_ror_docker_image() {
   local es_version=$1 module=$2
+  local base_image="docker.elastic.co/elasticsearch/elasticsearch:${es_version}"
+  local base_image_state
 
-  if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${es_version}" >/dev/null 2>&1; then
-    # This build pulls base images and pushes the result, so a registry can answer 429. Only such
-    # a failure is repeated. A broken build fails at once.
-    if ! retry_with_backoff --retry-if is_docker_registry_error \
-         ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
-      echo "Failed to publish plugin Docker image for ES $es_version"
-      return 4
-    fi
-    # Reclaim the ES base image layers pulled by BuildKit — each version is ~1.5 GB and
-    # they don't share layers, so keeping them in the cache has no benefit and exhausts disk.
-    docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-1GB}" >/dev/null 2>&1 || true
-  else
-    # Some ES patch versions have no image in docker.elastic.co (Elastic never published one for them), so
-    # there is no base to build a ROR image on -- skipping here is expected, not a failure.
+  base_image_state=$(docker_image_state "$base_image") || return 4
+  if [ "$base_image_state" = absent ]; then
+    # Elastic published no image for some ES patch versions. There is no base to build on, so a
+    # skip is correct here, not an error.
     echo "WARN: Skipping ES+ROR image for $es_version (no Elasticsearch base image in registry)"
+    return 0
   fi
+
+  # This build pulls base images and pushes the result, so a registry can answer 429. Only such
+  # a failure is repeated. A broken build fails at once.
+  if ! retry_with_backoff --retry-if is_docker_registry_error \
+       ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
+    echo "Failed to publish plugin Docker image for ES $es_version"
+    return 4
+  fi
+  # Reclaim the ES base image layers pulled by BuildKit — each version is ~1.5 GB and
+  # they don't share layers, so keeping them in the cache has no benefit and exhausts disk.
+  docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-1GB}" >/dev/null 2>&1 || true
 }
 
 # Publishes one already-derived version: S3 upload + (release) Docker image. Tagging is the

@@ -131,23 +131,41 @@ fi
 
 # Upload. Supports anonymous upload if bucket is public-writable, and keys are set to ''.
 echo "Uploading: $srcfile ($mime) to $upload_url$targfile"
-# Default: quiet upload that still fails loud. `-f` makes curl exit non-zero on HTTP >=400
-# (so callers detect failures) but it also SUPPRESSES the response body.
 # Set S3_UPLOADER_DEBUG=1 to debug: adds `-v` (verbose, incl. the full TLS handshake trace —
-# very noisy on curl 8.x/OpenSSL) and drops `-f` so curl prints the server's error XML.
-# `-v` is deliberately OFF by default, otherwise every upload floods the CI log with TLS traces.
+# very noisy on curl 8.x/OpenSSL). `-v` is deliberately OFF by default, otherwise every upload
+# floods the CI log with TLS traces.
 if [ -n "${S3_UPLOADER_DEBUG:-}" ]; then
     CURL_FLAGS="-v -S"
 else
-    CURL_FLAGS="-f"
+    CURL_FLAGS=""
 fi
 # The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';', so a spec
 # name that holds either would send a truncated file. $key_and_sig_args stays unquoted on purpose —
 # it is several arguments, and must split.
-curl                            \
+response_body=$(mktemp)
+curl_status=0
+http_code=$(curl                \
     -# $CURL_FLAGS              \
     -F "key=$targfile"          \
     $key_and_sig_args           \
     -F "Content-Type=$mime"     \
     -F "file=@\"$srcfile\""         \
-    "$upload_url"
+    --write-out '%{http_code}'  \
+    --output "$response_body"   \
+    "$upload_url") || curl_status=$?
+
+# S3 answers 204 to a form upload, and 200 or 201 when the policy asks for it. Read the status, not
+# the exit code of curl: a redirect leaves the file unwritten and exits 0. S3 redirects a bucket in
+# another region with 301 and a young bucket with 307, so a wrong region uploads nothing and reports
+# success.
+case "$http_code" in
+    200|201|204)
+        rm -f "$response_body"
+        ;;
+    *)
+        echo "ERROR: upload of $srcfile to ${upload_url}${targfile} failed (HTTP $http_code, curl exit $curl_status)" >&2
+        cat "$response_body" >&2
+        rm -f "$response_body"
+        exit 1
+        ;;
+esac
