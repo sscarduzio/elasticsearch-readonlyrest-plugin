@@ -3,7 +3,7 @@
 source "$(dirname "$0")/ci-lib.sh"
 
 if [ "$#" -lt 2 ]; then
-    echo "Usage: $0 file1 [file2 ... fileN] destination"
+    ci_log "Usage: $0 file1 [file2 ... fileN] destination"
     exit 1
 fi
 
@@ -15,8 +15,8 @@ STORE="${ROR_S3_TARGET_STORE:-ARTIFACTS}"
 for ((i = 1; i < $#; i++)); do
   FILE="${!i}"
 
-  echo "Uploading $FILE to $DEST (store: $STORE) ..."
+  ci_log "Uploading $FILE to $DEST (store $STORE)."
   upload_using_aws_s3_uploader "$FILE" "$DEST" "$STORE"
 done
 
-echo "DONE"
+ci_log "Uploaded $(($# - 1)) file(s) to $DEST."

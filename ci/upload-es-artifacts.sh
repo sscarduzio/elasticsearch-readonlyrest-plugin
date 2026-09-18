@@ -18,16 +18,19 @@
 
 set -eo pipefail
 
-echo ">>> ($0) UPLOADING ES ARTIFACTS ..."
+# shellcheck source=ci/log.sh
+source "$(dirname "${BASH_SOURCE[0]}")/log.sh"
+
+ci_log "($0) UPLOADING ES ARTIFACTS ..."
 
 VERSIONS_INPUT="${ES_VERSIONS_TO_UPLOAD:-}"
 
-# Not an error here: this script is runnable by hand, and "show me what it would do" should not fail.
-# It is announced loudly all the same — a silent no-op is exactly what used to be mistaken for a
-# successful upload. The workflow turns the same state into an error before it ever gets here.
+# Not an error here: this script is runnable by hand, and "show me what it would do" should not
+# fail. The log says what did not happen. The workflow rejects the same state before a CI run ever
+# reaches this branch.
 if [ -z "$(echo "$VERSIONS_INPUT" | tr -d '[:space:],')" ]; then
-  echo "::warning::ES_VERSIONS_TO_UPLOAD is empty — NO ES artifacts were uploaded to the libs store."
-  echo "    Set it (e.g. ES_VERSIONS_TO_UPLOAD='9.5.1 9.4.5') to mirror an ES version's jars."
+  ci_log "ES_VERSIONS_TO_UPLOAD is empty - NO ES artifacts were uploaded to the libs store."
+  ci_log "Set it (e.g. ES_VERSIONS_TO_UPLOAD='9.5.1 9.4.5') to mirror an ES version's jars."
   exit 0
 fi
 
@@ -37,20 +40,18 @@ read -r -a VERSIONS <<< "$(echo "$VERSIONS_INPUT" | tr ',' ' ')"
 # mirror under a junk version directory that someone later has to find and delete by hand.
 for VERSION in "${VERSIONS[@]}"; do
   if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
-    echo "::error::'$VERSION' is not an ES version (expected X.Y.Z)"
+    ci_log "'$VERSION' is not an ES version (expected X.Y.Z)"
     exit 1
   fi
 done
 
-echo ">>> Uploading ES artifacts for: ${VERSIONS[*]}"
+ci_log "Uploading ES artifacts for: ${VERSIONS[*]}"
 
 for VERSION in "${VERSIONS[@]}"; do
-  echo ""
-  echo ">>> ES $VERSION"
+  ci_log "ES $VERSION"
   # `clean` between versions: the mirror tasks stage the jars they publish in ror-tools/build, and a
   # previous version's staged jars there would be published again under this version's coordinates.
   ./gradlew --stacktrace clean ror-tools:uploadArtifactsFromEsBinaries "-PesVersion=$VERSION" </dev/null
 done
 
-echo ""
-echo ">>> DONE — uploaded ES artifacts for: ${VERSIONS[*]}"
+ci_log "DONE - uploaded ES artifacts for: ${VERSIONS[*]}"

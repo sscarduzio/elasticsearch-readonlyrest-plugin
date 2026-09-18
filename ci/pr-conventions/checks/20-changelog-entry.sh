@@ -29,7 +29,7 @@ files_listed=$(awk 'END{print NR}' "$PR_FILES_FILE")
 truncated=false
 if [ "$changed_total" -gt "$files_listed" ]; then
   truncated=true
-  echo "note: the changed-file list is truncated ($files_listed of $changed_total); assuming production code changed"
+  note "the changed-file list is truncated ($files_listed of $changed_total); assuming production code changed"
 fi
 
 if [ "$truncated" = false ] && [ "$production_changed" -eq 0 ] && [ "$dependencies_changed" -eq 0 ]; then

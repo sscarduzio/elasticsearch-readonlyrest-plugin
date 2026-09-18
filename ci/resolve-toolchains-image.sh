@@ -27,6 +27,9 @@
 # For the reason this script exists, see "The container: image" in ci/CI.md.
 set -uo pipefail
 
+# shellcheck source=ci/log.sh
+source "$(dirname "${BASH_SOURCE[0]}")/log.sh"
+
 MIRROR_HOST="mirror.gcr.io"
 
 main() {
@@ -52,8 +55,7 @@ main() {
 
 # The one fault with no fallback. Silence here would give ten jobs an empty container: image:.
 fail() {
-  [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::$1"
-  echo "[CI] $1" >&2
+  ci_log "$1"
   exit 1
 }
 
@@ -88,7 +90,7 @@ mirror_has_digest() {
 
 # $2 is the reason, in one short sentence. It names the fact, not the decision.
 use_docker_hub() {
-  echo "[CI] This run skips the mirror: $2"
+  ci_log "This run skips the mirror: $2"
   emit "$1" "false" "$2"
 }
 
@@ -110,7 +112,7 @@ summarise() {
 }
 
 emit() {
-  echo "[CI] Toolchains image: $1"
+  ci_log "Toolchains image: $1"
   summarise "$1" "$2" "${3:-}"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
     printf 'image=%s\n' "$1" >> "$GITHUB_OUTPUT"

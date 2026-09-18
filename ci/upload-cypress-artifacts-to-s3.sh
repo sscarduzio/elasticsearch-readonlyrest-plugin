@@ -11,11 +11,9 @@
 #   e.g. upload-cypress-artifacts-to-s3.sh "$E2E_TESTS_DIR/results" es818x_8.19.19
 #
 # Uploads to the E2E_REPORTS store — the bucket's `e2e_reports/` tree, a sibling of the `builds/`
-# (ARTIFACTS) and `libs/` (LIBS) trees. Same env-var family as those, per ci-lib.sh's
-# one credential set: ROR_S3_{ACCESS_KEY_ID,SECRET_ACCESS_KEY,BUCKET,
-# REGION,ENDPOINT_URL,PATH_PREFIX}. It gets its own credentials because the gateway authorizes each
-# prefix separately — the publishing creds are 403ed here, and these must not be able to write to
-# the customer-facing builds/ tree.
+# (ARTIFACTS) and `libs/` (LIBS) trees. One credential set serves every store, and the store name
+# selects the key prefix alone: ROR_S3_{ACCESS_KEY_ID,SECRET_ACCESS_KEY,BUCKET,REGION,ENDPOINT_URL}
+# plus ROR_S3_PATH_E2E_REPORTS.
 #
 # Final key: <PATH_PREFIX>/<s3 subfolder>/<path within results dir>.
 
@@ -23,6 +21,9 @@
 set -uo pipefail
 
 CI_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=ci/log.sh
+source "$CI_DIR/log.sh"
+
 STORE=E2E_REPORTS
 
 # Credentials are flat; only the key prefix is resolved through the store name, as in ci-lib.sh
@@ -37,7 +38,7 @@ PREFIX_VAR="ROR_S3_PATH_${STORE}"
 
 require_env() {
   if [ -z "${!1:-}" ]; then
-    echo "ERROR: $1 is not set (required to upload the Cypress artifacts)"
+    ci_log "ERROR: $1 is not set (required to upload the Cypress artifacts)"
     return 1
   fi
 }
@@ -59,8 +60,8 @@ SOURCE_DIR="${1:?Usage: upload-cypress-artifacts-to-s3.sh <results dir> <s3 subf
 S3_SUBFOLDER="${2:?Usage: upload-cypress-artifacts-to-s3.sh <results dir> <s3 subfolder>}"
 
 if [ ! -d "$SOURCE_DIR" ]; then
-  echo "No Cypress results directory at $SOURCE_DIR — nothing to upload."
-  echo "(the suite may have failed before producing any, e.g. while the stack was starting)"
+  ci_log "No Cypress results directory at $SOURCE_DIR - nothing to upload."
+  ci_log "(the suite may have failed before producing any, e.g. while the stack was starting)"
   exit 0
 fi
 
@@ -91,7 +92,6 @@ upload_one() {
 UPLOADED=0
 SKIPPED_EMPTY=0
 FAILED=0
-DIAGNOSED=false
 
 # -print0/read -d '' so paths with spaces survive; the relative path becomes the key, keeping the
 # videos/ vs screenshots/ split visible in the bucket.
@@ -110,22 +110,15 @@ while IFS= read -r -d '' FILE; do
     continue
   fi
 
-  echo "WARNING: upload failed for $FILE (continuing)"
+  # The uploader prints the answer of S3 on every failure, so the log already names the cause of
+  # this one: AccessDenied, SignatureDoesNotMatch, or a policy condition.
+  ci_log "The upload of $FILE failed. The run continues with the next file."
   FAILED=$((FAILED + 1))
-  # s3-uploader.sh uses `curl -f`, which hides the server's error body. On the FIRST failure only,
-  # re-run it with S3_UPLOADER_DEBUG=1 to capture the actual S3 error XML (AccessDenied /
-  # SignatureDoesNotMatch / a policy condition) — without it a 403 is unattributable.
-  if [ "$DIAGNOSED" = false ]; then
-    DIAGNOSED=true
-    echo "----- S3 failure diagnostic: re-uploading $REL to capture the error body -----"
-    (S3_UPLOADER_DEBUG=1 upload_one "$FILE" "${S3_PATH}${REL}" "$MIME" 2>&1 | sed 's/^/[s3-debug] /') || true
-    echo "----- end diagnostic -----"
-  fi
 done < <(find "$SOURCE_DIR" -type f -print0)
 
-echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"
+ci_log "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"
 if [ "$UPLOADED" -gt 0 ]; then
-  echo "Uploaded $UPLOADED Cypress artifact(s) to s3://${BUCKET}/${S3_PATH}"
+  ci_log "Uploaded $UPLOADED Cypress artifact(s) to s3://${BUCKET}/${S3_PATH}"
 elif [ "$FAILED" -eq 0 ]; then
-  echo "No Cypress artifacts found in $SOURCE_DIR — nothing to upload."
+  ci_log "No Cypress artifacts found in $SOURCE_DIR - nothing to upload."
 fi
