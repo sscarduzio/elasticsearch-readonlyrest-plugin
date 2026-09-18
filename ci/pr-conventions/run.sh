@@ -51,7 +51,7 @@ failed=0
 # reports everything that is wrong instead of only the first thing.
 # The runner owns the output, so a check reports through these three and never prints for itself.
 # Everything goes to standard error, with every other diagnostic of this repository. The workflow
-# checks out ci/pr-conventions alone, so this runner cannot source ci/log.sh.
+# checks out this directory alone, so the shared logger is out of reach.
 pass() { echo "ok:   $1" >&2; }
 fail() { echo "FAIL: $1" >&2; failed=1; }
 # What a check had to assume. It is not a result, so it changes no exit status.

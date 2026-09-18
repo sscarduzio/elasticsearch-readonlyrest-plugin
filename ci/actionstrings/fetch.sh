@@ -1,9 +1,8 @@
 #!/bin/bash
 # Prints the ES action strings of one ES version tag, one per line, to standard output.
 #
-# Standard output carries the list and nothing else, because a caller reads it through a pipe or a
-# redirect: ci/actionstrings/fetchIfNecessary.sh captures it into the file it publishes. Every
-# message about the run goes to standard error.
+# Standard output carries the list and nothing else: a caller redirects it into the file it
+# publishes. Every message about the run goes to standard error.
 
 # shellcheck source=ci/log.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../log.sh"

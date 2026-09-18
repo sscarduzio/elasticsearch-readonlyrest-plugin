@@ -322,17 +322,34 @@ publish_ror_es_prebuild_plugin() {
   fi
 }
 
+release_tag() {
+  printf 'v%s_es%s\n' "$1" "$2"
+}
+
+# Prints, one per line, every tag of origin whose name matches the refs/tags glob $1. Prints nothing
+# when none matches, and fails when it cannot ask. Ask only origin: a local tag survives an attempt
+# that tagged and then failed to push.
+#
+# No variable holds the answer: under `bash -x`, a variable that holds hundreds of tags appears in
+# full on every line that carries it.
+origin_tags() {
+  local glob=$1 status
+  retry_with_backoff git ls-remote --tags origin "refs/tags/${glob}" \
+    | awk '{print $2}' | sed -e 's#^refs/tags/##' -e 's/\^{}$//' | sort -u
+  status=${PIPESTATUS[0]}
+  if [ "$status" -ne 0 ]; then
+    ci_log "Cannot read the tags of origin for ${glob}."
+    return "$status"
+  fi
+}
+
 # The tag on origin is the record that a version is published. Prints `absent` or `present`, and
 # fails only when it cannot ask: a query failure read as "absent" publishes the whole release again.
-# Ask only the remote: a local tag survives an attempt that tagged and then failed to push.
 remote_tag_state() {
-  local git_tag=$1 refs
+  local git_tag=$1 tags
 
-  refs=$(git ls-remote --tags origin "refs/tags/${git_tag}") || {
-    ci_log "Cannot read the tags of origin, so $git_tag has no answer."
-    return 1
-  }
-  if [ -n "$refs" ]; then
+  tags=$(origin_tags "$git_tag") || return 1
+  if [ -n "$tags" ]; then
     printf 'present\n'
   else
     printf 'absent\n'

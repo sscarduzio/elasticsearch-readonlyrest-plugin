@@ -25,7 +25,7 @@ Source: `beshu-tech/readonlyrest-internal` (`versioning.md`, `releasing.md`), re
 ## CI artifact pipeline
 
 - Committing a `pluginVersion` change triggers the GitHub Actions release jobs: one zip per supported ES version, uploaded to the artifacts store under `builds/`.
-- Each uploaded deliverable gets a git tag `v<plugin_version>_es<es_version>` (e.g. `v1.37.0_es7.16.2`). CI **skips builds whose tag already exists** — so to resume a half-failed release, just re-run the pipeline; it is idempotent.
+- Each uploaded deliverable gets a git tag `v<plugin_version>_es<es_version>` (e.g. `v1.37.0_es7.16.2`). CI **skips builds whose tag already exists** — so to resume a half-failed release, just re-run the pipeline; it is idempotent. There is no force flag: to publish one version again, delete its tag on origin (`git push origin :refs/tags/v1.37.0_es7.16.2`) and re-run the release. See `ci/CI.md#the-tag-is-the-publish-record`.
 - Release closeout: update the changelog in `beshu-tech/readonlyrest-docs` (`changelog.md`) and send the Mailchimp campaign.
 
 ## Supporting a new ES version (current mechanism)

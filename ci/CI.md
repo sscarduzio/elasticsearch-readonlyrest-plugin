@@ -111,6 +111,26 @@ Both workflows share two composite actions rather than two copies:
 | `resolve-toolchains-image` | picks the mirror or Docker Hub, and returns the image | `ci_setup`, `release_setup` |
 | `verify-toolchains-image` | proves the baked Gradle home works | `toolchains_verify` (a whole job, to fail fast before the CI matrices), `discover` in `release.yml` (a step, being its first container job) |
 
+### The tag is the publish record
+
+A release tags every version it publishes, on origin: `v<pluginVersion>_es<esVersion>`. The next
+release reads those tags before it builds anything. It then skips the build, the repackage, the S3
+upload and the Docker push of every version a tag already covers, so a release that adds one ES
+version to a major rebuilds nothing else.
+
+There is no force flag. `FORCE_REBUILD` applies to the pre-build images, not to a release.
+
+To publish one version again, after a corrupt zip or a build from the wrong commit, delete its tag
+on origin and run the release again:
+
+```bash
+git push origin :refs/tags/v1.71.0_es8.18.1
+```
+
+The release then counts that version as unpublished: it builds it, uploads it over the old
+artifact, and writes the tag again. Every other version of the major stays skipped. Delete only the
+tags of the versions you want rebuilt.
+
 ### Two traps in `workflow_run`
 
 **`github.ref` and `github.sha` point at the default branch**, not at the commit CI tested. Every

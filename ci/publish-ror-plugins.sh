@@ -50,40 +50,18 @@ list_es_module_versions() {
   cat "$versions_file"
 }
 
-release_tag() {
-  printf 'v%s_es%s\n' "$1" "$2"
-}
-
-# Prints, newline-separated, every release tag of $2 that exists on origin. One query for the
-# whole ES major, not one per version — with 17 versions in the ES8 major, that is 17 round
-# trips down to 1.
-#   $1 ror_version
-origin_release_tags() {
-  local ror_version=$1 refs
-  refs=$(retry_with_backoff git ls-remote --tags origin "refs/tags/v${ror_version}_es*") || {
-    ci_log "Cannot read the tags of origin for v${ror_version}."
-    return 1
-  }
-  printf '%s\n' "$refs" | awk '{print $2}' | sed -e 's#^refs/tags/##' -e 's/\^{}$//' | sort -u
-}
-
-# Prints the versions from $4.. that still need publishing, one per line. Release mode skips any
-# version whose tag is already in $3. upload_pre never tags, so it keeps every version there and
-# ignores $3.
-#   $1 mode  $2 ror_version  $3 origin_tags  $4.. versions
+# Prints the versions from $3.. that still need publishing, one per line. It leaves out a version
+# whose tag the file $2 holds. An empty file keeps every version, which is what upload_pre hands
+# over: that mode writes no tag.
+#   $1 ror_version  $2 file of origin tags  $3.. versions
 pending_versions() {
-  local mode=$1 ror_version=$2 origin_tags=$3
-  shift 3
+  local ror_version=$1 origin_tags_file=$2
+  shift 2
   local versions=("$@") version git_tag
-
-  if [ "$mode" != release ]; then
-    printf '%s\n' "${versions[@]}"
-    return 0
-  fi
 
   for version in "${versions[@]}"; do
     git_tag=$(release_tag "$ror_version" "$version")
-    if grep -qFx "$git_tag" <<< "$origin_tags"; then
+    if grep -qFx "$git_tag" "$origin_tags_file"; then
       ci_log "$git_tag is already on origin, so this run skips ES $version."
     else
       printf '%s\n' "$version"
@@ -98,10 +76,12 @@ pending_versions() {
 publish_module() {
   local mode=$1 ror_version=$2 module=$3
   local dist_dir="${module}/build/distributions"
-  local es_jars_dir
-  es_jars_dir=$(mktemp -d)
+  # The scratch space of one module run: the ES jars of the repackage, and the tag list. The trap
+  # removes it on every exit path, an early return included.
+  local module_tmp_dir
+  module_tmp_dir=$(mktemp -d)
 
-  trap 'if [ -n "${es_jars_dir:-}" ]; then rm -rf "$es_jars_dir"; fi' RETURN
+  trap 'if [ -n "${module_tmp_dir:-}" ]; then rm -rf "$module_tmp_dir"; fi' RETURN
 
   local base_version versions
   { read -r base_version; read -r -a versions; } < <(list_es_module_versions "$module")
@@ -117,15 +97,16 @@ publish_module() {
 
   # Fresh on every attempt: a retry of this module must see the tags an earlier attempt already
   # wrote, or it rebuilds and re-uploads a version this run already published.
-  local origin_tags=""
+  local origin_tags_file="$module_tmp_dir/origin-tags.txt"
+  : > "$origin_tags_file"
   if [ "$mode" = release ]; then
-    origin_tags=$(origin_release_tags "$ror_version") || return 1
+    origin_tags "$(release_tag "$ror_version" '*')" > "$origin_tags_file" || return 1
   fi
 
   # Checking is a git query. Building and repackaging costs minutes. Filtering here, before any
   # build, skips that cost for every version already published.
   local pending_output
-  pending_output=$(pending_versions "$mode" "$ror_version" "$origin_tags" "${versions[@]}") || return 1
+  pending_output=$(pending_versions "$ror_version" "$origin_tags_file" "${versions[@]}") || return 1
   local -a pending=()
   [ -n "$pending_output" ] && mapfile -t pending <<< "$pending_output"
 
@@ -147,7 +128,7 @@ publish_module() {
   for version in "${pending[@]}"; do
     if [ "$version" != "$base_version" ]; then
       if ! ./gradlew ":${module}:repackageRorPluginForVersion" \
-            "-PesVersion=${base_version}" "-PtargetVersion=${version}" "-PesJarsDir=${es_jars_dir}" </dev/null; then
+            "-PesVersion=${base_version}" "-PtargetVersion=${version}" "-PesJarsDir=${module_tmp_dir}" </dev/null; then
         ci_log "The repackage of $module failed at ES $version."
         return 1
       fi
@@ -155,19 +136,8 @@ publish_module() {
 
     local zip="${dist_dir}/readonlyrest-${ror_version}_es${version}.zip"
 
-    local attempt published=0
-    for attempt in 1 2 3; do
-      if publish_version_artifacts "$mode" "$ror_version" "$module" "$version" "$zip"; then
-        published=1
-        break
-      fi
-      if [ "$attempt" -lt 3 ]; then
-        ci_log "The publish of $module ES $version failed on attempt $attempt of 3. The next attempt starts after a delay."
-        sleep $((attempt * 15))
-      fi
-    done
-    if [ "$published" -ne 1 ]; then
-      ci_log "The publish of $module ES $version failed on all 3 attempts."
+    if ! publish_version_artifacts "$mode" "$ror_version" "$module" "$version" "$zip"; then
+      ci_log "The publish of $module ES $version failed."
       return 1
     fi
 
@@ -225,7 +195,7 @@ publish_version_artifacts() {
   local mode=$1 ror_version=$2 module=$3 es_version=$4 zip=$5
 
   # publish always - even if this is not a release
-  if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
+  if ! retry_with_backoff ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
     ci_log "The S3 upload of $module ES $es_version failed."
     return 1
   fi

@@ -358,10 +358,9 @@ tasks.register('packageRorPlugin') {
     }
 }
 
-// Gives the base ES version (EsVersions.oldest) on line 1 and all supported versions, oldest first
-// and space-separated, on line 2: printed to stdout for humans, AND written to
-// build/es-modules/versions.txt for scripts. Scripts must read the file — never parse the stdout,
-// which any configuration-time build-script logging can pollute even under --quiet.
+// Prints the base ES version on line 1, and every supported version on line 2, space-separated.
+// Writes the same two lines to build/es-modules/versions.txt. A script reads that file: build-script
+// logging can pollute stdout even under --quiet.
 // Usage: ./gradlew :es818x:printEsVersionsForModule --quiet
 tasks.register('printEsVersionsForModule') {
     group = 'help'
@@ -377,9 +376,9 @@ tasks.register('printEsVersionsForModule') {
     }
 }
 
-// Gives the newest supported ES version for this module: printed to stdout for humans, AND written
-// to build/es-modules/newest-version.txt for scripts. Scripts must read the file — never parse the
-// stdout, which any configuration-time build-script logging can pollute even under --quiet.
+// Prints the newest supported ES version of this module, and writes it to
+// build/es-modules/newest-version.txt. A script reads that file: build-script logging can pollute
+// stdout even under --quiet.
 // Usage: ./gradlew :es94x:printNewestEsVersionForModule --quiet
 tasks.register('printNewestEsVersionForModule') {
     group = 'help'
