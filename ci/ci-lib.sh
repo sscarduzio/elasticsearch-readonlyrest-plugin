@@ -100,7 +100,10 @@ docker_image_state() {
   local image=$1 log
 
   log=$(mktemp) || return 1
-  if docker manifest inspect "$image" >"$log" 2>&1; then
+  # --retry-if merges the output of the command into its standard output, so the redirect below
+  # catches both streams, and the messages of retry_with_backoff stay out of the file.
+  if retry_with_backoff --retry-if is_docker_registry_error \
+       docker manifest inspect "$image" >"$log"; then
     rm -f "$log"
     printf 'present\n'
     return 0
@@ -374,7 +377,7 @@ tag() {
   git config --global user.name "CI"
   # -f overwrites any stale local tag from a previous failed push attempt
   git tag -fa "$GIT_TAG" -m "Generated tag from CI build $CI_BUILD_NUMBER"
-  git push origin "$GIT_TAG"
+  retry_with_backoff git push origin "$GIT_TAG"
 }
 
 # Upload a file to an S3-compatible store using the SigV4 curl uploader.

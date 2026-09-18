@@ -59,6 +59,12 @@ pending_versions() {
   shift 2
   local versions=("$@") version git_tag
 
+  # An unreadable file would leave every version pending, and a release would publish them all again.
+  if [ ! -r "$origin_tags_file" ]; then
+    ci_log "Cannot read the tag list at $origin_tags_file."
+    return 1
+  fi
+
   for version in "${versions[@]}"; do
     git_tag=$(release_tag "$ror_version" "$version")
     if grep -qFx "$git_tag" "$origin_tags_file"; then
