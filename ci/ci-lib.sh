@@ -100,8 +100,12 @@ docker_image_state() {
   local image=$1 log
 
   log=$(mktemp) || return 1
+  # --retry-if merges the output of the command into its standard output, so the first redirect
+  # catches both streams. The second one drops the messages of retry_with_backoff: an image Elastic
+  # never published makes the probe fail, and that is an answer here, not a fault. The lines below
+  # report what the probe found, on every path.
   if retry_with_backoff --retry-if is_docker_registry_error \
-       docker manifest inspect "$image" >"$log"; then
+       docker manifest inspect "$image" >"$log" 2>/dev/null; then
     rm -f "$log"
     printf 'present\n'
     return 0
