@@ -33,7 +33,14 @@ runs:
           ci/telemetry/mem-telemetry.sh report "$LOG"
           echo "::endgroup::"
         fi
-        ci/telemetry/resource-sampler.sh report
+        SAMPLER_DIR="$DIR/resource-sampler"
+        echo "::group::resource samples (epoch cpu_usec io_stall_usec iowait_usec)"
+        ci/telemetry/resource-sampler.sh report "$SAMPLER_DIR" || true
+        echo "::endgroup::"
+        # The totals name what the job spent, so they belong on the run page, not in a step log.
+        if [ -f "$SAMPLER_DIR/totals" ]; then
+          cat "$SAMPLER_DIR/totals" >> "$GITHUB_STEP_SUMMARY"
+        fi
     # Upload even when the reports above failed: the log is the point, the report is a summary.
     - if: always()
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

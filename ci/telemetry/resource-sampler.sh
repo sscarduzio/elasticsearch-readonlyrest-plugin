@@ -14,12 +14,28 @@
 # container. On a self-hosted Incus container /proc/stat and /proc/pressure
 # show the host, shared by every runner on it, so there the container's own
 # cgroup supplies both counters and iowait is not available.
+#
+# The caller names the directory that holds the series, the PID and the totals, so nothing here
+# reads the environment of a CI provider.
+#
+#   resource-sampler.sh start <dir>    samples until `report` stops it, or for 4 hours
+#   resource-sampler.sh report <dir>   prints the series, and writes <dir>/totals
+#
+# `report` prints the series to standard output, for a caller that collects or folds it. The one
+# line of totals goes to <dir>/totals, for a caller that publishes it. Every message is a
+# diagnostic, and goes to standard error.
 set -u
 
 # shellcheck source=ci/log.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../log.sh"
 
-dir="${RUNNER_TEMP:-/tmp}/host-telemetry/resource-sampler"
+usage() {
+  ci_log "Usage: $0 start <dir> | report <dir>"
+  exit 2
+}
+
+dir=${2:-}
+[ -n "${1:-}" ] && [ -n "$dir" ] || usage
 
 sample() {
   local cpu iowait io
@@ -55,14 +71,10 @@ case "${1:-}" in
     read -r t1 c1 i1 w1 < <(tail -1 "$dir/samples")
     line="resource totals: wall=$((t1 - t0))s cpu=$(( (c1 - c0) / 1000000 ))s io_stall=$(( (i1 - i0) / 1000000 ))s iowait=$(( (w1 - w0) / 1000000 ))s cpus=$(nproc)"
     ci_log "$line"
-    # The markers and the dump they wrap stay on standard output: GitHub reads them, and a marker
-    # without its own lines collapses nothing.
-    echo "::group::resource samples (epoch cpu_usec io_stall_usec iowait_usec)"
+    printf '%s\n' "$line" >"$dir/totals"
     cat "$dir/samples"
-    echo "::endgroup::"
-    [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '%s\n' "$line" >>"$GITHUB_STEP_SUMMARY"
     exit 0
     ;;
   *)
-    ci_log "Usage: $0 start|report"; exit 2 ;;
+    usage ;;
 esac
