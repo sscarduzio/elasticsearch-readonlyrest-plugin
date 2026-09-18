@@ -116,7 +116,8 @@ Both workflows share two composite actions rather than two copies:
 A release tags every version it publishes, on origin: `v<pluginVersion>_es<esVersion>`. The next
 release reads those tags before it builds anything. It then skips the build, the repackage, the S3
 upload and the Docker push of every version a tag already covers, so a release that adds one ES
-version to a major rebuilds nothing else.
+version to a major rebuilds nothing else. It still runs one gradle configure for each module, which
+is how a module reports the ES versions it owns.
 
 There is no force flag. `FORCE_REBUILD` applies to the pre-build images, not to a release.
 
