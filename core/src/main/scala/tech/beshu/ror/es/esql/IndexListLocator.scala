@@ -48,11 +48,30 @@ private[esql] object IndexListLocator {
   /** A parameter ES binds by the order the placeholders appear in, so dropping one rebinds every one after it. */
   private val anonymousQueryParameter: Regex = """^\s*\?\??\s*$""".r
 
-  def locatedIn(query: String, indices: QueryIndices): Either[ReadingFailure, List[LocatedIndexList]] =
+  def locatedIn(query: String, indices: QueryIndices): Either[ReadingFailure, List[LocatedIndexList]] = {
+    val relations = indices.withoutRepeats
     for {
-      fromSources <- indices.fromSources.filterNot(_.isEmpty).traverse(locateFromSource(query, _))
-      lookupJoins <- indices.lookupJoins.traverse(locateLookupJoin(query, _))
-    } yield fromSources ++ lookupJoins
+      fromSources <- relations.fromSources.traverse(locateFromSource(query, _))
+      lookupJoins <- relations.lookupJoins.traverse(locateLookupJoin(query, _))
+      indexLists = fromSources ++ lookupJoins
+      _ <- checkNoneOverlaps(query, indexLists)
+    } yield indexLists
+  }
+
+  private def checkNoneOverlaps(query: String, indexLists: List[LocatedIndexList]): Either[ReadingFailure, Unit] = {
+    indexLists
+      .map(_.span)
+      .sortBy(span => (span.start, span.end))
+      .sliding(2)
+      .collectFirst {
+        case List(one, next) if next.start < one.end || next.start == one.start =>
+          ReadingFailure.OverlappingIndexLists(
+            query.substring(one.start, one.end),
+            query.substring(next.start, next.end)
+          )
+      }
+      .toLeft(())
+  }
 
   private def locateFromSource(
       query: String,
@@ -80,8 +99,8 @@ private[esql] object IndexListLocator {
       writtenSpan <- writtenSpanOf(query, pattern)
       _ <- checkHoldsReportedIndexPattern(pattern, withoutComments(pattern.writtenText))
       target <- LookupJoinTarget
-        .parse(writtenSpan, pattern.indexPattern)
-        .toRight(ReadingFailure.UnsupportedIndexList(pattern.indexPattern))
+        .parse(writtenSpan, pattern.reportedIndexList)
+        .toRight(ReadingFailure.UnsupportedIndexList(pattern.reportedIndexList))
     } yield target
 
   private def sourceCommandIndicesAt(
@@ -90,8 +109,8 @@ private[esql] object IndexListLocator {
       syntax: IndexListSyntax
   ): Either[ReadingFailure, LocatedIndexList] =
     SourceCommandIndices
-      .parse(span, pattern.indexPattern, syntax)
-      .toRight(ReadingFailure.UnsupportedIndexList(pattern.indexPattern))
+      .parse(span, pattern.reportedIndexList, syntax)
+      .toRight(ReadingFailure.UnsupportedIndexList(pattern.reportedIndexList))
 
   private def writtenSpanOf(
       query: String,
@@ -100,7 +119,7 @@ private[esql] object IndexListLocator {
     offsetOf(query, pattern.writtenAt)
       .map(start => TextSpan(start, start + pattern.writtenText.length))
       .filter(span => span.end <= query.length && query.substring(span.start, span.end) == pattern.writtenText)
-      .toRight(ReadingFailure.NotWhereEsReportedIt(pattern.indexPattern))
+      .toRight(ReadingFailure.NotWhereEsReportedIt(pattern.reportedIndexList))
   }
 
   private def offsetOf(query: String, location: SourceLocation): Option[Int] = {
@@ -132,7 +151,7 @@ private[esql] object IndexListLocator {
           // a subquery entry is merged into the reported list, leaving it no span of its own
           test = !indexList.group(1).contains('('),
           right = IndexListPlace.InQueryText(span, indexList.group(1)),
-          left = ReadingFailure.SubqueryInSourceCommand(pattern.indexPattern)
+          left = ReadingFailure.SubqueryInSourceCommand(pattern.reportedIndexList)
         )
       case None =>
         // a `PROMQL` command's `index=` parameter, whose value ES locates exactly, unless the query writes none
@@ -154,7 +173,7 @@ private[esql] object IndexListLocator {
       pattern: IndexPatternInQuery
   ): Option[IndexListPlace.PromqlIndexParameterToWrite] = {
     Option
-      .when(!sameIndexList(commandText, pattern.indexPattern))(commandText)
+      .when(!sameIndexList(commandText, pattern.reportedIndexList))(commandText)
       .flatMap(promqlKeyword.findFirstMatchIn)
       .map { keyword =>
         val writeAt = writtenSpan.start + keyword.end
@@ -170,9 +189,9 @@ private[esql] object IndexListLocator {
       pattern: IndexPatternInQuery,
       spanText: String
   ): Either[ReadingFailure, Unit] = {
-    if (sameIndexList(spanText, pattern.indexPattern) || boundQueryParameter.matches(spanText)) Right(())
+    if (sameIndexList(spanText, pattern.reportedIndexList) || boundQueryParameter.matches(spanText)) Right(())
     else if (anonymousQueryParameter.matches(spanText)) Left(ReadingFailure.IndexListInAnonymousParameter)
-    else Left(ReadingFailure.NotWhereEsReportedIt(pattern.indexPattern))
+    else Left(ReadingFailure.NotWhereEsReportedIt(pattern.reportedIndexList))
   }
 
   /**

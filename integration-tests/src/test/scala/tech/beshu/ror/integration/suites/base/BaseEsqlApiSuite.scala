@@ -316,6 +316,64 @@ trait BaseEsqlApiSuite
     }
   }
 
+  "An ESQL FORK request" should {
+    "be allowed" when {
+      "the ACL narrows the index list the FORK branches read from" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8x,
+        allEs9xBelowEs91x
+      ) in {
+        val result = dev1EsqlManager.execute("""FROM book* | FORK (LIMIT 100) (LIMIT 100) | LIMIT 100""")
+
+        result should have statusCode 200
+        result.column("author").toList should contain only (
+          Str("James S.A. Corey"),
+          Str("Dan Simmons"),
+          Str("Frank Herbert")
+        )
+        result.rows.size should be(6)
+      }
+      "the ACL resolves the alias the FORK branches read from to the index behind it" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8x,
+        allEs9xBelowEs91x
+      ) in {
+        val result = dev1EsqlManager.execute("""FROM bookshop | FORK (LIMIT 100) (LIMIT 100) | LIMIT 100""")
+
+        result should have statusCode 200
+        result.column("author").toList should contain only (
+          Str("James S.A. Corey"),
+          Str("Dan Simmons"),
+          Str("Frank Herbert")
+        )
+        result.rows.size should be(6)
+      }
+    }
+  }
+
+  "An ESQL request with subqueries" should {
+    "be allowed" when {
+      "a source command holds only a subquery, and the ACL narrows its index list" excludeES (
+        allEs6x,
+        allEs7x,
+        allEs8x,
+        allEs9xBelowEs94x
+      ) in {
+        val result = dev1EsqlManager.execute("""FROM (FROM book* | LIMIT 100) | LIMIT 100""")
+
+        result should have statusCode 200
+        result.column("author").toList should contain only (
+          Str("James S.A. Corey"),
+          Str("Dan Simmons"),
+          Str("Frank Herbert")
+        )
+        result.rows.size should be(3)
+      }
+    }
+  }
+
   "An ESQL LOOKUP JOIN request" should {
     "be allowed" when {
       "both the FROM and the LOOKUP JOIN target are authorized" excludeES (
@@ -497,6 +555,26 @@ trait BaseEsqlApiSuite
         allEs9xBelowEs94x
       ) in {
         val result = metricsAppOnlyEsqlManager.execute("""PROMQL step=1m max by (host) (cpu)""")
+
+        result should have statusCode 200
+        result.column("host").toList should contain only Str("metrics-app-host")
+      }
+    }
+    "be allowed when its index parameter is a query parameter, and the ACL narrows it" when {
+      "the query parameter is named" excludeES (allEs6x, allEs7x, allEs8x, allEs9xBelowEs94x) in {
+        val result = metricsAppOnlyEsqlManager.execute(
+          """PROMQL index=?idx step=1m max by (host) (cpu)""",
+          ujson.Arr(ujson.Obj("idx" -> "metrics-*"))
+        )
+
+        result should have statusCode 200
+        result.column("host").toList should contain only Str("metrics-app-host")
+      }
+      "the query parameter is numbered" excludeES (allEs6x, allEs7x, allEs8x, allEs9xBelowEs94x) in {
+        val result = metricsAppOnlyEsqlManager.execute(
+          """PROMQL index=?1 step=1m max by (host) (cpu)""",
+          ujson.Arr("metrics-*")
+        )
 
         result should have statusCode 200
         result.column("host").toList should contain only Str("metrics-app-host")

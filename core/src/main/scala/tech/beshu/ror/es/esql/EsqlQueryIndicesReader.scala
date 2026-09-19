@@ -30,14 +30,14 @@ object EsqlQueryIndicesReader {
    * Both lists are empty for a query that reads no index, e.g. `ROW` or `SHOW INFO`. Neither has a fixed size: a
    * source command with subqueries reads from each of them, and a query can have many `LOOKUP JOIN` commands.
    */
-  final case class QueryIndices(fromSources: List[IndexPatternInQuery], lookupJoins: List[IndexPatternInQuery])
+  final case class QueryIndices(fromSources: List[IndexPatternInQuery], lookupJoins: List[IndexPatternInQuery]) {
 
-  final case class IndexPatternInQuery(indexPattern: String, writtenAt: SourceLocation, writtenText: String) {
-
-    /** ES reports an empty pattern for a source command of only subqueries. */
-    private[esql] def isEmpty: Boolean = indexPattern.isBlank
+    /** ES reports a relation once for each `FORK` branch built on it, each time at the same place in the query. */
+    private[esql] def withoutRepeats: QueryIndices = QueryIndices(fromSources.distinct, lookupJoins.distinct)
 
   }
+
+  final case class IndexPatternInQuery(reportedIndexList: String, writtenAt: SourceLocation, writtenText: String)
 
   /** A 1-based line and a 0-based column, the way ES reports them. */
   final case class SourceLocation(line: Int, column: Int)

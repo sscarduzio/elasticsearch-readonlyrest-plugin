@@ -241,7 +241,6 @@ class IndexListReplacerTest extends AnyWordSpec {
         rewrite(
           "FROM (FROM idx_a | LIMIT 1) | LIMIT 10",
           allowed("idx_b"),
-          from("FROM (FROM idx_a | LIMIT 1)", ""),
           from("FROM idx_a", "idx_a")
         ) shouldBe "FROM (FROM idx_b | LIMIT 1) | LIMIT 10"
       }
@@ -249,7 +248,6 @@ class IndexListReplacerTest extends AnyWordSpec {
         rewrite(
           "FROM (FROM a* | LIMIT 1), (FROM b* | LIMIT 1) | LIMIT 10",
           allowed("a1", "b1"),
-          from("FROM (FROM a* | LIMIT 1), (FROM b* | LIMIT 1)", ""),
           from("FROM a*", "a*"),
           from("FROM b*", "b*")
         ) shouldBe "FROM (FROM a1 | LIMIT 1), (FROM b1 | LIMIT 1) | LIMIT 10"
@@ -258,7 +256,6 @@ class IndexListReplacerTest extends AnyWordSpec {
         rewrite(
           "FROM (FROM b | LIMIT 1), (FROM c | LIMIT 1) | LIMIT 10",
           allowed("c"),
-          from("FROM (FROM b | LIMIT 1), (FROM c | LIMIT 1)", ""),
           from("FROM b", "b"),
           from("FROM c", "c")
         ) should fullyMatch regex
@@ -268,7 +265,6 @@ class IndexListReplacerTest extends AnyWordSpec {
         rewrite(
           "FROM (FROM secret | LIMIT 1), (FROM secret | LIMIT 1) | LIMIT 10",
           allowed("allowed_idx"),
-          from("FROM (FROM secret | LIMIT 1), (FROM secret | LIMIT 1)", ""),
           from("FROM secret", "secret"),
           from("FROM secret", "secret")
         ) should fullyMatch regex
@@ -278,18 +274,16 @@ class IndexListReplacerTest extends AnyWordSpec {
         rewrite(
           "FROM (FROM (FROM a | LIMIT 1) | LIMIT 1) | LIMIT 10",
           allowed("a"),
-          from("FROM (FROM (FROM a | LIMIT 1) | LIMIT 1)", ""),
-          from("FROM (FROM a | LIMIT 1)", ""),
           from("FROM a", "a")
         ) shouldBe "FROM (FROM (FROM a | LIMIT 1) | LIMIT 1) | LIMIT 10"
       }
-      "pass over a source command naming no index of its own, whichever blank ES reports its list as" in {
-        rewrite(
-          "FROM ( FROM idx_a | LIMIT 1) | LIMIT 10",
+      "refuse to read a source command of only subqueries, were ES to report one with a list of its own" in {
+        readingFailureFor(
+          "FROM (FROM idx_a | LIMIT 1) | LIMIT 10",
           allowed("idx_b"),
-          from("FROM ( FROM idx_a | LIMIT 1)", " "),
+          from("FROM (FROM idx_a | LIMIT 1)", ""),
           from("FROM idx_a", "idx_a")
-        ) shouldBe "FROM ( FROM idx_b | LIMIT 1) | LIMIT 10"
+        ) shouldBe SubqueryInSourceCommand("")
       }
       "refuse to read a command mixing indices of its own with a subquery, which ES reports merged into one list" in {
         readingFailureFor(
@@ -298,6 +292,69 @@ class IndexListReplacerTest extends AnyWordSpec {
           from("FROM a, (FROM b | LIMIT 1), c", "a,c"),
           from("FROM b", "b")
         ) shouldBe SubqueryInSourceCommand("a,c")
+      }
+    }
+    "FORK is used, and ES reports the relation it forks once for each branch" should {
+      "rewrite the source command once" in {
+        rewrite(
+          "FROM logs* | FORK (WHERE a > 1) (WHERE a < 1)",
+          allowed("logs-1"),
+          at(0, "FROM logs*", "logs*"),
+          at(0, "FROM logs*", "logs*")
+        ) shouldBe "FROM logs-1 | FORK (WHERE a > 1) (WHERE a < 1)"
+      }
+      "rewrite an index list much longer than its replacement" in {
+        rewrite(
+          "FROM logs-2024-*,logs-2025-*,metrics-*,traces-* | FORK (WHERE a) (WHERE b)",
+          allowed("logs-2024-01"),
+          at(0, "FROM logs-2024-*,logs-2025-*,metrics-*,traces-*", "logs-2024-*,logs-2025-*,metrics-*,traces-*"),
+          at(0, "FROM logs-2024-*,logs-2025-*,metrics-*,traces-*", "logs-2024-*,logs-2025-*,metrics-*,traces-*")
+        ) shouldBe "FROM logs-2024-01 | FORK (WHERE a) (WHERE b)"
+      }
+      "give the source command the whole ACL-resolved set, as the only one the query has" in {
+        rewrite(
+          "FROM bookshop | FORK (WHERE a) (WHERE b)",
+          allowed("bookstore"),
+          at(0, "FROM bookshop", "bookshop"),
+          at(0, "FROM bookshop", "bookshop")
+        ) shouldBe "FROM bookstore | FORK (WHERE a) (WHERE b)"
+      }
+      "mask a join written before the FORK once" in {
+        rewrite(
+          "FROM src | LOOKUP JOIN secret_idx ON k | FORK (WHERE a) (WHERE b)",
+          allowed("src"),
+          at(0, "FROM src", "src"),
+          at(0, "FROM src", "src"),
+          joinAt(23, "secret_idx", "secret_idx"),
+          joinAt(23, "secret_idx", "secret_idx")
+        ) should fullyMatch regex s"FROM src \\| LOOKUP JOIN $maskedIndex ON k \\| FORK \\(WHERE a\\) \\(WHERE b\\)"
+      }
+      "confirm the rewrite ES reads back once for each branch too" in {
+        verify(
+          "FROM logs* | FORK (WHERE a > 1) (WHERE a < 1)",
+          allowed("logs-1"),
+          esReadsOf(List("logs-1", "logs-1")),
+          at(0, "FROM logs*", "logs*"),
+          at(0, "FROM logs*", "logs*")
+        ) shouldBe Right("FROM logs-1 | FORK (WHERE a > 1) (WHERE a < 1)")
+      }
+    }
+    "ES points at index lists that share text in the query" should {
+      "refuse to read two lists starting at the same place" in {
+        readingFailureFor(
+          "FROM a, b | LIMIT 10",
+          allowed("a"),
+          at(0, "FROM a, b", "a,b"),
+          at(0, "FROM a", "a")
+        ) shouldBe OverlappingIndexLists("a", "a, b")
+      }
+      "refuse to read a list written inside another" in {
+        readingFailureFor(
+          "FROM a, b | LIMIT 10",
+          allowed("a"),
+          at(0, "FROM a, b", "a,b"),
+          joinAt(8, "b", "b")
+        ) shouldBe OverlappingIndexLists("a, b", "b")
       }
     }
     "LOOKUP JOIN is used" should {
@@ -365,7 +422,7 @@ class IndexListReplacerTest extends AnyWordSpec {
           query,
           allowed("shared_idx"),
           from("FROM shared_idx", "shared_idx"),
-          join("shared_idx", "shared_idx")
+          joinAt(30, "shared_idx", "shared_idx")
         ) shouldBe query
       }
       "rewrite a join that opens a FORK branch" in {
@@ -717,7 +774,7 @@ class IndexListReplacerTest extends AnyWordSpec {
     def reportedAt(query: String, offset: Int): IndexPatternInQuery = {
       val before = query.take(offset)
       IndexPatternInQuery(
-        indexPattern = indexPattern,
+        reportedIndexList = indexPattern,
         writtenAt = SourceLocation(
           line = before.count(_ == '\n') + 1,
           column = offset - (before.lastIndexOf('\n') + 1)

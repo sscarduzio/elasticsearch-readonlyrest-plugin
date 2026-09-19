@@ -29,6 +29,12 @@ class EsqlApiManager(restClient: RestClient, esVersion: String) extends BaseMana
     call(createSqlQueryRequest(selectQuery), new EsqlResult(_))
   }
 
+  def execute(selectQuery: String, params: ujson.Arr): EsqlResult = {
+    val request = createSqlQueryRequest(selectQuery)
+    request.setEntity(new StringEntity(s"""{ "query": "$selectQuery", "params": ${params.render()} }"""))
+    call(request, new EsqlResult(_))
+  }
+
   private def createSqlQueryRequest(query: String) = {
     val request = new HttpPost(restClient.from("_query", Map("format" -> "json")))
     request.setHeader("Content-Type", "application/json")

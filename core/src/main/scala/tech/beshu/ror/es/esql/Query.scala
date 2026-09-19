@@ -158,4 +158,6 @@ object ReadingFailure {
 
   final case class UnsupportedIndexList(reportedIndexList: String) extends ReadingFailure
 
+  final case class OverlappingIndexLists(oneWrittenAs: String, otherWrittenAs: String) extends ReadingFailure
+
 }

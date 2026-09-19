@@ -42,9 +42,11 @@ private[esql] object IndexPatternRole extends Enum[IndexPatternRole] {
 
   override val values: IndexedSeq[IndexPatternRole] = findValues
 
-  def describedIndexListsOf(indices: QueryIndices): List[String] =
-    (indices.fromSources.filterNot(_.isEmpty).map(pattern => FromSource.describe(pattern.indexPattern)) ++
-      indices.lookupJoins.map(pattern => LookupJoin.describe(pattern.indexPattern))).sorted
+  def describedIndexListsOf(indices: QueryIndices): List[String] = {
+    val relations = indices.withoutRepeats
+    (relations.fromSources.map(pattern => FromSource.describe(pattern.reportedIndexList)) ++
+      relations.lookupJoins.map(pattern => LookupJoin.describe(pattern.reportedIndexList))).sorted
+  }
 
 }
 

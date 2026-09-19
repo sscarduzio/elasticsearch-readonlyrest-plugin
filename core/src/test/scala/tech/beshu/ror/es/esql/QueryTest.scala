@@ -55,6 +55,14 @@ class QueryTest extends AnyWordSpec {
             Rejection.CannotExtractIndices(ReadingFailure.NotWhereEsReportedIt("logs-1"))
           )
       }
+      "be unreadable when Elasticsearch points at index lists that share text" in {
+        val query = queryFrom("FROM a, b | LIMIT 10", from("FROM a, b", "a,b"), from("FROM a", "a"))
+
+        query shouldBe Query.Unreadable(
+          "FROM a, b | LIMIT 10",
+          Rejection.CannotExtractIndices(ReadingFailure.OverlappingIndexLists("a", "a, b"))
+        )
+      }
       "ask for all indices when it is unreadable" in {
         Query.Unreadable("FROM", Rejection.CannotParseQuery).indices shouldBe allIndices.toList.toCovariantSet
       }
@@ -82,6 +90,18 @@ class QueryTest extends AnyWordSpec {
             "PROMQL index=metrics-1 step=1m rate(v)" -> List(from("metrics-1", "metrics-1"))
           )
         ) shouldBe Right("PROMQL index=metrics-1 step=1m rate(v)")
+      }
+      "rewrite a FORK query, whose forked relation Elasticsearch reports once for each branch" in {
+        narrow(
+          query = "FROM logs* | FORK (WHERE a > 1) (WHERE a < 1)",
+          allowed = allowed("logs-1"),
+          reads = Map(
+            "FROM logs* | FORK (WHERE a > 1) (WHERE a < 1)" ->
+              List(from("FROM logs*", "logs*"), from("FROM logs*", "logs*")),
+            "FROM logs-1 | FORK (WHERE a > 1) (WHERE a < 1)" ->
+              List(from("FROM logs-1", "logs-1"), from("FROM logs-1", "logs-1"))
+          )
+        ) shouldBe Right("FROM logs-1 | FORK (WHERE a > 1) (WHERE a < 1)")
       }
       "stay as written when the ACL allows exactly the indices it asks for" in {
         val reader = readerOf(Map("FROM logs-1 | LIMIT 10" -> List(from("FROM logs-1", "logs-1"))))
@@ -171,7 +191,7 @@ class QueryTest extends AnyWordSpec {
       val offset = query.indexOf(writtenText)
       val before = query.take(offset)
       IndexPatternInQuery(
-        indexPattern = indexPattern,
+        reportedIndexList = indexPattern,
         writtenAt =
           SourceLocation(line = before.count(_ == '\n') + 1, column = offset - (before.lastIndexOf('\n') + 1)),
         writtenText = writtenText

@@ -89,7 +89,7 @@ object EsqlRequestHelper {
     }
 
     override def indicesIn(query: String): Either[Throwable, QueryIndices] = {
-      createStatement(query).map(statement => queryIndicesIn(planOf(statement)))
+      createStatement(query).flatMap(statement => Try(queryIndicesIn(planOf(statement))).toEither)
     }
 
     private def createStatement(query: String) = {
@@ -124,7 +124,7 @@ object EsqlRequestHelper {
       val source = on(indexPattern).call("source").get[Any]()
       val location = on(source).call("source").get[Any]()
       IndexPatternInQuery(
-        indexPattern = on(indexPattern).call("indexPattern").get[String](),
+        reportedIndexList = on(indexPattern).call("indexPattern").get[String](),
         writtenAt = SourceLocation(
           line = on(location).call("getLineNumber").get[Int](),
           column = on(location).call("getColumnNumber").get[Int]() - 1

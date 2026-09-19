@@ -762,6 +762,10 @@ trait LogsShowInstances extends cats.instances.AllInstances {
         "it. Name the parameter ([?index]) or number it ([?1]) to have such a query authorized"
     case ReadingFailure.UnsupportedIndexList(indexList) =>
       s"[${indexList.show}] is not something ReadonlyREST can read as a list of index names"
+    case ReadingFailure.OverlappingIndexLists(one, other) =>
+      s"Elasticsearch points at two index lists, [${one.show}] and [${other.show}], that share text in the " +
+        s"query - so ReadonlyREST cannot narrow one down without changing the other. Please report this query " +
+        s"to the ReadonlyREST team"
   }
 
   implicit val esqlQueryRejectionShow: Show[Rejection] = Show.show {
