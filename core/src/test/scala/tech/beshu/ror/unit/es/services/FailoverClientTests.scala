@@ -218,7 +218,7 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       result should be(Right("node2-response"))
     }
 
-    "fail the request without trying other nodes when all circuits are open and the soonest-trial node fails" in {
+    "try the other nodes when all circuits are open and the soonest-trial node fails" in {
       val clock = new TestClock
       val node1 = new RecordingExecutor(_ => Left(new IOException("node1 down")))
       val node2 = new RecordingExecutor({
@@ -232,9 +232,31 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       performRequest(client) // trial on node1 fails (circuit open until 2.5s), then node2 fails (circuit open until 2s)
 
       clock.advance(100.millis)
-      val result = performRequest(client) // all circuits open: only node2 (soonest trial) is tried
+      val result = performRequest(client) // all circuits open: node2 (soonest trial) first, then node1
 
-      node1.receivedRequests should have size 2 // node1 not tried even though node2 failed
+      node1.receivedRequests should have size 3
+      node2.receivedRequests should have size 3
+      result.isLeft should be(true)
+    }
+
+    "not try the other nodes when all circuits are open and the soonest-trial node fails with a non-retryable error" in {
+      val clock = new TestClock
+      val node1 = new RecordingExecutor(_ => Left(new IOException("node1 down")))
+      val node2 = new RecordingExecutor({
+        case 1 => Right("node2-response")
+        case 2 => Left(new IOException("node2 down"))
+        case _ => Left(new IllegalStateException("node2 rejected the request"))
+      })
+      val client = failoverClient(clock, node1, node2)
+
+      performRequest(client) // node1 fails (circuit open until 1s), node2 succeeds
+      clock.advance(1.second)
+      performRequest(client) // trial on node1 fails (circuit open until 2.5s), then node2 fails (circuit open until 2s)
+
+      clock.advance(100.millis)
+      val result = performRequest(client) // all circuits open: node2 answers with a failure which stops the failover
+
+      node1.receivedRequests should have size 2
       node2.receivedRequests should have size 3
       result.isLeft should be(true)
     }
@@ -253,14 +275,15 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       performRequest(client) // trial on node1 fails (circuit open until 2.5s), then node2 fails (circuit open until 2s)
 
       clock.advance(100.millis)
-      performRequest(client) // all circuits open: node2 (soonest trial) takes the request and fails
+      performRequest(client) // all circuits open: node2 (soonest trial) takes the request and fails, then node1 does
       node2.receivedRequests should have size 3
+      node1.receivedRequests should have size 3
 
       clock.advance(900.millis)
       performRequest(client)
 
-      // the failure above did not extend the open circuit of node2, so node2 allows a trial request 2s after its failure
-      node1.receivedRequests should have size 2
+      // the failures above did not extend the open circuits, so node2 allows a trial request 2s after its failure
+      node1.receivedRequests should have size 3
       node2.receivedRequests should have size 4
     }
 

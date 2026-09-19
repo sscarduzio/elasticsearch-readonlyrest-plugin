@@ -343,7 +343,8 @@ object AuditingTool extends RequestIdAwareLogging {
       httpClientsFactory: HttpClientsFactory
   )(
       using Clock,
-      LoggingContext
+      LoggingContext,
+      RequestId
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = setup match {
     case s: AuditSetup.SupportedByAllEsVersions =>
       create(
@@ -366,7 +367,8 @@ object AuditingTool extends RequestIdAwareLogging {
       httpClientsFactory: HttpClientsFactory
   )(
       using Clock,
-      LoggingContext
+      LoggingContext,
+      RequestId
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
     val effectiveOutputs: List[AuditSetup.OutputSupportedByAllEsVersions] =
       applyDefaults(config.outputs, config.defaultAclLog)
@@ -385,7 +387,8 @@ object AuditingTool extends RequestIdAwareLogging {
       httpClientsFactory: HttpClientsFactory
   )(
       using Clock,
-      LoggingContext
+      LoggingContext,
+      RequestId
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
     val effectiveOutputs: List[AuditOutputConfig] =
       applyDefaults(config.outputs, config.defaultAclLog)
@@ -424,7 +427,8 @@ object AuditingTool extends RequestIdAwareLogging {
       creator: IndexBasedAuditOutputServiceCreator,
       httpClientsFactory: HttpClientsFactory,
   )(
-      using Clock
+      using Clock,
+      RequestId
   ): Task[Either[CreationError, SupportedAuditOutput]] = {
     (for {
       service <- EitherT(creator.createIndexService(output.config.auditCluster, httpClientsFactory))
@@ -441,6 +445,8 @@ object AuditingTool extends RequestIdAwareLogging {
       output: EsDataStreamBased,
       creator: DataStreamBasedAuditOutputServiceCreator,
       httpClientsFactory: HttpClientsFactory,
+  )(
+      using RequestId
   ): Task[Either[CreationError, SupportedAuditOutput]] = {
     (for {
       service <- EitherT(creator.createDataStreamService(output.config.auditCluster, httpClientsFactory))

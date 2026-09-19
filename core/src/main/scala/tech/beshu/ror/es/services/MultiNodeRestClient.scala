@@ -90,8 +90,8 @@ final class FailoverClient[Req, Resp] private (
     selectNodes().flatMap {
       case NodesToTry.WithClosedOrExpiredCircuit(nodes) =>
         performWithFailover(nodes, request)
-      case NodesToTry.OnlyWithOpenCircuits(nodeClient) =>
-        performIgnoringCircuit(nodeClient, request)
+      case NodesToTry.OnlyWithOpenCircuits(nodes) =>
+        performIgnoringCircuits(nodes, request)
     }
 
   override def close(): Unit = nodeClients.toList.foreach {
@@ -113,8 +113,10 @@ final class FailoverClient[Req, Resp] private (
           .fromList(availableNodes)
           .map(NodesToTry.WithClosedOrExpiredCircuit.apply)
           .getOrElse {
-            // all circuits are open - try the node whose circuit expires soonest
-            NodesToTry.OnlyWithOpenCircuits(unavailableNodes.minBy(_._2.expiresAt)._1)
+            // all circuits are open - try the nodes anyway, the one whose circuit expires soonest first
+            NodesToTry.OnlyWithOpenCircuits(
+              NonEmptyList.fromListUnsafe(unavailableNodes.sortBy(_._2.expiresAt).map(_._1))
+            )
           }
       }
   }
@@ -160,6 +162,26 @@ final class FailoverClient[Req, Resp] private (
             }
           }
       }
+  }
+
+  private def performIgnoringCircuits(
+      nodes: NonEmptyList[NodeClient[Req, Resp]],
+      request: Req
+  )(
+      using RequestId
+  ): Task[Resp] = {
+    nodes match {
+      case NonEmptyList(nodeClient, Nil) =>
+        performIgnoringCircuit(nodeClient, request)
+      case NonEmptyList(nodeClient, nextNode :: otherNodes) =>
+        performIgnoringCircuit(nodeClient, request)
+          .onErrorHandleWith { exception =>
+            nodeClient.executor.failoverDecisionOn(exception) match {
+              case FailoverDecision.Stop        => Task.raiseError(exception)
+              case FailoverDecision.TryNextNode => performIgnoringCircuits(NonEmptyList(nextNode, otherNodes), request)
+            }
+          }
+    }
   }
 
   private def performIgnoringCircuit(nodeClient: NodeClient[Req, Resp], request: Req)(
@@ -235,7 +257,8 @@ object FailoverClient {
   private object NodesToTry {
     final case class WithClosedOrExpiredCircuit[Req, Resp](nodes: NonEmptyList[NodeClient[Req, Resp]])
         extends NodesToTry[Req, Resp]
-    final case class OnlyWithOpenCircuits[Req, Resp](node: NodeClient[Req, Resp]) extends NodesToTry[Req, Resp]
+    final case class OnlyWithOpenCircuits[Req, Resp](nodes: NonEmptyList[NodeClient[Req, Resp]])
+        extends NodesToTry[Req, Resp]
   }
 
 }

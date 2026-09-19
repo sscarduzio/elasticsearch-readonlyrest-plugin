@@ -67,7 +67,7 @@ import scala.annotation.nowarn
 
 class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfterAll {
 
-  import tech.beshu.ror.utils.TestsUtils.loggingContext
+  import tech.beshu.ror.utils.TestsUtils.{loggingContext, testRequestId}
 
   private val auditLogFile = File("/tmp/ror/audit_logs/test_audit.log")
 

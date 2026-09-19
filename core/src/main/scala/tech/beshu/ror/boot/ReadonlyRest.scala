@@ -230,6 +230,8 @@ class ReadonlyRest(
   private def createEngine(
       engineResources: EngineResources,
       coreCreationResult: CoreCreationResult
+  )(
+      implicit requestId: RequestId
   ): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
     val core = coreCreationResult.core
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
@@ -255,12 +257,14 @@ class ReadonlyRest(
       auditSetup: AuditSetup,
       httpClientsFactory: HttpClientsFactory
   )(
-      implicit loggingContext: LoggingContext
+      implicit loggingContext: LoggingContext,
+      requestId: RequestId
   ): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
     AuditingTool
       .create(auditSetup, httpClientsFactory)(
         using systemContext.clock,
-        loggingContext
+        loggingContext,
+        requestId
       )
       .map(_.leftMap(toCreationErrors))
   }

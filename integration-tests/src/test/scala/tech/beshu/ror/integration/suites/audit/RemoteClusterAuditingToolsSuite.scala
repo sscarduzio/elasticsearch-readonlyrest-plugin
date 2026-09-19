@@ -218,14 +218,20 @@ class RemoteClusterAuditingToolsSuite
         auditNode1.disableNetwork()
         auditNode2.disableNetwork()
 
-        rorApiManager
+        val errorMessage = rorApiManager
           .updateRorInIndexSettings(baseRorSettingsYaml)
           .forceKoStatus()
-          .message should include(
+          .message
+
+        errorMessage should include(
           s"Audit cluster healthcheck failed for remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. " +
-            s"Details: No health node detected in remote cluster. " +
-            s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode1)}, " +
-            s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode2)}"
+            s"Details: No healthy node detected in remote cluster."
+        )
+        errorMessage should include(
+          s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode1)}. Details: "
+        )
+        errorMessage should include(
+          s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode2)}. Details: "
         )
       }
     }

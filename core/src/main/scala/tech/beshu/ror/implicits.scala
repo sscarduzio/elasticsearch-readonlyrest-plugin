@@ -22,7 +22,7 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import eu.timepit.refined.api.{Result as _, *}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.lemonlabs.uri.Uri
+import io.lemonlabs.uri.{Uri, Url}
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
@@ -249,7 +249,13 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   implicit val externalAuthorizationServiceNameShow: Show[ExternalGroupsProviderService.Name] = Show.show(_.value.value)
   implicit val jwtDefNameShow: Show[JwtDef.Name] = Show.show(_.value.value)
   implicit val rorKbnDefNameShow: Show[RorKbnDef.Name] = Show.show(_.value.value)
-  implicit val httpRequestShow: Show[HttpClient.Request] = Show.show(_.toString)
+
+  implicit val httpRequestShow: Show[HttpClient.Request] = Show.show { r =>
+    // the request can carry credentials in the URL user info part and in the headers, so neither of them is shown
+    val headerNames = r.headers.keys.toList.sorted.map(name => s"$name=<OMITTED>")
+    s"Request[method=[${r.method.toString}],url=[${urlWithoutUserInfo(r.url).show}],headers=[${headerNames.mkString(",")}]]"
+  }
+
   implicit val httpResponseShow: Show[HttpClient.Response] = Show.show(_.toString)
   implicit val functionNameShow: Show[FunctionName] = Show.show(_.name.value)
   implicit val functionDefinitionShow: Show[FunctionDefinition] = Show.show(_.functionName.show)
@@ -729,11 +735,16 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   }
 
   implicit val auditClusterNodeShow: Show[AuditClusterNode] = Show.show { n =>
-    val url = n.toUrl
+    urlWithoutUserInfo(n.toUrl).show
+  }
+
+  implicit val remoteAuditClusterShow: Show[RemoteAuditCluster] = Show.show { cluster =>
+    cluster.nodes.toList.map(_.show).show
+  }
+
+  private def urlWithoutUserInfo(url: Url): Url = {
     url.authorityOption match {
       case Some(authority) =>
-        // the credentials must not reach the logs, so drop the user info part of the authority.
-        // keep the URL's own config, because a fresh one could render the rest of the authority differently
         url
           .withAuthority(
             authority.copy(userInfo = None)(
@@ -741,13 +752,8 @@ trait LogsShowInstances extends cats.instances.AllInstances {
             )
           )
           .toUrl
-          .show
-      case None => url.show
+      case None => url
     }
-  }
-
-  implicit val remoteAuditClusterShow: Show[RemoteAuditCluster] = Show.show { cluster =>
-    cluster.nodes.toList.map(_.show).show
   }
 
 }

@@ -35,7 +35,7 @@ import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, DataStream
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.TestsUtils.{defaultTestEsNodeSettings, fullDataStreamName, header, nes}
+import tech.beshu.ror.utils.TestsUtils.{defaultTestEsNodeSettings, fullDataStreamName, header, nes, testRequestId}
 
 import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration.*

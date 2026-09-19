@@ -20,8 +20,8 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.output.AuditOutputServiceCreator.InitializationError
 import tech.beshu.ror.accesscontrol.audit.remote.AuditRemoteClusterConnectivityCheck
 import tech.beshu.ror.accesscontrol.audit.remote.AuditRemoteClusterConnectivityCheck.Error.ConnectivityError
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.RemoteAuditCluster
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, IndexBasedAuditOutputService}
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -32,6 +32,8 @@ sealed trait AuditOutputServiceCreator extends RequestIdAwareLogging {
       cluster: AuditCluster,
       httpClientsFactory: HttpClientsFactory,
       create: Task[AUDIT_SERVICE]
+  )(
+      using RequestId
   ): Task[Either[InitializationError, AUDIT_SERVICE]] = {
     cluster match {
       case AuditCluster.LocalAuditCluster =>
@@ -45,7 +47,7 @@ sealed trait AuditOutputServiceCreator extends RequestIdAwareLogging {
             case Left(error: ConnectivityError) if remote.ignoreClusterConnectivityProblems =>
               for {
                 service <- create
-                _ <- noRequestIdLogger.dInfo(
+                _ <- logger.dInfo(
                   s"Audit cluster connectivity check failed, but 'ignore_es_connectivity_problems: true' is set, so auditing will proceed: ${error.message}"
                 )
               } yield Right(service)
@@ -78,6 +80,8 @@ trait IndexBasedAuditOutputServiceCreator extends AuditOutputServiceCreator {
   final def createIndexService(
       cluster: AuditCluster,
       httpClientsFactory: HttpClientsFactory
+  )(
+      using RequestId
   ): Task[Either[InitializationError, IndexBasedAuditOutputService]] =
     withConnectivityCheck(cluster, httpClientsFactory, Task.delay(index(cluster)))
 
@@ -90,6 +94,8 @@ trait DataStreamBasedAuditOutputServiceCreator extends AuditOutputServiceCreator
   final def createDataStreamService(
       cluster: AuditCluster,
       httpClientsFactory: HttpClientsFactory
+  )(
+      using RequestId
   ): Task[Either[InitializationError, DataStreamBasedAuditOutputService]] =
     withConnectivityCheck(cluster, httpClientsFactory, Task.delay(dataStream(cluster)))
 

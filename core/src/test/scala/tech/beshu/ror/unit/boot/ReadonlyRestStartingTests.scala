@@ -1824,10 +1824,13 @@ class ReadonlyRestStartingTests
 
         val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
         inside(result) { case Left(StartingFailure(message, _)) =>
-          val expectedMessage =
+          val expectedMessagePrefix =
             s"""Errors:
-                 |Audit cluster healthcheck failed for remote cluster http://127.0.0.1:1. Details: No health node detected in remote cluster. Unexpected connection error from audit node: http://127.0.0.1:1. You can disable this check by setting 'ignore_es_connectivity_problems: true' in the audit cluster configuration""".stripMarginAndReplaceWindowsLineBreak
-          message should be(expectedMessage)
+                 |Audit cluster healthcheck failed for remote cluster http://127.0.0.1:1. Details: No healthy node detected in remote cluster. Unexpected connection error from audit node: http://127.0.0.1:1. Details: """.stripMarginAndReplaceWindowsLineBreak
+          message should startWith(expectedMessagePrefix)
+          message should endWith(
+            "You can disable this check by setting 'ignore_es_connectivity_problems: true' in the audit cluster configuration"
+          )
         }
       }
     }
