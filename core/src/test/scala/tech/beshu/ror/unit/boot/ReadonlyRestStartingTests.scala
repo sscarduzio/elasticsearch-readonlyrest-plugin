@@ -60,7 +60,6 @@ import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, Clust
 import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RorDependencies.NoOpImpersonationWarningsReader
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest
@@ -1653,7 +1652,7 @@ class ReadonlyRestStartingTests
           mockedCoreFactory = mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          RorDependencies.noOp,
           Some(
             new AuditSetup.AnyOutput(
               capability,
@@ -1707,7 +1706,7 @@ class ReadonlyRestStartingTests
           mockedCoreFactory = mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          RorDependencies.noOp,
           Some(
             new AuditSetup.AnyOutput(
               new IndexOrDataStream(
@@ -1755,7 +1754,7 @@ class ReadonlyRestStartingTests
           mockedCoreFactory = mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          RorDependencies.noOp,
           Some(
             new AuditSetup.AnyOutput(
               new IndexOrDataStream(
@@ -1802,7 +1801,7 @@ class ReadonlyRestStartingTests
           mockedCoreFactory = mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          RorDependencies.noOp,
           Some(
             new AuditSetup.AnyOutput(
               new IndexOrDataStream(
@@ -1845,19 +1844,13 @@ class ReadonlyRestStartingTests
           )
         )
 
-        val noopIndexService = new IndexBasedAuditOutputService {
-          override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
-              implicit requestId: RequestId
-          ): Unit = ()
-          override def close(): Unit = ()
-        }
-        val indexCreator: IndexBasedAuditOutputServiceCreator = (_: AuditCluster) => noopIndexService
+        val indexCreator = noOpIndexBasedAuditOutputServiceCreator
 
         val coreFactory = mockCoreFactory(
           mockedCoreFactory = mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          RorDependencies.noOp,
           Some(
             new AuditSetup.AnyOutput(
               new IndexOrDataStream(
@@ -1894,19 +1887,13 @@ class ReadonlyRestStartingTests
           )
         )
 
-        val noopIndexService = new IndexBasedAuditOutputService {
-          override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
-              implicit requestId: RequestId
-          ): Unit = ()
-          override def close(): Unit = ()
-        }
-        val indexCreator: IndexBasedAuditOutputServiceCreator = (_: AuditCluster) => noopIndexService
+        val indexCreator = noOpIndexBasedAuditOutputServiceCreator
 
         val coreFactory = mockCoreFactory(
           mockedCoreFactory = mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          RorDependencies.noOp,
           Some(
             new AuditSetup.AnyOutput(
               new IndexOrDataStream(
@@ -1951,7 +1938,7 @@ class ReadonlyRestStartingTests
           mockedCoreFactory = mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          RorDependencies.noOp,
           Some(new AuditSetup.SupportedByAllEsVersions(capability, auditingConfig))
         )
 
@@ -2122,6 +2109,15 @@ class ReadonlyRestStartingTests
       )
     )
   }
+
+  private def noOpIndexBasedAuditOutputServiceCreator: IndexBasedAuditOutputServiceCreator =
+    (_: AuditCluster) =>
+      new IndexBasedAuditOutputService {
+        override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+            implicit requestId: RequestId
+        ): Unit = ()
+        override def close(): Unit = ()
+      }
 
   private def readonlyRestBoot(
       factory: CoreFactory,

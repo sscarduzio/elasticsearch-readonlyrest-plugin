@@ -22,7 +22,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.es.services.MultiNodeRestClient.{FailoverDecision, RequestExecutor}
+import tech.beshu.ror.es.services.MultiNodeRestClient.{FailoverAwareRequestExecutor, FailoverDecision}
 import tech.beshu.ror.es.services.{DelegatingMultiNodeRestClient, FailoverClient, MultiNodeRestClient}
 
 import java.io.IOException
@@ -239,6 +239,31 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       result.isLeft should be(true)
     }
 
+    "not change the circuit of the node which took a request while all circuits were open" in {
+      val clock = new TestClock
+      val node1 = new RecordingExecutor(_ => Left(new IOException("node1 down")))
+      val node2 = new RecordingExecutor({
+        case 1 => Right("node2-response")
+        case _ => Left(new IOException("node2 down"))
+      })
+      val client = failoverClient(clock, node1, node2)
+
+      performRequest(client) // node1 fails (circuit open until 1s), node2 succeeds
+      clock.advance(1.second)
+      performRequest(client) // trial on node1 fails (circuit open until 2.5s), then node2 fails (circuit open until 2s)
+
+      clock.advance(100.millis)
+      performRequest(client) // all circuits open: node2 (soonest trial) takes the request and fails
+      node2.receivedRequests should have size 3
+
+      clock.advance(900.millis)
+      performRequest(client)
+
+      // the failure above did not extend the open circuit of node2, so node2 allows a trial request 2s after its failure
+      node1.receivedRequests should have size 2
+      node2.receivedRequests should have size 4
+    }
+
     "close all node clients on close" in {
       val node1 = new RecordingExecutor(_ => Right("node1-response"))
       val node2 = new RecordingExecutor(_ => Right("node2-response"))
@@ -275,14 +300,8 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
   private def failoverClient(clock: Clock, executors: RecordingExecutor*) = {
     FailoverClient.create[String, String](
       nodeExecutors = NonEmptyList.fromListUnsafe(executors.toList),
-      failoverDecision = failoverDecision,
       clock = clock
     )
-  }
-
-  private val failoverDecision: Throwable => FailoverDecision = {
-    case _: IOException => FailoverDecision.TryNextNode
-    case _              => FailoverDecision.Stop
   }
 
   private def performRequest(client: MultiNodeRestClient[String, String]) = {
@@ -290,7 +309,8 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
   }
 
   // responds based on the number of requests received so far (1-based)
-  private class RecordingExecutor(respond: Int => Either[Exception, String]) extends RequestExecutor[String, String] {
+  private class RecordingExecutor(respond: Int => Either[Exception, String])
+      extends FailoverAwareRequestExecutor[String, String] {
     val receivedRequests: scala.collection.mutable.ListBuffer[String] = scala.collection.mutable.ListBuffer.empty
     var closed: Boolean = false
 
@@ -300,6 +320,11 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
         case Right(response) => Task.now(response)
         case Left(exception) => Task.raiseError(exception)
       }
+    }
+
+    override def failoverDecisionOn(exception: Throwable): FailoverDecision = exception match {
+      case _: IOException => FailoverDecision.TryNextNode
+      case _              => FailoverDecision.Stop
     }
 
     override def close(): Unit = closed = true

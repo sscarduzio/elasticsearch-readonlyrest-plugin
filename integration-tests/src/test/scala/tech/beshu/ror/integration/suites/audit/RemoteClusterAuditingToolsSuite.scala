@@ -186,7 +186,7 @@ class RemoteClusterAuditingToolsSuite
         if (isDataStreamSupported) {
           // the data stream output has to verify/create the data stream upfront,
           // so the reload fails despite the ignored connectivity check
-          response.forceFailure(
+          response.forceKoStatus().message should include(
             s"Unable to configure audit output using a data stream in remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. " +
               s"Details: [Unable to determine if data stream audit_data_stream exists.]"
           )
@@ -220,12 +220,13 @@ class RemoteClusterAuditingToolsSuite
 
         rorApiManager
           .updateRorInIndexSettings(baseRorSettingsYaml)
-          .forceFailure(
-            s"Audit cluster healthcheck failed for remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. " +
-              s"Details: No health node detected in remote cluster. " +
-              s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode1)}, " +
-              s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode2)}"
-          )
+          .forceKoStatus()
+          .message should include(
+          s"Audit cluster healthcheck failed for remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. " +
+            s"Details: No health node detected in remote cluster. " +
+            s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode1)}, " +
+            s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode2)}"
+        )
       }
     }
   }

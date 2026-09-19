@@ -219,8 +219,6 @@ class RorApiManager(
 
   final class RorApiResponseWithBusinessStatus(override val response: HttpResponse) extends JsonResponse(response) {
 
-    import org.scalatest.matchers.should.Matchers.*
-
     def forceOkStatus(): this.type = {
       force()
       if (businessStatus =!= "OK") {
@@ -243,7 +241,7 @@ class RorApiManager(
       } else {
         throw new IllegalStateException(
           s"""
-             |Expected business status 'OK' or info about already loaded settings, but got:"
+             |Expected business status 'OK' or info about already loaded settings, but got:
              |
              |HTTP $responseCode
              |${responseJson.toString()}
@@ -252,15 +250,14 @@ class RorApiManager(
       }
     }
 
-    def forceFailure(failureMessage: String): this.type = {
+    def forceKoStatus(): this.type = {
       force()
       if (businessStatus === "KO") {
-        message should include(failureMessage)
         this
       } else {
         throw new IllegalStateException(
           s"""
-             |Expected business status 'ko', but got:"
+             |Expected business status 'KO', but got:
              |
              |HTTP $responseCode
              |${responseJson.toString()}
@@ -273,9 +270,9 @@ class RorApiManager(
       businessStatus == "KO" && message.contains("already loaded")
     }
 
-    private def businessStatus = responseJson("status").str.toUpperCase()
+    def message: String = responseJson.obj.get("message").map(_.str).getOrElse("[none]")
 
-    private def message = responseJson.obj.get("message").map(_.str).getOrElse("[none]")
+    private def businessStatus = responseJson("status").str.toUpperCase()
   }
 
 }
