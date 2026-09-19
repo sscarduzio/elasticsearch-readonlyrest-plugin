@@ -55,7 +55,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, DataStreamService, IndexBasedAuditOutputService}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.positiveInt
 import tech.beshu.ror.utils.TestsUtils.*
@@ -87,7 +87,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                   dataStreamCreator = (_: AuditCluster) => mockedDataStreamBasedAuditOutputService
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -107,7 +108,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                   dataStreamCreator = (_: AuditCluster) => mockedDataStreamBasedAuditOutputService
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -141,7 +143,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => indexAuditOutput,
                   dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -171,7 +174,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => indexAuditOutput,
                   dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -226,7 +230,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => indexAuditOutput,
                   dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -263,7 +268,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => indexAuditOutput,
                   dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -302,7 +308,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 ),
                 indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                 dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-              )
+              ),
+              httpClientsFactory = MockHttpClientsFactory
             )
             .runSyncUnsafe()
             .toOption
@@ -353,7 +360,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 ),
                 indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                 dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-              )
+              ),
+              httpClientsFactory = MockHttpClientsFactory
             )
             .runSyncUnsafe()
             .toOption
@@ -403,7 +411,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 ),
                 indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                 dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-              )
+              ),
+              httpClientsFactory = MockHttpClientsFactory
             )
             .runSyncUnsafe()
             .toOption
@@ -444,7 +453,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                   dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
 
@@ -483,7 +493,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                   dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
 
@@ -522,7 +533,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                   dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
 
@@ -575,7 +587,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               ),
               indexCreator = (_: AuditCluster) => indexAuditOutput,
               dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-            )
+            ),
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
           .toOption
@@ -636,7 +649,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             auditSetupForAllEsVersions(
               config = auditingConfigSupportedByAllEsVersions(new DefaultAuditLogSerializer),
               creator = (_: AuditCluster) => indexAuditOutput
-            )
+            ),
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
           .toOption
@@ -655,7 +669,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 defaultTestEsNodeSettings
               ),
               creator = (_: AuditCluster) => mock[IndexBasedAuditOutputService]
-            )
+            ),
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
 
@@ -671,7 +686,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 defaultTestEsNodeSettings
               ),
               creator = (_: AuditCluster) => mock[IndexBasedAuditOutputService]
-            )
+            ),
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
 
@@ -690,7 +706,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               ),
               indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
               dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-            )
+            ),
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
         creationResult.isRight should be(true)

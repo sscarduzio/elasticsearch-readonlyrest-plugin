@@ -241,7 +241,23 @@ class RorApiManager(
       } else {
         throw new IllegalStateException(
           s"""
-             |Expected business status 'OK' or info about already loaded settings, but got:"
+             |Expected business status 'OK' or info about already loaded settings, but got:
+             |
+             |HTTP $responseCode
+             |${responseJson.toString()}
+             |""".stripMargin
+        )
+      }
+    }
+
+    def forceKoStatus(): this.type = {
+      force()
+      if (businessStatus === "KO") {
+        this
+      } else {
+        throw new IllegalStateException(
+          s"""
+             |Expected business status 'KO', but got:
              |
              |HTTP $responseCode
              |${responseJson.toString()}
@@ -254,9 +270,9 @@ class RorApiManager(
       businessStatus == "KO" && message.contains("already loaded")
     }
 
-    private def businessStatus = responseJson("status").str.toUpperCase()
+    def message: String = responseJson.obj.get("message").map(_.str).getOrElse("[none]")
 
-    private def message = responseJson.obj.get("message").map(_.str).getOrElse("[none]")
+    private def businessStatus = responseJson("status").str.toUpperCase()
   }
 
 }

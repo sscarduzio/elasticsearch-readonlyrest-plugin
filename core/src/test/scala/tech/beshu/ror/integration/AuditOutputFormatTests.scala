@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, DataStreamService, IndexBasedAuditOutputService}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.TestsUtils.{defaultTestEsNodeSettings, fullDataStreamName, header, nes}
@@ -209,13 +209,14 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     )
     val auditingTool = AuditingTool
       .create(
-        new AuditSetup.AnyOutput(
+        setup = new AuditSetup.AnyOutput(
           capability = new EsAuditCapabilities.IndexOrDataStream(
             indexCreator = (_: AuditCluster) => indexBasedAuditOutputService,
             dataStreamCreator = (_: AuditCluster) => dataStreamBasedAuditOutputService,
           ),
           config = AuditingConfig(settings, defaultAclLog = true, defaultTestEsNodeSettings),
-        )
+        ),
+        httpClientsFactory = MockHttpClientsFactory,
       )
       .runSyncUnsafe()
       .toOption

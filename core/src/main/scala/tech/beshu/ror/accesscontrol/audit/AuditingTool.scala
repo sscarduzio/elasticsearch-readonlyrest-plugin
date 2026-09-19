@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.*
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -338,24 +339,31 @@ object AuditingTool extends RequestIdAwareLogging {
   final case class CreationError(message: String) extends AnyVal
 
   def create(
-      setup: AuditSetup
+      setup: AuditSetup,
+      httpClientsFactory: HttpClientsFactory
   )(
       using Clock,
       LoggingContext
   ): Task[Either[NonEmptyList[CreationError], AuditingTool]] = setup match {
     case s: AuditSetup.SupportedByAllEsVersions =>
-      create(config = s.config, creator = s.capability.creator)
+      create(
+        config = s.config,
+        creator = s.capability.creator,
+        httpClientsFactory = httpClientsFactory
+      )
     case s: AuditSetup.AnyOutput =>
       create(
         config = s.config,
         indexCreator = s.capability.indexCreator,
-        dataStreamCreator = s.capability.dataStreamCreator
+        dataStreamCreator = s.capability.dataStreamCreator,
+        httpClientsFactory = httpClientsFactory
       )
   }
 
   private def create(
       config: AuditingConfig[AuditSetup.OutputSupportedByAllEsVersions],
-      creator: IndexBasedAuditOutputServiceCreator
+      creator: IndexBasedAuditOutputServiceCreator,
+      httpClientsFactory: HttpClientsFactory
   )(
       using Clock,
       LoggingContext
@@ -363,7 +371,7 @@ object AuditingTool extends RequestIdAwareLogging {
     val effectiveOutputs: List[AuditSetup.OutputSupportedByAllEsVersions] =
       applyDefaults(config.outputs, config.defaultAclLog)
     val outputTasks = effectiveOutputs.map {
-      case s: EsIndexBased     => createIndexOutput(s, creator)
+      case s: EsIndexBased     => createIndexOutput(s, creator, httpClientsFactory)
       case s: LogBased         => createLogOutput(s)
       case s: RollingFileBased => createRollingFileBaseOutput(s)
     }
@@ -373,7 +381,8 @@ object AuditingTool extends RequestIdAwareLogging {
   private def create(
       config: AuditingConfig[AuditOutputConfig],
       indexCreator: IndexBasedAuditOutputServiceCreator,
-      dataStreamCreator: DataStreamBasedAuditOutputServiceCreator
+      dataStreamCreator: DataStreamBasedAuditOutputServiceCreator,
+      httpClientsFactory: HttpClientsFactory
   )(
       using Clock,
       LoggingContext
@@ -381,8 +390,8 @@ object AuditingTool extends RequestIdAwareLogging {
     val effectiveOutputs: List[AuditOutputConfig] =
       applyDefaults(config.outputs, config.defaultAclLog)
     val outputTasks = effectiveOutputs.map {
-      case s: EsIndexBased      => createIndexOutput(s, indexCreator)
-      case s: EsDataStreamBased => createDataStreamOutput(s, dataStreamCreator)
+      case s: EsIndexBased      => createIndexOutput(s, indexCreator, httpClientsFactory)
+      case s: EsDataStreamBased => createDataStreamOutput(s, dataStreamCreator, httpClientsFactory)
       case s: LogBased          => createLogOutput(s)
       case s: RollingFileBased  => createRollingFileBaseOutput(s)
     }
@@ -412,26 +421,30 @@ object AuditingTool extends RequestIdAwareLogging {
 
   private def createIndexOutput(
       output: EsIndexBased,
-      creator: IndexBasedAuditOutputServiceCreator
+      creator: IndexBasedAuditOutputServiceCreator,
+      httpClientsFactory: HttpClientsFactory,
   )(
       using Clock
-  ): Task[Either[CreationError, SupportedAuditOutput]] = Task.delay {
-    Right(
-      EsIndexBasedAuditOutput(
-        outputName = output.name,
-        serializer = output.config.serializer,
-        indexTemplate = output.config.rorAuditIndexTemplate,
-        auditOutputService = creator.index(output.config.auditCluster)
-      )
-    )
+  ): Task[Either[CreationError, SupportedAuditOutput]] = {
+    (for {
+      service <- EitherT(creator.createIndexService(output.config.auditCluster, httpClientsFactory))
+        .leftMap(e => CreationError(e.message))
+    } yield EsIndexBasedAuditOutput(
+      outputName = output.name,
+      serializer = output.config.serializer,
+      indexTemplate = output.config.rorAuditIndexTemplate,
+      auditOutputService = service
+    )).value
   }
 
   private def createDataStreamOutput(
       output: EsDataStreamBased,
-      creator: DataStreamBasedAuditOutputServiceCreator
+      creator: DataStreamBasedAuditOutputServiceCreator,
+      httpClientsFactory: HttpClientsFactory,
   ): Task[Either[CreationError, SupportedAuditOutput]] = {
     (for {
-      service <- EitherT.right[CreationError](Task.delay(creator.dataStream(output.config.auditCluster)))
+      service <- EitherT(creator.createDataStreamService(output.config.auditCluster, httpClientsFactory))
+        .leftMap(e => CreationError(e.message))
       auditOutput <- EitherT(
         EsDataStreamBasedAuditOutput
           .create(

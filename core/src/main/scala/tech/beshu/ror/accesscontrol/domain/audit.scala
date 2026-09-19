@@ -171,7 +171,8 @@ object AuditCluster {
   final case class RemoteAuditCluster(
       nodes: UniqueNonEmptyList[AuditClusterNode],
       mode: ClusterMode,
-      credentials: Option[NodeCredentials]
+      credentials: Option[NodeCredentials],
+      ignoreClusterConnectivityProblems: Boolean
   ) extends AuditCluster {
     def requestTimeout: FiniteDuration = 30.seconds
     def connectionTimeout: FiniteDuration = 1.seconds
@@ -203,6 +204,7 @@ object AuditCluster {
 
   object ClusterMode {
     case object RoundRobin extends ClusterMode
+    case object Failover extends ClusterMode
   }
 
 }

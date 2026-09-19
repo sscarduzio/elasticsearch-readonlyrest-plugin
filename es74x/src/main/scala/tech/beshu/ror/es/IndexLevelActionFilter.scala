@@ -104,11 +104,13 @@ class IndexLevelActionFilter(
 
   private def auditCapabilities: EsAuditCapabilities.IndexOnly = {
     val creator = new IndexBasedAuditOutputServiceCreator {
-      override def index(cluster: AuditCluster): IndexBasedAuditOutputService = cluster match {
+      override protected def index(cluster: AuditCluster): IndexBasedAuditOutputService = cluster match {
         case AuditCluster.LocalAuditCluster =>
           new NodeClientBasedAuditOutputService(client)
         case remote: AuditCluster.RemoteAuditCluster =>
-          RestClientAuditOutputService.create(remote)
+          RestClientAuditOutputService.create(remote)(
+            using systemContext.clock
+          )
       }
     }
     new EsAuditCapabilities.IndexOnly(creator)
