@@ -50,13 +50,13 @@ object MockIndexBasedAuditOutputServiceCreator extends IndexBasedAuditOutputServ
     override def close(): Unit = ()
   }
 
-  override protected def index(cluster: AuditCluster): IndexBasedAuditOutputService = indexService
+  override def index(cluster: AuditCluster): IndexBasedAuditOutputService = indexService
 
 }
 
 object MockDataStreamBasedAuditOutputServiceCreator extends DataStreamBasedAuditOutputServiceCreator {
 
-  override protected def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService =
+  override def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService =
     new DataStreamBasedAuditOutputService {
       override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
           implicit requestId: RequestId

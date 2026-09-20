@@ -34,16 +34,34 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.retryBackoffEither
 
 import java.util.concurrent.TimeUnit
+import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.control.NonFatal
 
-final class AuditRemoteClusterConnectivityCheck(httpClientsFactory: HttpClientsFactory) extends RequestIdAwareLogging {
+trait AuditRemoteClusterConnectivityCheck {
+  def check(cluster: RemoteAuditCluster): Task[Either[AuditRemoteClusterConnectivityCheck.Error, Unit]]
+}
 
-  import AuditRemoteClusterConnectivityCheck.{*, given}
+object AuditRemoteClusterConnectivityCheck {
 
-  def check(cluster: RemoteAuditCluster)(
-      using RequestId
-  ): Task[Either[Error, Unit]] = {
+  sealed trait Error { def message: String }
+
+  object Error {
+    final case class ConnectivityError(message: String) extends Error
+    final case class ConfigurationError(message: String) extends Error
+  }
+
+}
+
+final class NodesInfoBasedAuditRemoteClusterConnectivityCheck(httpClientsFactory: HttpClientsFactory)(
+    using RequestId
+) extends AuditRemoteClusterConnectivityCheck
+    with RequestIdAwareLogging {
+
+  import AuditRemoteClusterConnectivityCheck.Error
+  import NodesInfoBasedAuditRemoteClusterConnectivityCheck.{*, given}
+
+  override def check(cluster: RemoteAuditCluster): Task[Either[Error, Unit]] = {
     createHttpClient(cluster)
       .use { httpClient =>
         fetchNodesInfo(cluster, httpClient)
@@ -82,16 +100,19 @@ final class AuditRemoteClusterConnectivityCheck(httpClientsFactory: HttpClientsF
     Resource.make(Task.delay(httpClientsFactory.create(httpConfig)))(_.close())
   }
 
-  private def fetchNodesInfo(cluster: RemoteAuditCluster, httpClient: HttpClient)(
-      using RequestId
+  private def fetchNodesInfo(
+      cluster: RemoteAuditCluster,
+      httpClient: HttpClient
   ): Task[NonEmptyList[Either[NodeCheckError, AuditNodeInfo]]] = {
     cluster.nodes.toNonEmptyList.parTraverse { node =>
       withRetries(fetchNodeInfo(cluster, httpClient, node))
     }
   }
 
-  private def fetchNodeInfo(cluster: RemoteAuditCluster, httpClient: HttpClient, node: AuditClusterNode)(
-      using RequestId
+  private def fetchNodeInfo(
+      cluster: RemoteAuditCluster,
+      httpClient: HttpClient,
+      node: AuditClusterNode
   ): Task[Either[NodeCheckError, AuditNodeInfo]] = {
     httpClient
       .send(healthCheckRequest(node, cluster.credentials))
@@ -125,8 +146,6 @@ final class AuditRemoteClusterConnectivityCheck(httpClientsFactory: HttpClientsF
   private def validateNodesInfo(
       cluster: RemoteAuditCluster,
       nodeInfoResults: NonEmptyList[Either[NodeCheckError, AuditNodeInfo]]
-  )(
-      using RequestId
   ): Either[Error, Unit] = {
     val nodeResults: Ior[NonEmptyList[NodeCheckError], NonEmptyList[AuditNodeInfo]] =
       nodeInfoResults.reduceMap(_.toIor.bimap(NonEmptyList.one, NonEmptyList.one))
@@ -218,14 +237,18 @@ final class AuditRemoteClusterConnectivityCheck(httpClientsFactory: HttpClientsF
 
 }
 
-object AuditRemoteClusterConnectivityCheck {
+final class SharedAuditRemoteClusterConnectivityCheck(underlying: AuditRemoteClusterConnectivityCheck)
+    extends AuditRemoteClusterConnectivityCheck {
 
-  sealed trait Error { def message: String }
+  private val results =
+    TrieMap.empty[RemoteAuditCluster, Task[Either[AuditRemoteClusterConnectivityCheck.Error, Unit]]]
 
-  object Error {
-    final case class ConnectivityError(message: String) extends Error
-    final case class ConfigurationError(message: String) extends Error
-  }
+  override def check(cluster: RemoteAuditCluster): Task[Either[AuditRemoteClusterConnectivityCheck.Error, Unit]] =
+    results.getOrElseUpdate(cluster, underlying.check(cluster).memoize)
+
+}
+
+object NodesInfoBasedAuditRemoteClusterConnectivityCheck {
 
   private final case class RetryConfig(initialDelay: FiniteDuration, backoffScaler: Int, maxRetries: Int)
 
