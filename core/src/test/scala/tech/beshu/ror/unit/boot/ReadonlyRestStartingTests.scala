@@ -56,7 +56,12 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{
   LdapServiceMock
 }
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode, NodeCredentials}
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
+  AuditClusterNode,
+  ClusterMode,
+  ConnectivityCheckMode,
+  NodeCredentials
+}
 import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
@@ -1628,7 +1633,7 @@ class ReadonlyRestStartingTests
             ),
             mode = ClusterMode.RoundRobin,
             credentials = Some(NodeCredentials("admin", "pass")),
-            ignoreClusterConnectivityProblems = false
+            connectivityCheckMode = ConnectivityCheckMode.Required
           )
         )
 
@@ -1698,7 +1703,7 @@ class ReadonlyRestStartingTests
             ),
             mode = ClusterMode.RoundRobin,
             credentials = Some(NodeCredentials("admin", "pass")),
-            ignoreClusterConnectivityProblems = false
+            connectivityCheckMode = ConnectivityCheckMode.Required
           )
         )
 
@@ -1737,7 +1742,7 @@ class ReadonlyRestStartingTests
           message should be(expectedMessage)
         }
       }
-      "audit remote clusters are mixed even when ignore_es_connectivity_problems is enabled" in {
+      "audit remote clusters are mixed even when connectivity_check is best_effort" in {
         val dataStreamOutputConfig = EsDataStreamBased.Config.default.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
@@ -1746,7 +1751,7 @@ class ReadonlyRestStartingTests
             ),
             mode = ClusterMode.RoundRobin,
             credentials = Some(NodeCredentials("admin", "pass")),
-            ignoreClusterConnectivityProblems = true
+            connectivityCheckMode = ConnectivityCheckMode.BestEffort
           )
         )
 
@@ -1793,7 +1798,7 @@ class ReadonlyRestStartingTests
             ),
             mode = ClusterMode.RoundRobin,
             credentials = None,
-            ignoreClusterConnectivityProblems = false
+            connectivityCheckMode = ConnectivityCheckMode.Required
           )
         )
 
@@ -1828,14 +1833,11 @@ class ReadonlyRestStartingTests
             s"""Errors:
                  |Audit cluster healthcheck failed for remote cluster http://127.0.0.1:1. Details: No healthy node detected in remote cluster. Unexpected connection error from audit node: http://127.0.0.1:1. Details: """.stripMarginAndReplaceWindowsLineBreak
           message should startWith(expectedMessagePrefix)
-          message should endWith(
-            "You can disable this check by setting 'ignore_es_connectivity_problems: true' in the audit cluster configuration"
-          )
         }
       }
     }
     "be able to be loaded despite remote audit connectivity warnings" when {
-      "all remote audit cluster nodes are unreachable but ignore_es_connectivity_problems is enabled" in withReadonlyRest({
+      "all remote audit cluster nodes are unreachable but connectivity_check is best_effort" in withReadonlyRest({
         val outputConfig = EsIndexBased.Config.default.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
@@ -1843,7 +1845,7 @@ class ReadonlyRestStartingTests
             ),
             mode = ClusterMode.RoundRobin,
             credentials = None,
-            ignoreClusterConnectivityProblems = true
+            connectivityCheckMode = ConnectivityCheckMode.BestEffort
           )
         )
 
@@ -1886,7 +1888,7 @@ class ReadonlyRestStartingTests
             ),
             mode = ClusterMode.RoundRobin,
             credentials = Some(NodeCredentials("admin", "pass")),
-            ignoreClusterConnectivityProblems = false
+            connectivityCheckMode = ConnectivityCheckMode.Required
           )
         )
 

@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, JsonAu
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
   AuditClusterNode,
   ClusterMode,
+  ConnectivityCheckMode,
   NodeCredentials,
   RemoteAuditCluster
 }
@@ -719,6 +720,22 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
         .decoder
     }
 
+    given Decoder[ConnectivityCheckMode] =
+      SyncDecoderCreator
+        .from(Decoder.decodeString)
+        .emapE[ConnectivityCheckMode] {
+          case "required"    => Right(ConnectivityCheckMode.Required)
+          case "best_effort" => Right(ConnectivityCheckMode.BestEffort)
+          case "disabled"    => Right(ConnectivityCheckMode.Disabled)
+          case other         =>
+            Left(
+              auditSettingsError(
+                s"Unknown connectivity check [$other], allowed values are: [required,best_effort,disabled]"
+              )
+            )
+        }
+        .decoder
+
     given Decoder[ClusterMode] =
       SyncDecoderCreator
         .from(Decoder.decodeString)
@@ -779,7 +796,7 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
           nodes = clusterNodes,
           mode = ClusterMode.RoundRobin,
           credentials = maybeCredentials,
-          ignoreClusterConnectivityProblems = false
+          connectivityCheckMode = ConnectivityCheckMode.Disabled
         )
       case c =>
         // extended syntax
@@ -802,12 +819,12 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
                 Left(auditSettingsError(s"Audit output configuration is missing the '$usernameKey' field."))
             }
           }.leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
-          maybeIgnoreProblems <- c.downFieldAs[Option[Boolean]]("ignore_es_connectivity_problems")
+          maybeConnectivityCheckMode <- c.downFieldAs[Option[ConnectivityCheckMode]]("connectivity_check")
         } yield AuditCluster.RemoteAuditCluster(
           nodes = clusterNodes,
           mode = mode,
           credentials = maybeCredentials,
-          ignoreClusterConnectivityProblems = maybeIgnoreProblems.getOrElse(false)
+          connectivityCheckMode = maybeConnectivityCheckMode.getOrElse(ConnectivityCheckMode.Disabled)
         )
     }
   }

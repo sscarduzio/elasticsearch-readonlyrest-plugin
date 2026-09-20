@@ -19,8 +19,11 @@ package tech.beshu.ror.accesscontrol.audit.output
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.output.ConnectivityCheckedAuditOutputServiceCreator.InitializationError
 import tech.beshu.ror.accesscontrol.audit.remote.AuditRemoteClusterConnectivityCheck
-import tech.beshu.ror.accesscontrol.audit.remote.AuditRemoteClusterConnectivityCheck.Error.ConnectivityError
-import tech.beshu.ror.accesscontrol.domain.AuditCluster.RemoteAuditCluster
+import tech.beshu.ror.accesscontrol.audit.remote.AuditRemoteClusterConnectivityCheck.Error.{
+  ConfigurationError,
+  ConnectivityError
+}
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.{ConnectivityCheckMode, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId}
 import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, IndexBasedAuditOutputService}
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -39,26 +42,39 @@ sealed trait ConnectivityCheckedAuditOutputServiceCreator extends RequestIdAware
       case AuditCluster.LocalAuditCluster =>
         create.map(Right(_))
       case remote: RemoteAuditCluster =>
-        connectivityCheck
-          .check(remote)
-          .flatMap {
-            case Right(()) =>
-              create.map(Right(_))
-            case Left(error: ConnectivityError) if remote.ignoreClusterConnectivityProblems =>
+        remote.connectivityCheckMode match {
+          case ConnectivityCheckMode.Required =>
+            createAfterCheck(remote, create) { error =>
+              initializationError(error.message)
+            }
+          case ConnectivityCheckMode.BestEffort =>
+            createAfterCheck(remote, create) { error =>
               for {
                 service <- create
                 _ <- logger.dInfo(
-                  s"Audit cluster connectivity check failed, but 'ignore_es_connectivity_problems: true' is set, so auditing will proceed: ${error.message}"
+                  s"Audit cluster connectivity check failed, but a connectivity problem of this cluster does not stop the auditing: ${error.message}"
                 )
               } yield Right(service)
-            case Left(error: ConnectivityError) =>
-              initializationError(
-                s"${error.message}. You can disable this check by setting 'ignore_es_connectivity_problems: true' in the audit cluster configuration"
-              )
-            case Left(error: AuditRemoteClusterConnectivityCheck.Error.ConfigurationError) =>
-              initializationError(error.message)
-          }
+            }
+          case ConnectivityCheckMode.Disabled =>
+            create.map(Right(_))
+        }
     }
+  }
+
+  private def createAfterCheck[AUDIT_SERVICE](
+      cluster: RemoteAuditCluster,
+      create: Task[AUDIT_SERVICE]
+  )(
+      onConnectivityProblem: ConnectivityError => Task[Either[InitializationError, AUDIT_SERVICE]]
+  ): Task[Either[InitializationError, AUDIT_SERVICE]] = {
+    connectivityCheck
+      .check(cluster)
+      .flatMap {
+        case Right(())                       => create.map(Right(_))
+        case Left(error: ConnectivityError)  => onConnectivityProblem(error)
+        case Left(error: ConfigurationError) => initializationError(error.message)
+      }
   }
 
   private def initializationError(message: String) = {

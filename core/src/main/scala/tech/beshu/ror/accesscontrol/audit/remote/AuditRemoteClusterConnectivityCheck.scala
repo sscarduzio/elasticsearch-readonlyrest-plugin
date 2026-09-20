@@ -59,6 +59,7 @@ final class NodesInfoBasedAuditRemoteClusterConnectivityCheck(httpClientsFactory
     with RequestIdAwareLogging {
 
   import AuditRemoteClusterConnectivityCheck.Error
+  import NodeCheckError.*
   import NodesInfoBasedAuditRemoteClusterConnectivityCheck.{*, given}
 
   override def check(cluster: RemoteAuditCluster): Task[Either[Error, Unit]] = {
@@ -122,24 +123,23 @@ final class NodesInfoBasedAuditRemoteClusterConnectivityCheck(httpClientsFactory
             case 200 =>
               Right(())
             case 401 | 403 =>
-              Left(NodeCheckError.RejectedCredentials(node, response.status))
+              Left(RejectedCredentials(node, response.status))
+            case status if TransientResponse.isTransientStatus(status) =>
+              Left(TransientResponse(node, s"Temporary status code: $status for GET cluster info request"))
             case status =>
-              Left(
-                NodeCheckError
-                  .UnexpectedResponse(node, s"Unexpected status code: $status for GET cluster info request")
-              )
+              Left(UnexpectedResponse(node, s"Unexpected status code: $status for GET cluster info request"))
           }): Either[NodeCheckError, Unit]
           responseJson <- io.circe.parser
             .parse(response.body)
-            .leftMap(_ => NodeCheckError.NotAnEsNode(node, "Response is not a valid JSON document"))
+            .leftMap(_ => InvalidResponsePayload(node, "Response is not a valid JSON document"))
           clusterInfo <- responseJson.as[ClusterInfoResponse].leftMap { _ =>
-            NodeCheckError.NotAnEsNode(node, "Invalid response for GET cluster info request")
+            InvalidResponsePayload(node, "Invalid response for GET cluster info request")
           }
         } yield AuditNodeInfo(node, clusterInfo)
       }
       .recover { case NonFatal(ex) =>
         logger.error(s"Unexpected connection error while fetching cluster info from node ${node.show}", ex)
-        Left(NodeCheckError.UnexpectedConnectionError(node, ex))
+        Left(UnexpectedConnectionError(node, ex))
       }
   }
 
@@ -150,12 +150,6 @@ final class NodesInfoBasedAuditRemoteClusterConnectivityCheck(httpClientsFactory
     val nodeResults: Ior[NonEmptyList[NodeCheckError], NonEmptyList[AuditNodeInfo]] =
       nodeInfoResults.reduceMap(_.toIor.bimap(NonEmptyList.one, NonEmptyList.one))
     nodeResults match {
-      case Ior.Left(errors) if errors.forall(NodeCheckError.isSettingsProblem) =>
-        Left(
-          Error.ConfigurationError(
-            s"Audit cluster healthcheck failed for remote cluster ${cluster.show}. Details: No node of the remote cluster accepted the healthcheck request. ${errors.map(_.show).toList.show}"
-          )
-        )
       case Ior.Left(errors) =>
         Left(
           Error.ConnectivityError(
@@ -215,16 +209,17 @@ final class NodesInfoBasedAuditRemoteClusterConnectivityCheck(httpClientsFactory
       .header
 
   /**
-   * Retries only the transient failures. A node which answers, but answers something unexpected (a wrong status code,
-   * a malformed body), gives the same answer to every attempt, so retrying it only makes the healthcheck longer.
+   * Retries only the transient failures: a connection error, or a status code which says that the node is not ready
+   * yet. A node which answers something else gives the same answer to every attempt, so retrying it only makes the
+   * healthcheck longer.
    */
   private def withRetries(
       source: => Task[Either[NodeCheckError, AuditNodeInfo]]
   ): Task[Either[NodeCheckError, AuditNodeInfo]] =
     retryBackoffEither(
       source = source.map {
-        case Left(error: NodeCheckError.UnexpectedConnectionError) => Left(error)
-        case finalResult                                           => Right(finalResult)
+        case Left(error) if error.isTransient => Left(error)
+        case finalResult                      => Right(finalResult)
       },
       maxRetries = retryConfig.maxRetries,
       firstDelay = retryConfig.initialDelay,
@@ -269,30 +264,51 @@ object NodesInfoBasedAuditRemoteClusterConnectivityCheck {
 
   }
 
+  /**
+   * Every case says that this node did not confirm the connectivity. None of them proves that the audit output is
+   * misconfigured: a node can reject the healthcheck credentials and still accept the audit writes, and a body which
+   * is not an ES response can come from a proxy in front of a healthy node. Only a check which compares the answers
+   * of several nodes can find a configuration error, so all these cases are connectivity problems.
+   */
   private sealed trait NodeCheckError
 
   private object NodeCheckError {
 
-    sealed trait ConnectivityProblem extends NodeCheckError
-    sealed trait SettingsProblem extends NodeCheckError
+    final case class UnexpectedResponse(node: AuditClusterNode, message: String) extends NodeCheckError
+    final case class TransientResponse(node: AuditClusterNode, message: String) extends NodeCheckError
 
-    final case class UnexpectedResponse(node: AuditClusterNode, message: String) extends ConnectivityProblem
-    final case class UnexpectedConnectionError(node: AuditClusterNode, cause: Throwable) extends ConnectivityProblem
-    final case class RejectedCredentials(node: AuditClusterNode, statusCode: Int) extends SettingsProblem
-    final case class NotAnEsNode(node: AuditClusterNode, message: String) extends SettingsProblem
+    object TransientResponse {
+
+      def isTransientStatus(status: Int): Boolean = status match {
+        case 408 | 429 | 502 | 503 | 504 => true
+        case _                           => false
+      }
+
+    }
+
+    final case class UnexpectedConnectionError(node: AuditClusterNode, cause: Throwable) extends NodeCheckError
+    final case class RejectedCredentials(node: AuditClusterNode, statusCode: Int) extends NodeCheckError
+    final case class InvalidResponsePayload(node: AuditClusterNode, message: String) extends NodeCheckError
 
     extension (error: NodeCheckError) {
 
-      def isSettingsProblem: Boolean = error match {
-        case _: SettingsProblem     => true
-        case _: ConnectivityProblem => false
+      def isTransient: Boolean = {
+        error match {
+          case _: UnexpectedConnectionError => true
+          case _: TransientResponse         => true
+          case _: UnexpectedResponse        => false
+          case _: RejectedCredentials       => false
+          case _: InvalidResponsePayload    => false
+        }
       }
 
     }
 
     given Show[NodeCheckError] = Show.show {
       case UnexpectedResponse(node, message) => s"Unexpected response from audit node: ${node.show}. Details: $message"
-      case NotAnEsNode(node, message)        => s"Unexpected response from audit node: ${node.show}. Details: $message"
+      case TransientResponse(node, message)  => s"Audit node is not ready: ${node.show}. Details: $message"
+      case InvalidResponsePayload(node, message) =>
+        s"Unexpected response from audit node: ${node.show}. Details: $message"
       case RejectedCredentials(node, statusCode) =>
         s"Audit node rejected the credentials: ${node.show}. Details: status code $statusCode"
       case UnexpectedConnectionError(node, cause) =>

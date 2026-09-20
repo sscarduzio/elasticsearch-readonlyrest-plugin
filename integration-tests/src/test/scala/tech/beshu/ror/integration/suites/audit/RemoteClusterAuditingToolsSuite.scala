@@ -168,7 +168,7 @@ class RemoteClusterAuditingToolsSuite
         val id4 = sendTracedRequest("phase-4")
         auditShouldContain(List(id4))
       }
-      "handle audit settings reload when all nodes are unreachable and ignore_es_connectivity_problems is enabled" in {
+      "handle audit settings reload when all nodes are unreachable and connectivity_check is best_effort" in {
         val auditNode1 = proxiedContainers(0)
         val auditNode2 = proxiedContainers(1)
 
@@ -179,7 +179,7 @@ class RemoteClusterAuditingToolsSuite
 
         val updatedConfig: String = configWithReplacements(
           config = baseRorSettingsYaml,
-          replacements = Map("ignore_es_connectivity_problems: false" -> "ignore_es_connectivity_problems: true")
+          replacements = Map("connectivity_check: required" -> "connectivity_check: best_effort")
         )
 
         val response = rorApiManager.updateRorInIndexSettings(updatedConfig)
@@ -195,7 +195,7 @@ class RemoteClusterAuditingToolsSuite
           response.forceOkStatus()
         }
       }
-      "reload audit settings when one node is unreachable and ignore_es_connectivity_problems is disabled" in {
+      "reload audit settings when one node is unreachable and connectivity_check is required" in {
         val auditNode1 = proxiedContainers(0)
         val auditNode2 = proxiedContainers(1)
         auditNode1.enableNetwork()
@@ -207,7 +207,7 @@ class RemoteClusterAuditingToolsSuite
 
         rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml).forceOkStatus()
       }
-      "fail to reload audit settings when all nodes are unreachable and ignore_es_connectivity_problems is disabled" in {
+      "fail to reload audit settings when all nodes are unreachable and connectivity_check is required" in {
         val auditNode1 = proxiedContainers(0)
         val auditNode2 = proxiedContainers(1)
         auditNode1.enableNetwork()

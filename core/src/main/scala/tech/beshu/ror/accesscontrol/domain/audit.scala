@@ -172,7 +172,7 @@ object AuditCluster {
       nodes: UniqueNonEmptyList[AuditClusterNode],
       mode: ClusterMode,
       credentials: Option[NodeCredentials],
-      ignoreClusterConnectivityProblems: Boolean
+      connectivityCheckMode: ConnectivityCheckMode
   ) extends AuditCluster {
     def requestTimeout: FiniteDuration = 30.seconds
     def connectionTimeout: FiniteDuration = 1.seconds
@@ -205,6 +205,14 @@ object AuditCluster {
   object ClusterMode {
     case object RoundRobin extends ClusterMode
     case object Failover extends ClusterMode
+  }
+
+  sealed trait ConnectivityCheckMode
+
+  object ConnectivityCheckMode {
+    case object Required extends ConnectivityCheckMode
+    case object BestEffort extends ConnectivityCheckMode
+    case object Disabled extends ConnectivityCheckMode
   }
 
 }
