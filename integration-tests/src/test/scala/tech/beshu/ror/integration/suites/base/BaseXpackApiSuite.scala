@@ -682,9 +682,11 @@ trait BaseXpackApiSuite
             result should have statusCode 400
           }
         }
-        "sql query is malformed" in {
+      }
+      "be forbidden" when {
+        "the sql query is malformed, because ReadonlyREST cannot tell which indices it would read" in {
           val result = adminSqlManager.execute("""SELECT * FROM unescaped-index.name""")
-          result should have statusCode 400
+          result should have statusCode 403
         }
       }
     }
