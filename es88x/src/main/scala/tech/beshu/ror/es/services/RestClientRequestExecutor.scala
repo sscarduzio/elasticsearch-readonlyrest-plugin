@@ -16,13 +16,17 @@
  */
 package tech.beshu.ror.es.services
 
+import cats.data.NonEmptyList
 import monix.eval.Task
-import org.elasticsearch.client.{Request, Response, ResponseListener, RestClient}
-import tech.beshu.ror.es.services.MultiNodeRestClient.RequestExecutor
+import org.elasticsearch.client.{Request, Response, ResponseException, ResponseListener, RestClient}
+import tech.beshu.ror.es.services.MultiNodeRestClient.{FailoverAwareRequestExecutor, FailoverDecision}
+import tech.beshu.ror.es.utils.RestResponseOps.*
 
+import java.io.IOException
+import java.time.Clock
 import scala.concurrent.Promise
 
-final class RestClientRequestExecutor(restClient: RestClient) extends RequestExecutor[Request, Response] {
+final class RestClientRequestExecutor(restClient: RestClient) extends FailoverAwareRequestExecutor[Request, Response] {
 
   override def execute(request: Request): Task[Response] = Task.defer {
     val promise = Promise[Response]()
@@ -37,6 +41,17 @@ final class RestClientRequestExecutor(restClient: RestClient) extends RequestExe
     Task.fromFuture(promise.future)
   }
 
+  override def failoverDecisionOn(exception: Throwable): FailoverDecision = exception match {
+    case exception: ResponseException if exception.getResponse.isRetryable =>
+      FailoverDecision.TryNextNode
+    case _: ResponseException =>
+      FailoverDecision.Stop
+    case _: IOException =>
+      FailoverDecision.TryNextNode
+    case _ =>
+      FailoverDecision.Stop
+  }
+
   override def close(): Unit = restClient.close()
 }
 
@@ -45,6 +60,16 @@ object RestClientRequestExecutor {
   // one client configured with all hosts - the ES RestClient rotates over them itself
   def roundRobinClient(restClient: RestClient): MultiNodeRestClient[Request, Response] = {
     new DelegatingMultiNodeRestClient(new RestClientRequestExecutor(restClient))
+  }
+
+  // one client per host - FailoverClient decides which node to try and when
+  def failoverClient(restClientPerNode: NonEmptyList[RestClient])(
+      using clock: Clock
+  ): MultiNodeRestClient[Request, Response] = {
+    FailoverClient.create(
+      nodeExecutors = restClientPerNode.map(new RestClientRequestExecutor(_)),
+      clock = clock
+    )
   }
 
 }

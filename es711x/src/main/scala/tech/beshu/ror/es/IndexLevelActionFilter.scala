@@ -108,7 +108,8 @@ class IndexLevelActionFilter(
 
   private def auditCapabilities: EsAuditCapabilities.IndexOrDataStream = {
     val creator = new IndexBasedAuditOutputServiceCreator with DataStreamBasedAuditOutputServiceCreator {
-      override def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService = createService(cluster)
+      override def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService =
+        createService(cluster)
 
       override def index(cluster: AuditCluster): IndexBasedAuditOutputService = createService(cluster)
 
@@ -120,7 +121,9 @@ class IndexLevelActionFilter(
               using systemContext.clock
             )
           case remote: AuditCluster.RemoteAuditCluster =>
-            RestClientAuditOutputService.create(remote)
+            RestClientAuditOutputService.create(remote)(
+              using systemContext.clock
+            )
         }
       }
     }

@@ -68,6 +68,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
 
   private val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
 
+  private val defaultConnectivityCheckMode = ConnectivityCheckMode.Disabled
   private val defaultRemoteClusterMode = ClusterMode.RoundRobin
 
   "Audit settings" when {
@@ -1038,7 +1039,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = defaultRemoteClusterMode,
-                  credentials = None
+                  credentials = None,
+                  connectivityCheckMode = defaultConnectivityCheckMode
                 )
               )
             }
@@ -1061,7 +1063,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                     AuditClusterNode(Uri.parse("https://user:pass@2.2.2.2:9200"))
                   ),
                   mode = ClusterMode.RoundRobin,
-                  credentials = Some(NodeCredentials("user", "pass"))
+                  credentials = Some(NodeCredentials("user", "pass")),
+                  connectivityCheckMode = defaultConnectivityCheckMode
                 )
               )
             }
@@ -1083,7 +1086,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  connectivityCheckMode = defaultConnectivityCheckMode
                 )
               )
             }
@@ -1111,7 +1115,64 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                     AuditClusterNode(Uri.parse("3.3.3.3"))
                   ),
                   mode = ClusterMode.RoundRobin,
-                  credentials = Some(NodeCredentials("user", "pass"))
+                  credentials = Some(NodeCredentials("user", "pass")),
+                  connectivityCheckMode = defaultConnectivityCheckMode
+                )
+              )
+            }
+            "connectivity_check is disabled" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      cluster:
+                  |        nodes: ["1.1.1.1", "2.2.2.2", "3.3.3.3"]
+                  |        mode: round-robin
+                  |        connectivity_check: disabled
+                """.stripMargin
+              )
+              assertIndexBasedAuditOutputConfigPresent[BlockVerbosityAwareAuditLogSerializer](
+                settings,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = RemoteAuditCluster(
+                  nodes = UniqueNonEmptyList.of(
+                    AuditClusterNode(Uri.parse("1.1.1.1")),
+                    AuditClusterNode(Uri.parse("2.2.2.2")),
+                    AuditClusterNode(Uri.parse("3.3.3.3"))
+                  ),
+                  mode = ClusterMode.RoundRobin,
+                  credentials = None,
+                  connectivityCheckMode = ConnectivityCheckMode.Disabled
+                )
+              )
+            }
+            "connectivity_check is set" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      cluster:
+                  |        nodes: ["1.1.1.1", "2.2.2.2", "3.3.3.3"]
+                  |        mode: round-robin
+                  |        connectivity_check: best_effort
+                """.stripMargin
+              )
+              assertIndexBasedAuditOutputConfigPresent[BlockVerbosityAwareAuditLogSerializer](
+                settings,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = RemoteAuditCluster(
+                  nodes = UniqueNonEmptyList.of(
+                    AuditClusterNode(Uri.parse("1.1.1.1")),
+                    AuditClusterNode(Uri.parse("2.2.2.2")),
+                    AuditClusterNode(Uri.parse("3.3.3.3"))
+                  ),
+                  mode = ClusterMode.RoundRobin,
+                  credentials = None,
+                  connectivityCheckMode = ConnectivityCheckMode.BestEffort
                 )
               )
             }
@@ -1135,7 +1196,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               expectedAuditCluster = RemoteAuditCluster(
                 nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                 mode = ClusterMode.RoundRobin,
-                credentials = None
+                credentials = None,
+                connectivityCheckMode = defaultConnectivityCheckMode
               )
             )
           }
@@ -1259,7 +1321,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  connectivityCheckMode = defaultConnectivityCheckMode
                 )
               )
             }
@@ -1279,7 +1342,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("https://user:pass@1.1.1.1:9200"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = Some(NodeCredentials("user", "pass"))
+                  credentials = Some(NodeCredentials("user", "pass")),
+                  connectivityCheckMode = defaultConnectivityCheckMode
                 )
               )
             }
@@ -1301,7 +1365,31 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  connectivityCheckMode = defaultConnectivityCheckMode
+                )
+              )
+            }
+            "extended syntax for cluster with failover mode" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      cluster:
+                  |        nodes: ["1.1.1.1"]
+                  |        mode: failover
+                """.stripMargin
+              )
+              assertDataStreamAuditOutputConfigPresent[BlockVerbosityAwareAuditLogSerializer](
+                settings,
+                expectedDataStreamName = "readonlyrest_audit",
+                expectedAuditCluster = RemoteAuditCluster(
+                  nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  mode = ClusterMode.Failover,
+                  credentials = None,
+                  connectivityCheckMode = defaultConnectivityCheckMode
                 )
               )
             }
@@ -1317,6 +1405,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                   |        mode: round-robin
                   |        username: "user"
                   |        password: "pass"
+                  |        connectivity_check: best_effort
                 """.stripMargin
               )
               assertDataStreamAuditOutputConfigPresent[BlockVerbosityAwareAuditLogSerializer](
@@ -1329,7 +1418,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                     AuditClusterNode(Uri.parse("3.3.3.3"))
                   ),
                   mode = ClusterMode.RoundRobin,
-                  credentials = Some(NodeCredentials("user", "pass"))
+                  credentials = Some(NodeCredentials("user", "pass")),
+                  connectivityCheckMode = ConnectivityCheckMode.BestEffort
                 )
               )
             }
@@ -1348,6 +1438,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 |        mode: round-robin
                 |        username: "user"
                 |        password: "pass"
+                |        connectivity_check: best_effort
               """.stripMargin
             )
 
@@ -1360,7 +1451,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                   AuditClusterNode(Uri.parse("2.2.2.2")),
                 ),
                 mode = ClusterMode.RoundRobin,
-                credentials = Some(NodeCredentials("user", "pass"))
+                credentials = Some(NodeCredentials("user", "pass")),
+                connectivityCheckMode = ConnectivityCheckMode.BestEffort
               )
             )
           }
@@ -1383,7 +1475,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               expectedAuditCluster = RemoteAuditCluster(
                 nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                 mode = ClusterMode.RoundRobin,
-                credentials = None
+                credentials = None,
+                connectivityCheckMode = defaultConnectivityCheckMode
               ),
             )
           }
@@ -1840,7 +1933,27 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               assertInvalidSettings(
                 settings,
                 expectedErrorMessage =
-                  "Error for field 'mode': Unknown cluster mode [not-existing-mode], allowed values are: [round-robin]"
+                  "Error for field 'mode': Unknown cluster mode [not-existing-mode], allowed values are: [round-robin,failover]"
+              )
+            }
+            "remote cluster has invalid connectivity check" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      cluster:
+                  |        nodes: ["1.1.1.1"]
+                  |        mode: round-robin
+                  |        connectivity_check: maybe
+                """.stripMargin
+              )
+
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "Error for field 'connectivity_check': Unknown connectivity check [maybe], allowed values are: [required,best_effort,disabled]"
               )
             }
             "remote cluster credentials malformed" when {
@@ -2170,7 +2283,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  connectivityCheckMode = defaultConnectivityCheckMode
                 )
               )
             }
@@ -2191,7 +2305,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  connectivityCheckMode = defaultConnectivityCheckMode
                 )
               )
             }
@@ -2264,7 +2379,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("http://user:test@1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = Some(NodeCredentials("user", "test"))
+                  credentials = Some(NodeCredentials("user", "test")),
+                  connectivityCheckMode = defaultConnectivityCheckMode
                 )
               )
             }
@@ -2284,7 +2400,8 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  connectivityCheckMode = defaultConnectivityCheckMode
                 )
               )
             }
