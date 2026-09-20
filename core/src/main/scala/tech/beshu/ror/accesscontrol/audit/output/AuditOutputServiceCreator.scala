@@ -19,18 +19,10 @@ package tech.beshu.ror.accesscontrol.audit.output
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, IndexBasedAuditOutputService}
 
-/**
- * Creates the audit output service of one ES version. Says nothing about the state of the cluster - see
- * [[ConnectivityCheckedIndexBasedAuditOutputServiceCreator]].
- */
 trait IndexBasedAuditOutputServiceCreator {
   def index(cluster: AuditCluster): IndexBasedAuditOutputService
 }
 
-/**
- * Creates the audit output service of one ES version. Says nothing about the state of the cluster - see
- * [[ConnectivityCheckedDataStreamBasedAuditOutputServiceCreator]].
- */
 trait DataStreamBasedAuditOutputServiceCreator {
   def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService
 }

@@ -59,7 +59,7 @@ final class NodesInfoBasedAuditRemoteClusterConnectivityCheck(httpClientsFactory
     with RequestIdAwareLogging {
 
   import AuditRemoteClusterConnectivityCheck.Error
-  import NodeCheckError.*
+  import NodesInfoBasedAuditRemoteClusterConnectivityCheck.NodeCheckError.*
   import NodesInfoBasedAuditRemoteClusterConnectivityCheck.{*, given}
 
   override def check(cluster: RemoteAuditCluster): Task[Either[Error, Unit]] = {
