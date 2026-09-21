@@ -68,44 +68,13 @@ class PatchingOfAptBasedEsInstallationSuite
     case CurrentOs.Windows =>
       Map.empty
     case CurrentOs.OtherThanWindows =>
-      (EsInstallationType.EsDockerImage :: List(EsInstallationType.UbuntuDockerImageWithEsFromApt))
-        .filter(_ => esIsAvailableAsAptPackage)
-        .map { installationType => installationType -> new EsNode(installationType) }
-        .toMap
-  }
+      val installationTypes =
+        if (EsModule.isCurrentModuleNotExcluded(allEs6x))
+          EsInstallationType.EsDockerImage :: EsInstallationType.UbuntuDockerImageWithEsFromApt :: Nil
+        else
+          EsInstallationType.EsDockerImage :: Nil
 
-  // Must stay in step with the `excludeES allEs6x` of the apt test below: a node nobody asserts on is
-  // a boot for nothing, and a missing node fails the test that reads its logs.
-  private def esIsAvailableAsAptPackage: Boolean = EsModule.isCurrentModuleNotExcluded(allEs6x)
-
-  private var startedLinuxNodes: Map[EsInstallationType, Either[Throwable, String]] = Map.empty
-
-  override protected def beforeAll(): Unit = {
-    super.beforeAll()
-    startedLinuxNodes = Task
-      .parTraverseUnordered(linuxNodes.toList) { case (installationType, node) =>
-        node.startAndTestRorStartup.attempt
-          .map {
-            _.map(_ => node.dockerLogs).left
-              .map { error =>
-                new IllegalStateException(
-                  s"The ES node [$installationType] did not start. Docker logs:\n${node.dockerLogs}",
-                  error
-                )
-              }
-          }
-          .map(installationType -> _)
-      }
-      .map(_.toMap)
-      .runSyncUnsafe(15 minutes)
-  }
-
-  override protected def afterAll(): Unit = {
-    try {
-      Task.parTraverseUnordered(linuxNodes.values.toList)(_.stop).runSyncUnsafe(5 minutes)
-    } finally {
-      super.afterAll()
-    }
+      installationTypes.map { installationType => installationType -> new EsNode(installationType) }.toMap
   }
 
   OsUtils.currentOs match {
@@ -176,26 +145,54 @@ class PatchingOfAptBasedEsInstallationSuite
       }
   }
 
-  private def dockerLogsOf(esInstallationType: EsInstallationType): String = {
-    startedLinuxNodes.get(esInstallationType) match {
-      case Some(Right(dockerLogs)) => dockerLogs
-      case Some(Left(error))       => throw error
-      case None => throw new IllegalStateException(s"No ES node was started for [$esInstallationType]")
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    Task.parTraverseUnordered(linuxNodes.values.toList)(_.start).runSyncUnsafe(15 minutes)
+  }
+
+  override protected def afterAll(): Unit = {
+    try {
+      Task.parTraverseUnordered(linuxNodes.values.toList)(_.stop).runSyncUnsafe(5 minutes)
+    } finally {
+      super.afterAll()
     }
+  }
+
+  private def dockerLogsOf(esInstallationType: EsInstallationType): String = {
+    linuxNodes
+      .getOrElse(
+        esInstallationType,
+        throw new IllegalStateException(s"No ES node was started for [$esInstallationType]")
+      )
+      .dockerLogs
   }
 
   private final class EsNode(esInstallationType: EsInstallationType) {
 
     private val manager = new TestEsContainerManager(validRorConfigFile, esInstallationType)
 
-    def startAndTestRorStartup: Task[Unit] = for {
-      _ <- manager.start()
-      _ <- testRorStartup(usingManager = manager)
-    } yield ()
+    // Memoized, so `beforeAll` boots the node once and the test that reads the logs gets that one
+    // result back. A node that does not start reports the failure to its own test only.
+    private val startedNodeLogs: Task[String] =
+      (for {
+        _ <- manager.start()
+        _ <- testRorStartup(usingManager = manager)
+      } yield manager.getLogs).onErrorHandleWith { error =>
+        Task.raiseError(
+          new IllegalStateException(
+            s"The ES node [$esInstallationType] did not start. Docker logs:\n${manager.getLogs}",
+            error
+          )
+        )
+      }.memoize
+
+    def start: Task[Unit] = startedNodeLogs.attempt.map(_ => ())
+
+    // `beforeAll` has run this task to the end, so this reads its result back. The timeout only stops
+    // a test that asks for a node the suite never started from hanging the run.
+    def dockerLogs: String = startedNodeLogs.runSyncUnsafe(1 minute)
 
     def stop: Task[Unit] = manager.stop()
-
-    def dockerLogs: String = manager.getLogs
   }
 
   private def withTestEsContainerManager(
