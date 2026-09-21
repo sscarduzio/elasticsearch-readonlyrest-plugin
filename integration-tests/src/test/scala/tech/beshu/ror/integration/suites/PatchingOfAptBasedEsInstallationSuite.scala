@@ -61,6 +61,10 @@ class PatchingOfAptBasedEsInstallationSuite
 
   private val validRorConfigFile = "/basic/readonlyrest.yml"
 
+  // ES 6.x is not available as apt package, so we do not test it. The node set above and the tag of
+  // the apt test below read this one value.
+  private val esVersionsWithoutAptPackage: Regex = allEs6x
+
   // The Linux nodes share nothing, so the suite boots them at once and each test reads only the logs
   // of its own node. Started one after the other, the suite pays two docker builds and two ES boots
   // in sequence. Windows keeps one node per test: the native ES install of a node name owns a fixed
