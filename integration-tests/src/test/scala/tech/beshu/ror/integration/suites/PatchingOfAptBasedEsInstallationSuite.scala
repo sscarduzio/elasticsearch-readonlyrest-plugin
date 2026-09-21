@@ -14,17 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools
+package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import com.github.dockerjava.api.DockerClient
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicInt
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers.include
 import org.scalatest.matchers.should.Matchers.{should, shouldNot}
 import org.scalatest.wordspec.AnyWordSpec
-import org.testcontainers.DockerClientFactory
+import tech.beshu.ror.integration.suites.base.support.HeavySuiteGated
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
@@ -35,7 +35,7 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
-import tech.beshu.ror.utils.misc.{EsModulePatterns, OsUtils}
+import tech.beshu.ror.utils.misc.{EsModule, EsModulePatterns, OsUtils}
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -48,13 +48,65 @@ import scala.util.Try
 //   - that is because after the aforementioned change in ES, the ROR plugin cannot access the /usr/share/elasticsearch directory
 //   - we bypass this problem (ROR plugin cannot check the patch status, so it just allows to continue starting ES, with warning in logs)
 // This test suite verifies, that both official ES image and apt-based ES installation with ROR can start. Logs are also asserted to detect the warning.
-class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike {
+class PatchingOfAptBasedEsInstallationSuite
+    extends AnyWordSpec
+    with ESVersionSupportForAnyWordSpecLike
+    with BeforeAndAfterAll
+    with HeavySuiteGated {
 
   import PatchingOfAptBasedEsInstallationSuite.*
 
   implicit val scheduler: Scheduler = Scheduler.computation(10)
 
   private val validRorConfigFile = "/basic/readonlyrest.yml"
+
+  // The Linux nodes share nothing, so the suite boots them at once and each test reads only the logs
+  // of its own node. Started one after the other, the suite pays two docker builds and two ES boots
+  // in sequence. Windows keeps one node per test: the native ES install of a node name owns a fixed
+  // port, and only one of the two Windows tests runs for a given ES version anyway.
+  private val linuxNodes: Map[EsInstallationType, EsNode] = OsUtils.currentOs match {
+    case CurrentOs.Windows =>
+      Map.empty
+    case CurrentOs.OtherThanWindows =>
+      (EsInstallationType.EsDockerImage :: List(EsInstallationType.UbuntuDockerImageWithEsFromApt))
+        .filter(_ => esIsAvailableAsAptPackage)
+        .map { installationType => installationType -> new EsNode(installationType) }
+        .toMap
+  }
+
+  // Must stay in step with the `excludeES allEs6x` of the apt test below: a node nobody asserts on is
+  // a boot for nothing, and a missing node fails the test that reads its logs.
+  private def esIsAvailableAsAptPackage: Boolean = EsModule.isCurrentModuleNotExcluded(allEs6x)
+
+  private var startedLinuxNodes: Map[EsInstallationType, Either[Throwable, String]] = Map.empty
+
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    startedLinuxNodes = Task
+      .parTraverseUnordered(linuxNodes.toList) { case (installationType, node) =>
+        node.startAndTestRorStartup.attempt
+          .map {
+            _.map(_ => node.dockerLogs).left
+              .map { error =>
+                new IllegalStateException(
+                  s"The ES node [$installationType] did not start. Docker logs:\n${node.dockerLogs}",
+                  error
+                )
+              }
+          }
+          .map(installationType -> _)
+      }
+      .map(_.toMap)
+      .runSyncUnsafe(15 minutes)
+  }
+
+  override protected def afterAll(): Unit = {
+    try {
+      Task.parTraverseUnordered(linuxNodes.values.toList)(_.stop).runSyncUnsafe(5 minutes)
+    } finally {
+      super.afterAll()
+    }
+  }
 
   OsUtils.currentOs match {
     case CurrentOs.Windows =>
@@ -102,9 +154,7 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
       "ES" when {
         "using official ES image" should {
           "successfully load ROR plugin and start (patch verification without warning)" in {
-            val dockerLogs = withTestEsContainerManager(EsInstallationType.EsDockerImage) { esContainer =>
-              testRorStartup(usingManager = esContainer)
-            }
+            val dockerLogs = dockerLogsOf(EsInstallationType.EsDockerImage)
             dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
             dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
             dockerLogs should include("Loading ReadonlyREST main settings from file")
@@ -115,10 +165,7 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
         "installed on Ubuntu using apt" should {
           // ES 6.x is not available as apt package, so we do not test it
           "ES successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES allEs6x in {
-            val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) {
-              esContainer =>
-                testRorStartup(usingManager = esContainer)
-            }
+            val dockerLogs = dockerLogsOf(EsInstallationType.UbuntuDockerImageWithEsFromApt)
             dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
             dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
             dockerLogs should include("Loading ReadonlyREST main settings from file")
@@ -127,6 +174,28 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
           }
         }
       }
+  }
+
+  private def dockerLogsOf(esInstallationType: EsInstallationType): String = {
+    startedLinuxNodes.get(esInstallationType) match {
+      case Some(Right(dockerLogs)) => dockerLogs
+      case Some(Left(error))       => throw error
+      case None => throw new IllegalStateException(s"No ES node was started for [$esInstallationType]")
+    }
+  }
+
+  private final class EsNode(esInstallationType: EsInstallationType) {
+
+    private val manager = new TestEsContainerManager(validRorConfigFile, esInstallationType)
+
+    def startAndTestRorStartup: Task[Unit] = for {
+      _ <- manager.start()
+      _ <- testRorStartup(usingManager = manager)
+    } yield ()
+
+    def stop: Task[Unit] = manager.stop()
+
+    def dockerLogs: String = manager.getLogs
   }
 
   private def withTestEsContainerManager(
@@ -176,8 +245,6 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
 
   final class TestEsContainerManager(rorConfigFile: String, esInstallationType: EsInstallationType)
       extends EsContainerCreator {
-
-    private lazy val dockerClient: DockerClient = DockerClientFactory.instance().client()
 
     private val dockerLogsCollector = new DockerLogsToStringConsumer
 

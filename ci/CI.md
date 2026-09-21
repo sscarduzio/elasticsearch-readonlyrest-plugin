@@ -47,10 +47,14 @@ counterpart, through the Git Bash of the runner, so one definition serves both p
 platforms do differently sits behind `is_windows` (`ci/runner-detect.sh`) — gradle provisions its
 own JDKs, it reads the build cache of the runner, and `core_tests` picks its suite set.
 
-`ror-tools:test` runs in `core_tests`, and in no other task. It starts an ES container, so one run
-per integration leg would cost minutes for one answer. With no `-PesModule` it takes the newest
-module by itself (`ror-tools/build.gradle`): the patcher is the same code for every module, and a
-module name written into a script is wrong at the next ES release.
+The patcher is tested in two places, because it has two sides. `ror-tools:test` runs in
+`core_tests` and holds `RorToolsAppSuite`, the CLI of the patcher: consent flags, interactive
+mode, unpatch, verify, and the error text of a corrupt or foreign patch metadata file. None of
+that reads the ES version, so one run answers for every module. `PatchingOfAptBasedEsInstallationSuite`
+lives in `integration-tests` and runs on every integration leg, because the patcher reads the ES
+layout and that layout differs per ES version. It covers the apt-based install, which no other
+suite starts, and the entitlement change of ES 8.18.1 and 9.0.1 that stops the plugin reading
+`/usr/share/elasticsearch` to verify its own patch.
 
 ## Jobs
 
@@ -60,11 +64,11 @@ module name written into a script is wrong at the next ES release.
 | `toolchains_verify` | sanity-checks the toolchains image | always (stops the run early when the image is broken) |
 | `discover` | decides which tests this run covers, and derives every matrix: the ES majors to build, and the ES modules each test matrix covers; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
-| `unit_tests_linux` | the unit suites: core, audit, build-base, and `ror-tools` | pushes + PRs |
+| `unit_tests_linux` | the unit suites: core, audit, build-base, and the `ror-tools` CLI | pushes + PRs |
 | `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
 | `it_linux` | integration tests, one job per selected ES module | module selection follows the [test matrix policy](#test-matrix-policy) |
 | `it_windows` | integration tests on native-Windows ES | module selection follows the [test matrix policy](#test-matrix-policy) |
-| `unit_tests_windows` | the same `core_tests` task on Windows: core and `ror-tools`, whose patcher has native-Windows paths | manual `run_all_tests_on_windows` |
+| `unit_tests_windows` | the same `core_tests` task on Windows: core and `ror-tools`, whose CLI reads native-Windows paths | manual `run_all_tests_on_windows` |
 | `e2e_order_kbn_images` | dispatches the ROR KBN dev image build **and waits for it** | selected runs |
 | `e2e_build_es_images` | builds + publishes this repo's ROR ES dev image, one job per module | selected runs |
 | `e2e_tests` | Cypress e2e suite, one job per selected ES module | selected runs; see the [test matrix policy](#test-matrix-policy) |
