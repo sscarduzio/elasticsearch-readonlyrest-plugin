@@ -82,7 +82,7 @@ object EsqlRequestHelper {
         .create()
         .get[Any]()
 
-    override def indicesIn(query: String): Either[Throwable, QueryIndices] = {
+    override protected def queryIndicesFrom(query: String): Either[Throwable, QueryIndices] = {
       createStatement(query).flatMap(statement => Try(queryIndicesIn(planOf(statement))).toEither)
     }
 

@@ -20,7 +20,13 @@ import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.QueryIndices
 
 trait EsqlQueryIndicesReader {
 
-  def indicesIn(query: String): Either[Throwable, QueryIndices]
+  private[esql] final def indicesIn(query: String): Either[ReadError, List[LocatedIndexList]] =
+    for {
+      indices <- queryIndicesFrom(query).left.map(ReadError.QueryNotParsed.apply)
+      indexLists <- IndexListLocator.locatedIn(query, indices).left.map(ReadError.IndicesNotLocated.apply)
+    } yield indexLists
+
+  protected def queryIndicesFrom(query: String): Either[Throwable, QueryIndices]
 
 }
 

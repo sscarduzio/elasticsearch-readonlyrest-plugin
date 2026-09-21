@@ -21,6 +21,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.{IndexPatternInQuery, QueryIndices, SourceLocation}
+import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
 import tech.beshu.ror.es.esql.ReadingFailure.*
 
 class IndexListReplacerTest extends AnyWordSpec {
@@ -716,7 +717,7 @@ class IndexListReplacerTest extends AnyWordSpec {
   private def verify(
       query: String,
       allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      esReads: QueryIndices,
+      esReads: List[LocatedIndexList],
       reported: ReportedBy*
   ): Either[Rejection, String] = {
     val indexLists = indexListsIn(query, reported)
@@ -730,14 +731,14 @@ class IndexListReplacerTest extends AnyWordSpec {
       reported: Seq[ReportedBy]
   ): Either[ReadingFailure, NonEmptyList[LocatedIndexList]] = {
     val relations = reported.toList
-      .foldLeft((0, List.empty[(IndexPatternRole, IndexPatternInQuery)])) { case ((claimedUpTo, relations), relation) =>
+      .foldLeft((0, List.empty[(Boolean, IndexPatternInQuery)])) { case ((claimedUpTo, relations), relation) =>
         val offset = relation.forcedOffset.getOrElse(query.indexOf(relation.writtenText, claimedUpTo))
-        (offset + 1, relations :+ (relation.role, relation.reportedAt(query, offset)))
+        (offset + 1, relations :+ (relation.readByLookupJoin, relation.reportedAt(query, offset)))
       }
       ._2
     val indices = QueryIndices(
-      fromSources = relations.collect { case (IndexPatternRole.FromSource, pattern) => pattern },
-      lookupJoins = relations.collect { case (IndexPatternRole.LookupJoin, pattern) => pattern }
+      fromSources = relations.collect { case (false, pattern) => pattern },
+      lookupJoins = relations.collect { case (true, pattern) => pattern }
     )
     IndexListLocator
       .locatedIn(query, indices)
@@ -745,20 +746,22 @@ class IndexListReplacerTest extends AnyWordSpec {
   }
 
   private def from(writtenText: String, indexPattern: String): ReportedBy =
-    ReportedBy(writtenText, IndexPatternRole.FromSource, indexPattern, forcedOffset = None)
+    ReportedBy(writtenText, readByLookupJoin = false, indexPattern, forcedOffset = None)
 
   private def join(writtenText: String, indexPattern: String): ReportedBy =
-    ReportedBy(writtenText, IndexPatternRole.LookupJoin, indexPattern, forcedOffset = None)
+    ReportedBy(writtenText, readByLookupJoin = true, indexPattern, forcedOffset = None)
 
   private def at(offset: Int, writtenText: String, indexPattern: String): ReportedBy =
-    ReportedBy(writtenText, IndexPatternRole.FromSource, indexPattern, forcedOffset = Some(offset))
+    ReportedBy(writtenText, readByLookupJoin = false, indexPattern, forcedOffset = Some(offset))
 
   private def joinAt(offset: Int, writtenText: String, indexPattern: String): ReportedBy =
-    ReportedBy(writtenText, IndexPatternRole.LookupJoin, indexPattern, forcedOffset = Some(offset))
+    ReportedBy(writtenText, readByLookupJoin = true, indexPattern, forcedOffset = Some(offset))
 
-  private def esReadsOf(fromSources: List[String], lookupJoins: List[String] = Nil): QueryIndices = {
-    def readBack(indexPattern: String) = IndexPatternInQuery(indexPattern, SourceLocation(1, 0), indexPattern)
-    QueryIndices(fromSources.map(readBack), lookupJoins.map(readBack))
+  private def esReadsOf(fromSources: List[String], lookupJoins: List[String] = Nil): List[LocatedIndexList] = {
+    val anywhere = TextSpan(0, 0)
+    val readBack = fromSources.map(SourceCommandIndices.parse(anywhere, _, IndexListSyntax.BareIndexList)) :::
+      lookupJoins.map(LookupJoinTarget.parse(anywhere, _))
+    readBack.map(_.getOrElse(fail("the test reports an index list that cannot be read as one"))).distinct
   }
 
   private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] =
@@ -766,7 +769,7 @@ class IndexListReplacerTest extends AnyWordSpec {
 
   private final case class ReportedBy(
       writtenText: String,
-      role: IndexPatternRole,
+      readByLookupJoin: Boolean,
       indexPattern: String,
       forcedOffset: Option[Int]
   ) {

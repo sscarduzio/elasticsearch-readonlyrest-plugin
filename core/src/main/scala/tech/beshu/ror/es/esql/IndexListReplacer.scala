@@ -50,11 +50,11 @@ private[esql] object IndexListReplacer {
       sourceCommandIndices.map { indexList =>
         val allowed = allowedIndicesFor(indexList, allowedIndexNames, reachableOnlyThroughLookupJoin, scope)
         val indices = indexListOf(allowed.getOrElse(masked(indexList)))
-        Edit(indexList.span, IndexPatternRole.FromSource.describe(indices), textOf(indexList.writtenAs, indices))
+        Edit(indexList.span, intendedIndexList = indices, textOf(indexList.writtenAs, indices))
       } ::: lookupJoinTargets.map { indexList =>
         val allowed = allowedIndicesFor(indexList, allowedIndexNames)
         val index = indexListOf(allowed.getOrElse(masked(indexList)))
-        Edit(indexList.span, IndexPatternRole.LookupJoin.describe(index), index)
+        Edit(indexList.span, intendedIndexList = s"LOOKUP JOIN ${index}", index)
       }
 
     ReplacedQuery(rewritten(query, edits), edits.map(_.intendedIndexList).sorted)
@@ -136,6 +136,20 @@ private[esql] object IndexListReplacer {
   }
 
   private final case class Edit(span: TextSpan, intendedIndexList: String, text: String)
+
+  final case class ReplacedQuery(query: String, intendedIndexLists: List[String]) {
+
+    /** Held to what ES reads back out of the rewrite - the only thing saying which indices it will really run against. */
+    def checkedAgainst(readIndexLists: List[LocatedIndexList]): Either[Rejection, String] = {
+      val read = readIndexLists.map(_.describe).sorted
+      Either.cond(
+        test = intendedIndexLists == read,
+        right = query,
+        left = Rejection.SubstitutionNotConfirmed(intendedIndexLists, read)
+      )
+    }
+
+  }
 
   private sealed trait SourceCommandScope
 

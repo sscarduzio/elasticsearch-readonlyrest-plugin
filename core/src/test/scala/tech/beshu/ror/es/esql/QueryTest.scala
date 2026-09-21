@@ -114,7 +114,17 @@ class QueryTest extends AnyWordSpec {
 
         query.narrowedTo(allowed("logs-1")) shouldBe Right(query)
       }
-      "be rejected when Elasticsearch reads the rewrite as naming other indices" in {
+      "be rejected when Elasticsearch reads no index list out of the rewrite" in {
+        narrow(
+          query = "FROM logs-* | LIMIT 10",
+          allowed = allowed("logs-1"),
+          reads = Map(
+            "FROM logs-* | LIMIT 10" -> List(from("FROM logs-*", "logs-*")),
+            "FROM logs-1 | LIMIT 10" -> List.empty
+          )
+        ) shouldBe Left(Rejection.SubstitutionNotConfirmed(List("logs-1"), List.empty))
+      }
+      "be rejected when Elasticsearch reads the rewrite as naming indices the rewritten query does not hold" in {
         narrow(
           query = "FROM logs-* | LIMIT 10",
           allowed = allowed("logs-1"),
@@ -122,7 +132,9 @@ class QueryTest extends AnyWordSpec {
             "FROM logs-* | LIMIT 10" -> List(from("FROM logs-*", "logs-*")),
             "FROM logs-1 | LIMIT 10" -> List(from("FROM logs-1", "logs-1,logs-2"))
           )
-        ) shouldBe Left(Rejection.SubstitutionNotConfirmed(List("logs-1"), List("logs-1,logs-2")))
+        ) shouldBe Left(
+          Rejection.RewriteNotConfirmed(List("logs-1"), ReadingFailure.NotWhereEsReportedIt("logs-1,logs-2"))
+        )
       }
       "be rejected when Elasticsearch cannot parse the rewrite" in {
         val reader = new StubReader({
@@ -202,7 +214,7 @@ class QueryTest extends AnyWordSpec {
 
   private final class StubReader(reads: String => Either[Throwable, QueryIndices]) extends EsqlQueryIndicesReader {
 
-    override def indicesIn(query: String): Either[Throwable, QueryIndices] = reads(query)
+    override protected def queryIndicesFrom(query: String): Either[Throwable, QueryIndices] = reads(query)
   }
 
 }

@@ -781,6 +781,10 @@ trait LogsShowInstances extends cats.instances.AllInstances {
       s"The ES|QL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
         s"the indices the user is allowed to, but Elasticsearch cannot parse the rewritten query. Please report " +
         s"this query to the ReadonlyREST team."
+    case Rejection.RewriteNotConfirmed(intended, failure) =>
+      s"The ES|QL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
+        s"the indices the user is allowed to, but it cannot tell how Elasticsearch reads the rewritten query, " +
+        s"because ${failure.show}."
     case Rejection.SubstitutionNotConfirmed(intended, read) =>
       s"The ES|QL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
         s"the indices the user is allowed to, but Elasticsearch reads the rewritten query as reading " +

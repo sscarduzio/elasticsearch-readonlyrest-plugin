@@ -18,7 +18,6 @@ package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
-import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.QueryIndices
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -44,11 +43,13 @@ object Query extends RequestIdAwareLogging {
       implicit requestId: RequestId
   ): Query = {
     reader.indicesIn(query) match {
-      case Right(indices) =>
-        located(query, reader, indices)
-      case Left(cause) =>
+      case Right(indexLists) =>
+        readable(query, reader, indexLists)
+      case Left(ReadError.QueryNotParsed(cause)) =>
         logger.debug("Cannot parse the ES|QL statement", cause)
         Unreadable(query, Rejection.CannotParseQuery)
+      case Left(ReadError.IndicesNotLocated(failure)) =>
+        Unreadable(query, Rejection.CannotExtractIndices(failure))
     }
   }
 
@@ -59,7 +60,7 @@ object Query extends RequestIdAwareLogging {
   ) extends Query {
 
     override lazy val indices: Set[RequestedIndex[ClusterIndexName]] =
-      LocatedIndexList.requestedIndicesOf(indexLists)
+      indexLists.toList.flatMap(_.requestedIndices.toList).toCovariantSet
 
     override def narrowedTo(
         allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
@@ -70,20 +71,17 @@ object Query extends RequestIdAwareLogging {
       else {
         val replaced = IndexListReplacer.replacing(text, indexLists, allowedIndices)
         reader.indicesIn(replaced.query) match {
-          case Right(indices) =>
+          case Right(readIndexLists) =>
             replaced
-              .checkedAgainst(indices)
-              .flatMap(narrowed => confirmed(located(narrowed, reader, indices)))
-          case Left(cause) =>
+              .checkedAgainst(readIndexLists)
+              .map(narrowed => readable(narrowed, reader, readIndexLists))
+          case Left(ReadError.QueryNotParsed(cause)) =>
             logger.warn("Elasticsearch cannot parse the ES|QL query ReadonlyREST rewrote", cause)
             Left(Rejection.CannotParseRewrittenQuery(replaced.intendedIndexLists))
+          case Left(ReadError.IndicesNotLocated(failure)) =>
+            Left(Rejection.RewriteNotConfirmed(replaced.intendedIndexLists, failure))
         }
       }
-    }
-
-    private def confirmed(narrowed: Query): Either[Rejection, Query] = narrowed match {
-      case Unreadable(_, reason) => Left(reason)
-      case query                 => Right(query)
     }
 
   }
@@ -117,17 +115,21 @@ object Query extends RequestIdAwareLogging {
   private def allIndices: Set[RequestedIndex[ClusterIndexName]] =
     Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
-  private def located(query: String, reader: EsqlQueryIndicesReader, indices: QueryIndices): Query = {
-    IndexListLocator.locatedIn(query, indices) match {
-      case Left(failure) =>
-        Unreadable(query, Rejection.CannotExtractIndices(failure))
-      case Right(indexLists) =>
-        NonEmptyList.fromList(indexLists) match {
-          case Some(nonEmptyIndexLists) => new WithIndices(query, reader, nonEmptyIndexLists)
-          case None                     => WithoutIndices(query)
-        }
+  private def readable(query: String, reader: EsqlQueryIndicesReader, indexLists: List[LocatedIndexList]): Query =
+    NonEmptyList.fromList(indexLists) match {
+      case Some(nonEmptyIndexLists) => new WithIndices(query, reader, nonEmptyIndexLists)
+      case None                     => WithoutIndices(query)
     }
-  }
+
+}
+
+private[esql] sealed trait ReadError
+
+private[esql] object ReadError {
+
+  final case class QueryNotParsed(cause: Throwable) extends ReadError
+
+  final case class IndicesNotLocated(failure: ReadingFailure) extends ReadError
 
 }
 
@@ -143,6 +145,8 @@ object Rejection {
 
   final case class SubstitutionNotConfirmed(intendedIndexLists: List[String], readIndexLists: List[String])
       extends Rejection
+
+  final case class RewriteNotConfirmed(intendedIndexLists: List[String], failure: ReadingFailure) extends Rejection
 
 }
 
