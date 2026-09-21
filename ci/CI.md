@@ -49,12 +49,14 @@ own JDKs, it reads the build cache of the runner, and `core_tests` picks its sui
 
 The patcher is tested in two places, because it has two sides. `ror-tools:test` runs in
 `core_tests` and holds `RorToolsAppSuite`, the CLI of the patcher: consent flags, interactive
-mode, unpatch, verify, and the error text of a corrupt or foreign patch metadata file. None of
-that reads the ES version, so one run answers for every module. `PatchingOfAptBasedEsInstallationSuite`
-lives in `integration-tests` and runs on every integration leg, because the patcher reads the ES
-layout and that layout differs per ES version. It covers the apt-based install, which no other
-suite starts, and the entitlement change of ES 8.18.1 and 9.0.1 that stops the plugin reading
-`/usr/share/elasticsearch` to verify its own patch.
+mode, unpatch, verify, and the error text of a corrupt or foreign patch metadata file. It boots a
+docker ES container and asserts text that carries the ES version, so `core_tests` runs it once, on
+the newest module (`ror-tools/build.gradle` takes that module when no `-PesModule` is given). One
+run per integration leg would pay that boot again for the same answer.
+`PatchingOfAptBasedEsInstallationSuite` lives in `integration-tests` and runs on every integration
+leg, because the patcher reads the ES layout and that layout differs per ES version. It covers the
+apt-based install, which no other suite starts, and the entitlement change of ES 8.18.1 and 9.0.1
+that stops the plugin reading `/usr/share/elasticsearch` to verify its own patch.
 
 ## Jobs
 

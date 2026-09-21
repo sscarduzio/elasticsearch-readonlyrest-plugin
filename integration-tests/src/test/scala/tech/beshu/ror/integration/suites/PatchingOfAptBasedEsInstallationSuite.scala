@@ -40,6 +40,7 @@ import tech.beshu.ror.utils.misc.{EsModule, EsModulePatterns, OsUtils}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
+import scala.util.matching.Regex
 
 // There is a change introduced in Elasticsearch since versions 9.0.1 and 8.18.1 (older ES versions are not affected)
 // The change: https://github.com/elastic/elasticsearch/pull/126852 ("With this PR we restrict the paths we allow access to, forbidding plugins to specify/request entitlements for reading or writing to specific protected directories.")
@@ -69,13 +70,17 @@ class PatchingOfAptBasedEsInstallationSuite
       Map.empty
     case CurrentOs.OtherThanWindows =>
       val installationTypes =
-        if (EsModule.isCurrentModuleNotExcluded(allEs6x))
+        if (EsModule.isCurrentModuleNotExcluded(esVersionsWithoutAptPackage))
           EsInstallationType.EsDockerImage :: EsInstallationType.UbuntuDockerImageWithEsFromApt :: Nil
         else
           EsInstallationType.EsDockerImage :: Nil
 
       installationTypes.map { installationType => installationType -> new EsNode(installationType) }.toMap
   }
+
+  // ES 6.x is not available as apt package, so we do not test it. The node set above and the tag of
+  // the apt test below read this one value.
+  private val esVersionsWithoutAptPackage: Regex = allEs6x
 
   OsUtils.currentOs match {
     case CurrentOs.Windows =>
@@ -132,8 +137,7 @@ class PatchingOfAptBasedEsInstallationSuite
           }
         }
         "installed on Ubuntu using apt" should {
-          // ES 6.x is not available as apt package, so we do not test it
-          "ES successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES allEs6x in {
+          "ES successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES esVersionsWithoutAptPackage in {
             val dockerLogs = dockerLogsOf(EsInstallationType.UbuntuDockerImageWithEsFromApt)
             dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
             dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
@@ -175,16 +179,17 @@ class PatchingOfAptBasedEsInstallationSuite
     // result back. A node that does not start reports the failure to its own test only.
     private val startedNodeLogs: Task[String] =
       (for {
-        _ <- manager.start()
+        _ <- manager.start().onErrorHandleWith(nodeDidNotStart)
         _ <- testRorStartup(usingManager = manager)
-      } yield manager.getLogs).onErrorHandleWith { error =>
-        Task.raiseError(
-          new IllegalStateException(
-            s"The ES node [$esInstallationType] did not start. Docker logs:\n${manager.getLogs}",
-            error
-          )
+      } yield manager.getLogs).memoize
+
+    private def nodeDidNotStart(error: Throwable): Task[Nothing] =
+      Task.raiseError(
+        new IllegalStateException(
+          s"The ES node [$esInstallationType] did not start. Docker logs:\n${manager.getLogs}",
+          error
         )
-      }.memoize
+      )
 
     def start: Task[Unit] = startedNodeLogs.attempt.map(_ => ())
 
