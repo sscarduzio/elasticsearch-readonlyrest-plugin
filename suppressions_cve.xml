@@ -258,4 +258,16 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bc(pkix|tls|util)?-fips@.*$</packageUrl>
         <cve>CVE-2026-12185</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bc-fips / bcpkix-fips / bctls-fips
+   False positive: CVE-2026-59645 is a flaw of the OER parser. The parser lives in bcutil only.
+   These three artifacts carry no org.bouncycastle.oer class. ROR resolves bcutil-fips 2.1.7,
+   which carries the fix. The CPE matcher maps these artifacts to the non-FIPS CPE
+   bouncycastle:bouncy_castle_for_java, where the LTS range "before 2.73.12" matches 2.1.x.
+   bcutil-fips stays out of this suppression, so a downgrade below 2.1.7 still fails the build.
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bc(pkix|tls)?-fips@.*$</packageUrl>
+        <cve>CVE-2026-59645</cve>
+    </suppress>
 </suppressions>
