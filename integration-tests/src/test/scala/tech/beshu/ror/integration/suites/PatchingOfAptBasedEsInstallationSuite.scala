@@ -63,7 +63,7 @@ class PatchingOfAptBasedEsInstallationSuite
 
   // ES 6.x is not available as apt package, so we do not test it. The node set above and the tag of
   // the apt test below read this one value.
-  private val esVersionsWithoutAptPackage: Regex = allEs6x
+  private lazy val esVersionsWithoutAptPackage: Regex = allEs6x
 
   // The Linux nodes share nothing, so the suite boots them at once and each test reads only the logs
   // of its own node. Started one after the other, the suite pays two docker builds and two ES boots
@@ -81,10 +81,6 @@ class PatchingOfAptBasedEsInstallationSuite
 
       installationTypes.map { installationType => installationType -> new EsNode(installationType) }.toMap
   }
-
-  // ES 6.x is not available as apt package, so we do not test it. The node set above and the tag of
-  // the apt test below read this one value.
-  private val esVersionsWithoutAptPackage: Regex = allEs6x
 
   OsUtils.currentOs match {
     case CurrentOs.Windows =>
