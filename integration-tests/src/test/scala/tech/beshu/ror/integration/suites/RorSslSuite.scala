@@ -120,6 +120,8 @@ class RorSslSuite
       RequestConfig
         .custom()
         .setExpectContinueEnabled(true)
+        .setConnectTimeout(responseTimeout.toMillis.toInt)
+        .setConnectionRequestTimeout(responseTimeout.toMillis.toInt)
         .setSocketTimeout(responseTimeout.toMillis.toInt)
         .build()
     )

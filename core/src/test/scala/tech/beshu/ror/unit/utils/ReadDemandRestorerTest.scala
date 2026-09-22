@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.utils
 
 import io.netty.channel.embedded.EmbeddedChannel
-import io.netty.channel.{ChannelHandlerContext, ChannelInboundHandlerAdapter}
+import io.netty.channel.{ChannelHandlerContext, ChannelInboundHandlerAdapter, ChannelOutboundHandlerAdapter}
 import io.netty.handler.flow.FlowControlHandler
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -28,24 +28,24 @@ import scala.collection.mutable
 class ReadDemandRestorerTest extends AnyWordSpec {
 
   "A ReadDemandRestorer" should {
-    "deliver the message that follows a read which decoded nothing" in {
+    "ask for another read, and deliver the message that follows a read which decoded nothing" in {
       val channel = channelWithFlowControl(withReadDemandRestorer = true)
 
       channel.pipeline().fireChannelReadComplete()
       channel.pipeline().fireChannelRead("chunk")
 
       messagesReceivedBy(channel) should be(List("chunk"))
+      readsReachingHeadOf(channel) should be(initialReads + 1)
     }
 
-    "keep delivering messages when every read decodes one message" in {
+    "ask for no further read when the message arrives" in {
       val channel = channelWithFlowControl(withReadDemandRestorer = true)
 
-      channel.pipeline().fireChannelRead("first")
+      channel.pipeline().fireChannelRead("chunk")
       channel.pipeline().fireChannelReadComplete()
-      channel.read()
-      channel.pipeline().fireChannelRead("second")
 
-      messagesReceivedBy(channel) should be(List("first", "second"))
+      messagesReceivedBy(channel) should be(List("chunk"))
+      readsReachingHeadOf(channel) should be(initialReads)
     }
   }
 
@@ -57,15 +57,19 @@ class ReadDemandRestorerTest extends AnyWordSpec {
       channel.pipeline().fireChannelRead("chunk")
 
       messagesReceivedBy(channel) should be(List.empty)
+      readsReachingHeadOf(channel) should be(initialReads)
     }
   }
+
+  // the ES channel initializer asks for one read before ROR adds its handler
+  private lazy val initialReads = 1
 
   private def channelWithFlowControl(withReadDemandRestorer: Boolean) = {
     val channel = new EmbeddedChannel()
     channel.config().setAutoRead(false)
+    channel.pipeline().addLast("read_counter", new ReadCounter())
     channel.pipeline().addLast("flow_control", new FlowControlHandler())
     channel.pipeline().addLast("recorder", new MessageRecorder())
-    // the ES channel initializer asks for one read before ROR adds its handler
     channel.read()
     if (withReadDemandRestorer) {
       channel.pipeline().addAfter("flow_control", "ror_read_demand_restorer", new ReadDemandRestorer())
@@ -77,11 +81,26 @@ class ReadDemandRestorerTest extends AnyWordSpec {
     channel.pipeline().get(classOf[MessageRecorder]).messages.toList
   }
 
+  // EmbeddedChannel.read() does nothing, so only a handler can count the reads that reach the head
+  private def readsReachingHeadOf(channel: EmbeddedChannel) = {
+    channel.pipeline().get(classOf[ReadCounter]).reads
+  }
+
   private final class MessageRecorder extends ChannelInboundHandlerAdapter {
     val messages: mutable.ListBuffer[AnyRef] = mutable.ListBuffer.empty
 
     override def channelRead(ctx: ChannelHandlerContext, msg: AnyRef): Unit = {
       messages += msg
+    }
+
+  }
+
+  private final class ReadCounter extends ChannelOutboundHandlerAdapter {
+    var reads: Int = 0
+
+    override def read(ctx: ChannelHandlerContext): Unit = {
+      reads += 1
+      ctx.read()
     }
 
   }
