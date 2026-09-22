@@ -17,6 +17,7 @@
 package org.elasticsearch.transport.netty4
 
 import io.netty.channel.Channel
+import io.netty.handler.flow.FlowControlHandler
 import io.netty.handler.ssl.NotSslRecordException
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.{ClusterSettings, Settings}
@@ -27,9 +28,9 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.ReadDemandRestorer
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.SSLCertHelper
-import tech.beshu.ror.utils.SslHandshakeReadTrigger
 
 class SSLNetty4HttpServerTransport(
     settings: Settings,
@@ -76,16 +77,12 @@ class SSLNetty4HttpServerTransport(
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       ch.pipeline().addFirst("ssl_netty4_handler", serverSslContext.newHandler(ch.alloc()))
-      // TLS handshake hang on ES 9.1+ with netty >= 4.1.136. ES 9.1 (elastic/elasticsearch#127817) disabled
-      // auto-read and added a FlowControlHandler that reads only on demand (`unsatisfiedReads` counter).
-      // netty 4.1.136 (netty#15053) made channelReadComplete reset unsatisfiedReads=0;
-      // each TLS handshake round-trip fires it, so the initial ch.read() is undone and
-      // the first HTTP request stays queued in FlowControlHandler forever (client hangs).
-      // Fix: after the handshake's channelReadComplete, issue one read to bump the counter back to 1.
-      // Must sit before FlowControlHandler (inbound) to see the event at count 0;
-      // use channel().read() (not ctx.read()) so the read reaches it from the tail.
-      // Workaround tied to netty#15053 behavior — recheck (and possibly drop) on the next netty bump.
-      ch.pipeline().addAfter("ssl_netty4_handler", "ssl_flow_control_read_trigger", new SslHandshakeReadTrigger())
+      // ROR ships a newer netty than ES, and from 4.1.136 its FlowControlHandler drops the pending read.
+      // Remove this once ROR and ES use the same netty.
+      val pipeline = ch.pipeline()
+      Option(pipeline.context(classOf[FlowControlHandler])).foreach { flowControlContext =>
+        pipeline.addAfter(flowControlContext.name(), "ror_read_demand_restorer", new ReadDemandRestorer())
+      }
     }
 
   }
