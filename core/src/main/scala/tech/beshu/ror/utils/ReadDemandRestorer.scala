@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.utils
 
-import io.netty.channel.{ChannelDuplexHandler, ChannelHandlerContext}
+import io.netty.channel.{ChannelDuplexHandler, ChannelHandlerContext, ChannelPipeline}
+import io.netty.handler.flow.FlowControlHandler
 
 /**
  * Keeps the read demand of the ES HTTP pipeline alive.
@@ -35,7 +36,9 @@ import io.netty.channel.{ChannelDuplexHandler, ChannelHandlerContext}
  * `FlowControlHandler` and increments the counter again. All callbacks run on the channel event loop, so
  * the counter needs no synchronization.
  *
- * ROR ships a newer netty than ES does. Remove this handler when both use the same netty.
+ * ROR ships a newer netty than ES does, which is how the ES pipeline gets this behaviour. Remove the
+ * handler when netty stops clearing the read demand on `channelReadComplete`, or when ES stops turning
+ * auto-read off. Equal netty versions alone do not end the hazard (RORDEV-2239).
  */
 final class ReadDemandRestorer extends ChannelDuplexHandler {
 
@@ -58,6 +61,30 @@ final class ReadDemandRestorer extends ChannelDuplexHandler {
     if (unsatisfiedReads > 0) {
       // ctx.read() starts at the next outbound handler, so it does not re-enter read() above
       ctx.read()
+    }
+  }
+
+}
+
+object ReadDemandRestorer extends RequestIdAwareLogging {
+
+  private val handlerName = "ror_read_demand_restorer"
+
+  /**
+   * Puts the handler directly after the `FlowControlHandler` of the given pipeline.
+   *
+   * ES 9.1+ always adds that handler, so a pipeline without one means ES changed its HTTP pipeline. The
+   * method then logs and adds nothing, because the position decides whether the handler works at all.
+   */
+  def installIn(pipeline: ChannelPipeline): Unit = {
+    Option(pipeline.context(classOf[FlowControlHandler])) match {
+      case Some(flowControlContext) =>
+        pipeline.addAfter(flowControlContext.name(), handlerName, new ReadDemandRestorer())
+      case None =>
+        noRequestIdLogger.warn(
+          s"No FlowControlHandler in the HTTP pipeline, so ROR does not add the $handlerName handler. " +
+            "Check that large requests over ROR SSL still complete."
+        )
     }
   }
 

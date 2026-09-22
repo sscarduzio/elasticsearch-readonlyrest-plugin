@@ -17,7 +17,6 @@
 package org.elasticsearch.transport.netty4
 
 import io.netty.channel.Channel
-import io.netty.handler.flow.FlowControlHandler
 import io.netty.handler.ssl.NotSslRecordException
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.{ClusterSettings, Settings}
@@ -77,12 +76,8 @@ class SSLNetty4HttpServerTransport(
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       ch.pipeline().addFirst("ssl_netty4_handler", serverSslContext.newHandler(ch.alloc()))
-      // ROR ships a newer netty than ES, and from 4.1.136 its FlowControlHandler drops the pending read.
-      // Remove this once ROR and ES use the same netty.
-      val pipeline = ch.pipeline()
-      Option(pipeline.context(classOf[FlowControlHandler])).foreach { flowControlContext =>
-        pipeline.addAfter(flowControlContext.name(), "ror_read_demand_restorer", new ReadDemandRestorer())
-      }
+      // ROR's netty drops the read demand that the ES pipeline needs. See ReadDemandRestorer.
+      ReadDemandRestorer.installIn(ch.pipeline())
     }
 
   }
