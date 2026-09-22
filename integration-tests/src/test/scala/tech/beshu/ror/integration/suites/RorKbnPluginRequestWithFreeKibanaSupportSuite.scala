@@ -21,35 +21,32 @@ import tech.beshu.ror.integration.suites.base.EnabledPromptForBasicAuthSettingSu
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterProvider
-import tech.beshu.ror.utils.elasticsearch.RorApiManager
+import tech.beshu.ror.utils.elasticsearch.IndexManager
 
-trait UserMetadataEndpointWithFreeKibanaSupportSuite
+trait RorKbnPluginRequestWithFreeKibanaSupportSuite
     extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike {
   this: EsClusterProvider with EnabledPromptForBasicAuthSettingSuite =>
 
-  "ROR API user metadata endpoint" should {
-    "return the user metadata" when {
-      "the user has access" in {
-        val userMetadataManager = new RorApiManager(
-          basicAuthClientWithRorMetadataAttached("dev1", "test", ("x-ror-kbn-license-type", "ent")),
-          esVersionUsed,
-        )
+  "ROR with 'prompt_for_basic_auth: true'" should {
+    "ask the client for credentials" when {
+      "a forbidden request comes from a client which is not the ROR KBN plugin" in {
+        val indexManager = new IndexManager(basicAuthClient("dev9", "test"), esVersionUsed)
 
-        val result = userMetadataManager.fetchUserMetadata()
+        val result = indexManager.getIndex("index9")
 
-        result should have statusCode 200
+        result should have statusCode 401
       }
     }
-    "return 403 and ask for no credentials" when {
-      "the user does not have access" in {
-        val userMetadataManager = new RorApiManager(
+    "ask for no credentials" when {
+      "a forbidden request comes from the ROR KBN plugin" in {
+        val indexManager = new IndexManager(
           basicAuthClientWithRorMetadataAttached("dev9", "test", ("x-ror-kbn-license-type", "ent")),
           esVersionUsed,
         )
 
-        val result = userMetadataManager.fetchUserMetadata()
+        val result = indexManager.getIndex("index9")
 
         result should have statusCode 403
       }

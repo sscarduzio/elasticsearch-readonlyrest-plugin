@@ -21,7 +21,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
+import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.{
@@ -50,7 +50,12 @@ import tech.beshu.ror.utils.ScalaOps.*
 import java.time.{Duration, Instant}
 import scala.util.{Failure, Success, Try}
 
-class RegularRequestHandler(engine: Engine, esContext: EsContext, threadPool: ThreadPool)(
+class RegularRequestHandler(
+    engine: Engine,
+    esContext: EsContext,
+    threadPool: ThreadPool,
+    aclStaticContext: AccessControlStaticContext
+)(
     implicit scheduler: Scheduler
 ) extends RequestIdAwareLogging {
 
@@ -122,7 +127,7 @@ class RegularRequestHandler(engine: Engine, esContext: EsContext, threadPool: Th
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(
       ForbiddenResponse.create(
-        ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext)
+        ForbiddenResponseContext.from(causes, aclStaticContext)
       )
     )
   }

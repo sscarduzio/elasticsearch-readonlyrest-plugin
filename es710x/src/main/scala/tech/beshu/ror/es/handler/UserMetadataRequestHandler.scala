@@ -22,14 +22,14 @@ import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
-import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult
+import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataResponse, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.{CorrelationId, RorKbnLicenseType}
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
+import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.ForbiddenBlockMatch
-import tech.beshu.ror.accesscontrol.response.{ForbiddenResponseContext, RorKbnPluginNotSupported}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
@@ -42,7 +42,8 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import java.time.{Duration, Instant}
 import scala.util.{Failure, Success, Try}
 
-class UserMetadataRequestHandler(engine: Engine, esContext: EsContext) extends RequestIdAwareLogging {
+class UserMetadataRequestHandler(engine: Engine, esContext: EsContext, aclStaticContext: AccessControlStaticContext)
+    extends RequestIdAwareLogging {
 
   def handle(
       request: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]
@@ -68,11 +69,6 @@ class UserMetadataRequestHandler(engine: Engine, esContext: EsContext) extends R
           onForbidden(request, f.causes.toNonEmptyList.map(fromMismatchedCause))
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)
-        case UserMetadataRequestResult.RorKbnPluginNotSupported =>
-          onForbidden(
-            request,
-            RorKbnPluginNotSupported.forbiddenResponseContext(engine.core.accessControl.staticContext)
-          )
       }
     } match {
       case Success(_)  =>
@@ -90,15 +86,13 @@ class UserMetadataRequestHandler(engine: Engine, esContext: EsContext) extends R
     )
   }
 
-  private def onForbidden(requestContext: RequestContext, causes: NonEmptyList[ForbiddenResponseContext.Cause]): Unit =
-    onForbidden(requestContext, ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext))
-
-  private def onForbidden(requestContext: RequestContext, forbiddenResponseContext: ForbiddenResponseContext): Unit = {
+  private def onForbidden(
+      requestContext: RequestContext,
+      causes: NonEmptyList[ForbiddenResponseContext.Cause]
+  ): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(
-      ForbiddenResponse.create(
-        forbiddenResponseContext
-      )
+      ForbiddenResponse.create(ForbiddenResponseContext.from(causes, aclStaticContext))
     )
   }
 
