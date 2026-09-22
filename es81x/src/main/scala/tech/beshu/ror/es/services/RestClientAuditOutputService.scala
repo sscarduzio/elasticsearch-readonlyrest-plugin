@@ -35,6 +35,7 @@ import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.security.cert.X509Certificate
+import java.time.Clock
 import java.util.concurrent.Semaphore
 
 final class RestClientAuditOutputService private (
@@ -102,36 +103,56 @@ final class RestClientAuditOutputService private (
 
 object RestClientAuditOutputService extends RequestIdAwareLogging {
 
-  def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditOutputService = {
+  def create(remoteCluster: AuditCluster.RemoteAuditCluster)(
+      implicit clock: Clock
+  ): RestClientAuditOutputService = {
     val hosts = remoteCluster.nodes.toNonEmptyList.map(toHttpHost)
-    val restClient = createRestClient(remoteCluster, hosts)
-    createService(remoteCluster, restClient)
-  }
-
-  private def createClusterAwareClient(
-      remoteCluster: AuditCluster.RemoteAuditCluster,
-      restClient: RestClient
-  ): MultiNodeRestClient[Request, Response] = {
     remoteCluster.mode match {
       case ClusterMode.RoundRobin =>
-        RestClientRequestExecutor.roundRobinClient(restClient)
+        val restClient = createRestClient(remoteCluster, hosts)
+        createService(
+          remoteCluster,
+          client = RestClientRequestExecutor.roundRobinClient(restClient),
+          dataStreamCreator = sharedClientAuditOutputCreator(restClient)
+        )
+      case ClusterMode.Failover =>
+        createService(
+          remoteCluster,
+          client = RestClientRequestExecutor.failoverClient(
+            hosts.map(host => createRestClient(remoteCluster, NonEmptyList.one(host)))
+          ),
+          dataStreamCreator = ownClientAuditOutputCreator(remoteCluster, hosts)
+        )
     }
+  }
+
+  // The round robin client knows every node, so the data stream setup shares the client that submits the audit
+  // events. The resource must not close it - the service closes it.
+  private def sharedClientAuditOutputCreator(restClient: RestClient) = {
+    Resource.eval(Task.delay(AuditDataStreamCreator(new RestClientDataStreamService(restClient))))
+  }
+
+  // Each failover client knows one node only, so the data stream setup gets its own client that knows every node.
+  // Nothing else uses that client, so the resource closes it.
+  private def ownClientAuditOutputCreator(
+      remoteCluster: AuditCluster.RemoteAuditCluster,
+      hosts: NonEmptyList[HttpHost]
+  ) = {
+    Resource
+      .make(Task.delay(createRestClient(remoteCluster, hosts)))(client => Task.delay(client.close()))
+      .map(client => AuditDataStreamCreator(new RestClientDataStreamService(client)))
   }
 
   private def createService(
       remoteCluster: AuditCluster.RemoteAuditCluster,
-      restClient: RestClient
+      client: MultiNodeRestClient[Request, Response],
+      dataStreamCreator: Resource[Task, AuditDataStreamCreator]
   ) = {
     new RestClientAuditOutputService(
-      client = createClusterAwareClient(remoteCluster, restClient),
+      client = client,
       inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
-      dataStreamCreator = createAuditOutputCreator(restClient)
+      dataStreamCreator = dataStreamCreator
     )
-  }
-
-  // the same client submits the audit events, so the resource must not close it. The service closes it.
-  private def createAuditOutputCreator(restClient: RestClient) = {
-    Resource.eval(Task.delay(AuditDataStreamCreator(new RestClientDataStreamService(restClient))))
   }
 
   private def createRestClient(

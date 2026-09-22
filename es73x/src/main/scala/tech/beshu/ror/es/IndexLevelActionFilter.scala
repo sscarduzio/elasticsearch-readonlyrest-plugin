@@ -108,7 +108,9 @@ class IndexLevelActionFilter(
         case AuditCluster.LocalAuditCluster =>
           new NodeClientBasedAuditOutputService(client)
         case remote: AuditCluster.RemoteAuditCluster =>
-          RestClientAuditOutputService.create(remote)
+          RestClientAuditOutputService.create(remote)(
+            using systemContext.clock
+          )
       }
     }
     new EsAuditCapabilities.IndexOnly(creator)

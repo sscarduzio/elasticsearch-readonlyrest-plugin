@@ -90,6 +90,8 @@ import scala.util.{Failure, Success, Try}
 object TestsUtils {
 
   given loggingContext: LoggingContext = LoggingContext(Set.empty)
+  given testRequestId: RequestId = RequestId("test-request-id")
+
   val rorYamlParser = new YamlParser(Some(Megabytes(3)))
 
   val defaultEsVersionForTests: EsVersion = EsVersion(8, 17, 0)

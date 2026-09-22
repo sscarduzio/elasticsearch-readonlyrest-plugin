@@ -19,14 +19,10 @@ package tech.beshu.ror.accesscontrol.audit.output
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, IndexBasedAuditOutputService}
 
-sealed trait AuditOutputServiceCreator
-
-trait IndexBasedAuditOutputServiceCreator extends AuditOutputServiceCreator {
-
+trait IndexBasedAuditOutputServiceCreator {
   def index(cluster: AuditCluster): IndexBasedAuditOutputService
 }
 
-trait DataStreamBasedAuditOutputServiceCreator extends AuditOutputServiceCreator {
-
+trait DataStreamBasedAuditOutputServiceCreator {
   def dataStream(cluster: AuditCluster): DataStreamBasedAuditOutputService
 }

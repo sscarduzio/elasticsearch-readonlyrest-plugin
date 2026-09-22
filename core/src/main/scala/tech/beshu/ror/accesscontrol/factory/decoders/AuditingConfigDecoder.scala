@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, JsonAu
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
   AuditClusterNode,
   ClusterMode,
+  ConnectivityCheckMode,
   NodeCredentials,
   RemoteAuditCluster
 }
@@ -719,12 +720,30 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
         .decoder
     }
 
+    given Decoder[ConnectivityCheckMode] =
+      SyncDecoderCreator
+        .from(Decoder.decodeString)
+        .emapE[ConnectivityCheckMode] {
+          case "required"    => Right(ConnectivityCheckMode.Required)
+          case "best_effort" => Right(ConnectivityCheckMode.BestEffort)
+          case "disabled"    => Right(ConnectivityCheckMode.Disabled)
+          case other         =>
+            Left(
+              auditSettingsError(
+                s"Unknown connectivity check [$other], allowed values are: [required,best_effort,disabled]"
+              )
+            )
+        }
+        .decoder
+
     given Decoder[ClusterMode] =
       SyncDecoderCreator
         .from(Decoder.decodeString)
         .emapE[ClusterMode] {
           case "round-robin" => Right(ClusterMode.RoundRobin)
-          case other => Left(auditSettingsError(s"Unknown cluster mode [$other], allowed values are: [round-robin]"))
+          case "failover"    => Right(ClusterMode.Failover)
+          case other         =>
+            Left(auditSettingsError(s"Unknown cluster mode [$other], allowed values are: [round-robin,failover]"))
         }
         .decoder
 
@@ -773,7 +792,12 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
           clusterNodes <- c.as[UniqueNonEmptyList[AuditClusterNode]]
           maybeCredentials <- clusterCredentialsFromNodesUris(clusterNodes)
             .leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
-        } yield AuditCluster.RemoteAuditCluster(clusterNodes, ClusterMode.RoundRobin, maybeCredentials)
+        } yield AuditCluster.RemoteAuditCluster(
+          nodes = clusterNodes,
+          mode = ClusterMode.RoundRobin,
+          credentials = maybeCredentials,
+          connectivityCheckMode = ConnectivityCheckMode.Disabled
+        )
       case c =>
         // extended syntax
         val usernameKey = "username"
@@ -795,7 +819,13 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
                 Left(auditSettingsError(s"Audit output configuration is missing the '$usernameKey' field."))
             }
           }.leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
-        } yield AuditCluster.RemoteAuditCluster(clusterNodes, mode, maybeCredentials)
+          maybeConnectivityCheckMode <- c.downFieldAs[Option[ConnectivityCheckMode]]("connectivity_check")
+        } yield AuditCluster.RemoteAuditCluster(
+          nodes = clusterNodes,
+          mode = mode,
+          credentials = maybeCredentials,
+          connectivityCheckMode = maybeConnectivityCheckMode.getOrElse(ConnectivityCheckMode.Disabled)
+        )
     }
   }
 

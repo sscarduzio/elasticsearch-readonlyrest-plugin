@@ -42,13 +42,15 @@ object MockedCapabilities {
 
 object MockIndexBasedAuditOutputServiceCreator extends IndexBasedAuditOutputServiceCreator {
 
-  override def index(cluster: AuditCluster): IndexBasedAuditOutputService = new IndexBasedAuditOutputService {
+  val indexService: IndexBasedAuditOutputService = new IndexBasedAuditOutputService {
     override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
         implicit requestId: RequestId
     ): Unit =
       throw new IllegalStateException("Cannot use it. It's just a mock")
     override def close(): Unit = ()
   }
+
+  override def index(cluster: AuditCluster): IndexBasedAuditOutputService = indexService
 
 }
 
