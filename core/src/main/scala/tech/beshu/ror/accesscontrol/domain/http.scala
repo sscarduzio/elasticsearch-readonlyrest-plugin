@@ -86,7 +86,7 @@ object Header {
   def findHeader(header: Header.Name, in: java.util.Map[String, java.util.List[String]]): Option[Header] = {
     for {
       headers <- fromRawHeaders(in).toOption
-      header <- headers.find(_.name === header)
+      header <- findHeader(header, in = headers)
     } yield header
   }
 

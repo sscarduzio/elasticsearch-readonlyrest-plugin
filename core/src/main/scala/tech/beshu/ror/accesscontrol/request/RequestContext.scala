@@ -257,8 +257,10 @@ object RequestContext extends RequestIdAwareLogging {
 
     }
 
-    private def findHeader(name: Header.Name) =
-      requestContext.restRequest.allHeaders.find(_.name === name)
+    private def findHeader(name: Header.Name) = {
+      Header.findHeader(name, in = requestContext.restRequest.allHeaders)
+    }
+
   }
 
   sealed trait AuthorizationTokenRetrievingError
