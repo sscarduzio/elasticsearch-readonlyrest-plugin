@@ -197,8 +197,8 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
       whitespace (request smuggling).
     - CVE-2026-93492 (GHSA-8352-h356-c9qh): HpackEncoder honours a very large HTTP/2
       MAX_HEADER_TABLE_SIZE setting (DoS).
-   OSS Index still reports all three against netty-codec-http 4.1.138.Final and netty-codec-http2
-   4.1.138.Final, because NVD has not analysed the records and they carry no version range.
+   OSS Index still reports these against netty-codec-http and netty-codec-http2 at 4.1.138.Final,
+   because NVD has not analysed the records and they carry no version range.
    Remove this suppression at the next netty upgrade, or when OSS Index drops the fixed version.
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/io\.netty/(netty-codec-http|netty-codec-http2)@4\.1\.138\.Final$</packageUrl>
