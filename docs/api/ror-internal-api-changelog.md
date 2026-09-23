@@ -1,5 +1,21 @@
 # ROR INTERNAL API CHANGELOG
 
+## 4.2.0
+
+Changes:
+
+* header `X-ROR-KBN-License-Type`:
+
+    The header is no longer read on GET `/_readonlyrest/metadata/user` alone. The ROR KBN plugin now
+    sends it on each request to Elasticsearch, and ES ROR answers a request which carries a value it
+    can parse with HTTP 403 instead of 401, and with no `WWW-Authenticate` header, while the
+    `prompt_for_basic_auth` setting is on. The same value also selects the answer which ES ROR gives
+    for an index that the user cannot see.
+
+    The client sends this header, so ES ROR treats the value as a hint. Each client which sends a
+    value the header can parse gets the same answer. The access control decision does not change:
+    ES ROR refuses the same requests, and only the status and the headers of the refusal differ.
+
 ## 4.1.0
 
 Changes:

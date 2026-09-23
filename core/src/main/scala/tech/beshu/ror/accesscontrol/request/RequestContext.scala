@@ -102,8 +102,10 @@ trait RequestContext {
   /**
    * Does ROR ask this request for basic auth credentials?
    *
-   * ROR never asks the ROR Kibana plugin, which runs its own login that the prompt of the browser
-   * breaks. Each other client follows the given static context.
+   * ROR asks no client which sends a license type it can parse. The ROR Kibana plugin sends one on
+   * each request, because it runs its own login that the prompt of the browser breaks. The client
+   * sends that header, so the value is a hint, not proof. Each other client follows the given
+   * static context.
    */
   def shouldAddBasicAuthPrompt(aclStaticContext: AccessControlStaticContext): Boolean =
     aclStaticContext.doesRequirePassword && rorKbnLicenseType.isEmpty
