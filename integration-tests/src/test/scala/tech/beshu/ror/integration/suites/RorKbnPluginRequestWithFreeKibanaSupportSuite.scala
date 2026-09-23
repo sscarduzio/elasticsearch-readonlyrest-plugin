@@ -80,6 +80,8 @@ trait RorKbnPluginRequestWithFreeKibanaSupportSuite
           val result = new RorApiManager(rorKbnPluginClient("dev1", "test"), esVersionUsed).fetchUserMetadata()
 
           result should have statusCode 200
+          result.responseJson("type").str should be("USER_WITHOUT_GROUPS")
+          result.responseJson("username").str should be("dev1")
         }
       }
       "ask for no credentials" when {
