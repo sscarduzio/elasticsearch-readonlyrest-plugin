@@ -22,8 +22,6 @@ import cats.implicits.*
 import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, ForbiddenCause}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
-import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.RestRequest
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.*
@@ -112,11 +110,8 @@ object ForbiddenResponseContext {
     new ForbiddenResponseContext(
       aclStaticContext = Some(aclStaticContext),
       forbiddenCauses = causes,
-      responseForRorKbnPlugin = sentByRorKbnPlugin(restRequest)
+      responseForRorKbnPlugin = BasicAuthPrompt.sentByRorKbnPlugin(restRequest)
     )
-
-  private def sentByRorKbnPlugin(restRequest: RestRequest): Boolean =
-    findHeader(Header.Name.rorKbnLicenseType, in = restRequest.allHeaders).isDefined
 
   private implicit val forbiddenCauseShow: Show[Cause] = Show.show {
     case ForbiddenBlockMatch(_)    => "FORBIDDEN_BY_BLOCK"
@@ -131,19 +126,21 @@ object ForbiddenResponseContext {
 
   trait ResponseCreator[RESPONSE] {
     final def createRorStartingFailureResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorFailedToStart)))
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorFailedToStart), responseForRorKbnPlugin = false))
 
     final def createRorNotReadyYetResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotReadyYet)))
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotReadyYet), responseForRorKbnPlugin = false))
 
     final def createRorNotEnabledResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotEnabled)))
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotEnabled), responseForRorKbnPlugin = false))
 
     final def createTestSettingsNotConfiguredResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(TestSettingsNotConfigured)))
+      create(
+        new ForbiddenResponseContext(None, NonEmptyList.one(TestSettingsNotConfigured), responseForRorKbnPlugin = false)
+      )
 
     final def createOperationNotAllowedResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(OperationNotAllowed)))
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(OperationNotAllowed), responseForRorKbnPlugin = false))
 
     def create(context: ForbiddenResponseContext): RESPONSE
   }

@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{
   InvalidValue,
@@ -92,11 +93,14 @@ trait RequestContext {
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
-  def currentGroupId: Option[GroupId] = {
-    restRequest.allHeaders
-      .find(_.name === Header.Name.currentGroup)
+  lazy val currentGroupId: Option[GroupId] = {
+    findHeader(Header.Name.currentGroup, restRequest.allHeaders)
       .map(h => GroupId(h.value))
   }
+
+  lazy val rorKbnLicenseType: Option[RorKbnLicenseType] =
+    findHeader(Header.Name.rorKbnLicenseType, in = restRequest.allHeaders)
+      .flatMap(h => RorKbnLicenseType.from(h.value.value).toOption)
 
 }
 
