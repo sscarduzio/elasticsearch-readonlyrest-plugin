@@ -25,7 +25,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.accesscontrol.response.BasicAuthPrompt
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
@@ -55,7 +54,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](
   override lazy val requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some(discoverIndices)
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    if (BasicAuthPrompt.isEnabledFor(this, aclContext)) {
+    if (shouldAddBasicAuthPrompt(aclContext)) {
       val nonExistentIndex = discoverIndices.randomNonexistentLocalIndex()
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList

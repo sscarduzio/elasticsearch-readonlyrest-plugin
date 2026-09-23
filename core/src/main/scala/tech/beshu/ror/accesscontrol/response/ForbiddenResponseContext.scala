@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.*
 final class ForbiddenResponseContext(
     aclStaticContext: Option[AccessControlStaticContext],
     forbiddenCauses: NonEmptyList[ForbiddenResponseContext.Cause],
-    responseForRorKbnPlugin: Boolean
+    val shouldAddBasicAuthPrompt: Boolean
 ) {
 
   import ForbiddenResponseContext.forbiddenCauseShow
@@ -42,15 +42,6 @@ final class ForbiddenResponseContext(
 
   def causes: NonEmptyList[String] = {
     forbiddenCauses.map(_.show)
-  }
-
-  /**
-   * The ROR Kibana plugin marks each request it sends with the license type header. It runs its own
-   * login, which the basic auth prompt of the browser breaks, so ROR asks such a request for no
-   * credentials. Every other client keeps the behaviour of the `prompt_for_basic_auth` setting.
-   */
-  def shouldAddBasicAuthPrompt: Boolean = {
-    !responseForRorKbnPlugin && aclStaticContext.exists(_.doesRequirePassword)
   }
 
   private def customForbiddenRequestMessage: Option[String] = aclStaticContext.map(_.forbiddenRequestMessage)
@@ -110,7 +101,7 @@ object ForbiddenResponseContext {
     new ForbiddenResponseContext(
       aclStaticContext = Some(aclStaticContext),
       forbiddenCauses = causes,
-      responseForRorKbnPlugin = requestContext.rorKbnLicenseType.isDefined
+      shouldAddBasicAuthPrompt = requestContext.shouldAddBasicAuthPrompt(aclStaticContext)
     )
 
   private implicit val forbiddenCauseShow: Show[Cause] = Show.show {
@@ -126,21 +117,27 @@ object ForbiddenResponseContext {
 
   trait ResponseCreator[RESPONSE] {
     final def createRorStartingFailureResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorFailedToStart), responseForRorKbnPlugin = false))
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorFailedToStart), shouldAddBasicAuthPrompt = false))
 
     final def createRorNotReadyYetResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotReadyYet), responseForRorKbnPlugin = false))
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotReadyYet), shouldAddBasicAuthPrompt = false))
 
     final def createRorNotEnabledResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotEnabled), responseForRorKbnPlugin = false))
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotEnabled), shouldAddBasicAuthPrompt = false))
 
     final def createTestSettingsNotConfiguredResponse(): RESPONSE =
       create(
-        new ForbiddenResponseContext(None, NonEmptyList.one(TestSettingsNotConfigured), responseForRorKbnPlugin = false)
+        new ForbiddenResponseContext(
+          None,
+          NonEmptyList.one(TestSettingsNotConfigured),
+          shouldAddBasicAuthPrompt = false
+        )
       )
 
     final def createOperationNotAllowedResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(OperationNotAllowed), responseForRorKbnPlugin = false))
+      create(
+        new ForbiddenResponseContext(None, NonEmptyList.one(OperationNotAllowed), shouldAddBasicAuthPrompt = false)
+      )
 
     def create(context: ForbiddenResponseContext): RESPONSE
   }

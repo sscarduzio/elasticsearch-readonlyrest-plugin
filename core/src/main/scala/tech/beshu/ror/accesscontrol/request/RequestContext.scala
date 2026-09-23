@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.request
 import cats.Eval
 import cats.implicits.*
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
@@ -97,6 +98,15 @@ trait RequestContext {
     findHeader(Header.Name.currentGroup, restRequest.allHeaders)
       .map(h => GroupId(h.value))
   }
+
+  /**
+   * Does ROR ask this request for basic auth credentials?
+   *
+   * The `prompt_for_basic_auth` setting turns the prompt on for every client. The ROR Kibana plugin
+   * is the exception: it runs its own login, which the prompt of the browser breaks.
+   */
+  def shouldAddBasicAuthPrompt(aclStaticContext: AccessControlStaticContext): Boolean =
+    aclStaticContext.doesRequirePassword && rorKbnLicenseType.isEmpty
 
   lazy val rorKbnLicenseType: Option[RorKbnLicenseType] =
     findHeader(Header.Name.rorKbnLicenseType, in = restRequest.allHeaders)

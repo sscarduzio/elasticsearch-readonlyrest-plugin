@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.accesscontrol.response.BasicAuthPrompt
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.toOps
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -58,7 +57,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](
   override lazy val requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some(discoveredIndices)
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    if (BasicAuthPrompt.isEnabledFor(this, aclContext)) {
+    if (shouldAddBasicAuthPrompt(aclContext)) {
       val nonExistentIndex = discoveredIndices.randomNonexistentLocalIndex()
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList

@@ -32,7 +32,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.accesscontrol.response.BasicAuthPrompt
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted, UpdateResponse}
@@ -87,7 +86,7 @@ class GetAliasesEsRequestContext(
   }
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    if (BasicAuthPrompt.isEnabledFor(this, aclContext)) {
+    if (shouldAddBasicAuthPrompt(aclContext)) {
       val nonExistentIndex = discoveredIndices.randomNonexistentLocalIndex()
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
@@ -105,7 +104,7 @@ class GetAliasesEsRequestContext(
   }
 
   override def modifyWhenAliasNotFound: ModificationResult = {
-    if (BasicAuthPrompt.isEnabledFor(this, aclContext)) {
+    if (shouldAddBasicAuthPrompt(aclContext)) {
       val nonExistentAlias = discoveredAliases.randomNonexistentLocalIndex()
       if (nonExistentAlias.name.hasWildcard) {
         val nonExistingAliases = NonEmptyList
