@@ -102,8 +102,8 @@ trait RequestContext {
   /**
    * Does ROR ask this request for basic auth credentials?
    *
-   * The `prompt_for_basic_auth` setting turns the prompt on for every client. The ROR Kibana plugin
-   * is the exception: it runs its own login, which the prompt of the browser breaks.
+   * ROR never asks the ROR Kibana plugin, which runs its own login that the prompt of the browser
+   * breaks. Each other client follows the given static context.
    */
   def shouldAddBasicAuthPrompt(aclStaticContext: AccessControlStaticContext): Boolean =
     aclStaticContext.doesRequirePassword && rorKbnLicenseType.isEmpty

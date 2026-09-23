@@ -25,7 +25,7 @@ import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.images.builder.ImageFromDockerfile
 import squants.information.{Information, Mebibytes}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
-import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
+import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, BasicAuthWithHeaders, Header, None, Token}
 import tech.beshu.ror.utils.containers.EsContainer.{Credentials, EsContainerImplementation}
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
 import tech.beshu.ror.utils.containers.logs.CompositeLogConsumer
@@ -139,7 +139,9 @@ abstract class EsContainer(
         // Best-effort: an image still referenced by a sibling container can't be removed (Docker 409)
         // — swallow it; this node's own uniquely-tagged image is what we reclaim.
         try dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
-        catch { case scala.util.control.NonFatal(_) => () }
+        catch {
+          case scala.util.control.NonFatal(_) => ()
+        }
     }
   }
 
@@ -163,10 +165,16 @@ abstract class EsContainer(
   }
 
   override def client(credentials: Credentials): RestClient = credentials match {
-    case BasicAuth(user, password) => new RestClient(sslEnabled, ip, port, Some(user, password))
-    case Token(token) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader("Authorization", token))
-    case Header(name, value) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader(name, value))
-    case None                => new RestClient(sslEnabled, ip, port, Option.empty)
+    case BasicAuth(user, password) =>
+      new RestClient(sslEnabled, ip, port, Some(user, password))
+    case BasicAuthWithHeaders(user, password, headers) =>
+      new RestClient(sslEnabled, ip, port, Some(user, password), headers.map(headerFrom)*)
+    case Token(token) =>
+      new RestClient(sslEnabled, ip, port, Option.empty, headerFrom("Authorization", token))
+    case Header(name, value) =>
+      new RestClient(sslEnabled, ip, port, Option.empty, headerFrom(name, value))
+    case None =>
+      new RestClient(sslEnabled, ip, port, Option.empty)
   }
 
   override def start(): Unit = {
@@ -180,6 +188,8 @@ abstract class EsContainer(
         throw ex
     }
   }
+
+  private def headerFrom(name: String, value: String) = new BasicHeader(name, value)
 
   // Known docker classic-builder race: two sharded test JVMs concurrently building images that
   // share parent layers can fail the export with "unknown parent image ID" (moby bug). It's
@@ -212,6 +222,9 @@ object EsContainer {
 
   object Credentials {
     final case class BasicAuth(user: String, password: String) extends Credentials
+
+    final case class BasicAuthWithHeaders(user: String, password: String, headers: Seq[(String, String)])
+        extends Credentials
 
     final case class Header(name: String, value: String) extends Credentials
 

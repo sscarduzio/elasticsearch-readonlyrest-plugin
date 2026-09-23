@@ -16,12 +16,15 @@
  */
 package tech.beshu.ror.integration.suites
 
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.EnabledPromptForBasicAuthSettingSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleResponse
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, RorApiManager}
+import tech.beshu.ror.utils.httpclient.RestClient
 
 trait RorKbnPluginRequestWithFreeKibanaSupportSuite
     extends AnyWordSpec
@@ -32,49 +35,84 @@ trait RorKbnPluginRequestWithFreeKibanaSupportSuite
   "ROR with 'prompt_for_basic_auth: true'" when {
     "a regular request comes from the ROR KBN plugin" should {
       "ask for no credentials" when {
-        "the user does not have access" in {
-          val indexManager = new IndexManager(rorKbnPluginClient("dev9", "test"), esVersionUsed)
-
-          val result = indexManager.getIndex("index9")
+        "a block forbids the user" in {
+          val result = new IndexManager(rorKbnPluginClient("dev9", "test"), esVersionUsed).getIndex("index9")
 
           result should have statusCode 403
+          result.responseJson("error")("due_to").str should be("FORBIDDEN_BY_BLOCK")
+          basicAuthPromptOf(result) should be(None)
+        }
+        // The plugin sends the header as a plain HTTP header. The ror_metadata transport above is the
+        // one which the ROR KBN plugin uses for the headers it forwards from a browser.
+        "the header comes as a plain HTTP header" in {
+          val client = basicAuthClientWithHeaders("dev9", "test", ("x-ror-kbn-license-type", "ent"))
+
+          val result = new IndexManager(client, esVersionUsed).getIndex("index9")
+
+          result should have statusCode 403
+          basicAuthPromptOf(result) should be(None)
+        }
+      }
+      "hide an index which the user cannot see" when {
+        "the index exists" in {
+          val result = new IndexManager(rorKbnPluginClient("dev1", "test"), esVersionUsed).getIndex("index2")
+
+          result should have statusCode 404
+          basicAuthPromptOf(result) should be(None)
+        }
+        "the index does not exist" in {
+          val result = new IndexManager(rorKbnPluginClient("dev1", "test"), esVersionUsed).getIndex("index3")
+
+          result should have statusCode 404
+          basicAuthPromptOf(result) should be(None)
+        }
+        "an alias of the index is requested" in {
+          val result = new IndexManager(rorKbnPluginClient("dev1", "test"), esVersionUsed).getAlias("index2")
+
+          result should have statusCode 404
+          basicAuthPromptOf(result) should be(None)
         }
       }
     }
     "a user metadata request comes from the ROR KBN plugin" should {
       "return the user metadata" when {
         "the user has access" in {
-          val userMetadataManager = new RorApiManager(rorKbnPluginClient("dev1", "test"), esVersionUsed)
-
-          val result = userMetadataManager.fetchUserMetadata()
+          val result = new RorApiManager(rorKbnPluginClient("dev1", "test"), esVersionUsed).fetchUserMetadata()
 
           result should have statusCode 200
         }
       }
       "ask for no credentials" when {
         "the user does not have access" in {
-          val userMetadataManager = new RorApiManager(rorKbnPluginClient("dev9", "test"), esVersionUsed)
-
-          val result = userMetadataManager.fetchUserMetadata()
+          val result = new RorApiManager(rorKbnPluginClient("dev9", "test"), esVersionUsed).fetchUserMetadata()
 
           result should have statusCode 403
+          basicAuthPromptOf(result) should be(None)
         }
       }
     }
     "a request comes from a client which is not the ROR KBN plugin" should {
       "ask the client for credentials" when {
-        "the user does not have access" in {
-          val indexManager = new IndexManager(basicAuthClient("dev9", "test"), esVersionUsed)
-
-          val result = indexManager.getIndex("index9")
+        "a block forbids the user" in {
+          val result = new IndexManager(basicAuthClient("dev9", "test"), esVersionUsed).getIndex("index9")
 
           result should have statusCode 401
+          basicAuthPromptOf(result) should be(Some("Basic"))
+        }
+        "the user cannot see the index" in {
+          val result = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed).getIndex("index2")
+
+          result should have statusCode 401
+          basicAuthPromptOf(result) should be(Some("Basic"))
         }
       }
     }
   }
 
-  private def rorKbnPluginClient(user: String, password: String) =
+  private def rorKbnPluginClient(user: String, password: String): RestClient =
     basicAuthClientWithRorMetadataAttached(user, password, ("x-ror-kbn-license-type", "ent"))
+
+  private def basicAuthPromptOf(response: SimpleResponse): Option[String] =
+    response.headers.find(_.name.toLowerCase == "www-authenticate").map(_.value)
 
 }
