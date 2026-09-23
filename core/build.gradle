@@ -75,7 +75,7 @@ dependencies {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     }
     api group: 'io.monix',                          name: 'monix_3',                             version: '3.4.1'
-    // ROR's netty, not the one ES ships, runs the ES HTTP pipeline, so this pin changes ES behaviour.
+    // See tech.beshu.ror.utils.ReadDemandRestorer: re-run RorSslSuite's slow-bulk case after a netty bump.
     api group: 'io.netty',                          name: 'netty-codec-http2',                   version: '4.1.138.Final'
     api group: 'io.netty',                          name: 'netty-handler',                       version: '4.1.138.Final'
     api group: 'io.netty',                          name: 'netty-transport',                     version: '4.1.138.Final'
