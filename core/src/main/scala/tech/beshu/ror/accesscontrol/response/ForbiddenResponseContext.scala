@@ -22,12 +22,16 @@ import cats.implicits.*
 import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, ForbiddenCause}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
+import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.request.RestRequest
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.*
 
 final class ForbiddenResponseContext(
     aclStaticContext: Option[AccessControlStaticContext],
-    forbiddenCauses: NonEmptyList[ForbiddenResponseContext.Cause]
+    forbiddenCauses: NonEmptyList[ForbiddenResponseContext.Cause],
+    responseForRorKbnPlugin: Boolean
 ) {
 
   import ForbiddenResponseContext.forbiddenCauseShow
@@ -42,8 +46,13 @@ final class ForbiddenResponseContext(
     forbiddenCauses.map(_.show)
   }
 
-  def doesRequirePassword: Boolean = {
-    aclStaticContext.exists(_.doesRequirePassword)
+  /**
+   * The ROR Kibana plugin marks each request it sends with the license type header. It runs its own
+   * login, which the basic auth prompt of the browser breaks, so ROR asks such a request for no
+   * credentials. Every other client keeps the behaviour of the `prompt_for_basic_auth` setting.
+   */
+  def shouldAddBasicAuthPrompt: Boolean = {
+    !responseForRorKbnPlugin && aclStaticContext.exists(_.doesRequirePassword)
   }
 
   private def customForbiddenRequestMessage: Option[String] = aclStaticContext.map(_.forbiddenRequestMessage)
@@ -97,9 +106,17 @@ object ForbiddenResponseContext {
 
   def from(
       causes: NonEmptyList[ForbiddenResponseContext.Cause],
-      aclStaticContext: AccessControlStaticContext
+      aclStaticContext: AccessControlStaticContext,
+      restRequest: RestRequest
   ): ForbiddenResponseContext =
-    new ForbiddenResponseContext(Some(aclStaticContext), causes)
+    new ForbiddenResponseContext(
+      aclStaticContext = Some(aclStaticContext),
+      forbiddenCauses = causes,
+      responseForRorKbnPlugin = sentByRorKbnPlugin(restRequest)
+    )
+
+  private def sentByRorKbnPlugin(restRequest: RestRequest): Boolean =
+    findHeader(Header.Name.rorKbnLicenseType, in = restRequest.allHeaders).isDefined
 
   private implicit val forbiddenCauseShow: Show[Cause] = Show.show {
     case ForbiddenBlockMatch(_)    => "FORBIDDEN_BY_BLOCK"

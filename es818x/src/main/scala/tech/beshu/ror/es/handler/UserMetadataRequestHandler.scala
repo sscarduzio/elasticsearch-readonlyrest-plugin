@@ -22,7 +22,7 @@ import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
-import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, UserMetadataRequestResult}
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataResponse, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.{CorrelationId, RorKbnLicenseType}
@@ -42,8 +42,7 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import java.time.{Duration, Instant}
 import scala.util.{Failure, Success, Try}
 
-class UserMetadataRequestHandler(engine: Engine, esContext: EsContext, aclStaticContext: AccessControlStaticContext)
-    extends RequestIdAwareLogging {
+class UserMetadataRequestHandler(engine: Engine, esContext: EsContext) extends RequestIdAwareLogging {
 
   def handle(
       request: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]
@@ -92,7 +91,9 @@ class UserMetadataRequestHandler(engine: Engine, esContext: EsContext, aclStatic
   ): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(
-      ForbiddenResponse.create(ForbiddenResponseContext.from(causes, aclStaticContext))
+      ForbiddenResponse.create(
+        ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext, esContext.restRequest)
+      )
     )
   }
 

@@ -28,12 +28,12 @@ final class ForbiddenResponse private (context: ForbiddenResponseContext)
 
   addMetadata("es.due_to", context.causes.toList.asJava)
 
-  if (context.doesRequirePassword) {
+  if (context.shouldAddBasicAuthPrompt) {
     addHeader("WWW-Authenticate", "Basic")
   }
 
   override def status(): RestStatus =
-    if (context.doesRequirePassword) {
+    if (context.shouldAddBasicAuthPrompt) {
       RestStatus.UNAUTHORIZED
     } else {
       RestStatus.FORBIDDEN

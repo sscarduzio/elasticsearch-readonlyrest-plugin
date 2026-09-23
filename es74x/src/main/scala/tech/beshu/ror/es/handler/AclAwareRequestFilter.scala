@@ -60,7 +60,6 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
 import tech.beshu.ror.accesscontrol.request.{BaseEsContext, RequestContext, RestRequest}
-import tech.beshu.ror.accesscontrol.response.AccessControlStaticContextForRequest
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.*
@@ -93,17 +92,13 @@ class AclAwareRequestFilter(settings: Settings, nodeClient: NodeClient, threadPo
   }
 
   private def handleRequestWithEngine(engine: Engine, esContext: EsContext) = {
-    val aclStaticContext = AccessControlStaticContextForRequest(
-      engine.core.accessControl.staticContext,
-      esContext.restRequest
-    )
     esContext.actionRequest match {
       case request: RRUserMetadataRequest =>
-        val handler = new UserMetadataRequestHandler(engine, esContext, aclStaticContext)
+        val handler = new UserMetadataRequestHandler(engine, esContext)
         handler.handle(new UserMetadataEsRequestContext(request, esContext, threadPool))
       case _ =>
-        val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool, aclStaticContext)
-        handleEsRestApiRequest(regularRequestHandler, esContext, aclStaticContext)
+        val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool)
+        handleEsRestApiRequest(regularRequestHandler, esContext, engine.core.accessControl.staticContext)
     }
   }
 

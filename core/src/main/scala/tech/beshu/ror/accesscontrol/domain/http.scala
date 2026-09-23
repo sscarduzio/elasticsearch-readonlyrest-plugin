@@ -80,17 +80,20 @@ object Header {
 
   def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-  def fromRawHeaders(
-      headers: java.util.Map[String, java.util.List[String]]
-  ): Either[AuthorizationValueError, Set[Header]] = {
-    fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
-  }
+  def findHeader(header: Header.Name, in: Set[Header]): Option[Header] =
+    in.find(_.name == header)
 
   def findHeader(header: Header.Name, in: java.util.Map[String, java.util.List[String]]): Option[Header] = {
     for {
       headers <- fromRawHeaders(in).toOption
       header <- headers.find(_.name == header)
     } yield header
+  }
+
+  def fromRawHeaders(
+      headers: java.util.Map[String, java.util.List[String]]
+  ): Either[AuthorizationValueError, Set[Header]] = {
+    fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
   }
 
   def fromRawHeaders(
