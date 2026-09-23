@@ -121,6 +121,16 @@ class QueryTest extends AnyWordSpec {
           )
         ) shouldBe Right("""SELECT name FROM "bookstore" WHERE name = 'boo*'""")
       }
+      "rewrite the table written after a character that takes two UTF-16 units" in {
+        narrow(
+          query = """SELECT '😀' AS e, name FROM "book*"""",
+          allowed = allowed("bookstore"),
+          reads = Map(
+            """SELECT '😀' AS e, name FROM "book*"""" -> select(""""book*"""" -> "book*"),
+            """SELECT '😀' AS e, name FROM "bookstore"""" -> select(""""bookstore"""" -> "bookstore")
+          )
+        ) shouldBe Right("""SELECT '😀' AS e, name FROM "bookstore"""")
+      }
       "leave text written before the FROM keyword alone" in {
         narrow(
           query = """SELECT 'FROMAGE' AS lit, name FROM "boo*"""",
@@ -302,11 +312,12 @@ class QueryTest extends AnyWordSpec {
   private def tableIdentifier(query: String, writtenText: String, reportedIndexList: String): Any = {
     val offset = query.indexOf(writtenText)
     val before = query.take(offset)
+    val lineStart = before.lastIndexOf('\n') + 1
     new TableIdentifier(
       reportedIndexList,
       new Source(
         writtenText,
-        new Location(before.count(_ == '\n') + 1, offset - (before.lastIndexOf('\n') + 1) + 1)
+        new Location(before.count(_ == '\n') + 1, if (offset < 0) 0 else query.codePointCount(lineStart, offset) + 1)
       )
     )
   }

@@ -1097,6 +1097,34 @@ trait BaseXpackApiSuite
         result.queryResult.size should be(0)
       }
     }
+    "the index names are substituted in the query" should {
+      "leave a literal that reads like the table alone" in {
+        val result = dev1SqlManager.execute("""SELECT name FROM bookshop WHERE 'bookshop' = CONCAT('book', 'shop')""")
+        result should have statusCode 200
+        result.rows.size should be(3)
+      }
+      "leave text written before the FROM keyword alone" in {
+        val result = dev1SqlManager.execute("""SELECT 'FROMAGE' AS lit, name FROM \"book*\"""")
+        result should have statusCode 200
+        result.column("lit").map(_.str) should contain only "FROMAGE"
+      }
+      "rewrite a query that writes the FROM keyword in lower case" in {
+        val result = dev1SqlManager.execute("""select 'book*' as lit, name from \"book*\"""")
+        result should have statusCode 200
+        result.column("lit").map(_.str) should contain only "book*"
+        result.rows.size should be(3)
+      }
+      "quote the indices an alias written without quotes resolves to" in {
+        val result = adminSqlManager.execute("""SELECT name FROM books_and_library""")
+        result should have statusCode 200
+        result.rows.size should be(5)
+      }
+      "rewrite the table written after a character that takes two UTF-16 units" in {
+        val result = dev1SqlManager.execute("""SELECT '\ud83d\ude00' AS e, name FROM \"book*\"""")
+        result should have statusCode 200
+        result.rows.size should be(3)
+      }
+    }
     "a query is read page by page" should {
       "return every page to a user who has access to some indices only" in {
         val firstPage = adminSqlManager.execute("SELECT author FROM library", fetchSize = 1)
@@ -1164,6 +1192,7 @@ object BaseXpackApiSuite {
     storeScriptTemplate(adminRestClient, esVersion)
     configureBookstore(documentManager, indexManager)
     configureLibrary(documentManager)
+    indexManager.createAliasOf("bookstore,library", "books_and_library").force()
 
     indexManager.closeIndex("test3_index_c").force()
   }

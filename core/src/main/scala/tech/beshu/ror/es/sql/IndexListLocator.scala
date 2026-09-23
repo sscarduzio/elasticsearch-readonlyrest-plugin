@@ -28,6 +28,7 @@ import tech.beshu.ror.es.sql.CommandSelector.{
 }
 
 import scala.annotation.tailrec
+import scala.util.Try
 import scala.util.matching.Regex
 
 private[sql] object IndexListLocator {
@@ -130,8 +131,8 @@ private[sql] object IndexListLocator {
     Option
       .when(location.line >= 1 && location.column >= 0)(())
       .flatMap(_ => startOfLine(0, 1))
-      .map(_ + location.column)
-      .filter(_ <= query.length)
+      // ES's ANTLR stream counts the column in code points, not in the UTF-16 units a Scala string indexes by
+      .flatMap(lineStart => Try(query.offsetByCodePoints(lineStart, location.column)).toOption)
   }
 
   private def sameIndexList(one: String, other: String): Boolean =
