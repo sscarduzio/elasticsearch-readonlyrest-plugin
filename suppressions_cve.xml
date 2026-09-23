@@ -191,8 +191,8 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     <suppress>
         <notes><![CDATA[
    False positive on netty 4.1.138.Final. Netty fixed these three CVEs in that release:
-    - CVE-2026-93562 (GHSA-3jrc-fchc-59pw): the HTTP/1.1 decoder accepts split Transfer-Encoding
-      fields and skips the final-chunked validation (request smuggling).
+    - CVE-2026-93562 (GHSA-hcvj-94mj-jp5c): the HTTP/1.1 decoder validates a malformed
+      Transfer-Encoding header incompletely (request smuggling).
     - CVE-2026-93574 (GHSA-j4mg-hqgv-34qc): the HTTP/1.1 chunk-size token accepts post-digit
       whitespace (request smuggling).
     - CVE-2026-93492 (GHSA-8352-h356-c9qh): HpackEncoder honours a very large HTTP/2
