@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContex
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
-import tech.beshu.ror.accesscontrol.request.RestRequest
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.*
 
 final class ForbiddenResponseContext(
@@ -105,12 +105,12 @@ object ForbiddenResponseContext {
   def from(
       causes: NonEmptyList[ForbiddenResponseContext.Cause],
       aclStaticContext: AccessControlStaticContext,
-      restRequest: RestRequest
+      requestContext: RequestContext
   ): ForbiddenResponseContext =
     new ForbiddenResponseContext(
       aclStaticContext = Some(aclStaticContext),
       forbiddenCauses = causes,
-      responseForRorKbnPlugin = BasicAuthPrompt.sentByRorKbnPlugin(restRequest)
+      responseForRorKbnPlugin = requestContext.rorKbnLicenseType.isDefined
     )
 
   private implicit val forbiddenCauseShow: Show[Cause] = Show.show {

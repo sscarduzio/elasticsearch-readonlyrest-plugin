@@ -93,7 +93,7 @@ trait RequestContext {
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
-  lazy val currentGroupId: Option[GroupId] = {
+  def currentGroupId: Option[GroupId] = {
     findHeader(Header.Name.currentGroup, restRequest.allHeaders)
       .map(h => GroupId(h.value))
   }

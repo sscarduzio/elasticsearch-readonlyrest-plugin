@@ -92,7 +92,7 @@ class UserMetadataRequestHandler(engine: Engine, esContext: EsContext) extends R
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(
       ForbiddenResponse.create(
-        ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext, esContext.restRequest)
+        ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext, requestContext)
       )
     )
   }
