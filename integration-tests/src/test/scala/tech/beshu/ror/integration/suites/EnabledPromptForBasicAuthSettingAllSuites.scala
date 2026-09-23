@@ -22,4 +22,3 @@ class EnabledPromptForBasicAuthSettingAllSuites
     extends EnabledPromptForBasicAuthSettingSuite
     with IndexApiWithFreeKibanaSupportSuite
     with RorKbnPluginRequestWithFreeKibanaSupportSuite
-    with UserMetadataEndpointWithFreeKibanaSupportSuite
