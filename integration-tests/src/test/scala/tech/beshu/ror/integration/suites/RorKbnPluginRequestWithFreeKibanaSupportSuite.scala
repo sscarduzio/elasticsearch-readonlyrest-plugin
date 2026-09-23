@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.base.EnabledPromptForBasicAuthSettingSu
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterProvider
-import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleResponse
+import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, RorApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -40,7 +40,7 @@ trait RorKbnPluginRequestWithFreeKibanaSupportSuite
 
           result should have statusCode 403
           result.responseJson("error")("due_to").str should be("FORBIDDEN_BY_BLOCK")
-          basicAuthPromptOf(result) should be(None)
+          basicAuthPromptOf(result.headers) should be(None)
         }
         // The plugin sends the header as a plain HTTP header. The ror_metadata transport above is the
         // one which the ROR KBN plugin uses for the headers it forwards from a browser.
@@ -50,7 +50,7 @@ trait RorKbnPluginRequestWithFreeKibanaSupportSuite
           val result = new IndexManager(client, esVersionUsed).getIndex("index9")
 
           result should have statusCode 403
-          basicAuthPromptOf(result) should be(None)
+          basicAuthPromptOf(result.headers) should be(None)
         }
       }
       "hide an index which the user cannot see" when {
@@ -58,19 +58,19 @@ trait RorKbnPluginRequestWithFreeKibanaSupportSuite
           val result = new IndexManager(rorKbnPluginClient("dev1", "test"), esVersionUsed).getIndex("index2")
 
           result should have statusCode 404
-          basicAuthPromptOf(result) should be(None)
+          basicAuthPromptOf(result.headers) should be(None)
         }
         "the index does not exist" in {
           val result = new IndexManager(rorKbnPluginClient("dev1", "test"), esVersionUsed).getIndex("index3")
 
           result should have statusCode 404
-          basicAuthPromptOf(result) should be(None)
+          basicAuthPromptOf(result.headers) should be(None)
         }
         "an alias of the index is requested" in {
           val result = new IndexManager(rorKbnPluginClient("dev1", "test"), esVersionUsed).getAlias("index2")
 
           result should have statusCode 404
-          basicAuthPromptOf(result) should be(None)
+          basicAuthPromptOf(result.headers) should be(None)
         }
       }
     }
@@ -87,7 +87,7 @@ trait RorKbnPluginRequestWithFreeKibanaSupportSuite
           val result = new RorApiManager(rorKbnPluginClient("dev9", "test"), esVersionUsed).fetchUserMetadata()
 
           result should have statusCode 403
-          basicAuthPromptOf(result) should be(None)
+          basicAuthPromptOf(result.headers) should be(None)
         }
       }
     }
@@ -97,13 +97,13 @@ trait RorKbnPluginRequestWithFreeKibanaSupportSuite
           val result = new IndexManager(basicAuthClient("dev9", "test"), esVersionUsed).getIndex("index9")
 
           result should have statusCode 401
-          basicAuthPromptOf(result) should be(Some("Basic"))
+          basicAuthPromptOf(result.headers) should be(Some("Basic"))
         }
         "the user cannot see the index" in {
           val result = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed).getIndex("index2")
 
           result should have statusCode 401
-          basicAuthPromptOf(result) should be(Some("Basic"))
+          basicAuthPromptOf(result.headers) should be(Some("Basic"))
         }
       }
     }
@@ -112,7 +112,7 @@ trait RorKbnPluginRequestWithFreeKibanaSupportSuite
   private def rorKbnPluginClient(user: String, password: String): RestClient =
     basicAuthClientWithRorMetadataAttached(user, password, ("x-ror-kbn-license-type", "ent"))
 
-  private def basicAuthPromptOf(response: SimpleResponse): Option[String] =
-    response.headers.find(_.name.toLowerCase == "www-authenticate").map(_.value)
+  private def basicAuthPromptOf(headers: Set[SimpleHeader]): Option[String] =
+    headers.find(_.name.toLowerCase == "www-authenticate").map(_.value)
 
 }
