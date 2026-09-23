@@ -75,6 +75,7 @@ private[sql] object LocatedIndexList {
     indexList
       .split(',')
       .asSafeList
+      .map(_.trim)
       .filter(_.nonEmpty)
       .traverse(RequestedIndex.fromString)
       .flatMap(NonEmptyList.fromList)

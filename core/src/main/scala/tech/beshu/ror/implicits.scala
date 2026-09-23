@@ -828,10 +828,10 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   }
 
   implicit val sqlQueryRejectionShow: Show[SqlRejection] = Show.show {
-    case SqlRejection.CannotParseQuery =>
+    case SqlRejection.CannotReadQuery =>
       "The SQL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
-        "indices the user is allowed to, and it could not read the query at all - so it cannot tell which indices " +
-        "the query would run against. If the query is valid SQL, please report it to the ReadonlyREST team."
+        "indices the user is allowed to, and it could not read how Elasticsearch parsed the query - so it cannot " +
+        "tell which indices the query would run against. Please report this query to the ReadonlyREST team."
     case SqlRejection.CannotLocateIndexList(failure) =>
       s"The SQL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
         s"indices the user is allowed to, and running it as written would have let the user read the indices " +

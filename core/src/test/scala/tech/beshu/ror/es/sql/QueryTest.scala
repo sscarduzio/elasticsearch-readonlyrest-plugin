@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
-import tech.beshu.ror.es.sql.SqlPlanReader.SqlPlan
+import tech.beshu.ror.es.sql.SqlPlanReader.{PlanFailure, SqlPlan}
 
 class QueryTest extends AnyWordSpec {
 
@@ -60,12 +60,27 @@ class QueryTest extends AnyWordSpec {
         queryFrom("SHOW FUNCTIONS LIKE 'A%'", showFunctions()) shouldBe
           Query.WithoutIndices("SHOW FUNCTIONS LIKE 'A%'")
       }
+      "read every index of a list written with spaces" in {
+        val query = queryFrom("""SELECT name FROM "a, b"""", select(""""a, b"""" -> "a, b"))
+
+        query.indices.toList.map(_.name.stringify).sorted shouldBe List("a", "b")
+      }
+      "not locate an index list inside a longer name" in {
+        queryFrom("SHOW COLUMNS IN self:library", showColumns(index = "library")) shouldBe
+          Query.Unreadable(
+            "SHOW COLUMNS IN self:library",
+            Rejection.CannotLocateIndexList(ReadingFailure.IndexListNotWrittenOnce("library"))
+          )
+      }
       "have no index list when the statement names no table" in {
         queryFrom("SELECT 1 + 1", SqlPlan.Statement(Nil)) shouldBe Query.WithoutIndices("SELECT 1 + 1")
       }
-      "be unreadable when Elasticsearch cannot parse it" in {
-        Query.from("SELECT", readerFailingWith(new IllegalArgumentException("cannot parse"))) shouldBe
-          Query.Unreadable("SELECT", Rejection.CannotParseQuery)
+      "be left for Elasticsearch to reject when Elasticsearch cannot parse it" in {
+        Query.from("SELECT", readerFailingWith(esRejection)) shouldBe Query.RejectedByEs("SELECT")
+      }
+      "be unreadable when ReadonlyREST cannot read the plan Elasticsearch built" in {
+        Query.from("SELECT * FROM library", readerFailingWith(readingFailure)) shouldBe
+          Query.Unreadable("SELECT * FROM library", Rejection.CannotReadQuery)
       }
       "be unreadable when the table is not where Elasticsearch reported it" in {
         val query = """SELECT name FROM "bookstore""""
@@ -177,6 +192,16 @@ class QueryTest extends AnyWordSpec {
           reads = Map("SYS COLUMNS TABLE LIKE 'lib%'" -> sysColumns(wildcard = "lib*"))
         ) shouldBe Left(Rejection.CannotLocateIndexList(ReadingFailure.CommandTakesNoIndexList("SysColumns")))
       }
+      "write the same index list into every table" in {
+        narrow(
+          query = """SELECT * FROM "a*" WHERE x IN (SELECT y FROM "b*")""",
+          allowed = allowed("a1", "b1"),
+          reads = Map(
+            """SELECT * FROM "a*" WHERE x IN (SELECT y FROM "b*")""" -> select(""""a*"""" -> "a*", """"b*"""" -> "b*"),
+            """SELECT * FROM "a1,b1" WHERE x IN (SELECT y FROM "a1,b1")""" -> select(""""a1,b1"""" -> "a1,b1")
+          )
+        ) shouldBe Right("""SELECT * FROM "a1,b1" WHERE x IN (SELECT y FROM "a1,b1")""")
+      }
       "be rejected when Elasticsearch reads the rewrite as something else" in {
         narrow(
           query = """SELECT name FROM "book*"""",
@@ -191,7 +216,7 @@ class QueryTest extends AnyWordSpec {
         val query = """SELECT name FROM "book*""""
         val reader = new StubReader({
           case q if q == query => Right(select(""""book*"""" -> "book*")(q))
-          case _               => Left(new IllegalArgumentException("cannot parse"))
+          case _               => Left(esRejection)
         })
 
         Query.from(query, reader).narrowedTo(allowed("bookstore")) shouldBe
@@ -207,13 +232,21 @@ class QueryTest extends AnyWordSpec {
         ) shouldBe Right(query)
       }
       "be rejected when it is unreadable and the ACL narrowed the indices down" in {
-        Query.Unreadable("SELECT", Rejection.CannotParseQuery).narrowedTo(allowed("bookstore")) shouldBe
-          Left(Rejection.CannotParseQuery)
+        Query.Unreadable("SELECT", Rejection.CannotReadQuery).narrowedTo(allowed("bookstore")) shouldBe
+          Left(Rejection.CannotReadQuery)
+      }
+      "stay as written when Elasticsearch will reject it" in {
+        Query.RejectedByEs("SELECT FROM").narrowedTo(allowed("bookstore")).map(_.stringify) shouldBe
+          Right("SELECT FROM")
       }
     }
   }
 
   private implicit val requestId: RequestId = RequestId("test")
+
+  private val esRejection = PlanFailure.RejectedByEs(new IllegalArgumentException("cannot parse"))
+
+  private val readingFailure = PlanFailure.CannotReadPlan(new IllegalStateException("no such field"))
 
   private def queryFrom(query: String, plan: String => SqlPlan): Query =
     Query.from(query, readerReading(plan))
@@ -241,8 +274,8 @@ class QueryTest extends AnyWordSpec {
   private def readerReading(plan: String => SqlPlan): SqlPlanReader =
     new StubReader(query => Right(plan(query)))
 
-  private def readerFailingWith(cause: Throwable): SqlPlanReader =
-    new StubReader(_ => Left(cause))
+  private def readerFailingWith(failure: PlanFailure): SqlPlanReader =
+    new StubReader(_ => Left(failure))
 
   private def allowed(names: String*): NonEmptyList[RequestedIndex[ClusterIndexName]] =
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))
@@ -278,8 +311,8 @@ class QueryTest extends AnyWordSpec {
     )
   }
 
-  private final class StubReader(reads: String => Either[Throwable, SqlPlan]) extends SqlPlanReader {
-    override def planIn(query: String): Either[Throwable, SqlPlan] = reads(query)
+  private final class StubReader(reads: String => Either[PlanFailure, SqlPlan]) extends SqlPlanReader {
+    override def planIn(query: String): Either[PlanFailure, SqlPlan] = reads(query)
   }
 
   /** The shapes Elasticsearch hands back, named and spelled the way its own classes are. */

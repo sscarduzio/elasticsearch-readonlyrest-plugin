@@ -682,11 +682,9 @@ trait BaseXpackApiSuite
             result should have statusCode 400
           }
         }
-      }
-      "be forbidden" when {
-        "the sql query is malformed, because ReadonlyREST cannot tell which indices it would read" in {
+        "sql query is malformed" in {
           val result = adminSqlManager.execute("""SELECT * FROM unescaped-index.name""")
-          result should have statusCode 403
+          result should have statusCode 400
         }
       }
     }
@@ -1073,6 +1071,40 @@ trait BaseXpackApiSuite
           val result = dev2SqlManager.execute("""SHOW FUNCTIONS""")
           result should have statusCode 200
         }
+      }
+    }
+    "a statement that names no table is used" should {
+      "be allowed for a user who has access to some indices only" in {
+        val result = dev1SqlManager.execute("""SELECT 1 + 1 AS two""")
+        result should have statusCode 200
+        result.column("two").toList should contain only Num(2)
+      }
+    }
+    "a command matches index names with a LIKE pattern" should {
+      "list only the tables the user has access to" in {
+        val result = dev1SqlManager.execute("""SHOW TABLES LIKE 'book%'""")
+        result should have statusCode 200
+        result.column("name").map(_.str) should contain only "bookstore"
+      }
+      "list no table the user doesn't have access to" in {
+        val result = dev2SqlManager.execute("""SHOW TABLES LIKE 'book%'""")
+        result should have statusCode 200
+        result.queryResult.size should be(0)
+      }
+      "show no column of a table the user doesn't have access to" in {
+        val result = dev2SqlManager.execute("""SHOW COLUMNS IN LIKE 'book%'""")
+        result should have statusCode 200
+        result.queryResult.size should be(0)
+      }
+    }
+    "a query is read page by page" should {
+      "return every page to a user who has access to some indices only" in {
+        val firstPage = adminSqlManager.execute("SELECT author FROM library", fetchSize = 1)
+        firstPage should have statusCode 200
+        firstPage.rows.size should be(1)
+        val secondPage = adminSqlManager.nextPage(firstPage.responseJson("cursor").str)
+        secondPage should have statusCode 200
+        secondPage.rows.size should be(1)
       }
     }
   }

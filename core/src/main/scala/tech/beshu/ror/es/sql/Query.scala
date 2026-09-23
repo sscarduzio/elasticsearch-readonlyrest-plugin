@@ -26,7 +26,7 @@ import tech.beshu.ror.es.sql.CommandSelector.{
   MatchingPattern,
   NotIndexRelated
 }
-import tech.beshu.ror.es.sql.SqlPlanReader.SqlPlan
+import tech.beshu.ror.es.sql.SqlPlanReader.{PlanFailure, SqlPlan}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
@@ -55,9 +55,12 @@ object Query extends RequestIdAwareLogging {
     reader.planIn(query) match {
       case Right(plan) =>
         located(query, reader, plan)
-      case Left(cause) =>
-        logger.debug("Cannot parse the SQL statement", cause)
-        Unreadable(query, Rejection.CannotParseQuery)
+      case Left(PlanFailure.RejectedByEs(cause)) =>
+        logger.debug("Elasticsearch cannot parse the SQL query, so it will reject the query itself", cause)
+        RejectedByEs(query)
+      case Left(PlanFailure.CannotReadPlan(cause)) =>
+        logger.warn("ReadonlyREST cannot read the plan Elasticsearch built for the SQL query", cause)
+        Unreadable(query, Rejection.CannotReadQuery)
     }
   }
 
@@ -83,9 +86,12 @@ object Query extends RequestIdAwareLogging {
             replaced
               .checkedAgainst(indicesReadIn(plan))
               .flatMap(narrowed => confirmed(located(narrowed, reader, plan)))
-          case Left(cause) =>
+          case Left(PlanFailure.RejectedByEs(cause)) =>
             logger.warn("Elasticsearch cannot parse the SQL query ReadonlyREST rewrote", cause)
             Left(Rejection.CannotParseRewrittenQuery(replaced.intendedIndices.toList.sorted))
+          case Left(PlanFailure.CannotReadPlan(cause)) =>
+            logger.warn("ReadonlyREST cannot read the plan Elasticsearch built for the rewritten SQL query", cause)
+            Left(Rejection.CannotReadQuery)
         }
       }
     }
@@ -98,6 +104,21 @@ object Query extends RequestIdAwareLogging {
   }
 
   final case class WithoutIndices(text: String) extends Query {
+
+    override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
+
+    override def narrowedTo(
+        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+    )(
+        implicit requestId: RequestId
+    ): Either[Rejection, Query] = Right(this)
+
+  }
+
+  /** ES runs nothing for such a query: it answers with its own parse error, or, for an empty query, continues the
+    * cursor the request carries.
+    */
+  final case class RejectedByEs(text: String) extends Query {
 
     override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
 
@@ -164,7 +185,7 @@ object Query extends RequestIdAwareLogging {
       .sortBy(span => (span.start, span.end))
       .sliding(2)
       .collectFirst {
-        case List(one, next) if next.start < one.end =>
+        case List(one, next) if next.start < one.end || next.start == one.start =>
           ReadingFailure.OverlappingIndexLists(
             query.substring(one.start, one.end),
             query.substring(next.start, next.end)
@@ -188,7 +209,7 @@ object Query extends RequestIdAwareLogging {
   }
 
   private def names(indexList: String): Set[String] =
-    indexList.split(',').asSafeList.filter(_.nonEmpty).toCovariantSet
+    indexList.split(',').asSafeList.map(_.trim).filter(_.nonEmpty).toCovariantSet
 
 }
 
@@ -196,7 +217,7 @@ sealed trait Rejection
 
 object Rejection {
 
-  case object CannotParseQuery extends Rejection
+  case object CannotReadQuery extends Rejection
 
   final case class CannotLocateIndexList(failure: ReadingFailure) extends Rejection
 

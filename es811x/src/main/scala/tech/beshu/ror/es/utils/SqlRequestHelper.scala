@@ -18,20 +18,17 @@ package tech.beshu.ror.es.utils
 
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
 import org.joor.Reflect.*
-import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
-import tech.beshu.ror.es.sql.SqlPlanReader.SqlPlan
-import tech.beshu.ror.es.sql.{Query, SqlPlanReader}
+import tech.beshu.ror.es.sql.{Query, ReflectiveSqlPlanReader, SqlPlanReader}
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.ZoneId
 import java.util.List as JList
 import scala.jdk.CollectionConverters.*
-import scala.util.{Failure, Success, Try}
 
 object SqlRequestHelper {
 
@@ -42,7 +39,7 @@ object SqlRequestHelper {
   }
 
   def setSqlQueryTo(request: CompositeIndicesRequest, query: Query): Unit = {
-    setQuery(request, query.stringify)
+    if (query.stringify != getQuery(request)) setQuery(request, query.stringify)
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -70,39 +67,20 @@ object SqlRequestHelper {
     on(request).call("params").get[AnyRef]
   }
 
-  /** The whole version-specific surface: which classes carry the parser and the pre-analysis, and how to call them. */
   private final class EsSqlPlanReader(
       request: CompositeIndicesRequest
   )(
       implicit classLoader: ClassLoader
-  ) extends SqlPlanReader {
+  ) extends ReflectiveSqlPlanReader {
 
-    override def planIn(query: String): Either[Throwable, SqlPlan] = {
-      createStatement(query).flatMap(statement => Try(planOf(statement)).toEither)
-    }
-
-    private def createStatement(query: String) = {
+    override protected def parsed(query: String): AnyRef = {
       val parser = onClass(classLoader.loadClass("org.elasticsearch.xpack.sql.parser.SqlParser")).create().get[Any]()
-      Try(on(parser).call("createStatement", query, getParams(request), ZoneId.systemDefault()).get[AnyRef]) match {
-        case Success(s)                                                                       => Right(s)
-        case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
-        case Failure(ex)                                                                      => Left(ex)
-      }
+      on(parser).call("createStatement", query, getParams(request), ZoneId.systemDefault()).get[AnyRef]
     }
 
-    private def planOf(statement: AnyRef): SqlPlan = {
-      if (isCommand(statement)) SqlPlan.Command(statement)
-      else SqlPlan.Statement(tableIdentifiersIn(statement))
-    }
-
-    private def isCommand(statement: AnyRef): Boolean =
-      classLoader
-        .loadClass("org.elasticsearch.xpack.sql.plan.logical.command.Command")
-        .isAssignableFrom(statement.getClass)
-
-    private def tableIdentifiersIn(statement: AnyRef): List[Any] = {
+    override protected def tableIdentifiersIn(plan: AnyRef): List[Any] = {
       val preAnalyzer = onClass(classLoader.loadClass("org.elasticsearch.xpack.ql.analyzer.PreAnalyzer")).create()
-      val preAnalysis = preAnalyzer.call("preAnalyze", statement).get[Any]()
+      val preAnalysis = preAnalyzer.call("preAnalyze", plan).get[Any]()
       on(preAnalysis)
         .get[JList[AnyRef]]("indices")
         .asScala

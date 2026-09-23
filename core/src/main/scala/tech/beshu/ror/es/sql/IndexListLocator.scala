@@ -86,9 +86,13 @@ private[sql] object IndexListLocator {
       .toRight(ReadingFailure.NotWhereEsReportedIt(table.reportedIndexList))
 
   private def spanOfLiteral(query: String, indexList: String): Either[ReadingFailure, TextSpan] =
-    onlyOccurrenceOf(query, s""""$indexList"""")
-      .orElse(onlyOccurrenceOf(query, indexList))
+    onlyOccurrenceOf(query, s""""$indexList"""", _ => true)
+      .orElse(onlyOccurrenceOf(query, indexList, standsAlone(query, _)))
       .toRight(ReadingFailure.IndexListNotWrittenOnce(indexList))
+
+  private def standsAlone(query: String, span: TextSpan): Boolean =
+    (span.start == 0 || query.charAt(span.start - 1).isWhitespace) &&
+      (span.end == query.length || query.charAt(span.end).isWhitespace || query.charAt(span.end) == ';')
 
   private def spanOfLikeClause(
       query: String,
@@ -100,16 +104,16 @@ private[sql] object IndexListLocator {
       case _          => Left(ReadingFailure.PatternNotWrittenOnce(commandName, wildcard))
     }
 
-  private def onlyOccurrenceOf(query: String, text: String): Option[TextSpan] = {
+  private def onlyOccurrenceOf(query: String, text: String, accepted: TextSpan => Boolean): Option[TextSpan] = {
     @tailrec
-    def occurrences(from: Int, found: List[Int]): List[Int] =
+    def occurrences(from: Int, found: List[TextSpan]): List[TextSpan] =
       query.indexOf(text, from) match {
         case -1 => found
-        case at => occurrences(at + text.length, at :: found)
+        case at => occurrences(at + text.length, TextSpan(at, at + text.length) :: found)
       }
-    occurrences(0, Nil) match {
-      case at :: Nil => Some(TextSpan(at, at + text.length))
-      case _         => None
+    occurrences(0, Nil).filter(accepted) match {
+      case span :: Nil => Some(span)
+      case _           => None
     }
   }
 

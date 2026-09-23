@@ -16,11 +16,15 @@
  */
 package tech.beshu.ror.es.sql
 
-import tech.beshu.ror.es.sql.SqlPlanReader.SqlPlan
+import org.joor.ReflectException
+import tech.beshu.ror.es.sql.SqlPlanReader.{PlanFailure, SqlPlan}
+
+import java.lang.reflect.InvocationTargetException
+import scala.util.{Failure, Success, Try}
 
 trait SqlPlanReader {
 
-  def planIn(query: String): Either[Throwable, SqlPlan]
+  def planIn(query: String): Either[PlanFailure, SqlPlan]
 
 }
 
@@ -35,5 +39,44 @@ object SqlPlanReader {
     final case class Command(underlyingObject: Any) extends SqlPlan
 
   }
+
+  sealed trait PlanFailure
+
+  object PlanFailure {
+
+    final case class RejectedByEs(cause: Throwable) extends PlanFailure
+
+    final case class CannotReadPlan(cause: Throwable) extends PlanFailure
+
+  }
+
+}
+
+abstract class ReflectiveSqlPlanReader(
+    implicit classLoader: ClassLoader
+) extends SqlPlanReader {
+
+  protected def parsed(query: String): AnyRef
+
+  protected def tableIdentifiersIn(plan: AnyRef): List[Any]
+
+  override final def planIn(query: String): Either[PlanFailure, SqlPlan] =
+    Try(parsed(query)) match {
+      case Success(statement) =>
+        Try(planOf(statement)).toEither.left.map(PlanFailure.CannotReadPlan.apply)
+      case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[InvocationTargetException] =>
+        Left(PlanFailure.RejectedByEs(Option(ex.getCause.getCause).getOrElse(ex)))
+      case Failure(ex) =>
+        Left(PlanFailure.CannotReadPlan(ex))
+    }
+
+  private def planOf(statement: AnyRef): SqlPlan =
+    if (isCommand(statement)) SqlPlan.Command(statement)
+    else SqlPlan.Statement(tableIdentifiersIn(statement))
+
+  private def isCommand(statement: AnyRef): Boolean =
+    classLoader
+      .loadClass("org.elasticsearch.xpack.sql.plan.logical.command.Command")
+      .isInstance(statement)
 
 }
