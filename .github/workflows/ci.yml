@@ -9,7 +9,7 @@ on:
       - '**/*.md'
   pull_request:
     types: [ opened, synchronize, reopened, ready_for_review ]
-    branches: [ master, develop, 'epic/**', '**/epic/**' ]
+    branches: [ master, develop, 'epic/**', '**/epic/**', 'RORDEV-1636-lookup-indices2' ]
     paths-ignore:
       - 'docs/**'
       - '.claude/**'
