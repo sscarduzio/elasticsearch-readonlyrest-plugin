@@ -80,11 +80,12 @@ private[sql] object IndexListLocator {
 
   /** ES reports the list it read, not the text it read it from, so the span has to read back as that list. */
   private def spanOf(query: String, table: TableInQuery): Either[ReadingFailure, TextSpan] =
-    offsetOf(query, table.writtenAt)
+    offsetsOf(query, table.writtenAt)
       .map(start => TextSpan(start, start + table.writtenText.length))
-      .filter(span => span.end <= query.length && query.substring(span.start, span.end) == table.writtenText)
-      .filter(_ => sameIndexList(table.writtenText, table.reportedIndexList))
-      .toRight(ReadingFailure.NotWhereEsReportedIt(table.reportedIndexList))
+      .filter(span => span.end <= query.length && query.substring(span.start, span.end) == table.writtenText) match {
+      case span :: Nil if sameIndexList(table.writtenText, table.reportedIndexList) => Right(span)
+      case _ => Left(ReadingFailure.NotWhereEsReportedIt(table.reportedIndexList))
+    }
 
   private def spanOfLiteral(query: String, indexList: String): Either[ReadingFailure, TextSpan] =
     onlyOccurrenceOf(query, s""""$indexList"""", _ => true)
@@ -118,7 +119,7 @@ private[sql] object IndexListLocator {
     }
   }
 
-  private def offsetOf(query: String, location: SourceLocation): Option[Int] = {
+  private def offsetsOf(query: String, location: SourceLocation): List[Int] = {
     @tailrec
     def startOfLine(idx: Int, line: Int): Option[Int] = {
       if (line >= location.line) Some(idx)
@@ -131,8 +132,14 @@ private[sql] object IndexListLocator {
     Option
       .when(location.line >= 1 && location.column >= 0)(())
       .flatMap(_ => startOfLine(0, 1))
-      // ES's ANTLR stream counts the column in code points, not in the UTF-16 units a Scala string indexes by
-      .flatMap(lineStart => Try(query.offsetByCodePoints(lineStart, location.column)).toOption)
+      .toList
+      .flatMap { lineStart =>
+        // ES before 7.15 parses through an ANTLRInputStream, which counts the column in UTF-16 units;
+        // ES 7.15+ parses through a CodePointCharStream, which counts it in code points
+        val inUtf16Units = lineStart + location.column
+        val inCodePoints = Try(query.offsetByCodePoints(lineStart, location.column)).toOption
+        (inUtf16Units :: inCodePoints.toList).distinct
+      }
   }
 
   private def sameIndexList(one: String, other: String): Boolean =

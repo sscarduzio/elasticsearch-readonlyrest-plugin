@@ -88,6 +88,12 @@ class QueryTest extends AnyWordSpec {
         Query.from(query, readerReading(_ => select("elsewhere" -> "bookstore")(query))) shouldBe
           Query.Unreadable(query, Rejection.CannotLocateIndexList(ReadingFailure.NotWhereEsReportedIt("bookstore")))
       }
+      "be unreadable when both ways of counting the column point at the table" in {
+        val query = """SELECT '😀' AS e FROM aaa"""
+
+        Query.from(query, readerReading(selectCountingUtf16Units("aa" -> "aa"))) shouldBe
+          Query.Unreadable(query, Rejection.CannotLocateIndexList(ReadingFailure.NotWhereEsReportedIt("aa")))
+      }
     }
     "narrowed down" should {
       "rewrite the table Elasticsearch pointed at, quoted" in {
@@ -121,13 +127,23 @@ class QueryTest extends AnyWordSpec {
           )
         ) shouldBe Right("""SELECT name FROM "bookstore" WHERE name = 'boo*'""")
       }
-      "rewrite the table written after a character that takes two UTF-16 units" in {
+      "rewrite the table written after a character that takes two UTF-16 units, columns counted in code points" in {
         narrow(
           query = """SELECT '😀' AS e, name FROM "book*"""",
           allowed = allowed("bookstore"),
           reads = Map(
             """SELECT '😀' AS e, name FROM "book*"""" -> select(""""book*"""" -> "book*"),
             """SELECT '😀' AS e, name FROM "bookstore"""" -> select(""""bookstore"""" -> "bookstore")
+          )
+        ) shouldBe Right("""SELECT '😀' AS e, name FROM "bookstore"""")
+      }
+      "rewrite the table written after a character that takes two UTF-16 units, columns counted in UTF-16 units" in {
+        narrow(
+          query = """SELECT '😀' AS e, name FROM "book*"""",
+          allowed = allowed("bookstore"),
+          reads = Map(
+            """SELECT '😀' AS e, name FROM "book*"""" -> selectCountingUtf16Units(""""book*"""" -> "book*"),
+            """SELECT '😀' AS e, name FROM "bookstore"""" -> selectCountingUtf16Units(""""bookstore"""" -> "bookstore")
           )
         ) shouldBe Right("""SELECT '😀' AS e, name FROM "bookstore"""")
       }
@@ -291,8 +307,22 @@ class QueryTest extends AnyWordSpec {
     NonEmptyList.fromListUnsafe(names.toList.flatMap(RequestedIndex.fromString))
 
   private def select(tables: (String, String)*): String => SqlPlan =
+    selectCountingColumns(inCodePoints, tables)
+
+  private def selectCountingUtf16Units(tables: (String, String)*): String => SqlPlan =
+    selectCountingColumns(inUtf16Units, tables)
+
+  private def selectCountingColumns(columnUnits: ColumnUnits, tables: Seq[(String, String)]): String => SqlPlan =
     query =>
-      SqlPlan.Statement(tables.toList.map { case (written, reported) => tableIdentifier(query, written, reported) })
+      SqlPlan.Statement(tables.toList.map { case (written, reported) =>
+        tableIdentifier(query, written, reported, columnUnits)
+      })
+
+  private type ColumnUnits = (String, Int, Int) => Int
+
+  private val inCodePoints: ColumnUnits = (query, lineStart, offset) => query.codePointCount(lineStart, offset)
+
+  private val inUtf16Units: ColumnUnits = (_, lineStart, offset) => offset - lineStart
 
   private def showTables(index: String = null, wildcard: String = null): String => SqlPlan =
     _ => SqlPlan.Command(new ShowTables(index, likePattern(wildcard)))
@@ -309,7 +339,12 @@ class QueryTest extends AnyWordSpec {
   private def likePattern(wildcard: String): LikePattern =
     Option(wildcard).map(new LikePattern(_)).orNull
 
-  private def tableIdentifier(query: String, writtenText: String, reportedIndexList: String): Any = {
+  private def tableIdentifier(
+      query: String,
+      writtenText: String,
+      reportedIndexList: String,
+      columnUnits: ColumnUnits
+  ): Any = {
     val offset = query.indexOf(writtenText)
     val before = query.take(offset)
     val lineStart = before.lastIndexOf('\n') + 1
@@ -317,7 +352,7 @@ class QueryTest extends AnyWordSpec {
       reportedIndexList,
       new Source(
         writtenText,
-        new Location(before.count(_ == '\n') + 1, if (offset < 0) 0 else query.codePointCount(lineStart, offset) + 1)
+        new Location(before.count(_ == '\n') + 1, if (offset < 0) 0 else columnUnits(query, lineStart, offset) + 1)
       )
     )
   }
