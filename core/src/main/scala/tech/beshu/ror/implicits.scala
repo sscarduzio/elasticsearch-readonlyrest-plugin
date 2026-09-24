@@ -351,8 +351,8 @@ trait LogsShowInstances extends cats.instances.AllInstances {
        | BRS:${r.restRequest.allHeaders.exists(_.name === Header.Name.userAgent).show},
        | ACT:${r.action.show},
        | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
-       | XFF:${r.restRequest.allHeaders
-        .find(_.name === Header.Name.xForwardedFor)
+       | XFF:${Header
+        .findHeader(Header.Name.xForwardedFor, in = r.restRequest.allHeaders)
         .map(_.value.show)
         .getOrElse("null")
         .show},

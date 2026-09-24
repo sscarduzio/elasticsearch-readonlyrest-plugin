@@ -30,7 +30,7 @@
     "tech.beshu.ror.integration.suites.FilterRuleSuite": 7,
     "tech.beshu.ror.integration.suites.FiltersAndFieldsSecuritySuite": 11,
     "tech.beshu.ror.integration.suites.FiltersDocLevelSecuritySuite": 11,
-    "tech.beshu.ror.integration.suites.FipsSslSuite": 241,
+    "tech.beshu.ror.integration.suites.RorSslSuite": 265,
     "tech.beshu.ror.integration.suites.HostsRuleSuite": 2,
     "tech.beshu.ror.integration.suites.ImpersonationSuite": 71,
     "tech.beshu.ror.integration.suites.IndexAliasesManagementSuite": 45,

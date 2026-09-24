@@ -190,6 +190,24 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     </suppress>
     <suppress>
         <notes><![CDATA[
+   False positive on netty 4.1.138.Final. Netty fixed these three CVEs in that release:
+    - CVE-2026-93562 (GHSA-hcvj-94mj-jp5c): the HTTP/1.1 decoder validates a malformed
+      Transfer-Encoding header incompletely (request smuggling).
+    - CVE-2026-93574 (GHSA-j4mg-hqgv-34qc): the HTTP/1.1 chunk-size token accepts post-digit
+      whitespace (request smuggling).
+    - CVE-2026-93492 (GHSA-8352-h356-c9qh): HpackEncoder honours a very large HTTP/2
+      MAX_HEADER_TABLE_SIZE setting (DoS).
+   OSS Index still reports these against netty-codec-http and netty-codec-http2 at 4.1.138.Final,
+   because NVD has not analysed the records and they carry no version range.
+   Remove this suppression at the next netty upgrade, or when OSS Index drops the fixed version.
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/(netty-codec-http|netty-codec-http2)@4\.1\.138\.Final$</packageUrl>
+        <cve>CVE-2026-93562</cve>
+        <cve>CVE-2026-93574</cve>
+        <cve>CVE-2026-93492</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
    False positive: CVE-2026-54399 and CVE-2026-54428 affect the HTTP/1.1 and HTTP/2 parsers in the
    rewritten Apache HttpComponents Core 5.x line (org.apache.httpcomponents.core5:httpcore5 / httpcore5-h2,
    package org.apache.hc.core5). The CVEs' CPE match criteria (cpe:2.3:a:apache:httpcomponents_core:*,
