@@ -2,7 +2,7 @@ name: 'Publish test results'
 description: >-
   Uploads the JUnit XML that the tests of this job wrote, as the `<id>-results` artifact. It finds
   the reports anywhere in the tree, so it serves a unit-test job and a sharded integration-test job
-  alike.
+  alike. Then it names each failed test in an error annotation and in the job summary.
 
   The caller owns the condition. `if: failure()` is enough when only a failed run needs a report;
   a leg whose green XMLs feed suite-timings regeneration calls it with `if: always()`.
@@ -20,3 +20,8 @@ runs:
         name: ${{ inputs.id }}-results
         path: '**/TEST*.xml'
         if-no-files-found: ignore
+    # After the upload: when the annotation step fails, the report is already safe.
+    - shell: bash
+      env:
+        ID: ${{ inputs.id }}
+      run: bash ci/junit-failures.sh . "$ID"
