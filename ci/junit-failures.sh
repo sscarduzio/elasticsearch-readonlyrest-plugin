@@ -55,6 +55,14 @@ escape() {
   echo "${s//$'\r'/%0D}"
 }
 
+# A property value, such as the title, also escapes ":" and ",".
+escape_property() {
+  local s
+  s=$(escape "$1")
+  s=${s//:/%3A}
+  echo "${s//,/%2C}"
+}
+
 main() {
   [ -d "$DIR" ] || return 0
   local lines
@@ -69,7 +77,7 @@ main() {
   while IFS=$'\t' read -r class test message; do
     count=$((count + 1))
     [ "$count" -le "$MAX_ANNOTATIONS" ] || break
-    echo "::error title=$(escape "$TITLE: ${class##*.}")::$(escape "$test: $message")"
+    echo "::error title=$(escape_property "$TITLE: ${class##*.}")::$(escape "$test: $message")"
   done <<< "$lines"
 
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
