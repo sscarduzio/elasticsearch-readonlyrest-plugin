@@ -20,8 +20,10 @@ runs:
         name: ${{ inputs.id }}-results
         path: '**/TEST*.xml'
         if-no-files-found: ignore
-    # After the upload: when the annotation step fails, the report is already safe.
+    # After the upload, and never a failure of its own: the names are a convenience, and a green leg
+    # must not turn red because one report was unreadable.
     - shell: bash
+      continue-on-error: true
       env:
         ID: ${{ inputs.id }}
       run: bash ci/junit-failures.sh . "$ID"
