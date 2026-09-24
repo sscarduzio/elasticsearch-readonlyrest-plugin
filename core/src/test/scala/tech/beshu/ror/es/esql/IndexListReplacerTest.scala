@@ -376,6 +376,14 @@ class IndexListReplacerTest extends AnyWordSpec {
           join("secret_idx", "secret_idx")
         ) should fullyMatch regex s"FROM src \\| LOOKUP JOIN $maskedIndex ON key"
       }
+      "mask an unauthorized target written after a character that takes two UTF-16 units" in {
+        rewrite(
+          """FROM src | EVAL e = "😀" | LOOKUP JOIN secret_idx ON key""",
+          allowed("src"),
+          from("FROM src", "src"),
+          join("secret_idx", "secret_idx")
+        ) should fullyMatch regex s"""FROM src \\| EVAL e = "😀" \\| LOOKUP JOIN $maskedIndex ON key"""
+      }
       "handle a target whose name only ends with the ON keyword" in {
         rewrite(
           "FROM src | LOOKUP JOIN ref-on ON key",
@@ -776,11 +784,14 @@ class IndexListReplacerTest extends AnyWordSpec {
 
     def reportedAt(query: String, offset: Int): IndexPatternInQuery = {
       val before = query.take(offset)
+      val lineStart = before.lastIndexOf('\n') + 1
       IndexPatternInQuery(
         reportedIndexList = indexPattern,
         writtenAt = SourceLocation(
           line = before.count(_ == '\n') + 1,
-          column = offset - (before.lastIndexOf('\n') + 1)
+          column =
+            if (offset >= lineStart && offset <= query.length) query.codePointCount(lineStart, offset)
+            else offset - lineStart
         ),
         writtenText = writtenText
       )

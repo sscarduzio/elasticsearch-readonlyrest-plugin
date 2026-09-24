@@ -81,6 +81,16 @@ class QueryTest extends AnyWordSpec {
           )
         ) shouldBe Right("FROM logs-1 | LIMIT 10")
       }
+      "rewrite the index list written after a character that takes two UTF-16 units" in {
+        narrow(
+          query = "/* 😀 */ FROM logs-* | LIMIT 10",
+          allowed = allowed("logs-1"),
+          reads = Map(
+            "/* 😀 */ FROM logs-* | LIMIT 10" -> List(from("FROM logs-*", "logs-*")),
+            "/* 😀 */ FROM logs-1 | LIMIT 10" -> List(from("FROM logs-1", "logs-1"))
+          )
+        ) shouldBe Right("/* 😀 */ FROM logs-1 | LIMIT 10")
+      }
       "write an index parameter into a PROMQL command that leans on the Elasticsearch default" in {
         narrow(
           query = "PROMQL step=1m rate(v)",
@@ -202,10 +212,13 @@ class QueryTest extends AnyWordSpec {
     def at(query: String): IndexPatternInQuery = {
       val offset = query.indexOf(writtenText)
       val before = query.take(offset)
+      val lineStart = before.lastIndexOf('\n') + 1
       IndexPatternInQuery(
         reportedIndexList = indexPattern,
-        writtenAt =
-          SourceLocation(line = before.count(_ == '\n') + 1, column = offset - (before.lastIndexOf('\n') + 1)),
+        writtenAt = SourceLocation(
+          line = before.count(_ == '\n') + 1,
+          column = if (offset < 0) offset - lineStart else query.codePointCount(lineStart, offset)
+        ),
         writtenText = writtenText
       )
     }

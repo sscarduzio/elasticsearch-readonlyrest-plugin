@@ -21,6 +21,7 @@ import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.{IndexPatternInQuery, Query
 import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
 
 import scala.annotation.tailrec
+import scala.util.Try
 import scala.util.matching.Regex
 
 /**
@@ -135,8 +136,8 @@ private[esql] object IndexListLocator {
     Option
       .when(location.line >= 1 && location.column >= 0)(())
       .flatMap(_ => startOfLine(0, 1))
-      .map(_ + location.column)
-      .filter(_ <= query.length)
+      // ES|QL's ANTLR stream counts the column in code points, not in the UTF-16 units a Scala string indexes by
+      .flatMap(lineStart => Try(query.offsetByCodePoints(lineStart, location.column)).toOption)
   }
 
   private def fromSourcePlaceIn(
