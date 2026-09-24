@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.data.NonEmptyList
-import cats.{Eq, Show}
+import cats.{Eq, Order, Show}
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
@@ -47,12 +47,30 @@ final case class Header(name: Header.Name, value: NonEmptyString) extends EagerH
 
 object Header {
 
-  final case class Name(value: NonEmptyString) extends EagerHashCode {
-    // Precomputed so the case-insensitive `Eq` below does not lowercase both sides on every comparison.
-    lazy val lowerCased: String = value.value.toLowerCase(Locale.US)
+  /** Not a case class: `equals` is not structural. Two names which differ only in case are the same name,
+    * but they do not hold the same `value`. `copy` and the structural `toString` would contradict that.
+    */
+  final class Name private (val value: NonEmptyString) {
+
+    /** HTTP header names are case-insensitive, so the lower-cased name is the identity of a `Name`.
+      * `equals`, `hashCode`, `Eq` and `Order` all rest on it. `value` keeps the spelling which came from
+      * the wire, because audit records and logs report it.
+      */
+    private val lowerCased: String = value.value.toLowerCase(Locale.US)
+
+    override val hashCode: Int = lowerCased.hashCode
+
+    override def equals(other: Any): Boolean = other match {
+      case that: Name => lowerCased == that.lowerCased
+      case _          => false
+    }
+
+    override def toString: String = value.value
   }
 
   object Name {
+    def apply(value: NonEmptyString): Name = new Name(value)
+
     val authorization = Name(nes("Authorization"))
     val xApiKeyHeaderName = Header.Name(nes("X-Api-Key"))
     val xForwardedFor = Name(nes("X-Forwarded-For"))
@@ -69,7 +87,8 @@ object Header {
     val correlationId = Name(nes("x-ror-correlation-id"))
     val rorKbnLicenseType = Name(nes("x-ror-kbn-license-type"))
 
-    implicit val eqName: Eq[Name] = Eq.by(_.lowerCased)
+    implicit val eqName: Eq[Name] = Eq.fromUniversalEquals
+    implicit val orderName: Order[Name] = Order.by(_.lowerCased)
   }
 
   def apply(name: Name, value: NonEmptyString): Header = new Header(name, value)
@@ -111,7 +130,7 @@ object Header {
       .map { authHeaderBasedExtractedHeaders =>
         val restOfHeadersNames = nonAuthorizationHeaders.map(_.name).toCovariantSet
         val filteredAuthHeaderBasedExtractedHeaders = authHeaderBasedExtractedHeaders
-          .filter { header => !restOfHeadersNames.contains(header.name) }
+          .filterNot { header => restOfHeadersNames.contains(header.name) }
         (nonAuthorizationHeaders ++ filteredAuthHeaderBasedExtractedHeaders).toCovariantSet
       }
   }
@@ -175,7 +194,7 @@ object Header {
     final case class RorMetadataInvalidFormat(value: String, message: String) extends AuthorizationValueError
   }
 
-  implicit val eqHeader: Eq[Header] = Eq.by[Header, (String, String)](header => (header.name.value, header.value.value))
+  implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
 }
 
 sealed trait Address

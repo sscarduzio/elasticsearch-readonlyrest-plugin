@@ -122,7 +122,7 @@ object headerValues {
 
 object orders {
   implicit val nonEmptyStringOrder: Order[NonEmptyString] = Order.by(_.value)
-  implicit val headerNameOrder: Order[Header.Name] = Order.by(_.value.value)
+  implicit val headerNameOrder: Order[Header.Name] = Header.Name.orderName
   implicit val headerOrder: Order[Header] = Order.by(h => (h.name, h.value.value))
 
   implicit val addressOrder: Order[Address] = Order.by {
