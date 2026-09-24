@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.http.ApiKeysRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.ApiKey
 import tech.beshu.ror.accesscontrol.domain.Header.Name.*
+import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 
 class ApiKeysRule(val settings: Settings) extends RegularRule {
 
@@ -32,8 +33,7 @@ class ApiKeysRule(val settings: Settings) extends RegularRule {
 
   def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     Decision.permit(`with` = blockContext)(
-      when = blockContext.requestContext.restRequest.allHeaders
-        .find(_.name === xApiKeyHeaderName)
+      when = findHeader(xApiKeyHeaderName, in = blockContext.requestContext.restRequest.allHeaders)
         .exists { header => settings.apiKeys.contains(ApiKey(header.value)) }
     )
   }

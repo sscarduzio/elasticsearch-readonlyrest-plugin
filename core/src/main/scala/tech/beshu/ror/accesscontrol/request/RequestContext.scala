@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.request
 import cats.Eval
 import cats.implicits.*
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
@@ -26,6 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{
   InvalidValue,
@@ -93,10 +95,24 @@ trait RequestContext {
   def generalAuditEvents: JSONObject = new JSONObject()
 
   def currentGroupId: Option[GroupId] = {
-    restRequest.allHeaders
-      .find(_.name === Header.Name.currentGroup)
+    findHeader(Header.Name.currentGroup, restRequest.allHeaders)
       .map(h => GroupId(h.value))
   }
+
+  /**
+   * Does ROR ask this request for basic auth credentials?
+   *
+   * ROR asks no client which sends a license type it can parse. The ROR Kibana plugin sends one on
+   * each request, because it runs its own login that the prompt of the browser breaks. The client
+   * sends that header, so the value is a hint, not proof. Each other client follows the given
+   * static context.
+   */
+  def shouldAddBasicAuthPrompt(aclStaticContext: AccessControlStaticContext): Boolean =
+    aclStaticContext.doesRequirePassword && rorKbnLicenseType.isEmpty
+
+  lazy val rorKbnLicenseType: Option[RorKbnLicenseType] =
+    findHeader(Header.Name.rorKbnLicenseType, in = restRequest.allHeaders)
+      .flatMap(h => RorKbnLicenseType.from(h.value.value).toOption)
 
 }
 
@@ -241,8 +257,10 @@ object RequestContext extends RequestIdAwareLogging {
 
     }
 
-    private def findHeader(name: Header.Name) =
-      requestContext.restRequest.allHeaders.find(_.name === name)
+    private def findHeader(name: Header.Name) = {
+      Header.findHeader(name, in = requestContext.restRequest.allHeaders)
+    }
+
   }
 
   sealed trait AuthorizationTokenRetrievingError

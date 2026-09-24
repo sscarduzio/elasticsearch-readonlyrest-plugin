@@ -85,7 +85,7 @@ class GetAliasesEsRequestContext(
   }
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    if (aclContext.doesRequirePassword) {
+    if (shouldAddBasicAuthPrompt(aclContext)) {
       val nonExistentIndex = discoveredIndices.randomNonexistentLocalIndex()
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
@@ -103,7 +103,7 @@ class GetAliasesEsRequestContext(
   }
 
   override def modifyWhenAliasNotFound: ModificationResult = {
-    if (aclContext.doesRequirePassword) {
+    if (shouldAddBasicAuthPrompt(aclContext)) {
       val nonExistentAlias = discoveredAliases.randomNonexistentLocalIndex()
       if (nonExistentAlias.name.hasWildcard) {
         val nonExistingAliases = NonEmptyList
