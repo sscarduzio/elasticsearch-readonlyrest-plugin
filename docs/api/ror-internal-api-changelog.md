@@ -13,8 +13,9 @@ Changes:
     for an index that the user cannot see.
 
     The client sends this header, so ES ROR treats the value as a hint. Each client which sends a
-    value the header can parse gets the same answer. The access control decision does not change:
-    ES ROR refuses the same requests, and only the status and the headers of the refusal differ.
+    value ES ROR can parse gets the same answer. The header permits no request which ES ROR refuses
+    without it. It changes the answer alone: the status, the `WWW-Authenticate` header, and, for an
+    index which the user cannot see, a 404 in place of the refusal.
 
 ## 4.1.0
 

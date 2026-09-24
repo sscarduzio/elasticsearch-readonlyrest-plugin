@@ -23,7 +23,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
-import tech.beshu.ror.utils.elasticsearch.{IndexManager, RorApiManager}
+import tech.beshu.ror.utils.elasticsearch.{IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait RorKbnPluginRequestWithFreeKibanaSupportSuite
@@ -72,6 +72,20 @@ trait RorKbnPluginRequestWithFreeKibanaSupportSuite
           result should have statusCode 404
           basicAuthPromptOf(result.headers) should be(None)
         }
+        "the alias does not exist" in {
+          val indexManager = new IndexManager(rorKbnPluginClient("dev1", "test"), esVersionUsed)
+
+          val result = indexManager.getAliasByName("index1", "nonexistent")
+
+          result should have statusCode 404
+          basicAuthPromptOf(result.headers) should be(None)
+        }
+        "the index is searched" in {
+          val result = new SearchManager(rorKbnPluginClient("dev1", "test"), esVersionUsed).search("index2")
+
+          result should have statusCode 404
+          basicAuthPromptOf(result.headers) should be(None)
+        }
       }
     }
     "a user metadata request comes from the ROR KBN plugin" should {
@@ -95,6 +109,14 @@ trait RorKbnPluginRequestWithFreeKibanaSupportSuite
     }
     "a request comes from a client which is not the ROR KBN plugin" should {
       "ask the client for credentials" when {
+        "the client sends a license type which ROR cannot read" in {
+          val client = basicAuthClientWithHeaders("dev9", "test", ("x-ror-kbn-license-type", "not-a-license-type"))
+
+          val result = new IndexManager(client, esVersionUsed).getIndex("index9")
+
+          result should have statusCode 401
+          basicAuthPromptOf(result.headers) should be(Some("Basic"))
+        }
         "a block forbids the user" in {
           val result = new IndexManager(basicAuthClient("dev9", "test"), esVersionUsed).getIndex("index9")
 
