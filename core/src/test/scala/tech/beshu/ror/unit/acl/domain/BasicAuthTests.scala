@@ -29,9 +29,9 @@ class BasicAuthTests extends AnyWordSpec with Inside {
   private implicit val requestId: RequestId = RequestId(UUID.randomUUID().toString)
 
   "BasicAuth class" should {
-    "be able to be created from Authentication header" when {
-      "its value is single, regular base64 encoded string" in {
-        val basicAuth = BasicAuth.fromHeader(header("Authorization", "Basic a2liYW5hOmtpYmFuYQ=="))
+    "be able to be created from a header value" when {
+      "the value is a single, regular base64 encoded string" in {
+        val basicAuth = BasicAuth.parse(nes("Basic a2liYW5hOmtpYmFuYQ=="))
         inside(basicAuth) { case Some(BasicAuth(Credentials(userId, secret))) =>
           userId should be(User.Id("kibana"))
           secret should be(PlainTextSecret("kibana"))
@@ -39,21 +39,14 @@ class BasicAuthTests extends AnyWordSpec with Inside {
       }
     }
     "not be able to be created" when {
-      "other then Authorization header is passed" in {
-        val basicAuth = BasicAuth.fromHeader(header("CustomAuthorization", "Basic a2liYW5hOmtpYmFuYQ=="))
-        basicAuth should be(None)
+      "there is no Basic prefix in the value" in {
+        BasicAuth.parse(nes("a2liYW5hOmtpYmFuYQ==")) should be(None)
       }
-      "there is no Basic prefix in header value" in {
-        val basicAuth = BasicAuth.fromHeader(header("Authorization", "a2liYW5hOmtpYmFuYQ=="))
-        basicAuth should be(None)
+      "the base64 value is malformed" in {
+        BasicAuth.parse(nes("Basic a2liYW5;;hO43tpYm")) should be(None)
       }
-      "base64 value is malformed" in {
-        val basicAuth = BasicAuth.fromHeader(header("Authorization", "Basic a2liYW5;;hO43tpYm"))
-        basicAuth should be(None)
-      }
-      "credentials are malformed" in {
-        val basicAuth = BasicAuth.fromHeader(header("Authorization", "Basic a2liYW5ha2liYW5h"))
-        basicAuth should be(None)
+      "the credentials are malformed" in {
+        BasicAuth.parse(nes("Basic a2liYW5ha2liYW5h")) should be(None)
       }
     }
   }

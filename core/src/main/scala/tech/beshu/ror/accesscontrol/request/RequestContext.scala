@@ -81,11 +81,8 @@ trait RequestContext {
   // Computed once per request: Base64-decoding the credentials per block would be redundant.
   lazy val basicAuth: Option[BasicAuth] = {
     implicit val requestId: RequestId = id.toRequestId
-    restRequest.allHeaders
-      .to(LazyList)
-      .map(BasicAuth.fromHeader)
-      .find(_.isDefined)
-      .flatten
+    findHeader(Header.Name.authorization, in = restRequest.allHeaders)
+      .flatMap(h => BasicAuth.parse(h.value))
   }
 
   def isCompositeRequest: Boolean
