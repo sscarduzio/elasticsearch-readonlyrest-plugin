@@ -6,16 +6,14 @@ Changes:
 
 * header `X-ROR-KBN-License-Type`:
 
-    The header is no longer read on GET `/_readonlyrest/metadata/user` alone. The ROR KBN plugin now
-    sends it on each request to Elasticsearch, and ES ROR answers a request which carries a value it
-    can parse with HTTP 403 instead of 401, and with no `WWW-Authenticate` header, while the
-    `prompt_for_basic_auth` setting is on. The same value also selects the answer which ES ROR gives
-    for an index that the user cannot see.
+    ES ROR now expects the header on each request, not on GET `/_readonlyrest/metadata/user` alone.
 
-    The client sends this header, so ES ROR treats the value as a hint. Each client which sends a
-    value ES ROR can parse gets the same answer. The header permits no request which ES ROR refuses
-    without it. It changes the answer alone: the status, the `WWW-Authenticate` header, and, for an
-    index which the user cannot see, a 404 in place of the refusal.
+    The header overrides the
+    [`prompt_for_basic_auth`](https://docs.readonlyrest.com/elasticsearch#prompt_for_basic_auth)
+    setting. ES ROR answers a request which carries the header exactly as it answers each request
+    when the setting is `false`.
+
+    GET `/_readonlyrest/metadata/user` does not change.
 
 ## 4.1.0
 
