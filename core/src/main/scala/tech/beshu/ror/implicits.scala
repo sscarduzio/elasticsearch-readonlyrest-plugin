@@ -585,6 +585,9 @@ trait LogsShowInstances extends cats.instances.AllInstances {
       s"Unexpected header format in ror_metadata: [${value.show}]"
     case AuthorizationValueError.RorMetadataInvalidFormat(value, message) =>
       s"Invalid format of ror_metadata: [${value.show}], reason: [${message.show}]"
+    case AuthorizationValueError.HeaderValuesConflict(name, httpValuesCount, rorMetadataValuesCount) =>
+      s"Header [${name.show}] has different values in the request and in ror_metadata: " +
+        s"[${httpValuesCount.show}] value(s) in the request, [${rorMetadataValuesCount.show}] value(s) in ror_metadata"
   }
 
   val authorizationValueErrorSanitizedShow: Show[AuthorizationValueError] = Show.show {
@@ -592,6 +595,8 @@ trait LogsShowInstances extends cats.instances.AllInstances {
     case AuthorizationValueError.InvalidHeaderFormat(_)               => s"Unexpected header format in ror_metadata"
     case AuthorizationValueError.RorMetadataInvalidFormat(_, message) =>
       s"Invalid format of ror_metadata. Reason: [${message.show}]"
+    case AuthorizationValueError.HeaderValuesConflict(name, _, _) =>
+      s"Header [${name.show}] has different values in the request and in ror_metadata"
   }
 
   implicit val unresolvableErrorShow: Show[Unresolvable] = Show.show {

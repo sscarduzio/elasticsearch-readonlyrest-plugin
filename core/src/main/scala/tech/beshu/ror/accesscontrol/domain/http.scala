@@ -112,6 +112,10 @@ object Header {
     } yield header
   }
 
+  /** Reads the headers of a request from its two channels: the HTTP headers on the wire, and the headers
+    * packed in the `ror_metadata` part of the Authorization value. A name which arrives on both channels
+    * must hold the same values on both, otherwise the request is rejected with `HeaderValuesConflict`.
+    */
   def fromRawHeaders(
       headers: collection.Map[String, Iterable[String]]
   ): Either[AuthorizationValueError, Set[Header]] = {
@@ -120,19 +124,32 @@ object Header {
         .map { case (name, values) => (name, values.toCovariantSet) }
         .flatMap { case (name, values) => createHeadersFrom(name, values) }
         .partition(h => h.name === Header.Name.authorization)
-    val headersFromAuthorizationHeaderValues =
-      authorizationHeaders.toList
+    for {
+      extractedHeaders <- authorizationHeaders.toList
         .map(header => fromAuthorizationValue(header.value))
         .sequence
-        .map(_.flatMap(_.toList))
+      httpHeaders = (nonAuthorizationHeaders ++ extractedHeaders.map(_.head)).toCovariantSet
+      rorMetadataHeaders = extractedHeaders.flatMap(_.tail).toCovariantSet
+      mergedHeaders <- mergeChannels(httpHeaders, rorMetadataHeaders)
+    } yield mergedHeaders
+  }
 
-    headersFromAuthorizationHeaderValues
-      .map { authHeaderBasedExtractedHeaders =>
-        val restOfHeadersNames = nonAuthorizationHeaders.map(_.name).toCovariantSet
-        val filteredAuthHeaderBasedExtractedHeaders = authHeaderBasedExtractedHeaders
-          .filterNot { header => restOfHeadersNames.contains(header.name) }
-        (nonAuthorizationHeaders ++ filteredAuthHeaderBasedExtractedHeaders).toCovariantSet
+  private def mergeChannels(
+      httpHeaders: Set[Header],
+      rorMetadataHeaders: Set[Header]
+  ): Either[AuthorizationValueError, Set[Header]] = {
+    val httpHeadersByName = httpHeaders.groupBy(_.name)
+    val rorMetadataHeadersByName = rorMetadataHeaders.groupBy(_.name)
+    (httpHeadersByName.keys ++ rorMetadataHeadersByName.keys).toCovariantSet.toList
+      .traverse { name =>
+        val fromHttp = httpHeadersByName.getOrElse(name, Set.empty)
+        val fromRorMetadata = rorMetadataHeadersByName.getOrElse(name, Set.empty)
+        if (fromRorMetadata.isEmpty) Right(fromHttp)
+        else if (fromHttp.isEmpty) Right(fromRorMetadata)
+        else if (fromHttp == fromRorMetadata) Right(fromHttp)
+        else Left(HeaderValuesConflict(name, fromHttp.size, fromRorMetadata.size))
       }
+      .map(_.flatten.toCovariantSet)
   }
 
   private def createHeadersFrom(name: String, values: Iterable[String]) = {
@@ -192,6 +209,16 @@ object Header {
     case object EmptyAuthorizationValue extends AuthorizationValueError
     final case class InvalidHeaderFormat(value: String) extends AuthorizationValueError
     final case class RorMetadataInvalidFormat(value: String, message: String) extends AuthorizationValueError
+
+    /** The HTTP channel and the ror_metadata channel both carry the header, with different values.
+      * Only the counts are kept, because the error reaches the log and the client response.
+      */
+    final case class HeaderValuesConflict(
+        name: Header.Name,
+        httpValuesCount: Int,
+        rorMetadataValuesCount: Int
+    ) extends AuthorizationValueError
+
   }
 
   implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals

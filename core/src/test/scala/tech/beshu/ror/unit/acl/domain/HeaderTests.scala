@@ -47,15 +47,29 @@ class HeaderTests extends AnyWordSpec with Matchers {
 
         valuesOf(headers, "x-ror-current-group") should be(List("group1"))
       }
-      "drop a ror_metadata header which clashes with a real header" in {
+      "keep one header when a ror_metadata header repeats a real header" in {
         val headers = headersFrom(
           realHeaders = Map("X-Forwarded-User" -> "bob"),
-          rorMetadataHeaders = "X-Forwarded-User:admin"
+          rorMetadataHeaders = "X-Forwarded-User:bob"
         )
 
         valuesOf(headers, "x-forwarded-user") should be(List("bob"))
       }
-      "drop a ror_metadata header which clashes with a real header written in a different case" in {
+      "keep one set of values when a multi-value header arrives on both channels" in {
+        val headers = headersFromMultiValued(
+          realHeaders = Map("X-Forwarded-For" -> List("10.0.0.1", "10.0.0.2")),
+          rorMetadataHeaders = List("X-Forwarded-For:10.0.0.2", "X-Forwarded-For:10.0.0.1")
+        )
+
+        valuesOf(headers, "x-forwarded-for").sorted should be(List("10.0.0.1", "10.0.0.2"))
+      }
+      "reject a ror_metadata header which has another value than the real header" in {
+        errorFrom(
+          realHeaders = Map("X-Forwarded-User" -> "bob"),
+          rorMetadataHeaders = "X-Forwarded-User:admin"
+        ) should be(Header.AuthorizationValueError.HeaderValuesConflict(Header.Name.xForwardedUser, 1, 1))
+      }
+      "reject a clashing ror_metadata header written in a different case" in {
         val caseVariants = List(
           "x-forwarded-user",
           "X-FORWARDED-USER",
@@ -66,13 +80,11 @@ class HeaderTests extends AnyWordSpec with Matchers {
         )
 
         caseVariants.foreach { name =>
-          val headers = headersFrom(
-            realHeaders = Map("X-Forwarded-User" -> "bob"),
-            rorMetadataHeaders = s"$name:admin"
-          )
-
           withClue(s"ror_metadata header name: $name") {
-            valuesOf(headers, "x-forwarded-user") should be(List("bob"))
+            errorFrom(
+              realHeaders = Map("X-Forwarded-User" -> "bob"),
+              rorMetadataHeaders = s"$name:admin"
+            ) should be(Header.AuthorizationValueError.HeaderValuesConflict(Header.Name.xForwardedUser, 1, 1))
           }
         }
       }
@@ -108,6 +120,27 @@ class HeaderTests extends AnyWordSpec with Matchers {
   }
 
   private def headersFrom(realHeaders: Map[String, String] = Map.empty, rorMetadataHeaders: String*) = {
+    headersFromMultiValued(realHeaders.view.mapValues(List(_)).toMap, rorMetadataHeaders.toList)
+  }
+
+  private def headersFromMultiValued(
+      realHeaders: Map[String, List[String]],
+      rorMetadataHeaders: List[String]
+  ) = {
+    rawHeadersResultOf(realHeaders, rorMetadataHeaders) match {
+      case Right(headers) => headers
+      case Left(error)    => fail(s"Cannot create headers: ${error.toString}")
+    }
+  }
+
+  private def errorFrom(realHeaders: Map[String, String], rorMetadataHeaders: String*) = {
+    rawHeadersResultOf(realHeaders.view.mapValues(List(_)).toMap, rorMetadataHeaders.toList) match {
+      case Left(error)    => error
+      case Right(headers) => fail(s"Expected an error, but got headers: ${headers.toString}")
+    }
+  }
+
+  private def rawHeadersResultOf(realHeaders: Map[String, List[String]], rorMetadataHeaders: List[String]) = {
     val rorMetadata = Base64.getEncoder.encodeToString(
       ujson
         .Obj("headers" -> ujson.Arr(rorMetadataHeaders.map(ujson.Str.apply)*))
@@ -115,13 +148,9 @@ class HeaderTests extends AnyWordSpec with Matchers {
         .getBytes(java.nio.charset.StandardCharsets.UTF_8)
     )
     val rawHeaders =
-      realHeaders.view.mapValues(List(_)).toMap +
-        ("Authorization" -> List(s"Basic dXNlcjpwYXNz, ror_metadata=$rorMetadata"))
+      realHeaders + ("Authorization" -> List(s"Basic dXNlcjpwYXNz, ror_metadata=$rorMetadata"))
 
-    Header.fromRawHeaders(rawHeaders) match {
-      case Right(headers) => headers
-      case Left(error)    => fail(s"Cannot create headers: ${error.toString}")
-    }
+    Header.fromRawHeaders(rawHeaders)
   }
 
   private def valuesOf(headers: Set[Header], name: String) =
