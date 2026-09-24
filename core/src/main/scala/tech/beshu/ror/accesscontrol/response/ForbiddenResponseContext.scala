@@ -23,11 +23,13 @@ import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContex
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.*
 
 final class ForbiddenResponseContext(
     aclStaticContext: Option[AccessControlStaticContext],
-    forbiddenCauses: NonEmptyList[ForbiddenResponseContext.Cause]
+    forbiddenCauses: NonEmptyList[ForbiddenResponseContext.Cause],
+    val shouldAddBasicAuthPrompt: Boolean
 ) {
 
   import ForbiddenResponseContext.forbiddenCauseShow
@@ -40,10 +42,6 @@ final class ForbiddenResponseContext(
 
   def causes: NonEmptyList[String] = {
     forbiddenCauses.map(_.show)
-  }
-
-  def doesRequirePassword: Boolean = {
-    aclStaticContext.exists(_.doesRequirePassword)
   }
 
   private def customForbiddenRequestMessage: Option[String] = aclStaticContext.map(_.forbiddenRequestMessage)
@@ -97,9 +95,14 @@ object ForbiddenResponseContext {
 
   def from(
       causes: NonEmptyList[ForbiddenResponseContext.Cause],
-      aclStaticContext: AccessControlStaticContext
+      aclStaticContext: AccessControlStaticContext,
+      requestContext: RequestContext
   ): ForbiddenResponseContext =
-    new ForbiddenResponseContext(Some(aclStaticContext), causes)
+    new ForbiddenResponseContext(
+      aclStaticContext = Some(aclStaticContext),
+      forbiddenCauses = causes,
+      shouldAddBasicAuthPrompt = requestContext.shouldAddBasicAuthPrompt(aclStaticContext)
+    )
 
   private implicit val forbiddenCauseShow: Show[Cause] = Show.show {
     case ForbiddenBlockMatch(_)    => "FORBIDDEN_BY_BLOCK"
@@ -114,19 +117,27 @@ object ForbiddenResponseContext {
 
   trait ResponseCreator[RESPONSE] {
     final def createRorStartingFailureResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorFailedToStart)))
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorFailedToStart), shouldAddBasicAuthPrompt = false))
 
     final def createRorNotReadyYetResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotReadyYet)))
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotReadyYet), shouldAddBasicAuthPrompt = false))
 
     final def createRorNotEnabledResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotEnabled)))
+      create(new ForbiddenResponseContext(None, NonEmptyList.one(RorNotEnabled), shouldAddBasicAuthPrompt = false))
 
     final def createTestSettingsNotConfiguredResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(TestSettingsNotConfigured)))
+      create(
+        new ForbiddenResponseContext(
+          None,
+          NonEmptyList.one(TestSettingsNotConfigured),
+          shouldAddBasicAuthPrompt = false
+        )
+      )
 
     final def createOperationNotAllowedResponse(): RESPONSE =
-      create(new ForbiddenResponseContext(None, NonEmptyList.one(OperationNotAllowed)))
+      create(
+        new ForbiddenResponseContext(None, NonEmptyList.one(OperationNotAllowed), shouldAddBasicAuthPrompt = false)
+      )
 
     def create(context: ForbiddenResponseContext): RESPONSE
   }

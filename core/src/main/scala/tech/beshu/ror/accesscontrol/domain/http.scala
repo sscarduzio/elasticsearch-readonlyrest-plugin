@@ -99,16 +99,13 @@ object Header {
 
   def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-  def fromRawHeaders(
-      headers: java.util.Map[String, java.util.List[String]]
-  ): Either[AuthorizationValueError, Set[Header]] = {
-    fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
-  }
+  def findHeader(header: Header.Name, in: Set[Header]): Option[Header] =
+    in.find(_.name === header)
 
   def findHeader(header: Header.Name, in: java.util.Map[String, java.util.List[String]]): Option[Header] = {
     for {
       headers <- fromRawHeaders(in).toOption
-      header <- headers.find(_.name == header)
+      header <- findHeader(header, in = headers)
     } yield header
   }
 
@@ -116,6 +113,12 @@ object Header {
     * packed in the `ror_metadata` part of the Authorization value. A name which arrives on both channels
     * must hold the same values on both, otherwise the request is rejected with `HeaderValuesConflict`.
     */
+  def fromRawHeaders(
+      headers: java.util.Map[String, java.util.List[String]]
+  ): Either[AuthorizationValueError, Set[Header]] = {
+    fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
+  }
+
   def fromRawHeaders(
       headers: collection.Map[String, Iterable[String]]
   ): Either[AuthorizationValueError, Set[Header]] = {

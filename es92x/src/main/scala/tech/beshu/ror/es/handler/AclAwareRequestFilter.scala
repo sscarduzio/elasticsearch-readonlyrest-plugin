@@ -333,8 +333,8 @@ object AclAwareRequestFilter {
     implicit class CorrelationIdFrom(val channel: RorRestChannel) extends AnyVal {
 
       def correlationId: Eval[CorrelationId] = Eval.later {
-        channel.restRequest.allHeaders
-          .find(_.name === Header.Name.correlationId)
+        Header
+          .findHeader(Header.Name.correlationId, in = channel.restRequest.allHeaders)
           .map(_.value)
           .map(CorrelationId.apply)
           .getOrElse(CorrelationId.random)
