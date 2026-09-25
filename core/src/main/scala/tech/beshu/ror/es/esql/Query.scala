@@ -72,9 +72,13 @@ object Query extends RequestIdAwareLogging {
         val replaced = IndexListReplacer.replacing(text, indexLists, allowedIndices)
         reader.indicesIn(replaced.query) match {
           case Right(readIndexLists) =>
-            replaced
-              .checkedAgainst(readIndexLists)
-              .map(narrowed => readable(narrowed, reader, readIndexLists))
+            replaced.checkedAgainst(readIndexLists) match {
+              case Right(narrowed) =>
+                Right(readable(narrowed, reader, readIndexLists))
+              case Left(rejection) =>
+                logger.debug(s"The ES|QL query [$text] was rewritten to [${replaced.query}]")
+                Left(rejection)
+            }
           case Left(ReadError.QueryNotParsed(cause)) =>
             logger.warn("Elasticsearch cannot parse the ES|QL query ReadonlyREST rewrote", cause)
             Left(Rejection.CannotParseRewrittenQuery(replaced.intendedIndexLists))

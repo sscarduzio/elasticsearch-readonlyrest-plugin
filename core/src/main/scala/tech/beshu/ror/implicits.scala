@@ -796,10 +796,8 @@ trait LogsShowInstances extends cats.instances.AllInstances {
         s"the indices the user is allowed to, but it cannot tell how Elasticsearch reads the rewritten query, " +
         s"because ${failure.show}."
     case Rejection.SubstitutionNotConfirmed(intended, read) =>
-      s"The ES|QL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
-        s"the indices the user is allowed to, but Elasticsearch reads the rewritten query as reading " +
-        s"[${read.mkString(", ")}] instead. Since the two disagree, ReadonlyREST cannot tell which indices the " +
-        s"query would really read, so it does not run it. Please report this query to the ReadonlyREST team."
+      s"The ES|QL query has been forbidden, because its rewrite reads [${read.mkString(", ")}] instead of " +
+        s"[${intended.mkString(", ")}]. Please report this query to the ReadonlyREST team."
   }
 
 }

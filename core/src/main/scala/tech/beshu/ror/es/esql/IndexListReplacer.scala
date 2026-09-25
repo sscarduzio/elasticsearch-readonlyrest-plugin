@@ -139,7 +139,7 @@ private[esql] object IndexListReplacer {
 
   final case class ReplacedQuery(query: String, intendedIndexLists: List[String]) {
 
-    /** Held to what ES reads back out of the rewrite - the only thing saying which indices it will really run against. */
+    /** The replacer only edits text. This check makes sure that ES reads exactly the intended indices. */
     def checkedAgainst(readIndexLists: List[LocatedIndexList]): Either[Rejection, String] = {
       val read = readIndexLists.map(_.describe).sorted
       Either.cond(
