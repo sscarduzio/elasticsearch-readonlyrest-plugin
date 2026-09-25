@@ -50,54 +50,39 @@ final class RestClientAuditOutputService private (
   )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline)
+    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline.map(_.name.value))
   }
 
   override def close(): Unit = {
     client.close()
   }
 
-  private def submitDocument(
-      indexName: String,
-      documentId: String,
-      jsonRecord: String,
-      pipeline: Option[AuditIngestPipeline]
-  )(
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String, pipeline: Option[String])(
       implicit requestId: RequestId
   ): Unit = {
-    val event = describeEvent(indexName, documentId, pipeline)
     if (inFlightRequestSemaphore.tryAcquire()) {
       client
         .perform(createRequest(indexName, documentId, jsonRecord, pipeline))
-        .flatMap(response => Task.delay(handleResponse(event, response)))
-        .onErrorHandleWith(ex => Task.delay(logger.error(s"Cannot submit audit event $event", ex)))
+        .flatMap(response => Task.delay(handleResponse(indexName, documentId, response)))
+        .onErrorHandleWith(ex =>
+          Task.delay(logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex))
+        )
         .doOnFinish(_ => Task.delay(inFlightRequestSemaphore.release()))
         .runAsyncAndForget(RorSchedulers.mainScheduler)
     } else {
-      logger.error(s"Cannot submit audit event $event — too many in-flight requests")
+      logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] — too many in-flight requests")
     }
   }
 
-  private def createRequest(
-      indexName: String,
-      documentId: String,
-      jsonBody: String,
-      pipeline: Option[AuditIngestPipeline]
-  ) = {
+  private def createRequest(indexName: String, documentId: String, jsonBody: String, pipeline: Option[String]) = {
     val request = new Request("PUT", s"/$indexName/ror_audit_evt/$documentId")
     request.addParameter("op_type", "create")
-    pipeline.foreach(p => request.addParameter("pipeline", p.name.value))
+    pipeline.foreach(request.addParameter("pipeline", _))
     request.setJsonEntity(jsonBody)
     request
   }
 
-  private def describeEvent(indexName: String, documentId: String, pipeline: Option[AuditIngestPipeline]) =
-    pipeline match {
-      case Some(p) => s"[index: $indexName, doc: $documentId, pipeline: ${p.name.value}]"
-      case None    => s"[index: $indexName, doc: $documentId]"
-    }
-
-  private def handleResponse(event: String, response: Response)(
+  private def handleResponse(indexName: String, documentId: String, response: Response)(
       implicit requestId: RequestId
   ): Unit = {
     response.getStatusLine.getStatusCode / 100 match {
@@ -105,7 +90,7 @@ final class RestClientAuditOutputService private (
         logger.debug(s"Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
       case _ =>
         logger.error(
-          s"Cannot submit audit event $event - response code: ${response.getStatusLine.getStatusCode}"
+          s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}"
         )
     }
   }

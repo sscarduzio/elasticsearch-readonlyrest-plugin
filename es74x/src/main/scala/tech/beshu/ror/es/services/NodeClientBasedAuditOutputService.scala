@@ -69,12 +69,13 @@ final class NodeClientBasedAuditOutputService(client: NodeClient)
       jsonRecord: String,
       pipeline: Option[AuditIngestPipeline]
   ): Unit = {
-    val request = new IndexRequest(indexName)
-      .id(documentId)
-      .source(jsonRecord, XContentType.JSON)
-      .opType(DocWriteRequest.OpType.CREATE)
-    pipeline.foreach(p => request.setPipeline(p.name.value))
-    bulkProcessor.add(request)
+    bulkProcessor.add(
+      new IndexRequest(indexName)
+        .id(documentId)
+        .source(jsonRecord, XContentType.JSON)
+        .opType(DocWriteRequest.OpType.CREATE)
+        .setPipeline(pipeline.map(_.name.value).orNull)
+    )
   }
 
   private class AuditOutputBulkProcessorListener extends BulkProcessor.Listener {
@@ -84,13 +85,17 @@ final class NodeClientBasedAuditOutputService(client: NodeClient)
     }
 
     override def afterBulk(executionId: Long, request: BulkRequest, response: BulkResponse): Unit = {
-      response.getItems
-        .to(LazyList)
-        .filter(_.isFailed)
-        .groupBy(item => (item.getIndex, item.getFailureMessage))
-        .foreach { case ((index, message), items) =>
-          noRequestIdLogger.error(s"ES rejected ${items.size} audit event(s) for [$index]: $message")
-        }
+      if (response.hasFailures) {
+        noRequestIdLogger.error("Some failures flushing the BulkProcessor: ")
+        response.getItems
+          .to(LazyList)
+          .filter(_.isFailed)
+          .map(item => s"[${item.getIndex}] ${item.getFailureMessage}")
+          .groupBy(identity)
+          .foreach { case (message, stream) =>
+            noRequestIdLogger.error(s"${stream.size}x: $message")
+          }
+      }
     }
 
     override def afterBulk(executionId: Long, request: BulkRequest, failure: Throwable): Unit = {

@@ -196,7 +196,7 @@ class RemoteClusterAuditingToolsSuite
         eventually {
           targetEs.container.getLogs.linesIterator.exists { line =>
             line.contains("Cannot submit audit event [index: audit_index, doc: ") &&
-            line.contains("pipeline: missing_remote_audit_pipeline]")
+            line.contains("pipeline with id [missing_remote_audit_pipeline] does not exist")
           } shouldBe true
         }
         consistently(during = 3.seconds) {

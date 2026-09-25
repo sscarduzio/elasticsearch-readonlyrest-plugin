@@ -96,7 +96,7 @@ class AuditPipelineMissingIntegrationSuite
   private def rejectionLogLines(indexName: String): List[String] =
     targetEs.container.getLogs.linesIterator
       .filter(line =>
-        line.contains(s"audit event(s) for [$indexName]") &&
+        line.contains(s"x: [$indexName] ") &&
           line.contains("pipeline with id [missing_pipeline] does not exist")
       )
       .toList
