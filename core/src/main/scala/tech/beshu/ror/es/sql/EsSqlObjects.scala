@@ -36,7 +36,7 @@ private[sql] object EsSqlObjects {
 
   private val commandsTakingNoSelector = Set("ShowTables", "SysTables")
 
-  def tableInQuery(tableIdentifier: Any): Option[IndexPatternInQuery] =
+  def indexPatternIn(tableIdentifier: Any): Option[IndexPatternInQuery] =
     Try {
       val source = on(tableIdentifier).call("source").get[Any]()
       val location = on(source).call("source").get[Any]()

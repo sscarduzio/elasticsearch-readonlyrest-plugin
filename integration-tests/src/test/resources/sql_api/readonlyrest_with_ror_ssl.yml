@@ -39,3 +39,7 @@ readonlyrest:
       auth_key: dev3sql:test
       indices: ["bookstore"]
       filter: '{"query_string":{"query":"name:(Dune)"}}'
+
+    - name: "Only an index that does not exist"
+      auth_key: nothing:test
+      indices: ["no_such_index"]

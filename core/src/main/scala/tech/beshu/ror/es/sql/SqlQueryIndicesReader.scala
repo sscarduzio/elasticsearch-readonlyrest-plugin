@@ -85,7 +85,7 @@ abstract class ReflectiveSqlQueryIndicesReader(
     if (isCommand(statement)) Right(QueryIndices.CommandIndices(EsSqlObjects.selectorOf(statement)))
     else
       tableIdentifiersIn(statement)
-        .traverse(EsSqlObjects.tableInQuery)
+        .traverse(EsSqlObjects.indexPatternIn)
         .map(QueryIndices.StatementTables.apply)
         .toRight(ReadError.IndicesNotLocated(ReadingFailure.CannotReadTable))
 

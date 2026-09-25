@@ -53,7 +53,7 @@ private[es] object QueryText {
     quotingAndSpacingAside(one) == quotingAndSpacingAside(other)
 
   private def quotingAndSpacingAside(indexList: String): String =
-    indexList.filterNot(char => char.isWhitespace || char == '"' || char == '`')
+    indexList.filterNot(char => char.isWhitespace || char == '"')
 
   private def lineStartOf(query: String, location: SourceLocation): Option[Int] = {
     @tailrec

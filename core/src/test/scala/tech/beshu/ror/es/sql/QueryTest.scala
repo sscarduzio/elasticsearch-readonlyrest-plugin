@@ -290,16 +290,6 @@ class QueryTest extends AnyWordSpec {
         Query.from("", readerFailingWith(esRejection)).narrowedTo(allowed("bookstore")).map(_.stringify) shouldBe
           Right("")
       }
-      "rewrite a table written in backticks" in {
-        narrow(
-          query = "SELECT name FROM `book*`",
-          allowed = allowed("bookstore"),
-          reads = Map(
-            "SELECT name FROM `book*`" -> select("`book*`" -> "book*"),
-            """SELECT name FROM "bookstore"""" -> select(""""bookstore"""" -> "bookstore")
-          )
-        ) shouldBe Right("""SELECT name FROM "bookstore"""")
-      }
     }
   }
 
@@ -405,7 +395,7 @@ class QueryTest extends AnyWordSpec {
       reads(query).flatMap {
         case EsPlan.Statement(tableIdentifiers) =>
           tableIdentifiers
-            .traverse(EsSqlObjects.tableInQuery)
+            .traverse(EsSqlObjects.indexPatternIn)
             .map(QueryIndices.StatementTables.apply)
             .toRight(ReadError.IndicesNotLocated(ReadingFailure.CannotReadTable))
         case EsPlan.Command(command) =>
