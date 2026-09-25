@@ -17,19 +17,10 @@
 package tech.beshu.ror.es.sql
 
 import cats.data.NonEmptyList
-import cats.syntax.traverse.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
-import tech.beshu.ror.es.sql.CommandSelector.{
-  AppendableIndexList,
-  CannotNarrow,
-  LiteralIndexList,
-  MatchingPattern,
-  NotIndexRelated
-}
-import tech.beshu.ror.es.sql.SqlPlanReader.{PlanFailure, SqlPlan}
+import tech.beshu.ror.es.sql.SqlQueryIndicesReader.ReadError
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.ScalaOps.*
 
 sealed trait Query {
 
@@ -49,26 +40,29 @@ sealed trait Query {
 
 object Query extends RequestIdAwareLogging {
 
-  def from(query: String, reader: SqlPlanReader)(
+  def from(query: String, reader: SqlQueryIndicesReader)(
       implicit requestId: RequestId
   ): Query = {
+    // A cursor request has no query. ES reads the next page from the cursor, which holds a query that ROR narrowed.
     if (Option(query).forall(_.isBlank)) WithoutIndices(query)
     else
-      reader.planIn(query) match {
-        case Right(plan) =>
-          located(query, reader, plan)
-        case Left(PlanFailure.RejectedByEs(cause)) =>
+      reader.indicesIn(query) match {
+        case Right(indexLists) =>
+          readable(query, reader, indexLists)
+        case Left(ReadError.RejectedByEs(cause)) =>
           logger.debug("Elasticsearch cannot parse the SQL query", cause)
           Unreadable(query, Rejection.CannotParseQuery)
-        case Left(PlanFailure.CannotReadPlan(cause)) =>
+        case Left(ReadError.PlanNotRead(cause)) =>
           logger.warn("ReadonlyREST cannot read the plan Elasticsearch built for the SQL query", cause)
           Unreadable(query, Rejection.CannotReadQuery)
+        case Left(ReadError.IndicesNotLocated(failure)) =>
+          Unreadable(query, Rejection.CannotExtractIndices(failure))
       }
   }
 
-  final class WithIndexLists private[sql] (
+  final class WithIndices private[sql] (
       protected val text: String,
-      private val reader: SqlPlanReader,
+      private val reader: SqlQueryIndicesReader,
       private[sql] val indexLists: NonEmptyList[LocatedIndexList]
   ) extends Query {
 
@@ -83,24 +77,26 @@ object Query extends RequestIdAwareLogging {
       if (allowedIndices.toList.toCovariantSet == indices) Right(this)
       else {
         val replaced = IndexListReplacer.replacing(text, indexLists, allowedIndices)
-        reader.planIn(replaced.query) match {
-          case Right(plan) =>
-            replaced
-              .checkedAgainst(indicesReadIn(plan))
-              .flatMap(narrowed => confirmed(located(narrowed, reader, plan)))
-          case Left(PlanFailure.RejectedByEs(cause)) =>
+        val intendedIndices = replaced.intendedIndices.toList.sorted
+        reader.indicesIn(replaced.query) match {
+          case Right(readIndexLists) =>
+            replaced.checkedAgainst(readIndexLists) match {
+              case Right(narrowed) =>
+                Right(readable(narrowed, reader, readIndexLists))
+              case Left(rejection) =>
+                logger.debug(s"The SQL query [$text] was rewritten to [${replaced.query}]")
+                Left(rejection)
+            }
+          case Left(ReadError.RejectedByEs(cause)) =>
             logger.warn("Elasticsearch cannot parse the SQL query ReadonlyREST rewrote", cause)
-            Left(Rejection.CannotParseRewrittenQuery(replaced.intendedIndices.toList.sorted))
-          case Left(PlanFailure.CannotReadPlan(cause)) =>
+            Left(Rejection.CannotParseRewrittenQuery(intendedIndices))
+          case Left(ReadError.PlanNotRead(cause)) =>
             logger.warn("ReadonlyREST cannot read the plan Elasticsearch built for the rewritten SQL query", cause)
             Left(Rejection.CannotReadQuery)
+          case Left(ReadError.IndicesNotLocated(failure)) =>
+            Left(Rejection.RewriteNotConfirmed(intendedIndices, failure))
         }
       }
-    }
-
-    private def confirmed(narrowed: Query): Either[Rejection, Query] = narrowed match {
-      case Unreadable(_, reason) => Left(reason)
-      case query                 => Right(query)
     }
 
   }
@@ -134,69 +130,11 @@ object Query extends RequestIdAwareLogging {
   private def allIndices: Set[RequestedIndex[ClusterIndexName]] =
     Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
-  private def located(query: String, reader: SqlPlanReader, plan: SqlPlan): Query = {
-    indexListsIn(query, plan) match {
-      case Left(failure) =>
-        Unreadable(query, Rejection.CannotLocateIndexList(failure))
-      case Right(indexLists) =>
-        NonEmptyList.fromList(indexLists) match {
-          case Some(nonEmptyIndexLists) => new WithIndexLists(query, reader, nonEmptyIndexLists)
-          case None                     => WithoutIndices(query)
-        }
+  private def readable(query: String, reader: SqlQueryIndicesReader, indexLists: List[LocatedIndexList]): Query =
+    NonEmptyList.fromList(indexLists) match {
+      case Some(nonEmptyIndexLists) => new WithIndices(query, reader, nonEmptyIndexLists)
+      case None                     => WithoutIndices(query)
     }
-  }
-
-  private def indexListsIn(query: String, plan: SqlPlan): Either[ReadingFailure, List[LocatedIndexList]] =
-    plan match {
-      case SqlPlan.Statement(Nil) =>
-        Right(Nil)
-      case SqlPlan.Statement(tableIdentifiers) =>
-        for {
-          tables <- tableIdentifiers.traverse(tableInQuery)
-          indexLists <- tables.distinct.traverse(IndexListLocator.locatedTable(query, _))
-          _ <- checkNoneOverlaps(query, indexLists)
-        } yield indexLists
-      case SqlPlan.Command(command) =>
-        IndexListLocator.locatedSelector(query, EsSqlObjects.selectorOf(command))
-    }
-
-  private def tableInQuery(tableIdentifier: Any): Either[ReadingFailure, TableInQuery] =
-    EsSqlObjects.tableInQuery(tableIdentifier).toRight(ReadingFailure.CannotReadTable)
-
-  private def checkNoneOverlaps(
-      query: String,
-      indexLists: List[LocatedIndexList]
-  ): Either[ReadingFailure, Unit] = {
-    indexLists
-      .map(_.span)
-      .sortBy(span => (span.start, span.end))
-      .sliding(2)
-      .collectFirst {
-        case List(one, next) if next.start < one.end || next.start == one.start =>
-          ReadingFailure.OverlappingIndexLists(
-            query.substring(one.start, one.end),
-            query.substring(next.start, next.end)
-          )
-      }
-      .toLeft(())
-  }
-
-  private def indicesReadIn(plan: SqlPlan): Set[String] = plan match {
-    case SqlPlan.Statement(tableIdentifiers) =>
-      tableIdentifiers
-        .flatMap(EsSqlObjects.tableInQuery)
-        .flatMap(table => names(table.reportedIndexList))
-        .toCovariantSet
-    case SqlPlan.Command(command) =>
-      EsSqlObjects.selectorOf(command) match {
-        case NotIndexRelated | AppendableIndexList | CannotNarrow(_) => Set.empty
-        case LiteralIndexList(indexList)                             => names(indexList)
-        case MatchingPattern(wildcard, _)                            => Set(wildcard)
-      }
-  }
-
-  private def names(indexList: String): Set[String] =
-    indexList.split(',').asSafeList.map(_.trim).filter(_.nonEmpty).toCovariantSet
 
 }
 
@@ -204,15 +142,17 @@ sealed trait Rejection
 
 object Rejection {
 
-  case object CannotReadQuery extends Rejection
-
   case object CannotParseQuery extends Rejection
 
-  final case class CannotLocateIndexList(failure: ReadingFailure) extends Rejection
+  case object CannotReadQuery extends Rejection
+
+  final case class CannotExtractIndices(failure: ReadingFailure) extends Rejection
 
   final case class CannotParseRewrittenQuery(intendedIndices: List[String]) extends Rejection
 
   final case class SubstitutionNotConfirmed(intendedIndices: List[String], readIndices: List[String]) extends Rejection
+
+  final case class RewriteNotConfirmed(intendedIndices: List[String], failure: ReadingFailure) extends Rejection
 
 }
 

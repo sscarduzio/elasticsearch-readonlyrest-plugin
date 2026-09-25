@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.sql
 
 import cats.data.NonEmptyList
+import cats.syntax.traverse.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.domain.RequestedIndex
 import tech.beshu.ror.es.sql.CommandSelector.{
@@ -26,6 +27,7 @@ import tech.beshu.ror.es.sql.CommandSelector.{
   MatchingPattern,
   NotIndexRelated
 }
+import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{QueryIndices, SourceLocation, TableInQuery}
 
 import scala.annotation.tailrec
 import scala.util.Try
@@ -36,13 +38,42 @@ private[sql] object IndexListLocator {
   private val likeClause: Regex =
     """(?is)\bLIKE\s+'(?:[^']|'')*'(?:\s+ESCAPE\s+'(?:[^']|'')*')?""".r
 
-  def locatedTable(query: String, table: TableInQuery): Either[ReadingFailure, LocatedIndexList] =
+  def locatedIn(query: String, indices: QueryIndices): Either[ReadingFailure, List[LocatedIndexList]] =
+    indices match {
+      case QueryIndices.StatementTables(tables) =>
+        for {
+          indexLists <- tables.distinct.traverse(locatedTable(query, _))
+          _ <- checkNoneOverlaps(query, indexLists)
+        } yield indexLists
+      case QueryIndices.CommandIndices(selector) =>
+        locatedSelector(query, selector)
+    }
+
+  private def checkNoneOverlaps(query: String, indexLists: List[LocatedIndexList]): Either[ReadingFailure, Unit] = {
+    indexLists
+      .map(_.span)
+      .sortBy(span => (span.start, span.end))
+      .sliding(2)
+      .collectFirst {
+        case List(one, next) if next.start < one.end || next.start == one.start =>
+          ReadingFailure.OverlappingIndexLists(
+            query.substring(one.start, one.end),
+            query.substring(next.start, next.end)
+          )
+      }
+      .toLeft(())
+  }
+
+  private def locatedTable(query: String, table: TableInQuery): Either[ReadingFailure, LocatedIndexList] =
     for {
       span <- spanOf(query, table)
       indices <- requestedIndicesIn(table.reportedIndexList)
     } yield LocatedIndexList(span, indices, IndexListSyntax.InQueryText)
 
-  def locatedSelector(query: String, selector: CommandSelector): Either[ReadingFailure, List[LocatedIndexList]] =
+  private def locatedSelector(
+      query: String,
+      selector: CommandSelector
+  ): Either[ReadingFailure, List[LocatedIndexList]] =
     selector match {
       case NotIndexRelated =>
         Right(Nil)

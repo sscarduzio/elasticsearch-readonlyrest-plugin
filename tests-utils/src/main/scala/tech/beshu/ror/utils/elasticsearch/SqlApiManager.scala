@@ -26,18 +26,27 @@ import ujson.Arr
 class SqlApiManager(restClient: RestClient, esVersion: String) extends BaseManager(restClient, esVersion, true) {
 
   def execute(selectQuery: String): SqlResult = {
-    call(createSqlQueryRequest(s"""{ "query": "$selectQuery" }"""), new SqlResult(_))
+    call(createSqlQueryRequest(selectQuery), new SqlResult(_))
   }
 
-  def execute(query: String, fetchSize: Int): SqlResult = {
-    call(createSqlQueryRequest(ujson.Obj("query" -> query, "fetch_size" -> fetchSize).render()), new SqlResult(_))
+  def execute(selectQuery: String, fetchSize: Int): SqlResult = {
+    call(createSqlQueryRequest(selectQuery, Some(fetchSize)), new SqlResult(_))
   }
 
   def nextPage(cursor: String): SqlResult = {
-    call(createSqlQueryRequest(ujson.Obj("cursor" -> cursor).render()), new SqlResult(_))
+    call(createSqlRequest(s"""{ "cursor": "$cursor" }"""), new SqlResult(_))
   }
 
-  private def createSqlQueryRequest(body: String) = {
+  private def createSqlQueryRequest(query: String, fetchSize: Option[Int] = None) = {
+    createSqlRequest(requestBody(query, fetchSize))
+  }
+
+  private def requestBody(query: String, fetchSize: Option[Int]) = fetchSize match {
+    case Some(definedFetchSize) => s"""{ "query": "$query", "fetch_size": $definedFetchSize }"""
+    case None                   => s"""{ "query": "$query" }"""
+  }
+
+  private def createSqlRequest(body: String) = {
     val request = if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       new HttpGetWithEntity(restClient.from("_sql", Map("format" -> "json")))
     } else {

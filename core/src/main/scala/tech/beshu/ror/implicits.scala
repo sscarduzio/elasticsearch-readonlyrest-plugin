@@ -835,7 +835,7 @@ trait LogsShowInstances extends cats.instances.AllInstances {
     case SqlRejection.CannotParseQuery =>
       "The SQL query has been forbidden. Elasticsearch cannot parse it, so ReadonlyREST cannot tell which " +
         "indices the query would run against."
-    case SqlRejection.CannotLocateIndexList(failure) =>
+    case SqlRejection.CannotExtractIndices(failure) =>
       s"The SQL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
         s"indices the user is allowed to, and running it as written would have let the user read the indices " +
         s"they asked for, unchecked. It could not be rewritten, because ${failure.show}."
@@ -844,10 +844,12 @@ trait LogsShowInstances extends cats.instances.AllInstances {
         s"the indices the user is allowed to, but Elasticsearch cannot parse the rewritten query. Please report " +
         s"this query to the ReadonlyREST team."
     case SqlRejection.SubstitutionNotConfirmed(intended, read) =>
+      s"The SQL query has been forbidden, because its rewrite reads [${read.mkString(", ")}] instead of " +
+        s"[${intended.mkString(", ")}]. Please report this query to the ReadonlyREST team."
+    case SqlRejection.RewriteNotConfirmed(intended, failure) =>
       s"The SQL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
-        s"the indices the user is allowed to, but Elasticsearch reads the rewritten query as reading " +
-        s"[${read.mkString(", ")}] instead. Since the two disagree, ReadonlyREST cannot tell which indices the " +
-        s"query would really read, so it does not run it. Please report this query to the ReadonlyREST team."
+        s"the indices the user is allowed to, but it cannot tell how Elasticsearch reads the rewritten query, " +
+        s"because ${failure.show}."
   }
 
 }

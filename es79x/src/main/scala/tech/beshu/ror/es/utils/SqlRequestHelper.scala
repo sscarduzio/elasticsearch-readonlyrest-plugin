@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
-import tech.beshu.ror.es.sql.{Query, ReflectiveSqlPlanReader, SqlPlanReader}
+import tech.beshu.ror.es.sql.{Query, ReflectiveSqlQueryIndicesReader, SqlQueryIndicesReader}
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.ZoneId
@@ -50,9 +50,9 @@ object SqlRequestHelper {
     response
   }
 
-  private def readerFor(request: CompositeIndicesRequest): SqlPlanReader = {
+  private def readerFor(request: CompositeIndicesRequest): SqlQueryIndicesReader = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-    new EsSqlPlanReader(request)
+    new SqlParser(request)
   }
 
   private def getQuery(request: CompositeIndicesRequest): String = {
@@ -67,11 +67,11 @@ object SqlRequestHelper {
     on(request).call("params").get[AnyRef]
   }
 
-  private final class EsSqlPlanReader(
+  private final class SqlParser(
       request: CompositeIndicesRequest
   )(
       implicit classLoader: ClassLoader
-  ) extends ReflectiveSqlPlanReader {
+  ) extends ReflectiveSqlQueryIndicesReader {
 
     override protected def parsed(query: String): AnyRef = {
       val parser = onClass(classLoader.loadClass("org.elasticsearch.xpack.sql.parser.SqlParser")).create().get[Any]()

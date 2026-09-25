@@ -25,14 +25,6 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 private[sql] final case class TextSpan(start: Int, end: Int)
 
-final case class SourceLocation(line: Int, column: Int)
-
-private[sql] final case class TableInQuery(
-    reportedIndexList: String,
-    writtenAt: SourceLocation,
-    writtenText: String
-)
-
 private[sql] sealed trait CommandSelector
 
 private[sql] object CommandSelector {
@@ -65,7 +57,14 @@ private[sql] final case class LocatedIndexList(
     span: TextSpan,
     requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
     writtenAs: IndexListSyntax
-)
+) {
+
+  def indexNames: Set[String] =
+    requestedIndices.toList
+      .map(index => if (index.excluded) s"-${index.name.stringify}" else index.name.stringify)
+      .toCovariantSet
+
+}
 
 private[sql] object LocatedIndexList {
 
@@ -77,18 +76,5 @@ private[sql] object LocatedIndexList {
       .filter(_.nonEmpty)
       .traverse(RequestedIndex.fromString)
       .flatMap(NonEmptyList.fromList)
-
-}
-
-private[sql] final case class ReplacedQuery(query: String, intendedIndices: Set[String]) {
-
-  def checkedAgainst(readIndices: Set[String]): Either[Rejection, String] =
-    Either.cond(
-      test = intendedIndices == readIndices,
-      right = query,
-      left = Rejection.SubstitutionNotConfirmed(sorted(intendedIndices), sorted(readIndices))
-    )
-
-  private def sorted(indices: Set[String]): List[String] = indices.toList.sorted
 
 }

@@ -24,6 +24,7 @@ import tech.beshu.ror.es.sql.CommandSelector.{
   MatchingPattern,
   NotIndexRelated
 }
+import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{SourceLocation, TableInQuery}
 
 import scala.util.Try
 

@@ -63,4 +63,18 @@ private[sql] object IndexListReplacer {
     }
   }
 
+  final case class ReplacedQuery(query: String, intendedIndices: Set[String]) {
+
+    /** The replacer only edits text. This check makes sure that ES reads exactly the intended indices. */
+    def checkedAgainst(readIndexLists: List[LocatedIndexList]): Either[Rejection, String] = {
+      val readIndices = readIndexLists.flatMap(_.indexNames).toCovariantSet
+      Either.cond(
+        test = intendedIndices == readIndices,
+        right = query,
+        left = Rejection.SubstitutionNotConfirmed(intendedIndices.toList.sorted, readIndices.toList.sorted)
+      )
+    }
+
+  }
+
 }
