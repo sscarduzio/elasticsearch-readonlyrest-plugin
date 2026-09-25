@@ -2122,7 +2122,7 @@ class ReadonlyRestStartingTests
             indexName: IndexName.Full,
             documentId: String,
             jsonRecord: String,
-            pipeline: Option[String]
+            pipeline: Option[AuditIngestPipeline]
         )(
             implicit requestId: RequestId
         ): Unit = ()

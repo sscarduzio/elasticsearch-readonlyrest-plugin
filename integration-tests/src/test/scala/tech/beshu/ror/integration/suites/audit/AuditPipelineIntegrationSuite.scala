@@ -22,18 +22,15 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.{ComposedElasticsearchNodeDataInitializer, ElasticsearchNodeDataInitializer}
+import tech.beshu.ror.utils.elasticsearch.AuditIngestPipelineInitializer.markerField
 import tech.beshu.ror.utils.elasticsearch.{
   AuditIndexManager,
   AuditIngestPipelineInitializer,
   ElasticsearchTweetsInitializer,
   IndexManager
 }
-import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
-// Proves the `pipeline` audit output setting is not just parsed and threaded through config
-// (already covered by unit tests), but actually reaches ES: the pipeline is a `set` processor
-// that stamps `pipeline_applied: true`, and we assert that field lands on the indexed audit doc,
-// for both the index-based and data-stream-based sinks.
 class AuditPipelineIntegrationSuite
     extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
@@ -42,47 +39,71 @@ class AuditPipelineIntegrationSuite
     with CustomScalaTestMatchers
     with Eventually {
 
-  private val pipelineName = "audit_pipeline"
+  private val isDataStreamSupported = Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)
 
   override implicit val rorSettingsFileName: String =
-    "/ror_audit/enabled_auditing_tools_with_pipeline/readonlyrest.yml"
+    if (isDataStreamSupported) "/ror_audit/enabled_auditing_tools_with_pipeline/readonlyrest.yml"
+    else "/ror_audit/enabled_auditing_tools_with_pipeline/readonlyrest_audit_index.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(
     new ComposedElasticsearchNodeDataInitializer(
       ElasticsearchTweetsInitializer,
-      new AuditIngestPipelineInitializer(pipelineName)
+      new ComposedElasticsearchNodeDataInitializer(
+        new AuditIngestPipelineInitializer("audit_pipeline_a", marker = "a"),
+        new AuditIngestPipelineInitializer("audit_pipeline_b", marker = "b")
+      )
     )
   )
 
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
-  private lazy val indexAuditManager = new AuditIndexManager(adminClient, esVersionUsed, "audit_index_with_pipeline")
-
-  private lazy val dataStreamAuditManager =
-    new AuditIndexManager(adminClient, esVersionUsed, "audit_data_stream_with_pipeline")
-
-  "Configured ingest pipeline" should {
-    "be applied to audit documents submitted by the index-based sink" in {
-      val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
-      indexManager.getIndex("twitter") should have statusCode 200
+  "An audit output with an ingest pipeline" should {
+    "store the audit events that its pipeline processed" in {
+      sendAuditedRequest()
 
       eventually {
-        val entries = indexAuditManager.getEntries.jsons
-        entries should not be empty
-        entries.foreach(_("pipeline_applied").bool shouldBe true)
+        markersIn("audit_index_pipeline_a") shouldBe Set(Some("a"))
       }
     }
-    "be applied to audit documents submitted by the data-stream-based sink" in {
-      val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
-      indexManager.getIndex("twitter") should have statusCode 200
+    "use its own pipeline when the other outputs use different pipelines" in {
+      sendAuditedRequest()
 
       eventually {
-        val entries = dataStreamAuditManager.getEntries.jsons
-        entries should not be empty
-        entries.foreach(_("pipeline_applied").bool shouldBe true)
+        markersIn("audit_index_pipeline_a") shouldBe Set(Some("a"))
+        markersIn("audit_index_pipeline_b") shouldBe Set(Some("b"))
       }
     }
+    if (isDataStreamSupported) {
+      "store the audit events that its pipeline processed in a data stream" in {
+        sendAuditedRequest()
+
+        eventually {
+          markersIn("audit_data_stream_pipeline_b") shouldBe Set(Some("b"))
+        }
+      }
+    }
+  }
+
+  "An audit output without an ingest pipeline" should {
+    "store the audit events that no pipeline processed, when other outputs use pipelines" in {
+      sendAuditedRequest()
+
+      eventually {
+        markersIn("audit_index_without_pipeline") shouldBe Set(None)
+      }
+    }
+  }
+
+  private def sendAuditedRequest(): Unit = {
+    val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
+    indexManager.getIndex("twitter") should have statusCode 200
+  }
+
+  private def markersIn(indexName: String): Set[Option[String]] = {
+    val entries = new AuditIndexManager(adminClient, esVersionUsed, indexName).getEntries.jsons
+    entries should not be empty
+    entries.map(_.obj.get(markerField).map(_.str)).toSet
   }
 
 }

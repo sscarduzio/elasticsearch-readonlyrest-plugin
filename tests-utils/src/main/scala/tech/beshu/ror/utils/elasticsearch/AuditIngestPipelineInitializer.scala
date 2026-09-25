@@ -18,28 +18,31 @@ package tech.beshu.ror.utils.elasticsearch
 
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
-// Creates an ingest pipeline that stamps `pipeline_applied: true` on every document that passes
-// through it. Used to assert (from outside ES) that audit sinks actually forward the configured
-// `pipeline` name to the ES index/bulk request, rather than just threading the value through config.
-final class AuditIngestPipelineInitializer(pipelineName: String) extends ElasticsearchNodeDataInitializer {
+final class AuditIngestPipelineInitializer(pipelineName: String, marker: String)
+    extends ElasticsearchNodeDataInitializer {
 
   override def initialize(esVersion: String, adminRestClient: RestClient): Unit = {
-    val pipelineManager = new IngestPipelineManager(adminRestClient, esVersion)
-    pipelineManager
-      .putPipeline(
-        pipelineName,
-        ujson.read {
-          """
-            |{
-            |  "processors": [
-            |    { "set": { "field": "pipeline_applied", "value": true } }
-            |  ]
-            |}""".stripMargin
-        }
-      )
+    new IngestPipelineManager(adminRestClient, esVersion)
+      .putPipeline(pipelineName, AuditIngestPipelineInitializer.markerPipeline(marker))
       .force()
+  }
+
+}
+
+object AuditIngestPipelineInitializer {
+
+  val markerField = "pipeline_marker"
+
+  def markerPipeline(marker: String): JSON = ujson.read {
+    s"""
+       |{
+       |  "processors": [
+       |    { "set": { "field": "$markerField", "value": "$marker" } }
+       |  ]
+       |}""".stripMargin
   }
 
 }

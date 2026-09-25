@@ -242,7 +242,12 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private class MockedIndexAuditOutputService extends IndexBasedAuditOutputService {
     private val submittedIndexAndJson: Promise[(IndexName.Full, String)] = Promise()
 
-    override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String, pipeline: Option[String])(
+    override def submit(
+        indexName: IndexName.Full,
+        documentId: String,
+        jsonRecord: String,
+        pipeline: Option[AuditIngestPipeline]
+    )(
         implicit requestId: RequestId
     ): Unit = {
       submittedIndexAndJson.trySuccess(indexName, jsonRecord)
@@ -260,7 +265,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         dataStreamName: DataStreamName.Full,
         documentId: String,
         jsonRecord: String,
-        pipeline: Option[String]
+        pipeline: Option[AuditIngestPipeline]
     )(
         implicit requestId: RequestId
     ): Unit = {

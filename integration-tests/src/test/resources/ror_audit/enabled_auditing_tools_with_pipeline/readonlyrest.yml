@@ -4,15 +4,28 @@ readonlyrest:
     enabled: true
     outputs:
       - type: index
-        index_template: "'audit_index_with_pipeline'"
-        pipeline: "audit_pipeline"
+        index_template: "'audit_index_pipeline_a'"
+        pipeline: "audit_pipeline_a"
+        serializer:
+          type: "static"
+          class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
+          verbosity_level_serialization_mode: [INFO]
+      - type: index
+        index_template: "'audit_index_pipeline_b'"
+        pipeline: "audit_pipeline_b"
+        serializer:
+          type: "static"
+          class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
+          verbosity_level_serialization_mode: [INFO]
+      - type: index
+        index_template: "'audit_index_without_pipeline'"
         serializer:
           type: "static"
           class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
           verbosity_level_serialization_mode: [INFO]
       - type: data_stream
-        data_stream: "audit_data_stream_with_pipeline"
-        pipeline: "audit_pipeline"
+        data_stream: "audit_data_stream_pipeline_b"
+        pipeline: "audit_pipeline_b"
         serializer:
           type: "static"
           class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"

@@ -206,6 +206,8 @@ object TestsUtils {
 
   def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromNes(str.value)
 
+  def auditIngestPipeline(name: String): AuditIngestPipeline = AuditIngestPipeline.from(name).get
+
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
   def userId(str: NonEmptyString): User.Id = User.Id(str)

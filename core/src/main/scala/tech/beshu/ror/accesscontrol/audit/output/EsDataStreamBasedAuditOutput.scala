@@ -20,7 +20,13 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.JsonAuditSerializer
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, AuditOutputName, RequestId, RorAuditDataStream}
+import tech.beshu.ror.accesscontrol.domain.{
+  AuditCluster,
+  AuditIngestPipeline,
+  AuditOutputName,
+  RequestId,
+  RorAuditDataStream
+}
 import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.es.services.DataStreamBasedAuditOutputService
 import tech.beshu.ror.implicits.*
@@ -31,7 +37,7 @@ private[audit] final class EsDataStreamBasedAuditOutput private (
     serializer: JsonAuditSerializer,
     rorAuditDataStream: RorAuditDataStream,
     auditOutputService: DataStreamBasedAuditOutputService,
-    pipeline: Option[String]
+    val pipeline: Option[AuditIngestPipeline]
 ) extends JsonBasedAuditOutput(outputName, serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
@@ -73,7 +79,7 @@ object EsDataStreamBasedAuditOutput {
       rorAuditDataStream: RorAuditDataStream,
       auditOutputService: DataStreamBasedAuditOutputService,
       auditCluster: AuditCluster,
-      pipeline: Option[String]
+      pipeline: Option[AuditIngestPipeline]
   ): Task[Either[CreationError, EsDataStreamBasedAuditOutput]] = value {
     for {
       _ <- createRorAuditDataStreamIfNotExists(rorAuditDataStream, auditOutputService, auditCluster)
@@ -95,7 +101,7 @@ object EsDataStreamBasedAuditOutput {
       serializer: JsonAuditSerializer,
       rorAuditDataStream: RorAuditDataStream,
       auditOutputService: DataStreamBasedAuditOutputService,
-      pipeline: Option[String]
+      pipeline: Option[AuditIngestPipeline]
   ) = {
     EitherT.right[CreationError](
       Task.delay(

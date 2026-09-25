@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.audit.output.{
   IndexBasedAuditOutputServiceCreator
 }
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{AuditIngestPipeline, DataStreamName, IndexName, RequestId}
 import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, IndexBasedAuditOutputService}
 
 object MockedCapabilities {
@@ -43,7 +43,12 @@ object MockedCapabilities {
 object MockIndexBasedAuditOutputServiceCreator extends IndexBasedAuditOutputServiceCreator {
 
   val indexService: IndexBasedAuditOutputService = new IndexBasedAuditOutputService {
-    override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String, pipeline: Option[String])(
+    override def submit(
+        indexName: IndexName.Full,
+        documentId: String,
+        jsonRecord: String,
+        pipeline: Option[AuditIngestPipeline]
+    )(
         implicit requestId: RequestId
     ): Unit =
       throw new IllegalStateException("Cannot use it. It's just a mock")
@@ -62,7 +67,7 @@ object MockDataStreamBasedAuditOutputServiceCreator extends DataStreamBasedAudit
           dataStreamName: DataStreamName.Full,
           documentId: String,
           jsonRecord: String,
-          pipeline: Option[String]
+          pipeline: Option[AuditIngestPipeline]
       )(
           implicit requestId: RequestId
       ): Unit =

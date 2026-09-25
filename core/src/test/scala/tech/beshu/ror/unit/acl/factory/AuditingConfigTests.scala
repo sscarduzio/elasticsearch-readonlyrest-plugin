@@ -1612,6 +1612,52 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
                 .serializer shouldBe a[QueryAuditLogSerializer]
           }
         }
+        "outputs have different ingest pipelines" in {
+          val settings = rorSettingsWithAuditUnsafe(
+            """
+              |  audit:
+              |    enabled: true
+              |    outputs:
+              |    - type: index
+              |      index_template: "'index_a'"
+              |      pipeline: "pipeline_a"
+              |    - type: index
+              |      index_template: "'index_without_pipeline'"
+              |    - type: data_stream
+              |      data_stream: "data_stream_b"
+              |      pipeline: "pipeline_b"
+            """.stripMargin
+          )
+          val core = factory()
+            .createCoreFrom(
+              settings,
+              RorSettingsIndex(IndexName.Full(".readonlyrest")),
+              MockHttpClientsFactory,
+              MockLdapConnectionPoolProvider,
+              NoOpMocksProvider,
+              MockedCapabilities.indexOrDataStream
+            )
+            .map(_.map(_.core))
+            .runSyncUnsafe()
+          inside(core) {
+            case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Configured(auditOutputs), _, _))) =>
+              val pipelines = auditOutputs.toList.map {
+                case EsIndexBased(_, config) =>
+                  (config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant).name.value, config.pipeline)
+                case EsDataStreamBased(_, config) =>
+                  (config.rorAuditDataStream.dataStream.value.value, config.pipeline)
+                case other =>
+                  fail(s"Unexpected output: $other")
+              }
+              pipelines should be(
+                List(
+                  ("index_a", Some(auditIngestPipeline("pipeline_a"))),
+                  ("index_without_pipeline", None),
+                  ("data_stream_b", Some(auditIngestPipeline("pipeline_b")))
+                )
+              )
+          }
+        }
         "all outputs are disabled" in {
           val settings = rorSettingsWithAuditUnsafe(
             """
@@ -1803,6 +1849,23 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
         }
         "not be able to be loaded from settings" when {
           "'log' output type" when {
+            "ingest pipeline is set" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: log
+                  |      pipeline: "my_ingest_pipeline"
+                """.stripMargin
+              )
+
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "The audit 'pipeline' setting is supported only by the 'index' and 'data_stream' outputs, not by the 'log' output"
+              )
+            }
             "not supported custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
@@ -1838,6 +1901,57 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
             }
           }
           "'index' output type" when {
+            "ingest pipeline is an empty string" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      pipeline: ""
+                """.stripMargin
+              )
+
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: \"\""
+              )
+            }
+            "ingest pipeline is a blank string" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      pipeline: "  "
+                """.stripMargin
+              )
+
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: \"  \""
+              )
+            }
+            "ingest pipeline is not a string" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      pipeline: [a, b]
+                """.stripMargin
+              )
+
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: [\"a\",\"b\"]"
+              )
+            }
             "not supported custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
@@ -2034,6 +2148,57 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
             }
           }
           "'data_stream' output type" when {
+            "ingest pipeline is an empty string" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      pipeline: ""
+                """.stripMargin
+              )
+
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: \"\""
+              )
+            }
+            "ingest pipeline is a blank string" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      pipeline: "  "
+                """.stripMargin
+              )
+
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: \"  \""
+              )
+            }
+            "ingest pipeline is not a string" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      pipeline: [a, b]
+                """.stripMargin
+              )
+
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: [\"a\",\"b\"]"
+              )
+            }
             "not supported custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
@@ -2651,7 +2816,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
       outputConfig.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName(expectedIndexName))
       serializerAssertion(outputConfig.serializer)
       outputConfig.auditCluster shouldBe expectedAuditCluster
-      outputConfig.pipeline shouldBe expectedPipeline
+      outputConfig.pipeline.map(_.name.value) shouldBe expectedPipeline
     }
   }
 
@@ -2698,7 +2863,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
       outputConfig.rorAuditDataStream.dataStream should be(fullDataStreamName(expectedDataStreamName))
       serializerAssertion(outputConfig.serializer)
       outputConfig.auditCluster shouldBe expectedAuditCluster
-      outputConfig.pipeline shouldBe expectedPipeline
+      outputConfig.pipeline.map(_.name.value) shouldBe expectedPipeline
     }
   }
 

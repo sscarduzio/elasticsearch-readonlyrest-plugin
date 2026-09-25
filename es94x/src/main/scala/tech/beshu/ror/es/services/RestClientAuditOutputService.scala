@@ -30,7 +30,7 @@ import org.elasticsearch.client.*
 import org.elasticsearch.client.RestClient.FailureListener
 import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, AuditIngestPipeline, DataStreamName, IndexName, RequestId}
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -46,7 +46,12 @@ final class RestClientAuditOutputService private (
     with DataStreamBasedAuditOutputService
     with RequestIdAwareLogging {
 
-  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String, pipeline: Option[String])(
+  override def submit(
+      indexName: IndexName.Full,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[AuditIngestPipeline]
+  )(
       implicit requestId: RequestId
   ): Unit = {
     submitDocument(indexName.name.value, documentId, jsonRecord, pipeline)
@@ -56,7 +61,7 @@ final class RestClientAuditOutputService private (
       dataStreamName: DataStreamName.Full,
       documentId: String,
       jsonRecord: String,
-      pipeline: Option[String]
+      pipeline: Option[AuditIngestPipeline]
   )(
       implicit requestId: RequestId
   ): Unit = {
@@ -67,32 +72,47 @@ final class RestClientAuditOutputService private (
     client.close()
   }
 
-  private def submitDocument(indexName: String, documentId: String, jsonRecord: String, pipeline: Option[String])(
+  private def submitDocument(
+      indexName: String,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[AuditIngestPipeline]
+  )(
       implicit requestId: RequestId
   ): Unit = {
+    val event = describeEvent(indexName, documentId, pipeline)
     if (inFlightRequestSemaphore.tryAcquire()) {
       client
         .perform(createRequest(indexName, documentId, jsonRecord, pipeline))
-        .flatMap(response => Task.delay(handleResponse(indexName, documentId, response)))
-        .onErrorHandleWith(ex =>
-          Task.delay(logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex))
-        )
+        .flatMap(response => Task.delay(handleResponse(event, response)))
+        .onErrorHandleWith(ex => Task.delay(logger.error(s"Cannot submit audit event $event", ex)))
         .doOnFinish(_ => Task.delay(inFlightRequestSemaphore.release()))
         .runAsyncAndForget(RorSchedulers.mainScheduler)
     } else {
-      logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] — too many in-flight requests")
+      logger.error(s"Cannot submit audit event $event — too many in-flight requests")
     }
   }
 
-  private def createRequest(indexName: String, documentId: String, jsonBody: String, pipeline: Option[String]) = {
+  private def createRequest(
+      indexName: String,
+      documentId: String,
+      jsonBody: String,
+      pipeline: Option[AuditIngestPipeline]
+  ) = {
     val request = new Request("PUT", s"/$indexName/_doc/$documentId")
     request.addParameter("op_type", "create")
-    pipeline.foreach(request.addParameter("pipeline", _))
+    pipeline.foreach(p => request.addParameter("pipeline", p.name.value))
     request.setJsonEntity(jsonBody)
     request
   }
 
-  private def handleResponse(indexName: String, documentId: String, response: Response)(
+  private def describeEvent(indexName: String, documentId: String, pipeline: Option[AuditIngestPipeline]) =
+    pipeline match {
+      case Some(p) => s"[index: $indexName, doc: $documentId, pipeline: ${p.name.value}]"
+      case None    => s"[index: $indexName, doc: $documentId]"
+    }
+
+  private def handleResponse(event: String, response: Response)(
       implicit requestId: RequestId
   ): Unit = {
     response.getStatusLine.getStatusCode / 100 match {
@@ -100,7 +120,7 @@ final class RestClientAuditOutputService private (
         logger.debug(s"Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
       case _ =>
         logger.error(
-          s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}"
+          s"Cannot submit audit event $event - response code: ${response.getStatusLine.getStatusCode}"
         )
     }
   }

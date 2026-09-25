@@ -27,7 +27,7 @@ import org.elasticsearch.core.TimeValue
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{AuditIngestPipeline, DataStreamName, IndexName, RequestId}
 import tech.beshu.ror.constants.{
   AUDIT_OUTPUT_MAX_ITEMS,
   AUDIT_OUTPUT_MAX_KB,
@@ -59,7 +59,12 @@ final class NodeClientBasedAuditOutputService(
       .setMaxNumberOfRetries(AUDIT_OUTPUT_MAX_RETRIES)
       .build
 
-  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String, pipeline: Option[String])(
+  override def submit(
+      indexName: IndexName.Full,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[AuditIngestPipeline]
+  )(
       implicit requestId: RequestId
   ): Unit = {
     submitDocument(indexName.name.value, documentId, jsonRecord, pipeline)
@@ -69,7 +74,7 @@ final class NodeClientBasedAuditOutputService(
       dataStreamName: DataStreamName.Full,
       documentId: String,
       jsonRecord: String,
-      pipeline: Option[String]
+      pipeline: Option[AuditIngestPipeline]
   )(
       implicit requestId: RequestId
   ): Unit = {
@@ -84,13 +89,13 @@ final class NodeClientBasedAuditOutputService(
       indexName: String,
       documentId: String,
       jsonRecord: String,
-      pipeline: Option[String]
+      pipeline: Option[AuditIngestPipeline]
   ): Unit = {
     val request = new IndexRequest(indexName)
       .id(documentId)
       .source(jsonRecord, XContentType.JSON)
       .opType(DocWriteRequest.OpType.CREATE)
-    pipeline.foreach(request.setPipeline)
+    pipeline.foreach(p => request.setPipeline(p.name.value))
     bulkProcessor.add(request)
   }
 
@@ -105,17 +110,13 @@ final class NodeClientBasedAuditOutputService(
     }
 
     override def afterBulk(executionId: Long, request: BulkRequest, response: BulkResponse): Unit = {
-      if (response.hasFailures) {
-        noRequestIdLogger.error("Some failures flushing the BulkProcessor: ")
-        response.getItems
-          .to(LazyList)
-          .filter(_.isFailed)
-          .map(_.getFailureMessage)
-          .groupBy(identity)
-          .foreach { case (message, stream) =>
-            noRequestIdLogger.error(s"${stream.size}x: $message")
-          }
-      }
+      response.getItems
+        .to(LazyList)
+        .filter(_.isFailed)
+        .groupBy(item => (item.getIndex, item.getFailureMessage))
+        .foreach { case ((index, message), items) =>
+          noRequestIdLogger.error(s"ES rejected ${items.size} audit event(s) for [$index]: $message")
+        }
     }
 
     override def afterBulk(executionId: Long, request: BulkRequest, failure: Exception): Unit = {

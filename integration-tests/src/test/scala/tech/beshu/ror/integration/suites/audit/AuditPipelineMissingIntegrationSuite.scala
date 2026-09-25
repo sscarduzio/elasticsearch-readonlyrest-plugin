@@ -21,12 +21,10 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager}
-import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
-// Configures a `pipeline:` name that is never created in ES, to lock in the current failure
-// behavior: the audited request itself is unaffected (audit submission is fire-and-forget), and
-// the audit document that ES rejects (400 "pipeline with id [...] does not exist") never lands.
 class AuditPipelineMissingIntegrationSuite
     extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
@@ -35,38 +33,72 @@ class AuditPipelineMissingIntegrationSuite
     with CustomScalaTestMatchers
     with Eventually {
 
-  override implicit val rorSettingsFileName: String =
-    "/ror_audit/enabled_auditing_tools_with_pipeline/readonlyrest_missing_pipeline.yml"
+  private val isDataStreamSupported = Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)
 
-  // Deliberately does NOT create the "missing_pipeline" pipeline referenced in the settings above.
-  override val nodeDataInitializer = Some(ElasticsearchTweetsInitializer)
+  override implicit val rorSettingsFileName: String =
+    if (isDataStreamSupported) "/ror_audit/enabled_auditing_tools_with_pipeline/readonlyrest_missing_pipeline.yml"
+    else "/ror_audit/enabled_auditing_tools_with_pipeline/readonlyrest_missing_pipeline_audit_index.yml"
+
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
-  private lazy val indexAuditManager = new AuditIndexManager(adminClient, esVersionUsed, "audit_index_missing_pipeline")
+  "An audit output with an ingest pipeline that does not exist" should {
+    "not affect the audited request" in {
+      sendAuditedRequest()
+    }
+    "not affect the other audit outputs" in {
+      sendAuditedRequest()
 
-  private lazy val dataStreamAuditManager =
-    new AuditIndexManager(adminClient, esVersionUsed, "audit_data_stream_missing_pipeline")
+      new AuditIndexManager(
+        adminClient,
+        esVersionUsed,
+        "audit_index_next_to_missing_pipeline"
+      ).getEntries.jsons should not be empty
+    }
+    "log the rejection with the index of the output and the ES error" in {
+      sendAuditedRequest()
 
-  "A request audited through a sink with a non-existent pipeline" should {
-    "still succeed on the client side" in {
-      val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
-      indexManager.getIndex("twitter") should have statusCode 200
-    }
-    "not create the index-based sink's index (every write is rejected by ES)" in {
-      indexAuditManager.getEntries should have statusCode 404
-    }
-    "not leave any entry in the data-stream-based sink (data stream exists, writes still rejected)" in {
-      dataStreamAuditManager.getEntries.jsons shouldBe empty
-    }
-    "log an ES-level error naming the missing pipeline, so the failure is observable in the ES log" in {
       eventually {
-        val logs = targetEs.container.getLogs
-        logs should include("Some failures flushing the BulkProcessor")
-        logs should include("pipeline with id [missing_pipeline] does not exist")
+        rejectionLogLines("audit_index_missing_pipeline") should not be empty
+      }
+    }
+    "not store the audit events in the index" in {
+      sendAuditedRequest()
+
+      eventually {
+        rejectionLogLines("audit_index_missing_pipeline") should not be empty
+      }
+      new AuditIndexManager(
+        adminClient,
+        esVersionUsed,
+        "audit_index_missing_pipeline"
+      ).getEntries should have statusCode 404
+    }
+    if (isDataStreamSupported) {
+      "not store the audit events in the data stream" in {
+        sendAuditedRequest()
+
+        eventually {
+          rejectionLogLines("audit_data_stream_missing_pipeline") should not be empty
+        }
+        new AuditIndexManager(adminClient, esVersionUsed, "audit_data_stream_missing_pipeline").hasNoEntries
       }
     }
   }
+
+  private def sendAuditedRequest(): Unit = {
+    val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
+    indexManager.getIndex("twitter") should have statusCode 200
+  }
+
+  private def rejectionLogLines(indexName: String): List[String] =
+    targetEs.container.getLogs.linesIterator
+      .filter(line =>
+        line.contains(s"audit event(s) for [$indexName]") &&
+          line.contains("pipeline with id [missing_pipeline] does not exist")
+      )
+      .toList
 
 }

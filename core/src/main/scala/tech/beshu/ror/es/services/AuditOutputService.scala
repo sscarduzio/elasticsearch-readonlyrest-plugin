@@ -19,7 +19,7 @@ package tech.beshu.ror.es.services
 import cats.effect.Resource
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
-import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{AuditIngestPipeline, DataStreamName, IndexName, RequestId}
 
 sealed trait AuditOutputService {
   def close(): Unit
@@ -27,7 +27,7 @@ sealed trait AuditOutputService {
 
 trait IndexBasedAuditOutputService extends AuditOutputService {
 
-  def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String, pipeline: Option[String])(
+  def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String, pipeline: Option[AuditIngestPipeline])(
       implicit requestId: RequestId
   ): Unit
 
@@ -35,7 +35,12 @@ trait IndexBasedAuditOutputService extends AuditOutputService {
 
 trait DataStreamBasedAuditOutputService extends AuditOutputService {
 
-  def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String, pipeline: Option[String])(
+  def submit(
+      dataStreamName: DataStreamName.Full,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[AuditIngestPipeline]
+  )(
       implicit requestId: RequestId
   ): Unit
 

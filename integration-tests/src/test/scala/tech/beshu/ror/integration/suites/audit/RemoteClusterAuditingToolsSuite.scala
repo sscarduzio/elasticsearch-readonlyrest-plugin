@@ -28,7 +28,12 @@ import tech.beshu.ror.utils.containers.SecurityType.NoSecurityCluster
 import tech.beshu.ror.utils.containers.dependencies.*
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{
+  AuditIngestPipelineInitializer,
+  ElasticsearchTweetsInitializer,
+  IndexManager,
+  IngestPipelineManager
+}
 import tech.beshu.ror.utils.misc.OsUtils.{CurrentOs, ignoreOnWindows}
 import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
@@ -167,6 +172,38 @@ class RemoteClusterAuditingToolsSuite
 
         val id4 = sendTracedRequest("phase-4")
         auditShouldContain(List(id4))
+      }
+      "store the audit events that the ingest pipeline of the output processed" in {
+        new IngestPipelineManager(destNodeClientProvider.adminClient, esVersionUsed)
+          .putPipeline("remote_audit_pipeline", AuditIngestPipelineInitializer.markerPipeline("remote"))
+          .force()
+        forceReloadFreshEngine(configWithPipeline("remote_audit_pipeline"))
+
+        val traceId = sendTracedRequest("pipeline")
+
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val entry = findAuditEntryWithTraceId(adminAuditManager.getEntries.force().jsons, traceId)
+            entry(AuditIngestPipelineInitializer.markerField).str shouldBe "remote"
+          }
+        }
+      }
+      "log the rejection of an audit event when the ingest pipeline of the output does not exist" in {
+        forceReloadFreshEngine(configWithPipeline("missing_remote_audit_pipeline"))
+
+        val traceId = sendTracedRequest("missing-pipeline")
+
+        eventually {
+          targetEs.container.getLogs.linesIterator.exists { line =>
+            line.contains("Cannot submit audit event [index: audit_index, doc: ") &&
+            line.contains("pipeline: missing_remote_audit_pipeline]")
+          } shouldBe true
+        }
+        consistently(during = 3.seconds) {
+          forEachAuditManager { adminAuditManager =>
+            findAuditEntriesWithTraceId(adminAuditManager.getEntries.force().jsons, traceId) shouldBe empty
+          }
+        }
       }
       "handle audit settings reload when all nodes are unreachable and connectivity_check is best_effort" in {
         val auditNode1 = proxiedContainers(0)
@@ -320,6 +357,12 @@ class RemoteClusterAuditingToolsSuite
   }
 
   private def traceIdHeaderName(traceId: String) = s"test-trace-id-$traceId"
+
+  private def configWithPipeline(pipelineName: String) =
+    configWithReplacements(
+      baseRorSettingsYaml,
+      Map("\n        cluster:" -> s"""\n        pipeline: "$pipelineName"\n        cluster:""")
+    )
 
   private def configWithReplacements(config: String, replacements: Map[String, String]) = {
     val newConfig = replacements.foldLeft(config) { case (config, (key, value)) =>

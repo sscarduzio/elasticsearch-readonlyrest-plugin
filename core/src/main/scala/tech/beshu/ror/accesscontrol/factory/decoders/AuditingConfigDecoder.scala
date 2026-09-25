@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{
   AuditCluster,
+  AuditIngestPipeline,
   AuditOutputName,
   RorAuditDataStream,
   RorAuditIndexTemplate,
@@ -340,6 +341,7 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
 
     Decoder.instance { c =>
       for {
+        _ <- rejectPipelineInLogOutput(c)
         logSerializer <- c.as[Option[AuditSerializer]]
         loggerName <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
         fileAppender <- c.downField("file_appender").as[Option[RollingFileBased.FileAppender]]
@@ -359,7 +361,7 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
       auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
       logSerializer <- c.as[Option[JsonAuditSerializer]]
       remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
-      pipeline <- c.downField("pipeline").as[Option[String]]
+      pipeline <- c.downField("pipeline").as[Option[AuditIngestPipeline]]
     } yield EsIndexBased.Config(
       logSerializer.getOrElse(EsIndexBased.Config.default.serializer),
       auditIndexTemplate.getOrElse(EsIndexBased.Config.default.rorAuditIndexTemplate),
@@ -373,13 +375,48 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
       rorAuditDataStream <- c.downFieldAs[Option[RorAuditDataStream]]("data_stream")
       logSerializer <- c.as[Option[JsonAuditSerializer]]
       remoteAuditCluster <- c.downFieldAs[Option[AuditCluster.RemoteAuditCluster]]("cluster")
-      pipeline <- c.downFieldAs[Option[String]]("pipeline")
+      pipeline <- c.downField("pipeline").as[Option[AuditIngestPipeline]]
     } yield EsDataStreamBased.Config(
       logSerializer.getOrElse(EsDataStreamBased.Config.default.serializer),
       rorAuditDataStream.getOrElse(EsDataStreamBased.Config.default.rorAuditDataStream),
       remoteAuditCluster.getOrElse(EsDataStreamBased.Config.default.auditCluster),
       pipeline,
     )
+  }
+
+  private def rejectPipelineInLogOutput(c: HCursor): Decoder.Result[Unit] =
+    c.downField("pipeline").focus match {
+      case Some(_) =>
+        Left(
+          DecodingFailure(
+            AclCreationErrorCoders.stringify(
+              auditSettingsError(
+                "The audit 'pipeline' setting is supported only by the 'index' and 'data_stream' outputs, not by the 'log' output"
+              )
+            ),
+            Nil
+          )
+        )
+      case None =>
+        Right(())
+    }
+
+  private given Decoder[AuditIngestPipeline] = Decoder.instance { c =>
+    c.value.asString.flatMap(AuditIngestPipeline.from) match {
+      case Some(pipeline) =>
+        Right(pipeline)
+      case None =>
+        Left(
+          DecodingFailure(
+            AclCreationErrorCoders.stringify(
+              auditSettingsError(
+                s"The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: ${c.value.noSpaces}"
+              )
+            ),
+            Nil
+          )
+        )
+    }
   }
 
   private given Decoder[AuditOutputName] = Decoder.decodeString.map(AuditOutputName.apply)
