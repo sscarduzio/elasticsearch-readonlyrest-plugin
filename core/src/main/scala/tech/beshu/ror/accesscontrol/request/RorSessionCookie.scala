@@ -22,7 +22,6 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.parser.*
 import io.circe.{Decoder, Encoder}
 import tech.beshu.ror.accesscontrol.domain.Header.Name.setCookie
-import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
@@ -71,9 +70,10 @@ object RorSessionCookie extends RequestIdAwareLogging {
     )
 
   private def extractRorHttpCookie(context: RequestContext) = {
-    findHeader(Header.Name.cookie, in = context.restRequest.allHeaders)
-      .flatMap(h => parseCookie(h.value.value))
-      .flatMap(_.find(_.getName === rorCookieName))
+    context.restRequest.allHeaders.view
+      .filter(_.name === Header.Name.cookie)
+      .flatMap(h => parseCookie(h.value.value).toList.flatten)
+      .find(_.getName === rorCookieName)
   }
 
   private def parseRorSessionCookieAndSignature(httpCookie: HttpCookie) = {

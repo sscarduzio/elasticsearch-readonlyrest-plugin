@@ -25,8 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
-import tech.beshu.ror.accesscontrol.domain.Header.findHeader
-import tech.beshu.ror.accesscontrol.domain.{Header, Jwt}
+import tech.beshu.ror.accesscontrol.domain.Header.singleHeaderOrNone
+import tech.beshu.ror.accesscontrol.domain.{Header, Jwt, RequestId}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.CustomClaimValue.{CollectionValue, SingleValue}
@@ -121,10 +121,10 @@ object SingleExtractable {
 
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] =
       withTransformation(transformation) {
-        findHeader(header, in = blockContext.requestContext.restRequest.allHeaders).map(_.value.value) match {
-          case Some(value) => Right(value)
-          case None        => Left(ExtractError(s"Cannot extract user header '${header.show}' from request context"))
-        }
+        given RequestId = blockContext.requestContext.id.toRequestId
+        singleHeaderOrNone(header, in = blockContext.requestContext.restRequest.allHeaders)
+          .map(_.value.value)
+          .toRight(ExtractError(s"Cannot extract header '${header.show}' from request context"))
       }
 
   }

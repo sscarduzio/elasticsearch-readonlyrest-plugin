@@ -193,6 +193,23 @@ class TokenAuthenticationRuleTests extends AnyWordSpec with BlockContextAssertio
           denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' is invalid")
         )
       }
+      "the token header holds two different values" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("userA"),
+            tokenType = StaticToken(
+              AuthorizationTokenDef(headerNameFrom("custom-user-auth-header"), StrictlyDefined(bearer)),
+              authorizationTokenFrom("Bearer abc123XYZ")
+            )
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set(
+            headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ"),
+            headerFrom("custom-user-auth-header" -> "Bearer other")
+          ),
+          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' is missing")
+        )
+      }
       "static token is passed in different header than the configured one" in {
         assertNotMatchRule(
           settings = TokenAuthenticationRule.Settings(

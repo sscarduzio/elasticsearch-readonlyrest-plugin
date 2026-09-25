@@ -59,6 +59,12 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
           xForwardedForHeaderValue = Some("1.1.1.1")
         )
       }
+      "the X-Forwarded-For name repeats and each value is in the configured net address" in {
+        assertMatchRule(
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.0/24"))),
+          xForwardedForHeaderValues = List("1.1.1.1", "1.1.1.2")
+        )
+      }
       "configured net address is the same as the IP passed in X-Forwarded-For header" in {
         assertMatchRule(
           settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.1/16"))),
@@ -147,28 +153,34 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
 
   private def assertMatchRule(
       settings: XForwardedForRule.Settings,
-      xForwardedForHeaderValue: Option[String],
+      xForwardedForHeaderValue: Option[String] = None,
+      xForwardedForHeaderValues: List[String] = List.empty,
       hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver
   ) =
-    assertRule(settings, xForwardedForHeaderValue, hostnameResolver, isMatched = true)
+    assertRule(
+      settings,
+      xForwardedForHeaderValue.toList ++ xForwardedForHeaderValues,
+      hostnameResolver,
+      isMatched = true
+    )
 
   private def assertNotMatchRule(
       settings: XForwardedForRule.Settings,
       xForwardedForHeaderValue: Option[String],
       hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver
   ) =
-    assertRule(settings, xForwardedForHeaderValue, hostnameResolver, isMatched = false)
+    assertRule(settings, xForwardedForHeaderValue.toList, hostnameResolver, isMatched = false)
 
   private def assertRule(
       settings: XForwardedForRule.Settings,
-      xForwardedForHeaderValue: Option[String],
+      xForwardedForHeaderValues: List[String],
       hostnameResolver: HostnameResolver,
       isMatched: Boolean
   ) = {
     val rule = new XForwardedForRule(settings, hostnameResolver)
-    val requestContext = xForwardedForHeaderValue match {
-      case Some(value) => MockRequestContext.indices.withHeaders(headerFrom("X-Forwarded-For" -> value))
-      case None        => MockRequestContext.indices
+    val requestContext = xForwardedForHeaderValues match {
+      case Nil    => MockRequestContext.indices
+      case values => MockRequestContext.indices.withHeaders(values.map(v => headerFrom("X-Forwarded-For" -> v)))
     }
     val blockContext = UserMetadataRequestBlockContext(
       block = mock[Block],

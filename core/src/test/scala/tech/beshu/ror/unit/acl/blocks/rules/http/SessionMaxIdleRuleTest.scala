@@ -72,6 +72,16 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
               isMatched = true
             )
           }
+          "the Cookie name repeats and one of its values holds the ROR cookie" in {
+            assertRule(
+              sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
+              rawCookie = "cookie1=test",
+              otherRawCookies = List(rorSessionCookie.forUser1),
+              setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              isMatched = true
+            )
+          }
           "there are another cookies" in {
             assertRule(
               sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
@@ -141,6 +151,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
   private def assertRule(
       sessionMaxIdle: PositiveFiniteDuration,
       rawCookie: String = "",
+      otherRawCookies: List[String] = List.empty,
       setRawCookie: String,
       loggedUser: Option[DirectlyLoggedUser],
       isMatched: Boolean
@@ -149,10 +160,10 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
   ) = {
     val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle), CaseSensitivity.Enabled)
     val restRequest = mock[RestRequest]
-    val headers = NonEmptyString.unapply(rawCookie) match {
-      case Some(cookieHeader) => Set(headerFrom("Cookie" -> cookieHeader.value))
-      case None               => Set.empty[Header]
-    }
+    val headers = (rawCookie :: otherRawCookies)
+      .flatMap(NonEmptyString.unapply)
+      .map(cookieHeader => headerFrom("Cookie" -> cookieHeader.value))
+      .toCovariantSet
     (() => restRequest.allHeaders).expects().returning(headers)
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest)

@@ -23,7 +23,7 @@ import org.elasticsearch.rest.RestRequest.Method.GET
 import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.domain.Header.findHeader
+import tech.beshu.ror.accesscontrol.domain.Header.{findSingleHeader, fromRawHeaders}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
 
@@ -48,7 +48,10 @@ class RestRRUserMetadataAction extends BaseRestHandler with RestHandler {
     }
 
   private def rorKbnLicenseTypeHeaderFrom(request: RestRequest) = {
-    findHeader(Header.Name.rorKbnLicenseType, in = request.getHeaders)
+    for {
+      headers <- fromRawHeaders(request.getHeaders).toOption
+      header <- findSingleHeader(Header.Name.rorKbnLicenseType, in = headers).toOption.flatten
+    } yield header
   }
 
 }

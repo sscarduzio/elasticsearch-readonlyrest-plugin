@@ -347,14 +347,10 @@ trait LogsShowInstances extends cats.instances.AllInstances {
        | TYP:${r.`type`.show},
        | CGR:${stringifyUserGroup.show},
        | USR:${stringifyUsers.show},
-       | BRS:${r.restRequest.allHeaders.exists(_.name === Header.Name.userAgent).show},
+       | BRS:${r.restRequest.userAgent.isDefined.show},
        | ACT:${r.action.show},
        | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
-       | XFF:${Header
-        .findHeader(Header.Name.xForwardedFor, in = r.restRequest.allHeaders)
-        .map(_.value.show)
-        .getOrElse("null")
-        .show},
+       | XFF:${r.restRequest.xForwardedForHeaderValue.map(_.show).getOrElse("null")},
        | DA:${r.restRequest.localAddress.show},
        | IDX:${stringifyIndices.show},
        | MET:${r.restRequest.method.show},

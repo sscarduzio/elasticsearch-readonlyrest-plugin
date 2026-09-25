@@ -23,16 +23,9 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.Header.findHeader
+import tech.beshu.ror.accesscontrol.domain.Header.singleHeaderOrNone
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{
-  InvalidValue,
-  MissingHeader
-}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.es.{EsNodeSettings, EsServices}
 import tech.beshu.ror.syntax.*
@@ -81,7 +74,7 @@ trait RequestContext {
   // Computed once per request: Base64-decoding the credentials per block would be redundant.
   lazy val basicAuth: Option[BasicAuth] = {
     implicit val requestId: RequestId = id.toRequestId
-    findHeader(Header.Name.authorization, in = restRequest.allHeaders)
+    singleHeaderOrNone(Header.Name.authorization, in = restRequest.allHeaders)
       .flatMap(h => BasicAuth.parse(h.value))
   }
 
@@ -92,7 +85,8 @@ trait RequestContext {
   def generalAuditEvents: JSONObject = new JSONObject()
 
   def currentGroupId: Option[GroupId] = {
-    findHeader(Header.Name.currentGroup, restRequest.allHeaders)
+    implicit val requestId: RequestId = id.toRequestId
+    singleHeaderOrNone(Header.Name.currentGroup, in = restRequest.allHeaders)
       .map(h => GroupId(h.value))
   }
 
@@ -104,12 +98,10 @@ trait RequestContext {
    * sends that header, so the value is a hint, not proof. Each other client follows the given
    * static context.
    */
-  def shouldAddBasicAuthPrompt(aclStaticContext: AccessControlStaticContext): Boolean =
-    aclStaticContext.doesRequirePassword && rorKbnLicenseType.isEmpty
-
-  lazy val rorKbnLicenseType: Option[RorKbnLicenseType] =
-    findHeader(Header.Name.rorKbnLicenseType, in = restRequest.allHeaders)
-      .flatMap(h => RorKbnLicenseType.from(h.value.value).toOption)
+  def shouldAddBasicAuthPrompt(aclStaticContext: AccessControlStaticContext): Boolean = {
+    implicit val requestId: RequestId = id.toRequestId
+    aclStaticContext.doesRequirePassword && this.restRequest.rorKbnLicenseType.isEmpty
+  }
 
 }
 
@@ -215,49 +207,6 @@ object RequestContext extends RequestIdAwareLogging {
       "indices:admin/xpack/rollup/search",
       "indices:monitor/*",
     ).map(Action.apply)
-  }
-
-  extension (requestContext: RequestContext) {
-
-    def impersonateAs: Option[User.Id] = {
-      findHeader(Header.Name.impersonateAs)
-        .map { header => User.Id(header.value) }
-    }
-
-    def xForwardedForHeaderValue: Option[Address] = {
-      findHeader(Header.Name.xForwardedFor)
-        .flatMap { header =>
-          Option(header.value.value)
-            .flatMap(_.split(",").headOption)
-            .flatMap(Address.from)
-        }
-    }
-
-    def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
-
-    def bearerToken: Either[AuthorizationTokenRetrievingError, AuthorizationToken] = authorizationTokenBy(
-      AuthorizationTokenDef(headerName = Header.Name.authorization, allowedPrefix = StrictlyDefined(bearer))
-    )
-
-    def authorizationTokenBy(
-        config: AuthorizationTokenDef
-    ): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
-      for {
-        tokenHeader <- findHeader(config.headerName).toRight(MissingHeader)
-        authorizationToken <- AuthorizationToken.from(tokenHeader.value).toRight(InvalidValue)
-        _ <- config.allowedPrefix match {
-          case AllowedPrefix.Any                                                             => Right(())
-          case AllowedPrefix.StrictlyDefined(prefix) if prefix === authorizationToken.prefix => Right(())
-          case AllowedPrefix.StrictlyDefined(_)                                              => Left(InvalidValue)
-        }
-      } yield authorizationToken
-
-    }
-
-    private def findHeader(name: Header.Name) = {
-      Header.findHeader(name, in = requestContext.restRequest.allHeaders)
-    }
-
   }
 
   sealed trait AuthorizationTokenRetrievingError

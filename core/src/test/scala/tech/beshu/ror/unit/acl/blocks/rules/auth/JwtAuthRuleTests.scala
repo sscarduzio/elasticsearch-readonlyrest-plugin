@@ -520,6 +520,28 @@ class JwtAuthRuleTests extends AnyWordSpec with MockFactory with BlockContextAss
           denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
+      "the JWT header holds two different values" in {
+        val key: Key = Jwts.SIG.HS256.key().build()
+        val jwt = Jwt(
+          key,
+          claims = List(
+            "userId" := "user1",
+            "groups" := List("group1", "group2")
+          )
+        )
+        assertNotMatchRule(
+          configuredJwtDef = AuthJwtDef(
+            JwtDef.Name("test"),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
+            groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
+          ),
+          tokenHeader = bearerHeader(jwt),
+          additionalHeaders = Seq(headerFrom("Authorization" -> "Bearer other")),
+          denialCause = AuthenticationFailed("JWT header 'Authorization' is missing")
+        )
+      }
       "user claim name is defined but userId isn't passed in JWT token claim" in {
         val key: Key = Jwts.SIG.HS256.key().build()
         val jwt = Jwt(
@@ -686,6 +708,7 @@ class JwtAuthRuleTests extends AnyWordSpec with MockFactory with BlockContextAss
       configuredJwtDef,
       configuredGroups,
       tokenHeader,
+      Seq.empty,
       preferredGroupId,
       RuleCheckAssertion.RulePermitted(blockContextAssertion)
     )
@@ -694,6 +717,7 @@ class JwtAuthRuleTests extends AnyWordSpec with MockFactory with BlockContextAss
       configuredJwtDef: AuthJwtDef,
       configuredGroups: Option[GroupsLogic] = None,
       tokenHeader: Header,
+      additionalHeaders: Seq[Header] = Seq.empty,
       preferredGroupId: Option[GroupId] = None,
       denialCause: Cause
   ): Unit =
@@ -701,6 +725,7 @@ class JwtAuthRuleTests extends AnyWordSpec with MockFactory with BlockContextAss
       configuredJwtDef,
       configuredGroups,
       tokenHeader,
+      additionalHeaders,
       preferredGroupId,
       RuleCheckAssertion.RuleDenied(denialCause)
     )
@@ -709,6 +734,7 @@ class JwtAuthRuleTests extends AnyWordSpec with MockFactory with BlockContextAss
       configuredJwtDef: AuthJwtDef,
       configuredGroups: Option[GroupsLogic],
       tokenHeader: Header,
+      additionalHeaders: Seq[Header],
       preferredGroup: Option[GroupId],
       assertion: RuleCheckAssertion
   ): Unit = {
@@ -737,7 +763,7 @@ class JwtAuthRuleTests extends AnyWordSpec with MockFactory with BlockContextAss
       new JwtAuthorizationRule(authzSettings),
     )
     val requestContext = MockRequestContext.indices.withHeaders(
-      preferredGroup.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
+      (preferredGroup.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader) ++ additionalHeaders
     )
     val blockContext = GeneralIndexRequestBlockContext(
       block = mock[Block],

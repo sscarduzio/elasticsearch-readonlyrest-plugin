@@ -58,6 +58,18 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
           requestHeaders = Set.empty
         )
       }
+      "x-api-key header holds a valid key next to an invalid one" in {
+        assertNotMatchRule(
+          configuredApiKeys = NonEmptySet.of(ApiKey("1234567890")),
+          requestHeaders = Set(headerFrom("X-Api-Key" -> "1234567890"), headerFrom("X-Api-Key" -> "x"))
+        )
+      }
+      "x-api-key header holds a valid key next to an invalid one, given in the other order" in {
+        assertNotMatchRule(
+          configuredApiKeys = NonEmptySet.of(ApiKey("1234567890")),
+          requestHeaders = Set(headerFrom("X-Api-Key" -> "x"), headerFrom("X-Api-Key" -> "1234567890"))
+        )
+      }
     }
   }
 
@@ -74,6 +86,7 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
     (() => restRequest.path).expects().returning(UriPath.from("/_cat/indices"))
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
+    (() => requestContext.id).expects().returning(RequestContext.Id.fromString("mock")).anyNumberOfTimes()
     val blockContext = GeneralNonIndexRequestBlockContext(
       block = mock[Block],
       requestContext = requestContext,

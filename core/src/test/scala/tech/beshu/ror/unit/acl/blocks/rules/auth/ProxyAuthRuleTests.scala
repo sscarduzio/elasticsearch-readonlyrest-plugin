@@ -103,6 +103,32 @@ class ProxyAuthRuleTests extends AnyWordSpec with BlockContextAssertion {
           denialCause = AuthenticationFailed("User not found in allowed users list")
         )
       }
+      "the user header holds two different values" in {
+        assertNotMatchRule(
+          settings = ProxyAuthRule.Settings(
+            UniqueNonEmptyList.of(User.Id("userA"), User.Id("userB")),
+            headerNameFrom("custom-user-auth-header")
+          ),
+          headers = Set(
+            headerFrom("custom-user-auth-header" -> "userA"),
+            headerFrom("custom-user-auth-header" -> "userB")
+          ),
+          denialCause = AuthenticationFailed("User header 'custom-user-auth-header' not found")
+        )
+      }
+      "the user header holds two different values, given in the other order" in {
+        assertNotMatchRule(
+          settings = ProxyAuthRule.Settings(
+            UniqueNonEmptyList.of(User.Id("userA"), User.Id("userB")),
+            headerNameFrom("custom-user-auth-header")
+          ),
+          headers = Set(
+            headerFrom("custom-user-auth-header" -> "userB"),
+            headerFrom("custom-user-auth-header" -> "userA")
+          ),
+          denialCause = AuthenticationFailed("User header 'custom-user-auth-header' not found")
+        )
+      }
       "user id is passed in different header than the configured one" in {
         assertNotMatchRule(
           settings = ProxyAuthRule.Settings(

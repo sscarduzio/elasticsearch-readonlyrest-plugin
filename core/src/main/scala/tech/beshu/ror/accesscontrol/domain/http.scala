@@ -28,6 +28,7 @@ import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.net.InetSocketAddress
@@ -99,20 +100,30 @@ object Header {
 
   def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-  def findHeader(header: Header.Name, in: Set[Header]): Option[Header] =
-    in.find(_.name === header)
-
-  def findHeader(header: Header.Name, in: java.util.Map[String, java.util.List[String]]): Option[Header] = {
-    for {
-      headers <- fromRawHeaders(in).toOption
-      header <- findHeader(header, in = headers)
-    } yield header
+  def singleHeaderOrNone(name: Header.Name, in: Set[Header])(
+      implicit requestId: RequestId
+  ): Option[Header] = {
+    findSingleHeader(name, in) match {
+      case Right(header)                     => header
+      case Left(AmbiguousHeader(headerName)) =>
+        logging.logger.warn(ambiguousHeaderMessage(headerName))
+        None
+    }
   }
 
-  /** Reads the headers of a request from its two channels: the HTTP headers on the wire, and the headers
-    * packed in the `ror_metadata` part of the Authorization value. A name which arrives on both channels
-    * must hold the same values on both, otherwise the request is rejected with `HeaderValuesConflict`.
-    */
+  def findSingleHeader(name: Header.Name, in: Set[Header]): Either[AmbiguousHeader, Option[Header]] = {
+    in.filter(_.name === name).toList match {
+      case Nil           => Right(None)
+      case header :: Nil => Right(Some(header))
+      case _             => Left(AmbiguousHeader(name))
+    }
+  }
+
+  private def ambiguousHeaderMessage(name: Header.Name) =
+    s"Header '${name.show}' holds more than one value. ROR reads no value from it"
+
+  final case class AmbiguousHeader(name: Header.Name)
+
   def fromRawHeaders(
       headers: java.util.Map[String, java.util.List[String]]
   ): Either[AuthorizationValueError, Set[Header]] = {
@@ -225,6 +236,8 @@ object Header {
   }
 
   implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
+
+  private object logging extends RequestIdAwareLogging
 }
 
 sealed trait Address

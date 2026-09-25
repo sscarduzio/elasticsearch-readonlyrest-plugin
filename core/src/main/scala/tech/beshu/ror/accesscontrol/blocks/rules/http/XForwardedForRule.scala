@@ -26,13 +26,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{BaseHostsRule, Hostna
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.Address
+import tech.beshu.ror.accesscontrol.request.RestRequest.*
 
 class XForwardedForRule(val settings: Settings, resolver: HostnameResolver) extends BaseHostsRule(resolver) {
 
   override val name: Rule.Name = XForwardedForRule.Name.name
 
   override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    blockContext.requestContext.xForwardedForHeaderValue match {
+    blockContext.requestContext.restRequest.xForwardedForHeaderValue match {
       case Some(xForwardedForAddress) =>
         checkAllowedAddresses(blockContext)(
           allowedAddresses = settings.allowedAddresses,

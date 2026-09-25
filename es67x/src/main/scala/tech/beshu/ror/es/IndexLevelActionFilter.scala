@@ -33,7 +33,6 @@ import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
@@ -160,7 +159,7 @@ class IndexLevelActionFilter(
         threadPool.getThreadContext.addSystemAuthenticationHeader(esEnv.esNodeSettings.nodeName)
         chain.continue(task, action, request, listener)
       case Some(channel) =>
-        val correlationId = channel.correlationId
+        val correlationId = channel.restRequest.correlationId
         val rorActionListener = new HidingInternalErrorDetailsRorActionListener(listener, correlationId)
         Try {
           proceedByRorEngine(

@@ -119,7 +119,17 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext.metadata.withHeaders(headerFrom("key2" -> "x"))
             )
           )
-        variable should be(Left(CannotExtractValue("Cannot extract user header 'key1' from request context")))
+        variable should be(Left(CannotExtractValue("Cannot extract header 'key1' from request context")))
+      }
+      "the corresponding header holds two different values" in {
+        val variable = forceCreateSingleVariable("@{header:key1}")
+          .resolve(
+            currentUserMetadataRequestBlockContextFrom(
+              requestContext = MockRequestContext.metadata
+                .withHeaders(headerFrom("key1" -> "x"), headerFrom("key1" -> "y"))
+            )
+          )
+        variable should be(Left(CannotExtractValue("Cannot extract header 'key1' from request context")))
       }
     }
     "have not been able to be created" when {
