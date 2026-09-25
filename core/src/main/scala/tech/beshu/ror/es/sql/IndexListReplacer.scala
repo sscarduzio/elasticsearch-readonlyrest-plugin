@@ -18,7 +18,7 @@ package tech.beshu.ror.es.sql
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.es.query.{IndexLists, QueryText}
 import tech.beshu.ror.syntax.*
 
 private[sql] object IndexListReplacer {
@@ -31,36 +31,19 @@ private[sql] object IndexListReplacer {
     val names = allowedIndexNamesOf(allowedIndices)
     val indexList = names.toList.map(_.stringify).sorted.mkString(",")
     val edits = indexLists.toList.map(located => (located.span, textOf(located.writtenAs, indexList)))
-    ReplacedQuery(rewritten(query, edits), names.map(_.stringify))
+    ReplacedQuery(QueryText.rewritten(query, edits), names.map(_.stringify))
   }
 
-  /**
-   * An index list cannot express an exclusion, so an allowed pattern an exclusion falls under has to go whole -
-   * keeping it would read that exclusion back in.
-   */
   private def allowedIndexNamesOf(
       allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): Set[ClusterIndexName] = {
-    val included = allowedIndices.includedOnly
-    val names = allowedIndices.toList.filter(_.excluded).map(_.name) match {
-      case Nil      => included
-      case excluded => included.filterNot(name => excluded.exists(overlapping(name, _)))
-    }
+    val names = IndexLists.allowedIndexNamesOf(allowedIndices)
     if (names.nonEmpty) names else Set(ClusterIndexName.Local.randomNonexistentIndex())
   }
-
-  private def overlapping(one: ClusterIndexName, other: ClusterIndexName): Boolean =
-    PatternsMatcher.create(Set(one)).`match`(other) || PatternsMatcher.create(Set(other)).`match`(one)
 
   private def textOf(syntax: IndexListSyntax, indexList: String): String = syntax match {
     case IndexListSyntax.InQueryText     => s""""$indexList""""
     case IndexListSyntax.AppendedToQuery => s""" "$indexList""""
-  }
-
-  private def rewritten(query: String, edits: List[(TextSpan, String)]): String = {
-    edits.sortBy { case (span, _) => -span.start }.foldLeft(query) { case (text, (span, replacement)) =>
-      s"${text.substring(0, span.start)}$replacement${text.substring(span.end)}"
-    }
   }
 
   final case class ReplacedQuery(query: String, intendedIndices: Set[String]) {

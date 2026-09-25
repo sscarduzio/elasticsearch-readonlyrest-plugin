@@ -17,13 +17,10 @@
 package tech.beshu.ror.es.sql
 
 import cats.data.NonEmptyList
-import cats.syntax.traverse.*
 import enumeratum.{Enum, EnumEntry}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.es.query.TextSpan
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ScalaOps.*
-
-private[sql] final case class TextSpan(start: Int, end: Int)
 
 private[sql] sealed trait CommandSelector
 
@@ -63,18 +60,5 @@ private[sql] final case class LocatedIndexList(
     requestedIndices.toList
       .map(index => if (index.excluded) s"-${index.name.stringify}" else index.name.stringify)
       .toCovariantSet
-
-}
-
-private[sql] object LocatedIndexList {
-
-  def requestedIndicesIn(indexList: String): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
-    indexList
-      .split(',')
-      .asSafeList
-      .map(_.trim)
-      .filter(_.nonEmpty)
-      .traverse(RequestedIndex.fromString)
-      .flatMap(NonEmptyList.fromList)
 
 }

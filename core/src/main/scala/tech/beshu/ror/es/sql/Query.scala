@@ -22,23 +22,11 @@ import tech.beshu.ror.es.sql.SqlQueryIndicesReader.ReadError
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-sealed trait Query {
-
-  protected def text: String
-
-  def stringify: String = text
-
-  def indices: Set[RequestedIndex[ClusterIndexName]]
-
-  def narrowedTo(
-      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  )(
-      implicit requestId: RequestId
-  ): Either[Rejection, Query]
-
-}
+type Query = tech.beshu.ror.es.query.Query[Rejection]
 
 object Query extends RequestIdAwareLogging {
+
+  export tech.beshu.ror.es.query.Query.{Unreadable, WithoutIndices}
 
   def from(query: String, reader: SqlQueryIndicesReader)(
       implicit requestId: RequestId
@@ -100,35 +88,6 @@ object Query extends RequestIdAwareLogging {
     }
 
   }
-
-  final case class WithoutIndices(text: String) extends Query {
-
-    override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
-
-    override def narrowedTo(
-        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-    )(
-        implicit requestId: RequestId
-    ): Either[Rejection, Query] = Right(this)
-
-  }
-
-  final case class Unreadable(text: String, reason: Rejection) extends Query {
-
-    override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
-
-    override def narrowedTo(
-        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-    )(
-        implicit requestId: RequestId
-    ): Either[Rejection, Query] = {
-      Either.cond[Rejection, Query](allowedIndices.toList.toCovariantSet == indices, this, reason)
-    }
-
-  }
-
-  private def allIndices: Set[RequestedIndex[ClusterIndexName]] =
-    Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
 
   private def readable(query: String, reader: SqlQueryIndicesReader, indexLists: List[LocatedIndexList]): Query =
     NonEmptyList.fromList(indexLists) match {

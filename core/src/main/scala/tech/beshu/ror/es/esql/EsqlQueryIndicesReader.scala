@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.esql
 
 import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.IndexPatternInQuery
 
 trait EsqlQueryIndicesReader {
 
@@ -42,10 +43,5 @@ object EsqlQueryIndicesReader {
     private[esql] def withoutRepeats: QueryIndices = QueryIndices(fromSources.distinct, lookupJoins.distinct)
 
   }
-
-  final case class IndexPatternInQuery(reportedIndexList: String, writtenAt: SourceLocation, writtenText: String)
-
-  /** A 1-based line and a 0-based column, the way ES reports them. */
-  final case class SourceLocation(line: Int, column: Int)
 
 }

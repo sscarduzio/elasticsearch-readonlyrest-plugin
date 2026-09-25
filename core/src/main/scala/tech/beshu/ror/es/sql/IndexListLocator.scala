@@ -20,6 +20,8 @@ import cats.data.NonEmptyList
 import cats.syntax.traverse.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.domain.RequestedIndex
+import tech.beshu.ror.es.query.QueryText.sameIndexList
+import tech.beshu.ror.es.query.{ColumnUnit, IndexLists, IndexPatternInQuery, QueryText, TextSpan}
 import tech.beshu.ror.es.sql.CommandSelector.{
   AppendableIndexList,
   CannotNarrow,
@@ -27,10 +29,9 @@ import tech.beshu.ror.es.sql.CommandSelector.{
   MatchingPattern,
   NotIndexRelated
 }
-import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{QueryIndices, SourceLocation, TableInQuery}
+import tech.beshu.ror.es.sql.SqlQueryIndicesReader.QueryIndices
 
 import scala.annotation.tailrec
-import scala.util.Try
 import scala.util.matching.Regex
 
 private[sql] object IndexListLocator {
@@ -49,22 +50,13 @@ private[sql] object IndexListLocator {
         locatedSelector(query, selector)
     }
 
-  private def checkNoneOverlaps(query: String, indexLists: List[LocatedIndexList]): Either[ReadingFailure, Unit] = {
-    indexLists
-      .map(_.span)
-      .sortBy(span => (span.start, span.end))
-      .sliding(2)
-      .collectFirst {
-        case List(one, next) if next.start < one.end || next.start == one.start =>
-          ReadingFailure.OverlappingIndexLists(
-            query.substring(one.start, one.end),
-            query.substring(next.start, next.end)
-          )
-      }
+  private def checkNoneOverlaps(query: String, indexLists: List[LocatedIndexList]): Either[ReadingFailure, Unit] =
+    QueryText
+      .firstOverlapIn(query, indexLists.map(_.span))
+      .map { case (one, other) => ReadingFailure.OverlappingIndexLists(one, other) }
       .toLeft(())
-  }
 
-  private def locatedTable(query: String, table: TableInQuery): Either[ReadingFailure, LocatedIndexList] =
+  private def locatedTable(query: String, table: IndexPatternInQuery): Either[ReadingFailure, LocatedIndexList] =
     for {
       span <- spanOf(query, table)
       indices <- requestedIndicesIn(table.reportedIndexList)
@@ -104,14 +96,14 @@ private[sql] object IndexListLocator {
   private def requestedIndicesIn(
       indexList: String
   ): Either[ReadingFailure, NonEmptyList[RequestedIndex[ClusterIndexName]]] =
-    LocatedIndexList
+    IndexLists
       .requestedIndicesIn(indexList)
       .toRight(ReadingFailure.UnsupportedIndexList(indexList))
 
-  private def spanOf(query: String, table: TableInQuery): Either[ReadingFailure, TextSpan] =
-    offsetsOf(query, table.writtenAt)
-      .map(start => TextSpan(start, start + table.writtenText.length))
-      .filter(span => span.end <= query.length && query.substring(span.start, span.end) == table.writtenText) match {
+  private def spanOf(query: String, table: IndexPatternInQuery): Either[ReadingFailure, TextSpan] =
+    // ES before 7.15 parses through an ANTLRInputStream, which counts the column in UTF-16 units;
+    // ES 7.15+ parses through a CodePointCharStream, which counts it in code points
+    QueryText.spansOf(query, table, List(ColumnUnit.CodePoints, ColumnUnit.Utf16Units)) match {
       case span :: Nil if sameIndexList(table.writtenText, table.reportedIndexList) => Right(span)
       case _ => Left(ReadingFailure.NotWhereEsReportedIt(table.reportedIndexList))
     }
@@ -147,34 +139,5 @@ private[sql] object IndexListLocator {
       case _           => None
     }
   }
-
-  private def offsetsOf(query: String, location: SourceLocation): List[Int] = {
-    @tailrec
-    def startOfLine(idx: Int, line: Int): Option[Int] = {
-      if (line >= location.line) Some(idx)
-      else
-        query.indexOf('\n', idx) match {
-          case -1        => None
-          case newLineAt => startOfLine(newLineAt + 1, line + 1)
-        }
-    }
-    Option
-      .when(location.line >= 1 && location.column >= 0)(())
-      .flatMap(_ => startOfLine(0, 1))
-      .toList
-      .flatMap { lineStart =>
-        // ES before 7.15 parses through an ANTLRInputStream, which counts the column in UTF-16 units;
-        // ES 7.15+ parses through a CodePointCharStream, which counts it in code points
-        val inUtf16Units = lineStart + location.column
-        val inCodePoints = Try(query.offsetByCodePoints(lineStart, location.column)).toOption
-        (inUtf16Units :: inCodePoints.toList).distinct
-      }
-  }
-
-  private def sameIndexList(one: String, other: String): Boolean =
-    quotingAndSpacingAside(one) == quotingAndSpacingAside(other)
-
-  private def quotingAndSpacingAside(indexList: String): String =
-    indexList.filterNot(char => char.isWhitespace || char == '"' || char == '`')
 
 }

@@ -18,8 +18,9 @@ package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
+import tech.beshu.ror.es.query.IndexLists.allowedIndexNamesOf
+import tech.beshu.ror.es.query.{QueryText, TextSpan}
 import tech.beshu.ror.syntax.*
 
 private[esql] object IndexListReplacer {
@@ -57,25 +58,11 @@ private[esql] object IndexListReplacer {
         Edit(indexList.span, intendedIndexList = s"LOOKUP JOIN ${index}", index)
       }
 
-    ReplacedQuery(rewritten(query, edits), edits.map(_.intendedIndexList).sorted)
+    ReplacedQuery(
+      QueryText.rewritten(query, edits.map(edit => (edit.span, edit.text))),
+      edits.map(_.intendedIndexList).sorted
+    )
   }
-
-  /**
-   * A rewritten index list cannot express an exclusion, so one the ACL left in has to be applied here - and an
-   * allowed pattern an exclusion falls under has to go whole, since keeping it would read that exclusion back in.
-   */
-  private def allowedIndexNamesOf(
-      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Set[ClusterIndexName] = {
-    val included = allowedIndices.includedOnly
-    allowedIndices.toList.filter(_.excluded).map(_.name) match {
-      case Nil      => included
-      case excluded => included.filterNot(name => excluded.exists(overlapping(name, _)))
-    }
-  }
-
-  private def overlapping(one: ClusterIndexName, other: ClusterIndexName): Boolean =
-    PatternsMatcher.create(Set(one)).`match`(other) || PatternsMatcher.create(Set(other)).`match`(one)
 
   /**
    * A lone source command gets the whole ACL-resolved set, since a rule may resolve to indices the written pattern
@@ -127,12 +114,6 @@ private[esql] object IndexListReplacer {
   private def textOf(syntax: IndexListSyntax, indexList: String): String = syntax match {
     case IndexListSyntax.BareIndexList        => indexList
     case IndexListSyntax.PromqlIndexParameter => s" index=$indexList"
-  }
-
-  private def rewritten(query: String, edits: List[Edit]): String = {
-    edits.sortBy(-_.span.start).foldLeft(query) { case (text, edit) =>
-      s"${text.substring(0, edit.span.start)}${edit.text}${text.substring(edit.span.end)}"
-    }
   }
 
   private final case class Edit(span: TextSpan, intendedIndexList: String, text: String)

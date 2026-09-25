@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.sql
 
 import org.joor.Reflect.on
+import tech.beshu.ror.es.query.{IndexPatternInQuery, SourceLocation}
 import tech.beshu.ror.es.sql.CommandSelector.{
   AppendableIndexList,
   CannotNarrow,
@@ -24,7 +25,6 @@ import tech.beshu.ror.es.sql.CommandSelector.{
   MatchingPattern,
   NotIndexRelated
 }
-import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{SourceLocation, TableInQuery}
 
 import scala.util.Try
 
@@ -36,11 +36,11 @@ private[sql] object EsSqlObjects {
 
   private val commandsTakingNoSelector = Set("ShowTables", "SysTables")
 
-  def tableInQuery(tableIdentifier: Any): Option[TableInQuery] =
+  def tableInQuery(tableIdentifier: Any): Option[IndexPatternInQuery] =
     Try {
       val source = on(tableIdentifier).call("source").get[Any]()
       val location = on(source).call("source").get[Any]()
-      TableInQuery(
+      IndexPatternInQuery(
         // not index(), which drops the remote cluster a query may write as `cluster:index`
         reportedIndexList = on(tableIdentifier).call("qualifiedIndex").get[String](),
         writtenAt = SourceLocation(

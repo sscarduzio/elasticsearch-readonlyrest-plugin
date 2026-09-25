@@ -17,13 +17,11 @@
 package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
-import cats.syntax.traverse.*
 import enumeratum.{Enum, EnumEntry}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.utils.ScalaOps.*
-
-private[esql] final case class TextSpan(start: Int, end: Int)
+import tech.beshu.ror.es.query.IndexLists.requestedIndicesIn
+import tech.beshu.ror.es.query.TextSpan
 
 private[esql] sealed trait IndexListSyntax extends EnumEntry
 
@@ -89,14 +87,5 @@ private[esql] object LocatedIndexList {
       }
 
   }
-
-  /** All of them or none: an entry ROR cannot read is an index it would leave the ACL unaware of. */
-  private def requestedIndicesIn(indexPattern: String): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
-    indexPattern
-      .split(',')
-      .asSafeList
-      .filter(_.nonEmpty)
-      .traverse(RequestedIndex.fromString)
-      .flatMap(NonEmptyList.fromList)
 
 }

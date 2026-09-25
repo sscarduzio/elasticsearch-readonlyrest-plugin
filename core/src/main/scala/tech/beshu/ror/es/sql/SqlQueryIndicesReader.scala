@@ -18,6 +18,7 @@ package tech.beshu.ror.es.sql
 
 import cats.syntax.traverse.*
 import org.joor.ReflectException
+import tech.beshu.ror.es.query.IndexPatternInQuery
 import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
 
 import java.lang.reflect.InvocationTargetException
@@ -42,16 +43,11 @@ object SqlQueryIndicesReader {
   private[sql] object QueryIndices {
 
     /** The list is empty for a statement that reads no table, e.g. `SELECT 1 + 1`. */
-    final case class StatementTables(tables: List[TableInQuery]) extends QueryIndices
+    final case class StatementTables(tables: List[IndexPatternInQuery]) extends QueryIndices
 
     final case class CommandIndices(selector: CommandSelector) extends QueryIndices
 
   }
-
-  private[sql] final case class TableInQuery(reportedIndexList: String, writtenAt: SourceLocation, writtenText: String)
-
-  /** A 1-based line and a 0-based column. */
-  private[sql] final case class SourceLocation(line: Int, column: Int)
 
   private[sql] sealed trait ReadError
 

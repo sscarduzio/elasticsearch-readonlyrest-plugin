@@ -21,15 +21,16 @@ import org.joor.Reflect.on
 import org.scalatest.Inside.inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.es.query.{IndexPatternInQuery, SourceLocation}
 import tech.beshu.ror.es.sql.CommandSelector.LiteralIndexList
-import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{QueryIndices, ReadError, SourceLocation, TableInQuery}
+import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
 
 class ReflectiveSqlQueryIndicesReaderTest extends AnyWordSpec {
 
   "A reflective SQL query indices reader" should {
     "read the tables of a statement" in {
       readerParsingTo(new Select(new TableIdentifier("library"))).queryIndicesFrom("q") shouldBe
-        Right(QueryIndices.StatementTables(List(TableInQuery("library", SourceLocation(1, 14), "library"))))
+        Right(QueryIndices.StatementTables(List(IndexPatternInQuery("library", SourceLocation(1, 14), "library"))))
     }
     "read the index list of a command" in {
       readerParsingTo(new ShowTables("library")).queryIndicesFrom("q") shouldBe

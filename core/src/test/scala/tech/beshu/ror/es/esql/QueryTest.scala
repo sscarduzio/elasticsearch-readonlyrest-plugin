@@ -20,7 +20,8 @@ import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
-import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.{IndexPatternInQuery, QueryIndices, SourceLocation}
+import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.{IndexPatternInQuery, SourceLocation}
 import tech.beshu.ror.syntax.*
 
 class QueryTest extends AnyWordSpec {
