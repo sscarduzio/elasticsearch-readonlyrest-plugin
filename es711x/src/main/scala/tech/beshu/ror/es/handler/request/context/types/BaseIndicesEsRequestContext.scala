@@ -54,7 +54,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](
   override lazy val requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some(discoverIndices)
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    if (aclContext.doesRequirePassword) {
+    if (shouldAddBasicAuthPrompt(aclContext)) {
       val nonExistentIndex = discoverIndices.randomNonexistentLocalIndex()
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList

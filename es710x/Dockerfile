@@ -45,4 +45,4 @@ COPY --link --chown=1000:0 per-version/ /usr/share/elasticsearch/plugins/readonl
 COPY init-readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
 COPY ror-entrypoint.sh /usr/local/bin/ror-entrypoint.sh
 
-ENTRYPOINT ["/bin/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]
+ENTRYPOINT ["/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]

@@ -44,7 +44,6 @@ import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.LoggerOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging

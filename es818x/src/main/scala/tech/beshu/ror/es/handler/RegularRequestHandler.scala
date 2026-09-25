@@ -121,7 +121,7 @@ class RegularRequestHandler(engine: Engine, esContext: EsContext, threadPool: Th
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(
       ForbiddenResponse.create(
-        ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext)
+        ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext, requestContext)
       )
     )
   }

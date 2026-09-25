@@ -1,8 +1,15 @@
 #!/bin/bash
+# Prints the ES action strings of one ES version tag, one per line, to standard output.
+#
+# Standard output carries the list and nothing else: a caller redirects it into the file it
+# publishes. Every message about the run goes to standard error.
+
+# shellcheck source=ci/log.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../log.sh"
 
 if [ $# -ne 1 ]
   then
-    echo "$0 - This command accepts 1 argument: ES version \ni.e. :\n$0 v7.9.0)"
+    ci_log "Usage: $0 <ES version tag>, for example: $0 v7.9.0"
     exit 1
 fi
 
@@ -19,7 +26,3 @@ grep -E -ri --include="*.java" 'public.*static.*final.*(String|ActionType).*"[a-
   | grep '^"[a-z]*:[a-z].*/[a-z]' \
   | sort -u
 rm -rf "$TEMPDIR"
-
-# No logging to stdout because this command is supposed to be used with pipelines.
-
-

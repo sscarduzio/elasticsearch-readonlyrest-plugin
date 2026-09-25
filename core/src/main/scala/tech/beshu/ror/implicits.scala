@@ -22,7 +22,7 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import eu.timepit.refined.api.{Result as _, *}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.lemonlabs.uri.Uri
+import io.lemonlabs.uri.{Uri, Url}
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
@@ -47,6 +47,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.*
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -75,6 +76,7 @@ import tech.beshu.ror.accesscontrol.logging.ResponseContext.{
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.es.esql.{ReadingFailure, Rejection}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader
@@ -248,7 +250,13 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   implicit val externalAuthorizationServiceNameShow: Show[ExternalGroupsProviderService.Name] = Show.show(_.value.value)
   implicit val jwtDefNameShow: Show[JwtDef.Name] = Show.show(_.value.value)
   implicit val rorKbnDefNameShow: Show[RorKbnDef.Name] = Show.show(_.value.value)
-  implicit val httpRequestShow: Show[HttpClient.Request] = Show.show(_.toString)
+
+  implicit val httpRequestShow: Show[HttpClient.Request] = Show.show { r =>
+    // the request can carry credentials in the URL user info part and in the headers, so neither of them is shown
+    val headerNames = r.headers.keys.toList.sorted.map(name => s"$name=<OMITTED>")
+    s"Request[method=[${r.method.toString}],url=[${urlWithoutUserInfo(r.url).show}],headers=[${headerNames.mkString(",")}]]"
+  }
+
   implicit val httpResponseShow: Show[HttpClient.Response] = Show.show(_.toString)
   implicit val functionNameShow: Show[FunctionName] = Show.show(_.name.value)
   implicit val functionDefinitionShow: Show[FunctionDefinition] = Show.show(_.functionName.show)
@@ -343,8 +351,8 @@ trait LogsShowInstances extends cats.instances.AllInstances {
        | BRS:${r.restRequest.allHeaders.exists(_.name === Header.Name.userAgent).show},
        | ACT:${r.action.show},
        | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
-       | XFF:${r.restRequest.allHeaders
-        .find(_.name === Header.Name.xForwardedFor)
+       | XFF:${Header
+        .findHeader(Header.Name.xForwardedFor, in = r.restRequest.allHeaders)
         .map(_.value.show)
         .getOrElse("null")
         .show},
@@ -725,6 +733,71 @@ trait LogsShowInstances extends cats.instances.AllInstances {
 
   implicit def settingsSavingErrorShow[ERROR: Show]: Show[SettingsSavingError[ERROR]] = Show.show {
     case SettingsSavingError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
+  }
+
+  implicit val auditClusterNodeShow: Show[AuditClusterNode] = Show.show { n =>
+    urlWithoutUserInfo(n.toUrl).show
+  }
+
+  implicit val remoteAuditClusterShow: Show[RemoteAuditCluster] = Show.show { cluster =>
+    cluster.nodes.toList.map(_.show).show
+  }
+
+  private def urlWithoutUserInfo(url: Url): Url = {
+    url.authorityOption match {
+      case Some(authority) =>
+        url
+          .withAuthority(
+            authority.copy(userInfo = None)(
+              using url.config
+            )
+          )
+          .toUrl
+      case None => url
+    }
+  }
+
+  implicit val esqlIndexListReadingFailureShow: Show[ReadingFailure] = Show.show {
+    case ReadingFailure.NotWhereEsReportedIt(indexList) =>
+      s"Elasticsearch says the query reads [${indexList.show}], but points at a place in the query text where " +
+        s"that is not what is written - so there is nothing ReadonlyREST can safely rewrite. Please report " +
+        s"this query to the ReadonlyREST team"
+    case ReadingFailure.SubqueryInSourceCommand(indexList) =>
+      s"the indices [${indexList.show}] are read by a command that also holds a subquery, and Elasticsearch " +
+        s"reports the two merged into a single list - so ReadonlyREST cannot tell which part of the query " +
+        s"text to narrow down. Write the subquery as a separate command to have such a query authorized"
+    case ReadingFailure.IndexListInAnonymousParameter =>
+      "the indices are named by an anonymous query parameter ([?] or [??]), which Elasticsearch binds by the " +
+        "order the parameters are written in - so narrowing it down would rebind every parameter written after " +
+        "it. Name the parameter ([?index]) or number it ([?1]) to have such a query authorized"
+    case ReadingFailure.UnsupportedIndexList(indexList) =>
+      s"[${indexList.show}] is not something ReadonlyREST can read as a list of index names"
+    case ReadingFailure.OverlappingIndexLists(one, other) =>
+      s"Elasticsearch points at two index lists, [${one.show}] and [${other.show}], that share text in the " +
+        s"query - so ReadonlyREST cannot narrow one down without changing the other. Please report this query " +
+        s"to the ReadonlyREST team"
+  }
+
+  implicit val esqlQueryRejectionShow: Show[Rejection] = Show.show {
+    case Rejection.CannotParseQuery =>
+      "The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
+        "indices the user is allowed to, and it could not read the query at all - so it cannot tell which indices " +
+        "the query would run against. If the query is valid ES|QL, please report it to the ReadonlyREST team."
+    case Rejection.CannotExtractIndices(failure) =>
+      s"The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
+        s"indices the user is allowed to, and running it as written would have let the user read the indices " +
+        s"they asked for, unchecked. It could not be rewritten, because ${failure.show}."
+    case Rejection.CannotParseRewrittenQuery(intended) =>
+      s"The ES|QL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
+        s"the indices the user is allowed to, but Elasticsearch cannot parse the rewritten query. Please report " +
+        s"this query to the ReadonlyREST team."
+    case Rejection.RewriteNotConfirmed(intended, failure) =>
+      s"The ES|QL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
+        s"the indices the user is allowed to, but it cannot tell how Elasticsearch reads the rewritten query, " +
+        s"because ${failure.show}."
+    case Rejection.SubstitutionNotConfirmed(intended, read) =>
+      s"The ES|QL query has been forbidden, because its rewrite reads [${read.mkString(", ")}] instead of " +
+        s"[${intended.mkString(", ")}]. Please report this query to the ReadonlyREST team."
   }
 
 }

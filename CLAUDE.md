@@ -49,7 +49,7 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 - **`es{version}x/`** — ES version-specific adapter modules (e.g., `es818x`, `es92x`). Each adapts core logic to a specific ES version's internal APIs. Each module's `gradle.properties` defines `supportedEsVersions` (CSV of the ES versions it publishes) — the single source of truth from which the module's newest/default ES version and exact-match lookup (`EsModuleFinder`) are derived.
 - **`audit/`** — Audit event module, cross-compiled for Scala 2.11/2.12/2.13/3.3. Published to Maven Central separately.
 - **`ror-shadowed-libs/`** — Shaded dependencies (auto-relocated to `tech.beshu.ror` prefix via Shadow plugin to avoid classpath conflicts with ES internals).
-- **`integration-tests/`** — Docker-based integration tests using TestContainers. Suites run **serially within a worker JVM** (they share one mutable singleton ES, guarded by an acquire/release latch), so `maxParallelForks = 1` always (forks-as-parallelism is a confirmed dead end — Gradle's JUnit-Platform engine runs the scalatest Launcher once per worker, so `maxParallelForks`/`forkEvery` can't split it; gradle/gradle#8632). Parallelism instead comes from **suite SHARDING**: K separate `integration-tests:test` invocations (`-PshardCount=K -PshardIndex=i`), each a fresh JVM with its own singleton ES, over a disjoint name-hash partition of the suites. `IT_PARALLELISM` (default 1) drives it in CI; at K=1 everything runs in one JVM.
+- **`integration-tests/`** — Docker-based integration tests using TestContainers. Execution model, knobs and sharding: `integration-tests/README.md`.
 - **`tests-utils/`** — Shared test fixtures and utilities (MockRequestContext, MockEsServices, etc.).
 - **`ror-tools/` / `ror-tools-core/`** — CLI tools and utilities.
 - **`eshome/`** — Local ES runner for IDE debugging. Config in `eshome/config/` (elasticsearch.yml, readonlyrest.yml). Must be cleaned when switching ES versions.
@@ -76,6 +76,8 @@ ES module entry point pattern: `es{version}x/src/main/scala/tech/beshu/ror/es/Re
 - **Strict compilation**: `-Xfatal-warnings` with unused imports/params/locals/privates checks — no warnings are acceptable
 - **License headers**: GNU GPL v3 headers required on all source files. Pre-commit hook runs `./gradlew license --rerun-tasks` automatically
 - **Code formatting**: scalafmt (Scala) + Google Java Format (Java) via Spotless. Pre-commit hook formats staged files automatically. Run `./gradlew formatCode` manually or `./gradlew formatCodeCheck` to verify.
+- **Comments**: a comment explains the current state, not the change that made it — history belongs to the commit message and the PR. Full rule: `docs/dev/code-style.md`
+- **Writing style**: comments, commit messages, PR descriptions, review comments and answers to the user all use Simplified Technical English (ASD-STE100) plus Zinsser — one idea per sentence, active voice, no metaphor. See `docs/dev/writing-style.md`
 - **Internal Scala APIs**: avoid `scala.runtime.ScalaRunTime._*` and other `_`-prefixed runtime methods — they are implementation details
 - **Plugin ZIP output**: `es{version}x/build/distributions/readonlyrest-{pluginVersion}_es{esVersion}.zip`
 
@@ -100,7 +102,7 @@ Settings can be loaded from a local file (`FileSettingsSource`) or from an ES in
 
 - Main branches: `master` (stable releases), `develop` (active development)
 - Feature branches: `feature/RORDEV-{issue}` pattern
-- PRs target `develop`
+- Which branch a PR targets, and what to do after a merge to `master`: `docs/dev/branching.md`
 
 ## Code Review
 

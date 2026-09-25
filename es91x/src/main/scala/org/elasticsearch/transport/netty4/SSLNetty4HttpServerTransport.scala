@@ -27,6 +27,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.ReadDemandRestorer
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.SSLCertHelper
 
@@ -75,6 +76,8 @@ class SSLNetty4HttpServerTransport(
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       ch.pipeline().addFirst("ssl_netty4_handler", serverSslContext.newHandler(ch.alloc()))
+      // ROR's netty drops the read demand that the ES pipeline needs. See ReadDemandRestorer.
+      ReadDemandRestorer.installIn(ch.pipeline())
     }
 
   }

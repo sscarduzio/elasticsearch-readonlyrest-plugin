@@ -34,7 +34,6 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.EsqlRequestHelper
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -52,17 +51,12 @@ class EsqlIndicesEsRequestContext private (
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  private lazy val requestClassification = EsqlRequestHelper.classifyEsqlRequest(actionRequest)
+  private lazy val esqlQuery = EsqlRequestHelper.extractEsqlQueryFrom(actionRequest)
 
   override protected def requestedIndicesFrom(
       request: ActionRequest with CompositeIndicesRequest
   ): Set[RequestedIndex[ClusterIndexName]] = {
-    requestClassification match {
-      case Right(r @ EsqlRequestClassification.IndicesRelated(_)) =>
-        r.indices.flatMap(RequestedIndex.fromString)
-      case Right(EsqlRequestClassification.NonIndicesRelated) | Left(ClassificationError.ParsingException(_)) =>
-        Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
-    }
+    esqlQuery.indices
   }
 
   override protected def update(
@@ -71,32 +65,15 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    modifyRequestIndices(request, filteredRequestedIndices)
-    applyFieldLevelSecurityTo(request, fieldLevelSecurity)
-    applyFilterTo(request, filter)
-    UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
-  }
-
-  private def modifyRequestIndices(
-      request: ActionRequest with CompositeIndicesRequest,
-      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): CompositeIndicesRequest = {
-    requestClassification match {
-      case Right(EsqlRequestClassification.NonIndicesRelated) =>
-        request
-      case Right(r @ EsqlRequestClassification.IndicesRelated(tables)) =>
-        val filteredIndicesStrings = filteredIndices.stringify.toCovariantSet
-        if (filteredIndicesStrings != r.indices) {
-          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndicesStrings)
-        } else {
-          request
-        }
-      case Left(ClassificationError.ParsingException(ex)) =>
-        logger.debug(
-          s"Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:",
-          ex
-        )
-        request
+    esqlQuery.narrowedTo(filteredRequestedIndices) match {
+      case Right(narrowedQuery) =>
+        EsqlRequestHelper.setEsqlQueryTo(request, narrowedQuery)
+        applyFieldLevelSecurityTo(request, fieldLevelSecurity)
+        applyFilterTo(request, filter)
+        UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
+      case Left(rejection) =>
+        logger.warn(rejection.show)
+        ModificationResult.ShouldBeInterrupted
     }
   }
 

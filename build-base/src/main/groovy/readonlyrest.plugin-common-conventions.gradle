@@ -15,6 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 import tech.beshu.ror.gradle.utils.EsVersions
+import tech.beshu.ror.gradle.utils.LibsStore
 import tech.beshu.ror.gradle.utils.PluginArtifact
 
 plugins {
@@ -35,9 +36,6 @@ project.ext {
     // bytecode guard: it forces a recompile at a boundary version to prove that version's bytecode matches
     // the base before trusting the repackage.
     baselineEsVersion = EsVersions.baseline(project)
-    s3BucketName = System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
-    s3StoreAddress = System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
-    s3LibsPathPrefix = (System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs').replaceAll('^/+', '').replaceAll('/+$', '')
 }
 
 group = 'org.elasticsearch.plugin'
@@ -68,10 +66,17 @@ ext.assemblePluginZip = { File contentsDir, esVer, File outputDir = distribution
     return zip
 }
 
+// The libs store: ES versions Elastic has released but not yet published to Maven Central resolve from here.
+// It is declared after mavenCentral(), so Central still answers for every version it has. mavenPom() reads
+// the POMs ror-tools publishes next to the jars; artifact() covers the jars stored without one.
+//
+// The address comes from LibsStore, which the WRITE side (ror-tools:uploadArtifactsFromEsBinaries) reads too —
+// the two must name the same location, and did not when each carried its own copy of the defaults.
 repositories {
     maven {
-        url = uri("${project.ext.s3StoreAddress.replaceAll('/+$', '')}/${project.ext.s3BucketName}/${project.ext.s3LibsPathPrefix}")
+        url = uri(LibsStore.fromEnv().repositoryUrl())
         metadataSources {
+            mavenPom()
             artifact()
         }
     }
@@ -91,7 +96,6 @@ java {
 }
 
 configurations {
-    wagon
     distJars {
         extendsFrom runtimeClasspath
         exclude group: 'org.elasticsearch'
@@ -354,17 +358,38 @@ tasks.register('packageRorPlugin') {
     }
 }
 
-// Prints two lines to stdout: the base ES version (EsVersions.oldest) on line 1, then all supported
-// versions oldest-first space-separated on line 2. Invoke with --quiet to suppress Gradle noise.
+// Prints the base ES version on line 1, and every supported version on line 2, space-separated.
+// Writes the same two lines to build/es-modules/versions.txt. A script reads that file: build-script
+// logging can pollute stdout even under --quiet.
 // Usage: ./gradlew :es818x:printEsVersionsForModule --quiet
 tasks.register('printEsVersionsForModule') {
     group = 'help'
-    description = "Prints base version and all supported versions for ${project.name} to stdout"
+    description = "Prints base version and all supported versions for ${project.name}, and writes build/es-modules/versions.txt"
     outputs.upToDateWhen { false }
     doLast {
         def esVersions = EsVersions.of(project)
-        println esVersions.oldest
-        println esVersions.all.join(' ')
+        def lines = [esVersions.oldest.toString(), esVersions.all.join(' ')]
+        lines.each { println it }
+        def versionsFile = project.layout.buildDirectory.file("es-modules/versions.txt").get().asFile
+        versionsFile.parentFile.mkdirs()
+        versionsFile.text = lines.join('\n') + '\n'
+    }
+}
+
+// Prints the newest supported ES version of this module, and writes it to
+// build/es-modules/newest-version.txt. A script reads that file: build-script logging can pollute
+// stdout even under --quiet.
+// Usage: ./gradlew :es94x:printNewestEsVersionForModule --quiet
+tasks.register('printNewestEsVersionForModule') {
+    group = 'help'
+    description = "Prints the newest supported ES version for ${project.name}, and writes build/es-modules/newest-version.txt"
+    outputs.upToDateWhen { false }
+    doLast {
+        def newest = EsVersions.of(project).newest.toString()
+        println newest
+        def versionFile = project.layout.buildDirectory.file("es-modules/newest-version.txt").get().asFile
+        versionFile.parentFile.mkdirs()
+        versionFile.text = newest + '\n'
     }
 }
 

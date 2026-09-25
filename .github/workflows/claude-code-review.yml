@@ -23,9 +23,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # Review is opt-in: run only when the PR's head commit message asks for it.
       - name: Gate on "@claude review" in head commit message
@@ -42,7 +43,7 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         if: steps.gate.outputs.run == 'true'
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@bfeaa884ee60b0ba97d001017bec0a986be9546d
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Direct prompt (not the marketplace `/code-review` plugin) so we can enforce

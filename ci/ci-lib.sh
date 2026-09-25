@@ -1,36 +1,257 @@
 #!/bin/bash -e
 
-CI_DIR=$(dirname "$0")
+# This file's OWN directory — used to locate the sibling scripts it shells out to (s3-uploader.sh).
+# BASH_SOURCE, not $0: $0 is the script that INVOKED us, which is a different directory whenever this
+# lib is sourced rather than run (`source ci/ci-lib.sh && reap_ci_job_containers` resolved it to ".").
+CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-function docker_image_exists {
-  docker manifest inspect "$1" >/dev/null 2>&1
+# shellcheck source=ci/runner-detect.sh
+source "$CI_DIR/runner-detect.sh"
+
+# shellcheck source=ci/log.sh
+source "$CI_DIR/log.sh"
+
+# The repository this build works on. CI_DIR sits in it.
+ROR_REPO_ROOT=$(cd "$CI_DIR/.." && pwd)
+
+# A job that runs in a container works as root, while the checkout keeps the user id of the runner.
+# git refuses every command in a working tree of another user ("dubious ownership"), so a caller of
+# `git rev-parse` gets no commit and the job stops. The exception makes git usable again. It goes to
+# the global config of the job, and each job gets a new container, so no machine keeps it.
+if ! git -C "$ROR_REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  git config --global --add safe.directory "$ROR_REPO_ROOT" >/dev/null 2>&1 || true
+fi
+
+
+# Reads one key from gradle.properties, which holds the build's own values. The file sits beside this
+# one, so the caller's working directory does not matter.
+#
+# An absent key fails. An empty value would name a wrong image or a wrong version, and nothing later
+# would show the cause. Every reader of the file goes through here: a second parser drifts.
+#
+# The value is everything after the first `=`, because a value such as `-Dkey=value` holds one too.
+# A key that the file states twice keeps the last line, which is the value gradle itself reads.
+gradle_property() {
+  local key=$1 file=$ROR_REPO_ROOT/gradle.properties value
+  value=$(awk -F= -v k="$key" '$1==k {line=$0} END {sub(/^[^=]*=/, "", line); print line}' "$file")
+  if [ -z "$value" ]; then
+    ci_log "$file has no key '$key'."
+    return 1
+  fi
+  printf '%s\n' "$value"
+}
+
+# The gradle args a Windows runner adds to every ./gradlew call. A Linux runner adds none.
+# The toolchains image bakes its JDK paths into /opt/gradle-home/gradle.properties, which a Windows
+# job never reads. These args state the Windows answer anyway, for a caller that does inherit it.
+# One arg per line, for a caller to read into an array.
+windows_gradle_args() {
+  is_windows || return 0
+  printf '%s\n' \
+    --build-cache \
+    -Dorg.gradle.java.installations.paths= \
+    -Dorg.gradle.java.installations.auto-download=true
+}
+
+# Prints every JVM crash log under the working tree. A crashed JVM writes one and says nothing on
+# stdout, so a leg that ends with no test failure leaves this as its only evidence.
+dump_hs_err_files() {
+  find . -name 'hs_err*' -type f -exec cat {} + 2>/dev/null || true
+}
+
+# The ES-major matrix, from the file `printEsMajors` writes. Run that task first, in the gradle call
+# the job already makes. One reader: a workflow's shell has no test, so two hand-written copies of
+# this format drift without a failure.
+es_majors_matrix() {
+  local file=$ROR_REPO_ROOT/build/es-modules/es-majors.txt
+  [ -s "$file" ] || { ci_log "printEsMajors wrote no ES major to $file."; return 1; }
+  jq -Rc -s 'split("\n") | map(select(length > 0)) | {include: map({ES_MAJOR: .})}' < "$file"
+}
+
+# Prints `true` or `false`: is the configured pluginVersion a pre-release? The `isPreReleaseVersion`
+# gradle task holds the only implementation of that rule. Take the last line, because
+# configuration-time logging pollutes stdout even under --quiet, and fail on any other word.
+is_pre_release_version() {
+  local value
+  value=$(cd "$ROR_REPO_ROOT" && ./gradlew --no-daemon -q isPreReleaseVersion | tail -n 1) || return 1
+  case "$value" in
+    true|false) printf '%s\n' "$value" ;;
+    *) ci_log "isPreReleaseVersion must print true or false. It printed '$value'."; return 1 ;;
+  esac
+}
+
+# True when HEAD carries the same tree as master's tip: on a develop push, only a merge-back does
+# that. The tree, not the commit, because a merge-back through a PR gets a merge commit.
+# Fetches master from origin; needs no token on a public repo. False on any failure.
+is_merge_back_of_master() {
+  local master_tree here_tree
+  git fetch --quiet --no-tags --depth=1 origin master 2>/dev/null || return 1
+  master_tree=$(git rev-parse --verify --quiet 'FETCH_HEAD^{tree}') || return 1
+  here_tree=$(git rev-parse --verify --quiet 'HEAD^{tree}') || return 1
+  ci_log "HEAD tree $here_tree, master tree $master_tree."
+  [ "$here_tree" = "$master_tree" ]
+}
+
+# Asks a registry about one image. Prints `present` or `absent`, and fails when it cannot ask, so
+# no caller reads an unreachable registry as an image that does not exist.
+#
+# Pass a name that carries no mirror: a cache can hold a stale answer for a tag we pushed a moment ago.
+docker_image_state() {
+  local image=$1 log
+
+  log=$(mktemp) || return 1
+  # --retry-if merges the output of the command into its standard output, so the first redirect
+  # catches both streams. The second one drops the messages of retry_with_backoff: an image Elastic
+  # never published makes the probe fail, and that is an answer here, not a fault. The lines below
+  # report what the probe found, on every path.
+  if retry_with_backoff --retry-if is_docker_registry_error \
+       docker manifest inspect "$image" >"$log" 2>/dev/null; then
+    rm -f "$log"
+    printf 'present\n'
+    return 0
+  fi
+  if grep -Eqi 'no such manifest|manifest unknown|manifest for .+ not found' "$log"; then
+    rm -f "$log"
+    printf 'absent\n'
+    return 0
+  fi
+  ci_log "Cannot read $image from the registry."
+  cat "$log" >&2
+  rm -f "$log"
+  return 1
+}
+
+# True only when the registry holds the image, false also when it cannot answer.
+docker_image_exists() {
+  [ "$(docker_image_state "$1")" = present ]
+}
+
+# Runs a command again after a failure. The delay doubles each time.
+#
+#   retry_with_backoff [--retry-if <function>] <command> [arg ...]
+#
+# Without --retry-if it repeats every failure. With it, the function decides. The function gets two
+# arguments: a file that holds the output of the command, and the status of the command. A status
+# of 0 from the function means "repeat this".
+#
+#   retry_with_backoff --retry-if is_docker_registry_error ./gradlew pushRorDockerImage
+#
+# A caller can capture the output: only the command writes to standard output.
+#
+# --retry-if also captures the output, so the command then runs in a pipeline, thus in a subshell,
+# and its standard error joins its standard output. Give it an external command. A shell function
+# that sets a variable would lose the value.
+retry_with_backoff() {
+  local attempts=${ROR_RETRY_ATTEMPTS:-3}
+  local delay=${ROR_RETRY_DELAY_SECONDS:-15}
+  local attempt=1
+  local retry_if=""
+  local status log
+
+  while [ "$#" -gt 0 ]; do
+    case $1 in
+      --retry-if)
+        retry_if=$2
+        shift 2
+        ;;
+      --)
+        shift
+        break
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
+  if [ "$#" -eq 0 ]; then
+    ci_log "retry_with_backoff needs a command."
+    return 2
+  fi
+  if ! [[ $attempts =~ ^[0-9]+$ ]] || [ "$attempts" -lt 1 ]; then
+    ci_log "ROR_RETRY_ATTEMPTS must be a positive integer. Its value is '$attempts'."
+    return 2
+  fi
+  if ! [[ $delay =~ ^[0-9]+$ ]]; then
+    ci_log "ROR_RETRY_DELAY_SECONDS must be a non-negative integer. Its value is '$delay'."
+    return 2
+  fi
+  if [ -n "$retry_if" ] && ! declare -F "$retry_if" >/dev/null; then
+    ci_log "--retry-if needs the name of a function. Its value is '$retry_if'."
+    return 2
+  fi
+
+  log=""
+  if [ -n "$retry_if" ]; then
+    log=$(mktemp) || return 2
+  fi
+
+  while true; do
+    # Both branches run inside a group followed by `|| true`, so errexit in a caller cannot stop us
+    # at a failure we are about to repeat. The status is read inside the group, where PIPESTATUS
+    # still holds the command's own value.
+    if [ -n "$log" ]; then
+      # tee keeps the output on the console. PIPESTATUS holds the status of the command itself, not
+      # the status of tee.
+      { "$@" 2>&1 | tee "$log"; status=${PIPESTATUS[0]}; } || true
+    else
+      { "$@"; status=$?; } || true
+    fi
+
+    if [ "$status" -eq 0 ]; then
+      [ -n "$log" ] && rm -f "$log"
+      return 0
+    fi
+    if [ -n "$retry_if" ] && ! "$retry_if" "$log" "$status"; then
+      ci_log "'$1' failed. Another attempt gives the same result."
+      rm -f "$log"
+      return "$status"
+    fi
+    if [ "$attempt" -ge "$attempts" ]; then
+      ci_log "'$1' failed on all $attempts attempts."
+      [ -n "$log" ] && rm -f "$log"
+      return "$status"
+    fi
+    ci_log "'$1' failed (attempt $attempt of $attempts). Next attempt in ${delay}s."
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
+# A --retry-if function for a command that pushes or pulls a Docker image. True when the output
+# holds a registry error, which another attempt can clear. A compile error, a wrong -PesVersion and
+# a broken Dockerfile give the same result every time, and both commands we retry build a
+# multi-arch image before they push, so a repeat of such a failure costs two more full builds.
+is_docker_registry_error() {
+  grep -Eqi \
+    'toomanyrequests|429 Too Many Requests|received unexpected HTTP status: 5[0-9][0-9]|unexpected status: 5[0-9][0-9]|50[0234] (Internal Server Error|Bad Gateway|Service Unavailable|Gateway Time-?out)|TLS handshake timeout|i/o timeout|connection reset by peer|unexpected EOF|net/http: request canceled' \
+    "$1"
 }
 
 # Force-remove every container belonging to THIS CI job, scoped by the ror.ci-job=$ROR_CI_JOB_ID label so we
 # never touch a sibling CI job sharing the self-hosted Docker daemon. Single source of truth for "kill
 # this CI job's containers" — used by run-pipeline.sh's SIGTERM trap, the pipeline's always() cleanup
 # step, and the standalone orphan reaper. No-op if ROR_CI_JOB_ID is unset or nothing matches.
-function reap_ci_job_containers {
+reap_ci_job_containers() {
   [ -n "${ROR_CI_JOB_ID:-}" ] || return 0
   local ids
   ids=$(docker ps -aq --filter "label=ror.ci-job=$ROR_CI_JOB_ID" 2>/dev/null)
   [ -n "$ids" ] && docker rm -f $ids 2>/dev/null || true
 }
 
-# Repo of the ROR ES pre-build dev image. Must match each module's `preBuildDockerImageVersion` repo in
-# es<ver>x/build.gradle (that is where Gradle actually pushes the canonical <esVersion>-ror-<pluginVersion>).
-ES_DEV_IMAGE_REPO="beshultd/elasticsearch-readonlyrest-dev"
+ES_DEV_IMAGE_REPO="$(gradle_property dockerImageNamespace)/elasticsearch-readonlyrest-dev" || exit 1
 
 # Copies a registry image manifest to a new tag without pulling/rebuilding (multi-platform safe).
-function retag_dev_image {
+retag_dev_image() {
   if [ "$#" -ne 2 ]; then
-    echo "Usage: retag_dev_image <source tag> <target tag>"
+    ci_log "Usage: retag_dev_image <source tag> <target tag>"
     return 1
   fi
 
   local SOURCE_TAG=$1
   local TARGET_TAG=$2
-  echo ">>> Tagging ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG} as ${ES_DEV_IMAGE_REPO}:${TARGET_TAG}"
+  ci_log "Tagging ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG} as ${ES_DEV_IMAGE_REPO}:${TARGET_TAG}."
   docker buildx imagetools create \
     -t "${ES_DEV_IMAGE_REPO}:${TARGET_TAG}" \
     "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"
@@ -47,9 +268,9 @@ function retag_dev_image {
 #   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
 #   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
 #   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
-function publish_ror_prebuild_plugin {
+publish_ror_es_prebuild_plugin() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    echo "Usage: publish_ror_prebuild_plugin <ES version> [image tag]"
+    ci_log "Usage: publish_ror_es_prebuild_plugin <ES version> [image tag]"
     return 1
   fi
 
@@ -57,40 +278,41 @@ function publish_ror_prebuild_plugin {
   local IMAGE_TAG="${2:-}"
 
   if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
-    echo "Invalid ES version format. Expected format: X.Y.Z"
+    ci_log "'$ES_VERSION' is not an ES version. The format is X.Y.Z."
     return 2
   fi
 
   if ! docker info >/dev/null 2>&1; then
-    echo "Docker daemon not running or not logged in"
+    ci_log "The docker daemon does not answer."
     return 3
   fi
 
   local ROR_VERSION GIT_SHA
-  ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
-  GIT_SHA=$(git rev-parse --short HEAD)
+  ROR_VERSION=$(gradle_property pluginVersion) || return 1
+  # The commit names the source of the image, so a missing one must stop the build with the cause.
+  if ! GIT_SHA=$(git rev-parse --short HEAD); then
+    ci_log "Cannot read the commit of the checkout. The image tag would then name no source."
+    return 1
+  fi
 
-  local CANONICAL_TAG="${ES_VERSION}-ror-${ROR_VERSION}"
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 
-  echo ""
-  echo "PUBLISHING ROR PRE-BUILD for ES $ES_VERSION (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}):"
+  ci_log "Publishing the ROR pre-build image for ES $ES_VERSION (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG})."
 
-  # Azure boolean params expand as True/False, so normalize case before comparing.
-  local FORCE_REBUILD_NORM
-  FORCE_REBUILD_NORM=$(echo "${FORCE_REBUILD:-false}" | tr '[:upper:]' '[:lower:]')
+  # Normalize workflow and shell inputs before comparing.
+  local FORCE_REBUILD_NORM=${FORCE_REBUILD:-false}
+  FORCE_REBUILD_NORM=${FORCE_REBUILD_NORM,,}
 
   if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"; then
-    echo ">>> Sources unchanged (image for this commit already published), skipping build"
+    ci_log "The sources did not change. The image for this commit exists, so this run skips the build."
   else
-    if ! ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
-      echo "Failed to publish plugin prebuild Docker image"
+    # A registry can answer 429 to the pull or the push. Only that failure is repeated.
+    # One buildx push writes both tags, so the commit tag always names this build's image.
+    if ! retry_with_backoff --retry-if is_docker_registry_error \
+         ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
+         "-PadditionalImageTag=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
+      ci_log "Cannot publish the ROR pre-build image for ES $ES_VERSION."
       return 4
-    fi
-    # Freeze this build under its immutable source-identity tag so future runs can detect & skip it.
-    if ! retag_dev_image "$CANONICAL_TAG" "$SOURCE_TAG"; then
-      echo "Failed to tag prebuild Docker image as ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"
-      return 5
     fi
   fi
 
@@ -99,96 +321,158 @@ function publish_ror_prebuild_plugin {
   # (the commit identity), and the imagetools exit status guarantees it was created before we return.
   if [ -n "$IMAGE_TAG" ]; then
     if ! retag_dev_image "$SOURCE_TAG" "${ES_VERSION}-ror-${IMAGE_TAG}"; then
-      echo "Failed to tag prebuild Docker image as ${ES_DEV_IMAGE_REPO}:${ES_VERSION}-ror-${IMAGE_TAG}"
+      ci_log "Cannot tag the ROR pre-build image as ${ES_DEV_IMAGE_REPO}:${ES_VERSION}-ror-${IMAGE_TAG}."
       return 6
     fi
   fi
 }
 
-function checkTagNotExist {
-  GIT_TAG="$1"
+# The tag of one published version, from a ROR version $1 and an ES version $2. The release docs
+# quote this shape, so a change here needs a change there.
+release_tag() {
+  printf 'v%s_es%s\n' "$1" "$2"
+}
 
-  # Check only the remote to avoid false positives from stale local tags left by a
-  # previous attempt that created the local tag but failed before pushing it.
-  if git ls-remote --tags origin "refs/tags/${GIT_TAG}" 2>/dev/null | grep -q "${GIT_TAG}"; then
-    echo "Git tag $GIT_TAG already exists on remote, exiting."
-    return 1
+# Prints, one per line, every tag of origin whose name matches the refs/tags glob $1. Prints nothing
+# when none matches, and fails when it cannot ask. Ask only origin: a local tag survives an attempt
+# that tagged and then failed to push.
+#
+# No variable holds the answer: under `bash -x`, a variable that holds hundreds of tags appears in
+# full on every line that carries it.
+origin_tags() {
+  local glob=$1 status
+  retry_with_backoff git ls-remote --tags origin "refs/tags/${glob}" \
+    | awk '{print $2}' | sed -e 's#^refs/tags/##' -e 's/\^{}$//' | sort -u
+  status=${PIPESTATUS[0]}
+  if [ "$status" -ne 0 ]; then
+    ci_log "Cannot read the tags of origin for ${glob}."
+    return "$status"
   fi
 }
 
-function tag {
+# The tag on origin is the record that a version is published. Prints `absent` or `present`, and
+# fails only when it cannot ask: a query failure read as "absent" publishes the whole release again.
+remote_tag_state() {
+  local git_tag=$1 tags
+
+  tags=$(origin_tags "$git_tag") || return 1
+  if [ -n "$tags" ]; then
+    printf 'present\n'
+  else
+    printf 'absent\n'
+  fi
+}
+
+# Writes that record. The status of the push is the status of this function: a tag that stays local
+# leaves the version published and unmarked, and the next run publishes it again.
+tag() {
   GIT_TAG="$1"
+  local state
 
-  checkTagNotExist "$GIT_TAG" || return 0
+  # The caller filtered the published versions before it built anything, so this tag was absent
+  # minutes ago. It can be here only because somebody pushed it while this run worked, and this run
+  # then published the version a second time. Say so: a push would fail here anyway, because the
+  # annotated tag below is a new object, and origin holds another one under that name.
+  state=$(remote_tag_state "$GIT_TAG") || return 1
+  if [ "$state" = present ]; then
+    ci_log "Git tag $GIT_TAG reached origin while this run worked, so this run published ES ${GIT_TAG#*_es} a second time."
+    return 0
+  fi
 
-  echo "Tagging as $GIT_TAG"
+  ci_log "Tagging as $GIT_TAG."
   git config --global push.default matching
   git config --global user.email "support@readonlyrest.com"
   git config --global user.name "CI"
   # -f overwrites any stale local tag from a previous failed push attempt
-  git tag -fa "$GIT_TAG" -m "Generated tag from CI build $TRAVIS_BUILD_NUMBER"
-  git push origin "$GIT_TAG"
-  return 0
+  git tag -fa "$GIT_TAG" -m "Generated tag from CI build $CI_BUILD_NUMBER"
+  retry_with_backoff git push origin "$GIT_TAG"
 }
 
 # Upload a file to an S3-compatible store using the SigV4 curl uploader.
 #
 # The store is selected by the 3rd arg (default ARTIFACTS) and resolves the matching
-# ROR_<STORE>_STORE_* env vars, so the same logic serves both the artifacts store
-# (ROR_ARTIFACTS_STORE_*) and the libs store (ROR_LIBS_STORE_*). Each store keeps its
-# own endpoint, credentials, bucket, region and path-prefix.
-function upload_using_aws_s3_uploader {
+# ROR_<STORE>_STORE_* env vars, so the same logic serves any store: each one keeps its own
+# endpoint, credentials, bucket, region and path-prefix under its own name.
+#
+# This is the ONE place that turns a store name into a set of values. Anything uploading to a
+# ROR store goes through it rather than resolving ROR_<STORE>_STORE_* itself — a second copy of
+# this resolution is how the two sides of the libs store drifted apart before (see LibsStore).
+#
+# For the libs store the caller (ror-tools, via LibsStore) always passes explicit values, so the
+# fallbacks below never apply to it; they only cover a store whose vars are partly unset.
+#
+# Two entry points, differing only in what the destination MEANS:
+#   upload_using_aws_s3_uploader        <file> <dir>  [store] [mime]  — key is <dir>/<basename>
+#   upload_using_aws_s3_uploader_to_key <file> <key>  [store] [mime]  — key is exactly <key>
+# The mime type is optional; without it the uploader guesses (which needs `file` on the runner).
+function _upload_to_s3_target {
   local LOCAL_FILE="$1"
-  local S3_PATH STORE BUCKET PATH_PREFIX
-  S3_PATH=$(echo "$2" | sed 's:/*$::')
-  STORE="${3:-ARTIFACTS}"
+  local S3_TARGET="$2"
+  local STORE="${3:-ARTIFACTS}"
+  local MIME="${4:-}"
+  local BUCKET PATH_PREFIX
 
   if [[ ! -f "$LOCAL_FILE" ]]; then
-    echo "ERROR: artifact to upload not found (or not a regular file): $LOCAL_FILE"
-    exit 1
+    ci_log "Cannot upload '$LOCAL_FILE'. It is not a file."
+    return 1
   fi
 
-  # Indirectly resolve the store-specific env vars (e.g. ROR_LIBS_STORE_BUCKET).
-  local ENDPOINT_VAR="ROR_${STORE}_STORE_ENDPOINT_URL"
-  local AK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_ID"
-  local SK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_SECRET"
-  local BUCKET_VAR="ROR_${STORE}_STORE_BUCKET"
-  local REGION_VAR="ROR_${STORE}_STORE_REGION"
-  local PREFIX_VAR="ROR_${STORE}_STORE_PATH_PREFIX"
+  # One credential set serves every store; only the key prefix differs, so the store name
+  # selects a path (ROR_S3_PATH_ARTIFACTS / _LIBS / _E2E_REPORTS) and nothing else.
+  local PREFIX_VAR="ROR_S3_PATH_${STORE}"
 
-  local ENDPOINT="${!ENDPOINT_VAR-}"
-  local AK="${!AK_VAR-}"
-  local SK="${!SK_VAR-}"
-  local REGION="${!REGION_VAR-}"
-  BUCKET="${!BUCKET_VAR-}"; BUCKET="${BUCKET:-beshu}"
+  local ENDPOINT="${ROR_S3_ENDPOINT_URL-}"
+  local AK="${ROR_S3_ACCESS_KEY_ID-}"
+  local SK="${ROR_S3_SECRET_ACCESS_KEY-}"
+  local REGION="${ROR_S3_REGION-}"
+  BUCKET="${ROR_S3_BUCKET-}"; BUCKET="${BUCKET:-beshu}"
   PATH_PREFIX="${!PREFIX_VAR-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
 
   S3_ENDPOINT_URL="$ENDPOINT" \
     "$CI_DIR"/s3-uploader.sh \
       "$AK" "$SK" \
-      "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
+      "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_TARGET}" ${MIME:+"$MIME"}
 }
 
-function log_disk_usage {
+# Upload into a directory: the uploader appends the file's basename to it.
+function upload_using_aws_s3_uploader {
+  local S3_DIR
+  S3_DIR=$(echo "$2" | sed 's:/*$::')
+  _upload_to_s3_target "$1" "${S3_DIR}/" "${3:-ARTIFACTS}" "${4:-}"
+}
+
+# Upload to an exact key. For callers that mirror a directory tree, where the key is the file's
+# path within that tree and not its basename. Its caller is the e2e Cypress report uploader
+# (RORDEV-1229, change/RORDEV-1229_run_e2e_tests), which today resolves ROR_<STORE>_STORE_* with its
+# own inline copy — the duplication this file exists to remove. Unused until that branch lands.
+function upload_using_aws_s3_uploader_to_key {
+  _upload_to_s3_target "$1" "$2" "${3:-ARTIFACTS}" "${4:-}"
+}
+
+# Writes a disk report to standard error, where every message of this file goes. One stream for the
+# whole report: df, du and docker write most of it, and a header must stay above its own section.
+log_disk_usage() {
   local label="${1:-}"
-  echo "=== Disk usage ($label) ==="
-  df -h / || true
-  df -i / || true
+  {
+    echo "=== Disk usage ($label) ==="
+    df -h / || true
+    df -i / || true
 
-  echo "--- Docker ---"
-  docker system df || true
-  docker ps -a || true
-  docker volume ls || true
+    echo "--- Docker ---"
+    docker system df || true
+    docker ps -a || true
+    docker volume ls || true
 
-  echo "--- Workspace build dirs ---"
-  du -sh */build 2>/dev/null || true
+    echo "--- Workspace build dirs ---"
+    du -sh */build 2>/dev/null || true
 
-  echo "--- Temp dirs ---"
-  du -sh /tmp 2>/dev/null || true
+    echo "--- Temp dirs ---"
+    du -sh /tmp 2>/dev/null || true
 
-  echo "--- Gradle ---"
-  du -sh "$GRADLE_USER_HOME/caches" 2>/dev/null || du -sh "$HOME/.gradle/caches" 2>/dev/null || true
+    echo "--- Gradle ---"
+    du -sh "$GRADLE_USER_HOME/caches" 2>/dev/null || du -sh "$HOME/.gradle/caches" 2>/dev/null || true
 
-  echo "=== End disk usage ==="
+    echo "=== End disk usage ==="
+  } >&2
 }

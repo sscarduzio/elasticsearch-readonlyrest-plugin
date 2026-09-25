@@ -16,38 +16,67 @@
 #   * JDK 21  -> ES 9.x adapters                                      (ES 9.x bundles Java 21)
 #
 # Build context MUST be the repo root (the build needs settings.gradle/*/build.gradle to
-# resolve dependencies during the priming step). Built & pushed by the BUILD_TOOLCHAINS_IMAGE
-# stage in azure-pipelines.yml — weekly on a schedule (keeps the baked cache fresh) or manually
-# (actionToPerform=build_toolchains_image) — or locally:
+# resolve dependencies during the priming step). Built & pushed by the Build toolchains image
+# workflow, .github/workflows/build-toolchains-image.yml — weekly on a schedule, which keeps the
+# baked cache fresh, or by hand — or locally:
 #
-#   docker build -f ci/toolchains/JdkToolchains.Dockerfile -t beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1 .
-#   docker push beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+#   . ci/toolchains/image.env
+#   docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
+#   docker push "$TOOLCHAINS_IMAGE"
 #
 # (BuildKit is required: the build context is filtered by the sibling
 # ci/toolchains/JdkToolchains.Dockerfile.dockerignore file.)
 #
 # The tag encodes the two things that force a rebuild: the JDK set and the Gradle version.
-# Bump it (and azure-pipelines.yml `container:`) when: a supported ES major adds a new JVM, the
-# Gradle version changes (gradle/wrapper/gradle-wrapper.properties), or dependencies drift enough
-# that the primed offline cache misses often.
+# Bump it and the `TOOLCHAINS_IMAGE` anchor in .github/workflows/ci.yml when a supported ES major
+# adds a new JVM, the Gradle version changes (gradle/wrapper/gradle-wrapper.properties), or
+# dependencies drift enough that the primed offline cache misses often.
+
+# Every FROM below names a Docker Hub image, and Docker Hub rejects a pull with a bare
+# `429 Too Many Requests` when the runner's address is over the abuse rate limit. MIRROR puts a
+# pull-through cache in front of these five names. The build step passes it from
+# ROR_DOCKER_HUB_MIRROR_PREFIX, which ci/configure-docker.sh sets, and it is empty when the mirror
+# is off. A local build passes nothing and pulls from Docker Hub.
+#
+# `library/` is the namespace of an official image, so each name resolves with the prefix and
+# without it, to the same digest.
+#
+# A name that carries the mirror host is a different image identity, so these pulls do not fall back
+# to Docker Hub. Should the mirror stop serving one of them, set ROR_DOCKER_HUB_MIRROR=false on the
+# build job of build-toolchains-image.yml.
+ARG MIRROR=
 
 # ---- JDK sources (all temurin images install to /opt/java/openjdk) ----------------------
-FROM eclipse-temurin:8-jdk   AS jdk8
-FROM eclipse-temurin:11-jdk  AS jdk11
-FROM eclipse-temurin:21-jdk  AS jdk21
+FROM ${MIRROR}library/eclipse-temurin:8-jdk   AS jdk8
+FROM ${MIRROR}library/eclipse-temurin:11-jdk  AS jdk11
+FROM ${MIRROR}library/eclipse-temurin:21-jdk  AS jdk21
 # Docker CLIENT source (static binary — distro-agnostic, no apt repo/codename needed)
-FROM docker:27.3.1-cli AS docker-cli
+FROM ${MIRROR}library/docker:27.3.1-cli AS docker-cli
 
-FROM eclipse-temurin:17-jdk AS base
+FROM ${MIRROR}library/eclipse-temurin:17-jdk AS base
 
 # apt tools the pipeline needs (was: `apt-get install -y git curl` on every run).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git curl ca-certificates unzip file \
+ && apt-get install -y --no-install-recommends git curl ca-certificates unzip file jq \
  && rm -rf /var/lib/apt/lists/*
 
+# GitHub CLI: pipeline steps that dispatch workflows in other ROR repos and poll their runs.
+# Installed from the pinned release tarball rather than GitHub's apt repo — same reason as the
+# docker CLI above: no extra apt repo/keyring, and the version is fixed here.
+ARG GH_CLI_VERSION=2.97.0
+# TARGETARCH (amd64 on CI) is set by BuildKit and matches gh's release naming, so the image also
+# builds natively on an arm64 laptop.
+ARG TARGETARCH
+RUN GH_DIR="gh_${GH_CLI_VERSION}_linux_${TARGETARCH}" \
+ && curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/${GH_DIR}.tar.gz" -o /tmp/gh.tar.gz \
+ && tar -xzf /tmp/gh.tar.gz -C /tmp "${GH_DIR}/bin/gh" \
+ && mv "/tmp/${GH_DIR}/bin/gh" /usr/local/bin/gh \
+ && rm -rf /tmp/gh.tar.gz "/tmp/${GH_DIR}" \
+ && gh --version
+
 # Docker CLIENT only: UPLOAD_PRE_ROR/RELEASE_ROR run `docker login` / `publishEsRorDockerImage`
-# from inside this container and talk to the agent host's Docker daemon over the bind-mounted
-# /var/run/docker.sock (the self-hosted az-ror-es agents mount it).
+# from inside this container and talk to the runner host's Docker daemon over the bind-mounted
+# /var/run/docker.sock.
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 # buildx CLI plugin: RELEASE_ROR's `prepareMultiplatformBuilder` Gradle task and ci-lib.sh's
 # `retag_dev_image` (UPLOAD_PRE_ROR) call `docker buildx`. The plain docker binary above does NOT
@@ -120,8 +149,8 @@ RUN cd /tmp/ror-src \
  && touch "$GRADLE_USER_HOME/.ror-ci-baked" \
  && rm -rf "$GRADLE_USER_HOME"/caches/*/scripts "$GRADLE_USER_HOME"/daemon \
  && find "$GRADLE_USER_HOME" -name "*.lock" -delete 2>/dev/null || true \
- # The Azure container job may run as a non-root user; make the baked Gradle home writable so
- # Gradle can write lockfiles/outputs into it at CI time without needing a copy-to-workspace step.
+ # Container jobs may run as a non-root user; make the baked Gradle home writable so Gradle can
+ # write lockfiles and outputs without needing a copy-to-workspace step.
  && chmod -R a+rwX "$GRADLE_USER_HOME"
 
 # ---- final image: toolchains + the primed Gradle home, WITHOUT the repo sources ------------
@@ -129,9 +158,8 @@ FROM base
 COPY --from=gradle-prime /opt/gradle-home /opt/gradle-home
 # The prime-stage `chmod -R a+rwX` makes the home's CONTENTS writable, but a cross-stage COPY
 # materializes the freshly-created top-level dir as root:root 0755 — the prime-stage bit on the
-# dir itself does NOT survive it. The Azure container job runs as a non-root user (vsts, UID 1001),
-# and `daemon/` was deleted during priming, so even `gradlew --no-daemon` (which still creates the
-# daemon registry dir $GRADLE_USER_HOME/daemon/<version>) can't write into a root-owned top dir.
+# dir itself does NOT survive it. A non-root container user cannot create the daemon registry
+# directory $GRADLE_USER_HOME/daemon/<version> in a root-owned top-level directory.
 # Make the top dir world-writable so the non-root CI user can create daemon/ + lockfiles here.
 RUN chmod a+rwx /opt/gradle-home
 # At CI time: point GRADLE_USER_HOME at /opt/gradle-home — warm-cache builds make no network

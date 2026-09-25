@@ -19,6 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers
 import better.files.File
 
 import java.io.{File => JFile, PrintWriter}
+import java.nio.file.{Files, StandardCopyOption}
 import scala.io.Source
 import scala.util.Using
 
@@ -39,7 +40,9 @@ private[patches] abstract class SecurityPolicyFileModifier extends FileModifier 
           .foreach(line => writer.println(line))
       }
     }
-    tmp.renameTo(policyJFile)
+    // NOT File.renameTo: on Windows it fails when the destination exists, and it reports that by
+    // returning false, so the permission would be dropped without a trace. Files.move throws instead.
+    Files.move(tmp.toPath, policyJFile.toPath, StandardCopyOption.REPLACE_EXISTING)
   }
 
 }

@@ -18,12 +18,9 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles
 
 import better.files.File
 import cats.data.NonEmptyList
-import tech.beshu.ror.tools.core.patches.internal.modifiers.SecurityPolicyFileModifier
+import tech.beshu.ror.tools.core.patches.internal.modifiers.{PermissionDefinition, SecurityPolicyFileModifier}
 
-import java.security.Permission
-import java.security.SecurityPermission
-
-private[patches] class AddAdditionalPermissions(permission: NonEmptyList[Permission])
+private[patches] class AddAdditionalPermissions(permission: NonEmptyList[PermissionDefinition])
     extends SecurityPolicyFileModifier {
 
   override def apply(policyFile: File): Unit = {
@@ -32,13 +29,20 @@ private[patches] class AddAdditionalPermissions(permission: NonEmptyList[Permiss
     }
   }
 
-  private def addAdditionalPermission(policyFile: File, permission: Permission): Unit = {
-    addPermission(policyFile, s"permission ${permission.getClass.getName} \"${permission.getName}\";")
+  private def addAdditionalPermission(policyFile: File, permission: PermissionDefinition): Unit = {
+    addPermission(policyFile, s"permission ${permission.className} \"${permission.name}\";")
   }
 
 }
 
 private[patches] object AddAdditionalPermissions {
-  val createClassLoaderRuntimePermission = new RuntimePermission("createClassLoader")
-  val getPropertySecurityPermission = new SecurityPermission("getProperty.*")
+  val createClassLoaderRuntimePermission =
+    PermissionDefinition("java.lang.RuntimePermission", "createClassLoader")
+  val getPropertySecurityPermission =
+    PermissionDefinition("java.security.SecurityPermission", "getProperty.*")
+  // bc-fips 2.1.3+ zeroizes DRBG buffers via a java.lang.ref.Cleaner, whose thread trips SecureSM on
+  // ES older than 7.17.8. ES rejects this permission in a shipped plugin-security.policy (PolicyUtil
+  // allowlist, since 7.11), so it can only be granted here, after the plugin is installed.
+  val modifyArbitraryThreadPermission =
+    PermissionDefinition("org.elasticsearch.secure_sm.ThreadPermission", "modifyArbitraryThread")
 }

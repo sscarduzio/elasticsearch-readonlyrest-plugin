@@ -1,0 +1,728 @@
+# ReadonlyREST CI
+
+CI runs on GitHub Actions: `.github/workflows/ci.yml`. The Linux **test and build** jobs run on
+**GitHub-hosted** `ubuntu-latest` runners inside the `beshultd/ror-ci-toolchains` image; Windows
+jobs run on GitHub-hosted `windows-2025`. The **release** jobs are the exception and stay on the
+shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` in `release.yml`, plus the standalone
+`mirror-es-libs.yml` and `publish-pre-builds.yml`.
+
+`ubuntu-latest` is 4 vCPU / 16 GB. It is slower per core than the paid runners these jobs can also
+use, and the repo is public, so it costs nothing. `ci/toolchains/image.env` holds the toolchains
+image tag, and every workflow that needs it sources that file.
+
+The concurrency limit is **per account**, and `readonlyrest_kbn` shares it. `it_linux` and
+`e2e_tests` set no `max-parallel`: a cap equal to the number of legs never binds, and it starts
+throttling silently the day someone adds one more module. `it_windows` keeps a real cap, because it
+has far more legs than the cap allows. Before you add a cap, or add legs, check the account limit
+against every long job a develop push starts: `it_linux`, `it_windows`, `e2e_tests`, and the ROR
+KBN pre-build that `e2e_order_kbn_images` dispatches.
+
+**Some ES modules are not tested** — `UNTESTED_MODULES` in `TestMatrixPolicy` holds the current set.
+They are still **built and published** on every release: `build_plugins` and `release_plugins`
+enumerate modules with the `printEsModules` Gradle task, which reads `settings.gradle`, not the CI
+matrix. Only integration-test coverage is gone, so a regression specific to one of those modules
+ships untested. Remove a name from that set to test that module again, at the price of runner
+minutes.
+
+The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standalone
+`mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
+they push images and run for hours. `build-toolchains-image.yml` stays on `ubicloud-standard-4`.
+
+**Every job calls `ci/free-host-disk.sh` right after checkout**, including a new one. The script
+detects the runner and decides whether to reclaim disk; a job never decides that for it. On the
+shared self-hosted box it prunes dangling layers and build cache, and nothing else. On a
+GitHub-hosted runner it deletes the preinstalled toolchains and sweeps the daemon, but only below
+40GB free. Anywhere else it does nothing, and it fails closed when it cannot read the free space.
+
+A Windows job instead calls `./.github/actions/setup-windows-job` right after checkout. That action
+holds the three things every Windows job needs: the Defender exclusions, the JDK of the wrapper, and the
+gradle home cache. The checkout stays in the job: a local action is resolvable only once the
+repository is on disk.
+
+Every job calls `ci/run-pipeline.sh` with a `ROR_TASK` — the scripts in this directory contain
+the build logic; the workflow only orchestrates. A task is a `task_<name>` function in that script,
+and one dispatch at the end of the file calls it. An unknown task fails the job. A Windows job calls the same task as its Linux
+counterpart, through the Git Bash of the runner, so one definition serves both platforms:
+`core_tests` for the unit suites, `integration_<module>` for an integration leg. What the two
+platforms do differently sits behind `is_windows` (`ci/runner-detect.sh`) — gradle provisions its
+own JDKs, it reads the build cache of the runner, and `core_tests` picks its suite set.
+
+The patcher is tested in two places, because it has two sides. `ror-tools:test` runs in
+`core_tests` and holds `RorToolsAppSuite`, the CLI of the patcher: consent flags, interactive
+mode, unpatch, verify, and the error text of a corrupt or foreign patch metadata file. It boots a
+docker ES container and asserts text that carries the ES version, so `core_tests` runs it once, on
+the newest module (`ror-tools/build.gradle` takes that module when no `-PesModule` is given). One
+run per integration leg would pay that boot again for the same answer.
+`PatchingOfAptBasedEsInstallationSuite` lives in `integration-tests` and runs on every integration
+leg, because the patcher reads the ES layout and that layout differs per ES version. It covers the
+apt-based install, which no other suite starts, and the entitlement change of ES 8.18.1 and 9.0.1
+that stops the plugin reading `/usr/share/elasticsearch` to verify its own patch.
+
+## Jobs
+
+| Job | What it does | When |
+|---|---|---|
+| `ci_setup` | chooses where every `container:` job pulls the toolchains image from, and publishes the run flags the later `if:` conditions read | always |
+| `toolchains_verify` | sanity-checks the toolchains image | always (stops the run early when the image is broken) |
+| `discover` | decides which tests this run covers, and derives every matrix: the ES majors to build, and the ES modules each test matrix covers; see the [test matrix policy](#test-matrix-policy) | always |
+| `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
+| `unit_tests_linux` | the unit suites: core, audit, build-base, and the `ror-tools` CLI | pushes + PRs |
+| `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
+| `it_linux` | integration tests, one job per selected ES module | module selection follows the [test matrix policy](#test-matrix-policy) |
+| `it_windows` | integration tests on native-Windows ES | module selection follows the [test matrix policy](#test-matrix-policy) |
+| `unit_tests_windows` | the same `core_tests` task on Windows: core and `ror-tools`, whose CLI reads native-Windows paths | manual `run_all_tests_on_windows` |
+| `e2e_order_kbn_images` | dispatches the ROR KBN dev image build **and waits for it** | selected runs |
+| `e2e_build_es_images` | builds + publishes this repo's ROR ES dev image, one job per module | selected runs |
+| `e2e_tests` | Cypress e2e suite, one job per selected ES module | selected runs; see the [test matrix policy](#test-matrix-policy) |
+| `build_ror` | builds all plugin zips + bytecode-reuse guard, one job per ES major | PRs |
+
+Manual actions (`workflow_dispatch` → `actionToPerform`): `run_all_tests_on_linux`,
+`run_all_tests_on_windows`, `run_e2e_tests`. To release without tests, dispatch `release.yml`.
+
+## Where a release lives
+
+`ci.yml` tests. It publishes nothing. `release.yml` publishes, and it has two ways in:
+
+| Trigger | When | Guard |
+|---|---|---|
+| `workflow_run` | CI finished on develop or master | `workflow_run.conclusion == 'success'` — one value for the whole CI run |
+| `workflow_dispatch` | an operator releases without waiting for tests | branch must be develop or master, the operator types the `pluginVersion` that branch carries, and the version must not be a pre-release |
+
+That single `conclusion` check is the reason for the split. A manual release skips the test jobs on
+purpose, and hosting it in `ci.yml` would force `!cancelled()` and a second branch into every
+release condition. `build_ror` is the only job in `ci.yml` that needs `!cancelled()`.
+
+`release.yml` mirrors `ci.yml`'s job names, because it asks the same questions. `release_setup`
+resolves the image, and on the manual path checks the version the operator typed. `discover` then
+asks the build what to publish — the ES majors from `printEsMajors`, and one `publish` output that
+the branch and the version decide together:
+
+| Branch | Version | `publish` | Job |
+|---|---|---|---|
+| `master` | `X.Y.Z` | `release` | `release_ror`, `publish_mvn` |
+| `master` | `X.Y.Z-preN` | — | none: `discover` fails the run |
+| `develop` | `X.Y.Z-preN` | `pre_release` | `upload_pre_ror` |
+| `develop` | `X.Y.Z` | `none` | none |
+
+One output, not a version flag plus a branch flag, because every job needs both halves and two
+flags let a job read one of them. The last row is the merge-back: it hands `develop` master's
+`gradle.properties`, so `develop` carries a release version until the next `-pre` bump, and those
+pushes must publish nothing. A `-pre` on `master` is a state the branching rules forbid, and
+`discover` is the first place that sees the branch and the version together.
+
+Both workflows share two composite actions rather than two copies:
+
+| Action | What it does | Used by |
+|---|---|---|
+| `resolve-toolchains-image` | picks the mirror or Docker Hub, and returns the image | `ci_setup`, `release_setup` |
+| `verify-toolchains-image` | proves the baked Gradle home works | `toolchains_verify` (a whole job, to fail fast before the CI matrices), `discover` in `release.yml` (a step, being its first container job) |
+
+### The tag is the publish record
+
+A release tags every version it publishes, on origin: `v<pluginVersion>_es<esVersion>`. The next
+release reads those tags before it builds anything. It then skips the build, the repackage, the S3
+upload and the Docker push of every version a tag already covers. A release that adds one ES version
+to a major therefore rebuilds only the base zip of the module that owns it, plus that version. Every
+other module builds nothing, and runs one gradle configure, which is how a module reports the ES
+versions it owns.
+
+There is no force flag. `FORCE_REBUILD` applies to the pre-build images, not to a release.
+
+To publish one version again, after a corrupt zip or a build from the wrong commit, delete its tag
+on origin and run the release again:
+
+```bash
+git push origin :refs/tags/v1.71.0_es8.18.1
+```
+
+The release then counts that version as unpublished: it builds it, uploads it over the old
+artifact, and writes the tag again. Every other version of the major stays skipped. Delete only the
+tags of the versions you want rebuilt.
+
+Four facts go with that recipe:
+
+- **The re-run decides which commit you get.** "Re-run jobs" on the original run rebuilds the commit
+  that run tested, because `RELEASE_SHA` comes from the event. A new dispatch builds the tip of the
+  branch. A rebuild that must not repeat a bad commit takes the dispatch.
+- **A failed or cancelled leg needs no deletion.** Re-run the job. The run reads the tags again, and
+  resumes at the first version with no tag.
+- **A tag can stand for a version with no Docker image.** Elastic publishes no base image for some ES
+  patch versions, so the release skips the ES+ROR image and still writes the tag. If Elastic
+  publishes that base image later, only a tag deletion builds the ROR image for it.
+- **Every push to master ends in a release run**, a CI-only merge included: the push runs CI, and a
+  green CI run starts the release. That run reads the tags, and a published version stays skipped,
+  so such a push publishes nothing.
+
+### Two traps in `workflow_run`
+
+**`github.ref` and `github.sha` point at the default branch**, not at the commit CI tested. Every
+checkout in `release.yml` uses `env.RELEASE_SHA`, and the branch comes from `env.RELEASE_BRANCH`.
+Miss one and you release code nobody tested. Never write `github.ref` in that file.
+
+**GitHub only fires `workflow_run` for a copy of the file on the default branch**, which is
+`develop` here. The branch of the CI run does not select the file. `branches: [ develop, master ]`
+selects which CI runs qualify, and the copy that runs is always develop's. So the `develop` copy
+publishes master releases too. A change to `release.yml` does nothing until it reaches `develop`, on
+a branch or on `master`.
+
+This is also why a merge to `master` that touches the release path needs its merge-back at once.
+Between the two merges, master's `ci.yml` holds no publish job and `develop` holds no `release.yml`.
+A push to `master` then tests green and publishes nothing, and no red job shows it.
+
+Also note `workflow_run` fires for CI runs on pull requests too, and their `head_branch` can be any
+name. `release.yml` therefore checks `workflow_run.event == 'push'`, not just the branch filter.
+
+### What you give up
+
+Two runs, and the Actions graph does not link them. The summary of the release run prints a link
+back to the CI run instead.
+
+Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
+above: `build-toolchains-image.yml` (rebuilds the image every CI job runs in — weekly cron and
+manual; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml` (mirrors ES jars
+into the libs store — see [S3 stores](#s3-stores)), `disk-probe.yml` (manually reports runner and
+Docker disk usage), `pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml`
+(regenerates the ES action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand
+ROR+ES dev images), `verify-publish-credentials.yml` (daily cron and manual — proves the Maven
+Central credentials still work, because `publish_mvn` only runs on a release and skips silently
+when the version is already published).
+
+Two orchestration rules worth knowing before editing conditions:
+
+- `concurrency` auto-cancels superseded **PR** runs only. A branch push queues instead, because
+  only a CI run that completes can start `release.yml`. The group still holds one pending run, so
+  the middle of three quick pushes is cancelled and that commit publishes nothing.
+- GitHub skips a job whose `needs` contains a failed **or skipped** job. That rule is implicit, and
+  an `if:` only switches it off when the expression holds a status check function — `success()`,
+  `failure()`, `cancelled()` or `always()`. An `if:` of plain conditions keeps it.
+
+  So `!cancelled() && needs.<X>.result == 'success'`, where `X` is already in `needs`, is the
+  implicit rule spelled out, and buys nothing. Write it only when the job must survive some *other*
+  dependency being skipped — and pair it with an explicit `== 'success'` on every dependency that
+  must still be green, because `!cancelled()` lets failures through as well as skips.
+
+  One job needs it: `build_ror`, which accepts `skipped` from the Windows and e2e jobs by name,
+  because a draft PR runs neither. Everywhere else, let the implicit rule do the work.
+- A job-level `if:` cannot read the `env` context, so a predicate that more than one job asks
+  about has to be a job output. `ci_setup` publishes these, and they are not the same
+  question — do not collapse them:
+
+  | Output | True for | Read by |
+  |---|---|---|
+  | `is_release_branch` | develop, master | the NVD cache write in `optional_checks`; `discover`, ORed below |
+  | `is_epic_branch` | `epic/**`, and PRs from one | `discover`, ORed with `is_release_branch` |
+  | `is_merge_back` | a develop push whose tree equals master's tip | `discover` |
+  | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks` |
+  | `manual_action` | — the chosen action, `''` on an automatic run | `discover`, `unit_tests_windows` |
+  | `unique_build_id` | — `<run id>-<run attempt>`, the tag of every dev image of this run | the e2e jobs |
+
+  Every job `if:` reads one of these and compares it against `'true'`. `manual_action` is the
+  exception: it holds an action name, so its readers compare it against one. `discover` picks a
+  matrix that way, and `unit_tests_windows` starts only on `run_all_tests_on_windows`.
+
+  Which tests a run covers is not among them. `ci_setup` publishes `manual_action`, and `discover`
+  decides: the Linux, Windows and e2e tests each run on every automatic run, and a manual run
+  starts only the tests the operator asked for. `discover` empties the matrix of every test the run
+  does not cover, so no test job carries a condition of its own — see
+  [Derived matrices](#derived-matrices). `unit_tests_linux` is the exception, because it has no
+  matrix to empty. It asks the same question in its own `if:`, from `is_automatic_run` and
+  `manual_action`.
+
+  `manual_action` stays in `ci_setup` for one reason beyond `discover`. It starts
+  `unit_tests_windows`, which no automatic run may start. That job has no matrix, so it reads
+  `manual_action` directly instead of waiting for `discover`.
+
+  Always compare against the string `'true'`. An output is a string, so a bare
+  `needs.ci_setup.outputs.is_release_branch` is truthy even when it holds `"false"`.
+
+  Adding a flag: `${{ A && B }}` yields the string `"false"` when `A` is false, not `''`. That is
+  why `manual_action` ends in `|| ''` — without it an automatic run would carry the word "false".
+
+## What the build decides, not the workflow
+
+A workflow must not work out a fact the build already knows. These Gradle tasks answer for both
+`ci.yml` and `release.yml`, so no YAML and no shell script but `gradle_property` parses
+`gradle.properties`, and none of them guesses at a module list:
+
+| Task | Answers | Written to |
+|---|---|---|
+| `printEsMajors` | which ES majors get built, uploaded and released | `build/es-modules/es-majors.txt` |
+| `printEsModules` | which modules one ES major holds, newest first | `build/es-modules/es<major>x.txt` |
+| `printEsVersionsForModule` | the base version and every version of one module | `<module>/build/es-modules/versions.txt` |
+| `printNewestEsVersionForModule` | the newest version of one module | `<module>/build/es-modules/newest-version.txt` |
+| `printAllSupportedEsVersions` | every ES version ROR supports | `build/es-modules/es-versions.txt` |
+| `printTestMatrices` | which ES modules each test matrix covers, per [policy](#test-matrix-policy) | `build/ci-matrices/<name>.json` |
+| `isPreReleaseVersion` | whether the configured `pluginVersion` is a pre-release (`-pre`) | stdout: `true` or `false` |
+
+Every task but the last writes a file, and a caller must read that file, not gradle stdout —
+configuration-time logging can pollute it even under `--quiet`. `isPreReleaseVersion` prints one
+word instead, which its caller validates.
+
+`isPreReleaseVersion` is the only implementation of the `-pre` rule. It is one half of `discover`'s
+`publish` output; the branch is the other. Its caller goes through `is_pre_release_version` in `ci-lib.sh`. That function
+takes the last line and **fails on anything that is not `true` or `false`**. A silently wrong value
+publishes a release as a pre-release, or the reverse. If the pre-release convention changes, change
+the task, and nothing else.
+
+Reading a property from shell is a fourth case, and `ci-lib.sh`'s `gradle_property` owns it. Its own
+comment states the rule: every reader goes through there, because a second parser drifts. The manual
+release guard uses it to check the version the operator typed.
+
+## Derived matrices
+
+Every matrix of a run comes from the `discover` job, and so does every decision about which tests
+the run covers. Nothing is written down twice: the modules that exist decide, so a new module or a
+new ES major needs no edit.
+
+A test job therefore carries no condition about the kind of run. Its only condition is the empty
+test: `if: needs.discover.outputs.<x>_matrix != '{"include":[]}'`. That is the single mechanism: a
+draft PR gets no Windows and no e2e leg, and a manual `run_e2e_tests` gets neither a Linux nor a
+Windows one. Keep it that way — a test about the kind of run in a job's `if:` would state the
+matrix rule in a second place, and the two would drift.
+
+`discover` publishes one ready matrix per job that fans out, so every consumer reads it the same way:
+
+| Output | Consumed by | Shape |
+|---|---|---|
+| `build_matrix` | `build_ror` | `{"include":[{"ES_MAJOR":"9"},…]}` |
+| `it_linux_matrix` | `it_linux` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
+| `it_windows_matrix` | `it_windows` | `{"include":[{"ES_MODULE":"es94x"},…]}` |
+| `e2e_matrix` | the three e2e jobs | `{"include":[{"ES_MODULE":"es94x"},…]}` |
+
+An empty matrix does not skip its job by itself. GitHub evaluates `strategy` before it creates the
+job, and `{"include":[]}` stops the run with "Matrix vector 'include' does not contain any values".
+The job never starts, so nothing inside it can handle the empty case. Every fan-out job therefore
+carries the test `if: needs.discover.outputs.<x>_matrix != '{"include":[]}'`. That turns the empty
+case into `skipped` before a runner boots. `build_ror` accepts `skipped` from `it_windows` and
+`e2e_build_es_images`; `it_linux` must be `success`.
+
+The `include` form matters for the same reason: a bare `KEY: []` fails the run in the same way, and
+`{"include":[]}` is the shape the guard tests for. `discover`'s `as_matrix` emits that exact text,
+with `jq -c` — keep the `-c`, because multi-line JSON matches no guard and every draft PR then goes
+red. `PrintTestMatricesTask` emits the bare `[]` that `as_matrix` wraps, and `discover` also assigns
+`[]` directly for a draft PR and for an unselected manual action.
+
+`e2e_matrix` holds the same one key as the others. `e2e_order_kbn_images` also reads it, though it
+does not fan out over it: it has no matrix of its own, and one dispatch covers every version.
+`build_ror` reads no matrix here — it reads `needs.e2e_build_es_images.result == 'skipped'`, because
+it must tell "no e2e in this run" from "e2e failed".
+
+The ELK version of a module is not in the matrix. Every job that needs it derives it from the
+module, with `e2e_elk_version_for_module` in `ci/e2e-tests-lib.sh`
+(`:esXXXx:printNewestEsVersionForModule`): `e2e_order_kbn_images` resolves all of them in one step,
+because its single dispatch covers every version, and the two fan-out jobs each resolve their own
+row. `discover` stays at one Gradle call, so no test job waits for a lookup only e2e needs.
+
+It is the workflow, not the build, that picks which matrix a run takes: only the workflow knows the
+branch and the event. `discover` needs the toolchains image for gradle, so it runs after
+`toolchains_verify`.
+
+Both rules live in `build-base` and are unit-tested: `EsModuleFinder.allSupportedEsMajors` (a module
+counts for the major of its newest supported version, the rule `printEsModules` uses) and
+`TestMatrixPolicy`.
+
+A hand-written list fails silently instead: the leg for the missing module never runs, and CI stays
+green. `run-pipeline.sh` and `publish-ror-plugins.sh` also refuse a major with no module, instead of
+looping zero times and returning 0.
+
+## Test matrix policy
+
+These rules define which ES modules each automatic test run covers. `TestMatrixPolicy` (build-base)
+implements them and `discover` runs it, so the lists are derived and not written down. The terms
+oldest, middle, and newest apply separately to each ES major version, and **middle** means the
+module in the middle of that major's list, newest first.
+
+| Development stage | Linux integration tests | Windows integration tests | E2E tests |
+|---|---|---|---|
+| Draft PR | Newest module for each ES major version | Not run | Not run |
+| Ready PR | Fewer than 10 modules: oldest and newest. 10 or more modules: oldest, middle, and newest | Newest module for each ES major version | Newest module for each ES major version |
+| `develop`, `master`, or `epic/**` | All modules | Oldest and newest modules for each ES major version | Newest module for each ES major version |
+| Merge-back of `master` into `develop` | The Ready-PR selection | Newest module for each ES major version | Newest module for each ES major version |
+
+The merge-back row is the exception to the row above it: the push carries master's tree, which CI
+already tested green on `master`, so the run repeats the Ready-PR selection instead of everything.
+
+Windows integration tests and E2E tests do not run on ES 6. The modules in `UNTESTED_MODULES` run on
+neither platform. A selection still picks oldest, middle and newest by how many modules the major
+holds, and an untested pick moves to the nearest tested module — so the exclusion changes which
+modules run, never how many. A major with one module selects it once. A manual action can select the
+full Linux or Windows matrix. To release without tests, dispatch `release.yml`.
+
+To see what a change does to the matrices, run `./gradlew printTestMatrices --quiet`. To change the
+policy, change `TestMatrixPolicy` and this table together. Adding or removing a module changes which
+`it_linux_*`, `it_win_*` and `e2e_*` jobs a run reports, so check branch protection when the policy
+itself changes.
+
+## Integration-test parallelism
+
+Each IT leg runs **4 sharded test JVMs** on its VM (Windows: 3, set by a job-level
+`IT_PARALLELISM`), orchestrated by `integration-tests:shardedTest` (`IT_PARALLELISM` →
+`-PshardCount`). Suites are
+partitioned by `SuiteSharder` (build-base; unit-tested), packed by measured duration
+(`integration-tests/suite-timings.json`, `ROR_BALANCED_SHARDS`) so no shard becomes the
+long pole. Two things make this fit a 16 GB box:
+
+- **Heavy-suite gate** (`ROR_HEAVY_SUITE_PERMITS`, currently 2): a machine-wide
+  `FileLockSemaphore` capping how many multi-node-cluster suites boot containers
+  concurrently across the shard JVMs. Without it, level packing OOMs the host. Crash-safe:
+  a killed worker's lock dies with its process.
+- On Windows (native ES processes, no docker), every shard gets its own port window and
+  install dirs (`RorShard`).
+
+Suite timing drift is auto-detected: the es90x leg (first ES 9 module — a stable reference) runs
+`integration-tests:regenerateSuiteTimings` after the tests, warns on drift, and uploads a
+regenerated `suite-timings.json` as the `suite-timings-regenerated` artifact — to update,
+download it and commit. Measured tuning limits (don't re-learn them the hard way): 5 shard
+JVMs or 3 gate permits exceed either 16 GB or the 4-vCPU boot-time budget.
+
+Shard stdout is written to `shard-<i>.log` files (live interleaving would be unreadable),
+printed to the job console afterwards as collapsible groups, and uploaded as the
+`sharded-logs-*` artifact. Per-shard JUnit XML uploads as `*-results`.
+
+## E2E tests
+
+The Cypress suite runs the whole stack: Elasticsearch and Kibana, with both ROR plugins, in
+docker. The logic is in `ci/e2e-tests-lib.sh`; the suite itself lives in the
+[`readonlyrest-e2e-tests`](https://github.com/beshu-tech/readonlyrest-e2e-tests) repo and is cloned
+at run time.
+
+Three repos take part, so no single one owns the whole thing: this repo builds the ROR ES image,
+`readonlyrest_kbn` builds the ROR KBN image, and the e2e repo owns the suite, the runner, and the
+contract between all three —
+[`ci/prebuild-images-lib.sh`](https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/develop/ci/prebuild-images-lib.sh)
+(image names, tag shape, workflow inputs, wait behaviour). Change the contract there, not here.
+
+Three jobs, each with one responsibility, under `discover`:
+
+```
+discover                       publish the e2e module matrix
+   ├── e2e_order_kbn_images    dispatch the ROR KBN build, wait for it, verify the images  ─┐ in
+   └── e2e_build_es_images     build + publish the ROR ES image, one job per module         ─┘ parallel
+          └── e2e_tests        stack + Cypress only
+```
+
+- `discover` publishes the module matrix. It resolves no ELK version, orders nothing and builds
+  nothing.
+- `e2e_order_kbn_images` sends **one** dispatch for all versions. Then it waits for that run, in the
+  same shell. At the end it checks the registry for every image.
+- `e2e_build_es_images` builds and pushes the ROR ES dev image from **this** commit, one job per
+  module. It uses the same `publish_ror_es_prebuild_plugin` helper as the standalone pre-build task,
+  so the sha-frozen-image skip still applies.
+- `e2e_tests` runs once per version, in parallel. Both images exist when it starts. It clones the
+  suite, starts the stack and runs Cypress.
+
+### Why one job does both the dispatch and the wait
+
+There are three reasons:
+
+- **The failure points at the fault.** A ROR KBN build that fails, times out or publishes nothing
+  fails `e2e_order_kbn_images`. The test jobs are then skipped. They do not report a failure that is
+  not theirs. The job turns the shared lib's exit code into one line that names the cause, in the log
+  and in the job summary.
+- **"Re-run failed jobs" does the correct thing.** That button re-runs only the failed jobs, so it
+  re-runs the order job. Its dispatch is a new `gh workflow run`, and its run lookup only accepts
+  runs created around that dispatch. So it follows the new run, not the dead one. `ci_setup` is
+  green and does not re-run, so the build id and the image names stay the same. The ES images from
+  the first attempt stay valid.
+- **The shared contract makes it necessary.** A dispatch is not told which run it created. The lib
+  finds the run by title, in a window around the dispatch. Only the shell that dispatched the run can
+  identify it, so only that shell can wait for it.
+
+`e2e_order_kbn_images` and `e2e_build_es_images` are siblings under `discover`. Neither needs the
+other. So the critical path is `max(local ES build, ROR KBN run)`, plus one runner handoff.
+
+The wait does not poll the registry. It waits on the dispatched ROR KBN **run**. What the wait
+guarantees, and what this repo has to supply for it, is the contract at the top of the shared lib.
+Read it there, not here. Three obligations fall on this repo:
+
+- **Log in first.** The order job authenticates Docker before the wait. The registry check at the end
+  of the wait does one pull per image. Docker Hub counts an anonymous pull against the runner's
+  address (100 per 6h, shared), and an authenticated pull against the ROR account (200 per 6h).
+- **Give the order job a token that can read the runs of the ROR KBN repo.** `ROR_GH_TOKEN` needs
+  `actions:read`. A refused read stops the wait in seconds with code 8, and it names the necessary
+  right. The job follows the run by these reads, so there is no other way.
+- **Keep the title on our own pre-build run.** `publish-pre-builds.yml` carries
+  `run-name: ROR ES pre-build ${{ inputs.tag || inputs.es_versions }}`. Every repo that dispatches it
+  — the e2e repo and the ROR KBN repo — finds its run by that title, because a dispatch is told
+  nothing about the run it creates. A dispatcher must send a tag, and the shared lib refuses a
+  dispatch that sends none. So a run that a job waits for always shows `ROR ES pre-build <tag>`.
+  The fallback applies only to a dispatch that sends no tag, and no search looks for such a title.
+  Remove the line and every dispatch of this workflow fails, because no run can be recognised.
+
+Both sides address the images by a per-run tag (`run-<build id>`). `ci_setup` creates the build id
+and passes it down as a job output. No other job may derive it again. A partial re-run bumps the run
+attempt but does not re-run `ci_setup`, and the two sides would then name different images.
+
+Branch resolution — both other repos are asked for the branch of this PR first. The e2e clone then
+tries the base branch, `develop`, `master`; the base branch matters, because a change based on
+`develop` must use the `develop` suite, not `master`. The ROR KBN branch name is passed through as
+it is: if the KBN repo has no such branch, its pre-build workflow falls back to `develop` on its
+own side.
+
+Module selection follows the [test matrix policy](#test-matrix-policy). Job names are built from
+the module, not the ES version, so branch-protection checks survive a version bump. The same
+`<leg>_<module>` shape is used by all three test legs: `it_linux_es94x`, `it_win_es94x`,
+`e2e_es94x`.
+
+On failure the job uploads the Cypress videos and screenshots to the E2E_REPORTS store
+(`ci/upload-cypress-artifacts-to-s3.sh`), under `<prefix>/<date>/build_<run id>/<module>_<elk>/`.
+S3, not GitHub artifacts: those count against the metered Actions-storage quota.
+
+Needs `ROR_ENT_ACTIVATION_TOKEN` (the suite refuses to start without it) and `ROR_GH_TOKEN` (to
+dispatch the ROR KBN build and read its status).
+
+## S3 stores
+
+ROR uploads to S3-compatible stores through one path: `ci/s3-uploader.sh` (curl + SigV4) under
+`ci-lib.sh`'s `upload_using_aws_s3_uploader` / `..._to_key`, driven by `ci/upload-files-to-s3.sh`.
+One credential set — `ROR_S3_{ENDPOINT_URL,BUCKET,REGION,ACCESS_KEY_ID,SECRET_ACCESS_KEY}` —
+serves every store. A store is named, and its name selects only the key prefix it writes under:
+`ROR_S3_PATH_{ARTIFACTS,LIBS,E2E_REPORTS}`. Resolve that in one place (`ci-lib.sh`) and nowhere
+else.
+
+An earlier revision claimed each store had its own credentials "because the gateway authorizes
+each prefix separately". That was never true: the artifacts key writes `builds/`, `libs/` and
+`e2e_reports/` alike.
+
+| Store | Holds | Written by |
+|---|---|---|
+| `ARTIFACTS` | the plugin zips customers download (`builds/`) | `upload_pre_ror` / `release_ror` |
+| `LIBS` | ES jars + POMs mirrored for versions not yet on Maven Central (`libs/`) | the `mirror-es-libs.yml` workflow |
+| `E2E_REPORTS` | Cypress videos + screenshots of failed e2e runs (`e2e_reports/`) | `e2e_tests`, on failure only |
+
+The LIBS store is the one with two sides: every plugin build **reads** it as a Maven repository,
+and `mirror-es-libs.yml` **writes** it. Both take its address from `LibsStore` (build-base) so
+they cannot name different locations — when they did, the symptom was an unresolvable
+`org.elasticsearch:elasticsearch:X.Y.Z` at compile time, nowhere near the cause.
+
+Mirroring is manual and one-off per ES version: run **Mirror ES Libs** with `es_versions` set
+(e.g. `9.5.1 9.4.5`), and run it **before** the branch adding that version goes through CI — the
+build cannot compile against jars that are not in the store yet.
+
+## Secrets & variables
+
+**16 repository secrets + 8 variables**, all managed in the Doppler project `ror_ci` (config
+`prd`) and synced to this repo. Change them in Doppler, never in GitHub — the sync overwrites.
+
+| Secret | Purpose |
+|---|---|
+| `ROR_S3_ACCESS_KEY_ID` / `ROR_S3_SECRET_ACCESS_KEY` | the one S3 key pair; writes `builds/`, `libs/` and `e2e_reports/` |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `configure-docker.sh` reads |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. `unit_tests_linux`, `it_linux` and `upload_pre_ror` map it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which authenticates the pulls their steps make. No `container:` pull uses it, because the runner makes that pull before step 1. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
+| `ROR_ENT_ACTIVATION_TOKEN` | ROR PRO/Enterprise key the e2e stack boots with. **The secret is renamed; the env var handed to the container stays `ROR_ACTIVATION_KEY`, which is the customer-facing name** |
+| `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, pushes docs |
+| `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds |
+| `MAVEN_REPO_USER`, `MAVEN_REPO_PASSWORD`, `MAVEN_STAGING_PROFILE_ID`, `GPG_KEY_ID`, `GPG_PASSPHRASE` | Maven Central publishing |
+| `PGP_SECRET_KEY_B64` | base64 of `secret.pgp`; the publish step decodes it to `.travis/secret.pgp`. Create with `base64 -w0 secret.pgp \| gh secret set PGP_SECRET_KEY_B64` |
+
+Variables (`vars.NAME`, non-sensitive): `ROR_S3_{ENDPOINT_URL,REGION,BUCKET}` and
+`ROR_S3_PATH_{ARTIFACTS,LIBS,E2E_REPORTS}`. Only the key pair is secret. Keeping these as
+variables is deliberate: a non-secret stored as a secret makes GitHub redact every substring
+match of it, and a bucket named `beshu` turns `beshultd/...` into `***ltd` in every log line.
+The `ROR_S3_PATH_LIBS` value is optional —
+unset (or empty, which is what an undefined `vars.X` expands to) falls back to the defaults in
+`LibsStore`, which is also what a local build resolves against.
+
+Release tags push via the checkout token (`release_ror` has `permissions: contents: write`)
+— no SSH deploy key. Fork PRs get no secrets (GitHub default); `cve_check` and docker auth
+degrade instead of failing.
+
+### Docker authentication
+
+Every job that pulls or pushes a Docker Hub image uses one command, and no other:
+
+```bash
+source ci/configure-docker.sh
+```
+
+The script reads one pair of variables, `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, and
+the job supplies it: a job that pushes maps `DOCKER_HUB_RW_TOKEN` into it, a job that only pulls
+maps `DOCKER_HUB_RO_TOKEN`. The script then authenticates both Docker clients with that pair: the
+docker CLI, with a login, and testcontainers, with `DOCKER_AUTH_CONFIG`. Both halves are necessary. The docker CLI
+does not read `DOCKER_AUTH_CONFIG`. Docker CLI 27, which the toolchains image contains, ignores
+that variable.
+
+Credentials that do not work always stop the job. The script never falls back to anonymous pulls
+in that case, because a bad login must not hide itself. An expired token thus fails in the job
+that owns it, and not as a rate-limit failure somewhere else one hour later.
+
+`DOCKER_AUTH_REQUIRED` covers one case only: the job supplied no credentials at all. The script
+reads the event and decides. A pull request from a fork continues, and its pulls are anonymous:
+GitHub gives it no secrets, and its tests must still run. Every other run stops, because a missing
+secret there is a mistake. A job that sets the variable overrides the decision, and only the literal
+`false` lets the job continue.
+
+No workflow states this. Two jobs held the same expression before, and a new job had to copy it.
+
+Do not put a `docker login` in a workflow. Two mechanisms with different credentials hide each
+other, because a CLI that reads `DOCKER_AUTH_CONFIG` gives that variable priority over the login.
+
+The script cannot authenticate the `container:` image, because the runner pulls that image before
+step 1 starts. Nothing else authenticates it. That pull is anonymous, and the registry that
+`ci_setup` chose answers it: `mirror.gcr.io` on the normal path, Docker Hub on the fallback. See
+[The `container:` image](#the-container-image).
+
+### Docker Hub pull mirror
+
+`ci/configure-docker.sh` also points Docker at a pull-through cache, `mirror.gcr.io`. Authentication
+alone does not stop every rejection, because two limits apply:
+
+- The **pull quota**, 200 pulls per 6 hours on the free plan. It follows the account once a job
+  authenticates, so the login controls it. One full `ci.yml` run makes about 60 pulls.
+- The **abuse rate limit**. Docker applies it per IP address and ignores the account. A runner draws
+  an ephemeral address from the Ubicloud pool (`https://api.ubicloud.com/ips-v4`, 23 Hetzner blocks)
+  and shares it with other tenants, so a neighbour can fill the bucket. The job then fails on a bare
+  `429 Too Many Requests`, and no credential prevents it.
+
+The mirror serves `docker.io`. It cannot serve `docker.elastic.co` or `ghcr.io`, and it cannot accept
+a push. Three clients pull images inside a job, and the script sets all three from one variable. A
+fourth pull happens before any step and needs an answer of its own — see
+[The `container:` image](#the-container-image):
+
+| Client | Setting | Reaches |
+|---|---|---|
+| buildx and BuildKit | `ROR_DOCKER_HUB_MIRROR`, which gradle turns into `--config build-base/buildkitd.toml` | the `FROM` lines in `es*x/Dockerfile` |
+| the test suite | `ROR_DOCKER_HUB_MIRROR_PREFIX`, which `DockerHubMirror` reads | the images each call site names |
+| the toolchains build | the same variable, passed as `--build-arg MIRROR` | the five `FROM` lines in `ci/toolchains/JdkToolchains.Dockerfile` |
+
+No client reads another client's setting, which is why there are three. All three work in a
+`container:` job and on a bare runner, and none of them needs a privilege.
+
+The BuildKit setting keeps the original `docker.io` image identity, so BuildKit falls back to Docker
+Hub when the mirror cannot serve an image. The other two rewrite the image name itself, for example
+`coredns/coredns:1.13.2` becomes `mirror.gcr.io/coredns/coredns:1.13.2`, and `eclipse-temurin:17-jdk`
+becomes `mirror.gcr.io/library/eclipse-temurin:17-jdk`. A rewritten name has no Docker Hub fallback
+and the pull fails if the mirror does not serve the tag. Keep `DockerHubMirror` call sites limited to
+images known to be available from the mirror. For the toolchains build, `ROR_DOCKER_HUB_MIRROR` set
+to `'false'` on the job restores the Docker Hub path.
+
+The test suite names every image it mirrors, one call site at a time. Do not set
+`TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX` instead: testcontainers applies that prefix to every name
+without a registry host, and a locally built name looks the same as a Docker Hub name. It rewrote our
+own `ror-it-es:<hash>` image and then tried to pull it, which failed every `it_linux` leg with
+"manifest unknown". Ryuk still comes from Docker Hub for the same reason.
+
+`ROR_DOCKER_HUB_MIRROR=false` switches the mirror off for one job. No job sets it. It is there for
+the day the mirror cannot serve an image a job needs.
+
+The flag answers one question: may this job read a cached answer? It does not follow from what the
+job pushes. The two workflows that push most, `publish-pre-builds` and `build-toolchains-image`, need the
+mirror most, because a 429 hits their base-image pulls. A mirror rewrites pulls only. A push names
+`beshultd/...` and goes to Docker Hub whatever the mirror says.
+
+`e2e_tests` keeps the mirror as well, although it pulls the ROR ES and ROR KBN images that two other
+runs pushed a moment before, where a cached answer can be stale. The e2e repo settles that image by
+image: it names the images it takes from the cache, and the ROR images are not among them, so those
+two pulls go to Docker Hub. The job gains the rest: the digest-pinned gosu and corretto pulls of the
+ES image build, and every image the e2e stack takes from the cache.
+
+Two more things stay off the mirror by themselves, and both must remain so:
+
+- `docker manifest inspect` (`docker_image_state`) and `docker buildx imagetools create`. They read
+  a tag we pushed seconds ago. Both run in the CLI, which reads neither `buildkitd.toml` nor any of
+  the variables above, so both address Docker Hub by themselves.
+- Every push. A pull-through cache is read-only, so `beshultd/*` images go to Docker Hub.
+
+### The `container:` image
+
+The runner pulls the job `container:` image before step 1 starts. `ci/configure-docker.sh` cannot
+reach that pull, so it sets neither the mirror nor the login for it. CI jobs and their matrix legs
+share the image, which makes it the most pulled image of a run. Docker Hub answered a whole run with
+`429 toomanyrequests` on 2026-08-26.
+
+Every Linux job runs in that image, except `e2e_tests`. That job shells out to the `runner.sh` of
+the e2e repo, which brings up a compose stack; Cypress then reads the ports that stack publishes on
+the host, and the localhost of a job container is not the host. It also needs node, yarn and the
+Cypress browsers, which the image does not hold. Every other Linux job takes the image, the image
+bakes the docker CLI and its buildx plugin, and `docker` from inside the container reaches the
+daemon of the host over the socket the runner mounts — which is how `it_linux` starts its ES
+containers, and how `e2e_build_es_images` pushes its image.
+
+A job container works as root, and the checkout keeps the user id of the runner. git refuses a
+working tree that belongs to another user, thus a command such as `git rev-parse` stops the job with
+"dubious ownership". `ci/ci-lib.sh` adds the workspace to `safe.directory` when git cannot read the
+repository, so every script that sources the lib can use git. Each job gets a new container, so the
+exception ends with the job.
+
+`container: image:` can read a job output. The `ci_setup` job runs
+`ci/resolve-toolchains-image.sh` once, and the `&toolchains_container` anchor reads its output: the
+name to pull. That job holds no container itself, and it cannot: it is the job that picks one.
+
+A mirrored name carries the digest, not the tag: `mirror.gcr.io/beshultd/ror-ci-toolchains@sha256:…`.
+The jobs of one run start hours apart, and a tag can move between the check and a pull. A Docker Hub
+name keeps the tag, because no digest is proven in that case.
+
+So `ci_setup` asks the mirror about the digest, not about the tag. A digest names the bytes,
+and a cache cannot answer it with the wrong image. The rebuild records the digest of its push in the
+Actions cache. `ci_setup` then sends the mirror one HEAD request for that digest. The request downloads
+no image, and it reaches no Docker Hub:
+
+| What the script finds | What the run pulls |
+|---|---|
+| no digest on record | Docker Hub |
+| the mirror cannot serve the digest | Docker Hub |
+| the mirror serves the digest | the mirror |
+
+Docker Hub is the safe answer, so a miss costs speed only. `ci_setup` writes the choice to the step
+summary, so the run page shows which registry a run used, and why.
+
+The mirror fetches a digest it has never held. So a run keeps the mirror in the hours after a
+rebuild, before the mirror knows the new tag. A question about the tag would lose the mirror in that
+window, where the recorded digest is newest.
+
+The cache key holds the tag and the rebuild's run id. A key is write-once, so each rebuild adds an
+entry and `ci_setup` restores the newest by prefix. GitHub drops an entry that nothing reads for 7 days,
+and `ci_setup` reads this one every run. A new tag matches no entry, so its runs use Docker Hub until
+the next rebuild. The same holds now: run **Build toolchains image** once, on `develop`, to write the
+first digest.
+
+The key and the prefix put two hyphens after the tag. One hyphen keeps `9.2.1` apart from `9.2.10`,
+but not from `9.2.1-arm64`: that key starts with the prefix of `9.2.1`. The runs of the shorter tag
+could then restore the digest of the longer one, and the mirror serves any digest of the repository,
+so those jobs would run the wrong image. Two hyphens keep the two apart, because no tag here ends
+with a hyphen.
+
+An entry belongs to the ref that saved it. Every run also reads the default branch, `develop`. A
+pull request run reads its merge ref and the base branch, but never the head branch. A rebuild
+dispatched from a feature branch therefore writes an entry that no pull request run finds.
+
+A dispatch off `develop` stays allowed. The image bakes the commit's Gradle dependencies, so a
+branch that bumps one needs its own tag and its own build, and the push is what that branch needs.
+Only the cache entry goes to waste, so `record_digest` raises a `::warning::` instead of a refusal.
+Dispatch the workflow again on `develop` after the merge.
+
+The rebuild does not save that entry. It runs on an Ubicloud runner, and an Ubicloud runner keeps
+its own Actions cache. A GitHub-hosted runner cannot read it, and `ci_setup` is GitHub-hosted. So the
+digest travels as a job output to `record_digest`, a small job on `ubuntu-latest`, which saves it.
+Both ends then read one store.
+
+The rebuild lives in `build-toolchains-image.yml`, not in `ci.yml`. It takes up to four hours, and
+no test run waits for it. A rebuild in `ci.yml` would also hold the `develop` concurrency group for
+those hours, and every push to `develop` would queue behind it.
+
+The rebuild keeps a concurrency group of its own, `build-toolchains-image`. Two rebuilds push one
+tag and file two cache entries, and `ci_setup` takes the newest entry, which need not hold the manifest
+that Docker Hub keeps. A second run waits instead, because cancelling a four-hour build wastes it.
+
+The pull sends no credentials, on either path. `mirror.gcr.io` refuses a Docker Hub login, so the
+`credentials:` block must be absent when the name is mirrored. An empty value does not remove it.
+GitHub rejects `username: ''` with `Unexpected value ''` and stops the run before step 1. YAML cannot
+drop a key on a condition, and `credentials:` is a mapping, so no expression reaches it. The block is
+therefore absent on both paths.
+
+Docker Hub counts an anonymous pull against the runner's address, and an authenticated pull against
+the account. So the fallback pull shares an address limit with every other anonymous puller. That
+path is rare. It opens when a tag has no recorded digest, and the next rebuild closes it.
+
+Every run now pulls this image the way a fork always did, and a fork gains the most. It has no
+secrets, so Docker Hub always answered it anonymously. It now reads `mirror.gcr.io`, which sets no
+limit. A fork run reads the base branch, so it finds the digest that a `develop` rebuild saved.
+
+One limit. The choice is made once, for the whole run. If the mirror stops answering during a run,
+the jobs that already took the mirrored name fail. The runner's pull has no fallback of its own.
+
+`ghcr.io` is the other direction. It would remove the digest bookkeeping, because the pull would no
+longer cross a cache, and a public package needs no `credentials:` block at all. It costs a tag in
+`image.env`, a `docker login ghcr.io` with `GITHUB_TOKEN`, `packages: write`, and a package the org
+makes public. It would not retire the mirror, which `buildx`, the test suite and the toolchains
+build still need for their own Docker Hub pulls. This change does not settle that question.

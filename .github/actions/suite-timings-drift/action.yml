@@ -1,0 +1,22 @@
+name: 'Check suite-timing drift'
+description: >-
+  Regenerates the suite timings from the JUnit XML of this leg and uploads them as the
+  `suite-timings-regenerated` artifact. Drift is a warning, never a failure: to adopt the new
+  timings, download the artifact and commit it over integration-tests/suite-timings.json.
+
+  The timings are shared by every module, so one reference leg runs this. Call it with
+  `if: always()`: the timings of a leg with a failed suite are still valid.
+
+runs:
+  using: composite
+  steps:
+    # `|| true`: drift must not fail a leg that has already reported its own test result.
+    - shell: bash
+      run: ./gradlew integration-tests:regenerateSuiteTimings || true
+    # Upload even when the task above failed, for the same reason.
+    - if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: suite-timings-regenerated
+        path: integration-tests/build/suite-timings-regenerated.json
+        if-no-files-found: ignore

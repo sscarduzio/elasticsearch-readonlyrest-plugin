@@ -1,0 +1,107 @@
+name: ROR ES Publish Pre-Builds
+
+# Two repos dispatch this workflow, and a dispatch is told nothing about the run it creates. They
+# find their run by this title, so the tag has to stay in it: the tag holds a run id and an
+# attempt, which makes the title unique. The e2e repo builds the same string in
+# ci/prebuild-images-lib.sh, and the two must match. The tag is optional. If a dispatch sends no
+# tag, the title shows the versions. Then no title stops after the word "pre-build".
+run-name: ROR ES pre-build ${{ inputs.tag || inputs.es_versions }}
+
+# Manual-only: no push/pull_request triggers
+on:
+  workflow_dispatch:
+    inputs:
+      es_versions:
+        description: 'Space or comma-separated list of ES versions (e.g., "9.4.2" or "9.4.2 8.19.16")'
+        type: string
+        required: true
+      target_branch:
+        description: 'Branch to build from (falls back to develop if not found, builds from current branch if empty)'
+        type: string
+        required: false
+        default: ''
+      tag:
+        description: 'Optional image tag. When set, each image is also published as <esVersion>-ror-<tag> pointing at the current commit''s image.'
+        type: string
+        required: false
+        default: ''
+      force_rebuild:
+        description: 'Rebuild even if an image for the current commit already exists (skips the unchanged-sources optimization).'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish:
+    name: Publishing
+    # Self-hosted: a long build-and-push job, IO-bound, one at a time. Needs a registered
+    # self-hosted runner — see ci/self-hosted-runner.md.
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 600
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
+      GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 0, persist-credentials: false }
+
+      # Pick the branch to build from: empty target_branch keeps the ref the workflow was dispatched
+      # on, a known branch is checked out, an unknown one falls back to develop. The fallback lets a
+      # caller pass its own branch name verbatim without first checking that it exists here.
+      - name: Checkout target branch
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: |
+          if [ -n "$(echo "$TARGET_BRANCH" | tr -d '[:space:]')" ]; then
+            if git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
+              echo "Branch '$TARGET_BRANCH' found, checking out"
+              git checkout "$TARGET_BRANCH"
+            else
+              echo "Branch '$TARGET_BRANCH' not found, falling back to develop"
+              git checkout develop
+            fi
+          fi
+
+      - name: Free host disk
+        run: ci/free-host-disk.sh
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with: { distribution: temurin, java-version: '17' }
+
+      - name: Restore Gradle cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ github.workspace }}/.gradle-home
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties', '**/settings.gradle*', '**/build.gradle*', '**/gradle.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: publish_pre_builds_docker_images
+        env:
+          ROR_TASK: publish_pre_builds_docker_images
+          BUILD_ROR_ES_VERSIONS: ${{ inputs.es_versions }}
+          IMAGE_TAG: ${{ inputs.tag }}
+          FORCE_REBUILD: ${{ inputs.force_rebuild }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+        run: |
+          set -e
+
+          source ci/configure-docker.sh
+
+          echo ">>> Publishing pre-build docker images for: $BUILD_ROR_ES_VERSIONS"
+          ci/run-pipeline.sh
+
+      # configure-docker.sh logs in with the Docker Hub RW token. On an ephemeral VM that credential
+      # died with the VM; here it would stay in the runner user's ~/.docker/config.json, where every
+      # later job on the box can read it.
+      - name: Log out of Docker Hub
+        if: always()
+        run: docker logout || true

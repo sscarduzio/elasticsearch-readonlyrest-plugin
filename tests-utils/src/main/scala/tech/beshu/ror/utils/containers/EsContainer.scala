@@ -23,8 +23,9 @@ import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.images.builder.ImageFromDockerfile
+import squants.information.{Information, Mebibytes}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
-import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
+import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, BasicAuthWithHeaders, Header, None, Token}
 import tech.beshu.ror.utils.containers.EsContainer.{Credentials, EsContainerImplementation}
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
 import tech.beshu.ror.utils.containers.logs.CompositeLogConsumer
@@ -53,6 +54,22 @@ abstract class EsContainer(
     with StrictLogging {
 
   private val esClient = Coeval(adminClient)
+
+  // Each ES container gets a memory budget. Without one the container is unbounded, so when a leg runs
+  // out of memory the HOST OOM killer chooses the victim -- which is why those failures surfaced as an
+  // unrelated Gradle daemon or test worker dying while the container that took the memory kept running.
+  // With a limit, Docker kills the container that went over and the failure names itself.
+  //
+  // Measured on ES 8.18 with the 512m heap every Docker profile pins: ~1.09 GiB resident idle and ~1.10 GiB
+  // under indexing and search load (heap 319/512 MiB, non-heap 197 MiB). 2 GiB leaves room for a full heap
+  // plus the ROR plugin -- a node boots and serves at ~54% of it -- while still catching a runaway node.
+  // Override with ROR_ES_CONTAINER_MEMORY_MB when a suite genuinely needs more.
+  private val esContainerMemoryLimit: Information =
+    Option(System.getenv("ROR_ES_CONTAINER_MEMORY_MB"))
+      .flatMap(_.toLongOption)
+      .filter(_ > 0)
+      .map(Mebibytes(_))
+      .getOrElse(Mebibytes(2048))
 
   private val containerImplementation: EsContainerImplementation = {
     OsUtils.currentOs match {
@@ -93,7 +110,9 @@ abstract class EsContainer(
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
         // Share host's cgroup namespace to avoid JDK cgroup v2 NPE in nested Docker containers on CI
         container.withCreateContainerCmdModifier { cmd =>
-          cmd.getHostConfig.withCgroupnsMode("host")
+          cmd.getHostConfig
+            .withCgroupnsMode("host")
+            .withMemory(esContainerMemoryLimit.toBytes.toLong)
         }
         // Stamp this CI job's id so cleanup reaps ONLY this CI job's containers, never a sibling's on the
         // shared self-hosted Docker daemon. Absent off-CI -> no label, no-op.
@@ -120,7 +139,9 @@ abstract class EsContainer(
         // Best-effort: an image still referenced by a sibling container can't be removed (Docker 409)
         // — swallow it; this node's own uniquely-tagged image is what we reclaim.
         try dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
-        catch { case scala.util.control.NonFatal(_) => () }
+        catch {
+          case scala.util.control.NonFatal(_) => ()
+        }
     }
   }
 
@@ -144,10 +165,16 @@ abstract class EsContainer(
   }
 
   override def client(credentials: Credentials): RestClient = credentials match {
-    case BasicAuth(user, password) => new RestClient(sslEnabled, ip, port, Some(user, password))
-    case Token(token) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader("Authorization", token))
-    case Header(name, value) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader(name, value))
-    case None                => new RestClient(sslEnabled, ip, port, Option.empty)
+    case BasicAuth(user, password) =>
+      new RestClient(sslEnabled, ip, port, Some(user, password))
+    case BasicAuthWithHeaders(user, password, headers) =>
+      new RestClient(sslEnabled, ip, port, Some(user, password), headers.map(headerFrom)*)
+    case Token(token) =>
+      new RestClient(sslEnabled, ip, port, Option.empty, headerFrom("Authorization", token))
+    case Header(name, value) =>
+      new RestClient(sslEnabled, ip, port, Option.empty, headerFrom(name, value))
+    case None =>
+      new RestClient(sslEnabled, ip, port, Option.empty)
   }
 
   override def start(): Unit = {
@@ -161,6 +188,8 @@ abstract class EsContainer(
         throw ex
     }
   }
+
+  private def headerFrom(name: String, value: String) = new BasicHeader(name, value)
 
   // Known docker classic-builder race: two sharded test JVMs concurrently building images that
   // share parent layers can fail the export with "unknown parent image ID" (moby bug). It's
@@ -193,6 +222,9 @@ object EsContainer {
 
   object Credentials {
     final case class BasicAuth(user: String, password: String) extends Credentials
+
+    final case class BasicAuthWithHeaders(user: String, password: String, headers: Seq[(String, String)])
+        extends Credentials
 
     final case class Header(name: String, value: String) extends Credentials
 

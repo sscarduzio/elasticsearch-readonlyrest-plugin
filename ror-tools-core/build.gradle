@@ -24,7 +24,6 @@ plugins {
 
 repositories {
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
-    maven { url 'https://jitpack.io' }
 }
 
 
@@ -52,21 +51,6 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(11)
     }
-}
-
-compileScala {
-    options.compilerArgs.addAll(
-            "-feature",
-            "-Xfatal-warnings",
-            "-Wunused:implicits",
-            "-Wunused:imports",
-            "-Wunused:explicits",
-            "-Wunused:strict-no-implicit-warn",
-            "-Wunused:locals",
-            "-Wunused:params",
-            "-Wunused:privates",
-            "-Wunused:nowarn",
-    )
 }
 
 tasks.withType(ScalaCompile).configureEach {

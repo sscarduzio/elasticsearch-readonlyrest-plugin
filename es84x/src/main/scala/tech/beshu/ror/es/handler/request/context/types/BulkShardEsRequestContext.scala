@@ -21,7 +21,6 @@ import cats.implicits.*
 import org.elasticsearch.action.bulk.BulkShardRequest
 import org.elasticsearch.index.Index
 import org.elasticsearch.threadpool.ThreadPool
-import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
@@ -30,6 +29,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, Modified}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
@@ -69,8 +69,8 @@ class BulkShardEsRequestContext(
     }
     val singleIndex = indices.head
     val uuid = esContext.esServices.clusterService.indexOrAliasUuids(singleIndex.name).toList.head
-    ReflectionUtils
-      .getAllFields(request.shardId().getClass, ReflectionUtils.withName("index"))
+    ReflecUtils
+      .fieldsNamed(request.shardId().getClass, "index")
       .asScala
       .foldLeft(Try(())) {
         case (Success(_), field) =>
