@@ -40,13 +40,13 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRet
   MissingHeader
 }
 import tech.beshu.ror.accesscontrol.request.RequestContext.{AuthorizationTokenRetrievingError, Method}
-import tech.beshu.ror.syntax.Set
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 trait RestRequest {
   def method: Method
   def path: UriPath
 
-  def allHeaders: Set[Header]
+  def allHeaders: UniqueList[Header]
 
   def localAddress: Address
   def remoteAddress: Option[Address]

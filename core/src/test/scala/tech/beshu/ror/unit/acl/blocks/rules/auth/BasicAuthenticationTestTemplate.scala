@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.domain.User.{Id, UserIdPattern}
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, basicAuthHeader, impersonationHeader, unsafeNes}
+import tech.beshu.ror.utils.uniquelist.UniqueList
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean, isUsernameMaskedByRule: Boolean)
@@ -75,7 +76,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
       "match" when {
         "basic auth header contains configured in rule's settings value" in {
           val restRequest = mock[RestRequest]
-          (() => restRequest.allHeaders).expects().returning(Set(basicAuthHeader("logstash:logstash")))
+          (() => restRequest.allHeaders).expects().returning(UniqueList.of(basicAuthHeader("logstash:logstash")))
           val requestContext = mock[RequestContext]
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
@@ -94,7 +95,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
       "not match" when {
         "basic auth header contains not configured in rule's settings value" in {
           val restRequest = mock[RestRequest]
-          (() => restRequest.allHeaders).expects().returning(Set(basicAuthHeader("logstash:nologstash")))
+          (() => restRequest.allHeaders).expects().returning(UniqueList.of(basicAuthHeader("logstash:nologstash")))
           val requestContext = mock[RequestContext]
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
@@ -107,7 +108,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
         }
         "basic auth header is absent" in {
           val restRequest = mock[RestRequest]
-          (() => restRequest.allHeaders).expects().returning(Set.empty)
+          (() => restRequest.allHeaders).expects().returning(UniqueList.empty)
           val requestContext = mock[RequestContext]
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
@@ -127,7 +128,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
               val restRequest = mock[RestRequest]
               (() => restRequest.allHeaders)
                 .expects()
-                .returns(Set(basicAuthHeader("admin:admin"), impersonationHeader("logstash")))
+                .returns(UniqueList.of(basicAuthHeader("admin:admin"), impersonationHeader("logstash")))
                 .anyNumberOfTimes()
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
@@ -154,7 +155,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
               val restRequest = mock[RestRequest]
               (() => restRequest.allHeaders)
                 .expects()
-                .returns(Set(basicAuthHeader("admin:pass"), impersonationHeader("logstash")))
+                .returns(UniqueList.of(basicAuthHeader("admin:pass"), impersonationHeader("logstash")))
                 .anyNumberOfTimes()
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
@@ -174,7 +175,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
               val restRequest = mock[RestRequest]
               (() => restRequest.allHeaders)
                 .expects()
-                .returns(Set(basicAuthHeader("unknown:admin"), impersonationHeader("logstash")))
+                .returns(UniqueList.of(basicAuthHeader("unknown:admin"), impersonationHeader("logstash")))
                 .anyNumberOfTimes()
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
@@ -194,7 +195,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
               val restRequest = mock[RestRequest]
               (() => restRequest.allHeaders)
                 .expects()
-                .returns(Set(basicAuthHeader("admin2:admin2"), impersonationHeader("logstash")))
+                .returns(UniqueList.of(basicAuthHeader("admin2:admin2"), impersonationHeader("logstash")))
                 .anyNumberOfTimes()
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
@@ -218,7 +219,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
         val restRequest = mock[RestRequest]
         (() => restRequest.allHeaders)
           .expects()
-          .returns(Set(basicAuthHeader("admin:admin"), impersonationHeader("logstash")))
+          .returns(UniqueList.of(basicAuthHeader("admin:admin"), impersonationHeader("logstash")))
           .anyNumberOfTimes()
         val requestContext = mock[RequestContext]
         (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()

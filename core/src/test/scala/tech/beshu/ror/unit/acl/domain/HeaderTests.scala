@@ -19,10 +19,13 @@ package tech.beshu.ror.unit.acl.domain
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.*
+import tech.beshu.ror.accesscontrol.domain.{Address, Header}
+import tech.beshu.ror.accesscontrol.request.RestRequest.*
+import tech.beshu.ror.mocks.MockRestRequest
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.testRequestId
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.nio.charset.StandardCharsets
 import java.util.Base64
@@ -147,6 +150,18 @@ class HeaderTests extends AnyWordSpec with Matchers {
         valuesOf(headers, "x-forwarded-user") should be(List("bob"))
       }
     }
+    "one name arrives with two values" should {
+      "keep the values in the order they arrived" in {
+        valuesOf(headersOf(Map("X-Forwarded-For" -> List("10.0.0.1", "10.0.0.2"))), "x-forwarded-for") should be(
+          List("10.0.0.1", "10.0.0.2")
+        )
+      }
+      "keep the reversed order when the values arrive reversed" in {
+        valuesOf(headersOf(Map("X-Forwarded-For" -> List("10.0.0.2", "10.0.0.1"))), "x-forwarded-for") should be(
+          List("10.0.0.2", "10.0.0.1")
+        )
+      }
+    }
     "a header has no name or no value" should {
       "drop the header with the empty name" in {
         headersOf(Map("" -> List("bob"), "X-Forwarded-User" -> List("bob"))).toList
@@ -170,6 +185,27 @@ class HeaderTests extends AnyWordSpec with Matchers {
           Right(List("enterprise"))
         )
       }
+    }
+  }
+
+  "RestRequest.xForwardedForHeaderValue" should {
+    "return the first X-Forwarded-For entry in wire order when the header arrives twice" in {
+      val request = MockRestRequest(allHeaders =
+        headersOf(
+          Map("X-Forwarded-For" -> List("203.0.113.10", "10.0.0.1"))
+        )
+      )
+
+      request.xForwardedForHeaderValue should be(Address.from("203.0.113.10"))
+    }
+    "return the first X-Forwarded-For entry when the two values arrive in the other order" in {
+      val request = MockRestRequest(allHeaders =
+        headersOf(
+          Map("X-Forwarded-For" -> List("10.0.0.1", "203.0.113.10"))
+        )
+      )
+
+      request.xForwardedForHeaderValue should be(Address.from("10.0.0.1"))
     }
   }
 
@@ -232,7 +268,7 @@ class HeaderTests extends AnyWordSpec with Matchers {
   private def headerOf(name: String, value: String) = Header(nameOf(name), NonEmptyString.unsafeFrom(value))
 
   private def setOf(nameAndValues: (String, String)*) =
-    nameAndValues.map { case (name, value) => headerOf(name, value) }.toCovariantSet
+    UniqueList.from(nameAndValues.map { case (name, value) => headerOf(name, value) })
 
   private def headersFrom(realHeaders: Map[String, String] = Map.empty, rorMetadataHeaders: String*) = {
     headersFromMultiValued(realHeaders.view.mapValues(List(_)).toMap, rorMetadataHeaders.toList)
@@ -278,7 +314,7 @@ class HeaderTests extends AnyWordSpec with Matchers {
 
   private def rawHeadersOf(rawHeaders: Map[String, List[String]]) = Header.fromRawHeaders(rawHeaders)
 
-  private def valuesOf(headers: Set[Header], name: String) =
+  private def valuesOf(headers: UniqueList[Header], name: String) =
     headers.toList
       .filter(_.name == nameOf(name))
       .map(_.value.value)

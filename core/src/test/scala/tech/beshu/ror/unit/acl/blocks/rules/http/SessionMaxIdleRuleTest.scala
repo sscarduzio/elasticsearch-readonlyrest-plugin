@@ -41,6 +41,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.http.SessionMaxIdleRuleTest.{
 }
 import tech.beshu.ror.utils.RefinedUtils.{PositiveFiniteDuration, positiveFiniteDuration}
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.time.*
 import java.util.UUID
@@ -160,10 +161,11 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
   ) = {
     val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle), CaseSensitivity.Enabled)
     val restRequest = mock[RestRequest]
-    val headers = (rawCookie :: otherRawCookies)
-      .flatMap(NonEmptyString.unapply)
-      .map(cookieHeader => headerFrom("Cookie" -> cookieHeader.value))
-      .toCovariantSet
+    val headers = UniqueList.from(
+      (rawCookie :: otherRawCookies)
+        .flatMap(NonEmptyString.unapply)
+        .map(cookieHeader => headerFrom("Cookie" -> cookieHeader.value))
+    )
     (() => restRequest.allHeaders).expects().returning(headers)
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest)

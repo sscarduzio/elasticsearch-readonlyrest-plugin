@@ -23,11 +23,12 @@ import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.{nes, realisticHeaders}
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.util.concurrent.TimeUnit
 
 /**
- * Tier-2 KPI: the PRODUCTION header lookup — `Set[Header].find(_.name === target)` with the
+ * Tier-2 KPI: the PRODUCTION header lookup — `UniqueList[Header].find(_.name === target)` with the
  * case-insensitive `Header.Name` Eq, over the same realistic 20-header set the ACL sees.
  * Measures the real idiom (Set iteration + cats Eq syntax), not a hand-rolled array scan.
  */
@@ -41,7 +42,7 @@ class HeaderNameEqBenchmark {
 
   private implicit val eqName: cats.Eq[Header.Name] = Header.Name.eqName
 
-  private var headers: Set[Header] = scala.compiletime.uninitialized
+  private var headers: UniqueList[Header] = scala.compiletime.uninitialized
   private var target: Header.Name = scala.compiletime.uninitialized
 
   @Setup(Level.Trial)

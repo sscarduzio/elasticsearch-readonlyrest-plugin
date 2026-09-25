@@ -31,6 +31,7 @@ import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.json.JsonPath
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.security.{KeyPair, KeyPairGenerator, SecureRandom}
 import java.util.concurrent.TimeUnit
@@ -92,8 +93,10 @@ class JwtVerificationBenchmark {
     sign(Jwts.builder().subject("user1").claim("groups", "g1,g2")).compact()
 
   private def createBlockContext(token: String): GeneralNonIndexRequestBlockContext = {
-    val headers = (1 to 18).map(idx => Header(Header.Name(nes(s"X-Filler-$idx")), nes(s"value-$idx"))).toCovariantSet +
-      Header(Header.Name.authorization, nes(s"Bearer $token"))
+    val headers = UniqueList.from(
+      (1 to 18).map(idx => Header(Header.Name(nes(s"X-Filler-$idx")), nes(s"value-$idx"))) :+
+        Header(Header.Name.authorization, nes(s"Bearer $token"))
+    )
     new NonIndexRequestContext(headers).initialBlockContext(noBlock)
   }
 }

@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
 
@@ -41,29 +42,29 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
         "there is no other additional header in request" in {
           assertMatchRule(
             configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "hvalue")),
-            requestHeaders = Set(headerFrom("hkey" -> "hvalue"))
+            requestHeaders = UniqueList.of(headerFrom("hkey" -> "hvalue"))
           )
         }
         "value of the configured header has wildcard" in {
           assertMatchRule(
             configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "h*")),
-            requestHeaders = Set(headerFrom("hkey" -> "hvalue"))
+            requestHeaders = UniqueList.of(headerFrom("hkey" -> "hvalue"))
           )
         }
         "request header has name is case insensitive" in {
           assertMatchRule(
             configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "hvalue")),
-            requestHeaders = Set(headerFrom("Hkey" -> "hvalue"))
+            requestHeaders = UniqueList.of(headerFrom("Hkey" -> "hvalue"))
           )
           assertMatchRule(
             configuredHeaders = NonEmptySet.of(requiredHeaderFrom("Hkey" -> "hvalue")),
-            requestHeaders = Set(headerFrom("hkey" -> "hvalue"))
+            requestHeaders = UniqueList.of(headerFrom("hkey" -> "hvalue"))
           )
         }
         "there are additional headers in request" in {
           assertMatchRule(
             configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "hvalue")),
-            requestHeaders = Set(
+            requestHeaders = UniqueList.of(
               headerFrom("Hkey" -> "hvalue"),
               headerFrom("other" -> "header")
             )
@@ -72,39 +73,39 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
         "configured header value has wildcard character in its value" in {
           assertMatchRule(
             configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "h*")),
-            requestHeaders = Set(headerFrom("Hkey" -> "hvalue"))
+            requestHeaders = UniqueList.of(headerFrom("Hkey" -> "hvalue"))
           )
         }
         "configured header value has a colon in its value" in {
           assertMatchRule(
             configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "x:y")),
-            requestHeaders = Set(headerFrom("hkey" -> "x:y"))
+            requestHeaders = UniqueList.of(headerFrom("hkey" -> "x:y"))
           )
         }
         "any value of the header will be accepted" in {
           assertMatchRule(
             configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "*")),
-            requestHeaders = Set(headerFrom("hkey" -> "xyz"))
+            requestHeaders = UniqueList.of(headerFrom("hkey" -> "xyz"))
           )
         }
         "not allowed header syntax is used" when {
           "there is one request header" in {
             assertMatchRule(
               configuredHeaders = NonEmptySet.of(forbiddenHeaderFrom("hkey" -> "*")),
-              requestHeaders = Set(headerFrom("hkey2" -> "xyz"))
+              requestHeaders = UniqueList.of(headerFrom("hkey2" -> "xyz"))
             )
           }
           "there is none request header" in {
             assertMatchRule(
               configuredHeaders = NonEmptySet.of(forbiddenHeaderFrom("hkey" -> "*")),
-              requestHeaders = Set.empty
+              requestHeaders = UniqueList.empty
             )
           }
         }
         "not allowed header and value syntax is used" in {
           assertMatchRule(
             configuredHeaders = NonEmptySet.of(forbiddenHeaderFrom("hkey" -> "test")),
-            requestHeaders = Set(headerFrom("hkey" -> "other"))
+            requestHeaders = UniqueList.of(headerFrom("hkey" -> "other"))
           )
         }
       }
@@ -115,7 +116,7 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
               requiredHeaderFrom("hkey1" -> "hvalue2"),
               requiredHeaderFrom("hkey2" -> "hvalue2")
             ),
-            requestHeaders = Set(
+            requestHeaders = UniqueList.of(
               headerFrom("hkey1" -> "hvalue2"),
               headerFrom("hkey2" -> "hvalue2")
             )
@@ -127,7 +128,7 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
               requiredHeaderFrom("hkey" -> "hvalue1"),
               requiredHeaderFrom("hkey" -> "hvalue2")
             ),
-            requestHeaders = Set(
+            requestHeaders = UniqueList.of(
               headerFrom("hkey" -> "hvalue2"),
               headerFrom("hkey" -> "hvalue1")
             )
@@ -139,7 +140,7 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
               forbiddenHeaderFrom("hkey1" -> "*"),
               requiredHeaderFrom("hkey2" -> "hvalue2")
             ),
-            requestHeaders = Set(
+            requestHeaders = UniqueList.of(
               headerFrom("hkey2" -> "hvalue2"),
               headerFrom("hkey3" -> "hvalue3")
             )
@@ -154,41 +155,41 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
             requiredHeaderFrom("hkey1" -> "hvalue1"),
             requiredHeaderFrom("hkey2" -> "hvalue2")
           ),
-          requestHeaders = Set(headerFrom("hkey1" -> "hvalue1"))
+          requestHeaders = UniqueList.of(headerFrom("hkey1" -> "hvalue1"))
         )
       }
       "one header is configured, but request contains one, different header" in {
         assertNotMatchRule(
           configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey1" -> "hvalue1")),
-          requestHeaders = Set(headerFrom("hkey2" -> "hvalue2"))
+          requestHeaders = UniqueList.of(headerFrom("hkey2" -> "hvalue2"))
         )
       }
       "one header is configure, but request has no headers" in {
         assertNotMatchRule(
           configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey1" -> "hvalue1")),
-          requestHeaders = Set.empty
+          requestHeaders = UniqueList.empty
         )
       }
       "request header has name is case sensitive" in {
         assertNotMatchRule(
           configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "hvalue")),
-          requestHeaders = Set(headerFrom("hkey" -> "HValue"))
+          requestHeaders = UniqueList.of(headerFrom("hkey" -> "HValue"))
         )
         assertNotMatchRule(
           configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "HValue")),
-          requestHeaders = Set(headerFrom("hkey" -> "hvalue"))
+          requestHeaders = UniqueList.of(headerFrom("hkey" -> "hvalue"))
         )
       }
       "value of the sent header contains `*` but expected value is different" in {
         assertNotMatchRule(
           configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "any")),
-          requestHeaders = Set(headerFrom("hkey" -> "*"))
+          requestHeaders = UniqueList.of(headerFrom("hkey" -> "*"))
         )
       }
       "at least one not allowed header is present" in {
         assertNotMatchRule(
           configuredHeaders = NonEmptySet.of(forbiddenHeaderFrom("hkey" -> "*")),
-          requestHeaders = Set(headerFrom("hkey" -> "test"))
+          requestHeaders = UniqueList.of(headerFrom("hkey" -> "test"))
         )
       }
       "at least one not allowed header and value is present" in {
@@ -197,24 +198,27 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
             forbiddenHeaderFrom("hkey" -> "test"),
             forbiddenHeaderFrom("hkey2" -> "test"),
           ),
-          requestHeaders = Set(headerFrom("hkey" -> "test"))
+          requestHeaders = UniqueList.of(headerFrom("hkey" -> "test"))
         )
       }
     }
   }
 
-  private def assertMatchRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]], requestHeaders: Set[Header]) =
+  private def assertMatchRule(
+      configuredHeaders: NonEmptySet[AccessRequirement[Header]],
+      requestHeaders: UniqueList[Header]
+  ) =
     assertRule(configuredHeaders, requestHeaders, isMatched = true)
 
   private def assertNotMatchRule(
       configuredHeaders: NonEmptySet[AccessRequirement[Header]],
-      requestHeaders: Set[Header]
+      requestHeaders: UniqueList[Header]
   ) =
     assertRule(configuredHeaders, requestHeaders, isMatched = false)
 
   private def assertRule(
       configuredHeaders: NonEmptySet[AccessRequirement[Header]],
-      requestHeaders: Set[Header],
+      requestHeaders: UniqueList[Header],
       isMatched: Boolean
   ) = {
     val rule = new HeadersAndRule(BaseHeaderRule.Settings(configuredHeaders))

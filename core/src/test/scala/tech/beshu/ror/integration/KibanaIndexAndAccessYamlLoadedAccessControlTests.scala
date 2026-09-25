@@ -123,7 +123,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
         "component template creation request is called (in case of `admin` kibana access)" in {
           val request = MockRequestContext.nonIndices.copy(
             restRequest = MockRestRequest(
-              allHeaders = Set(basicAuthHeader("john:dev")),
+              allHeaders = UniqueList.of(basicAuthHeader("john:dev")),
               path = UriPath.from("/_component_template/test")
             ),
             action = Action("cluster:admin/component_template/put"),
@@ -147,7 +147,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
         "component template creation request is called (in case of `rw` kibana access)" in {
           val request = MockRequestContext.nonIndices.copy(
             restRequest = MockRestRequest(
-              allHeaders = Set(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
+              allHeaders = UniqueList.of(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
               path = UriPath.from("/_component_template/test")
             ),
             action = Action("cluster:admin/component_template/put"),
@@ -173,7 +173,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
         "index template creation request is called (in case of `admin` kibana access)" in {
           val request = MockRequestContext.nonIndices.copy(
             restRequest = MockRestRequest(
-              allHeaders = Set(basicAuthHeader("john:dev")),
+              allHeaders = UniqueList.of(basicAuthHeader("john:dev")),
               path = UriPath.from("/_component_template/test")
             ),
             action = Action("cluster:admin/component_template/put"),
@@ -200,7 +200,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
       "allow to proceed" in {
         val request = MockRequestContext.indices.copy(
           restRequest = MockRestRequest(
-            allHeaders = Set(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
+            allHeaders = UniqueList.of(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
             path = UriPath.from("/.kibana_ror_custom/_doc/dashboard:d3d40550-b889-11eb-a1e1-914af9365d47"),
           ),
           action = Action("indices:data/write/index"),
@@ -280,7 +280,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
         val request = MockRequestContext.indices.copy(
           restRequest = MockRestRequest(
             method = Method.PUT,
-            allHeaders = Set(basicAuthHeader("admin:dev"), currentGroupHeader("Administrators")),
+            allHeaders = UniqueList.of(basicAuthHeader("admin:dev"), currentGroupHeader("Administrators")),
             path = UriPath.from("/.kibana_admins/_create/index-pattern:3b2fa1b0-bcb2-11eb-a20e-8daf1d07a2b2")
           ),
           action = Action("indices:data/write/index"),

@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.createCredentials
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.util.concurrent.TimeUnit
 
@@ -39,7 +40,7 @@ class BasicAuthDecodeBenchmark {
 
   private val authBlocksPerRequest = 5
 
-  private var headers: Set[Header] = scala.compiletime.uninitialized
+  private var headers: UniqueList[Header] = scala.compiletime.uninitialized
 
   @Setup(Level.Trial)
   def setup(): Unit = {

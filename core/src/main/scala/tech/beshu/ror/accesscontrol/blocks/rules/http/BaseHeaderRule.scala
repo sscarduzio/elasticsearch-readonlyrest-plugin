@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 abstract class BaseHeaderRule(val settings: Settings) extends RegularRule
 
@@ -44,7 +45,7 @@ object BaseHeaderRule {
       matches: Header => Boolean
   ) {
 
-    def isFulfilledBy(requestHeaders: Set[Header]): Boolean =
+    def isFulfilledBy(requestHeaders: UniqueList[Header]): Boolean =
       accessRequirement match {
         case AccessRequirement.MustBePresent(_) => requestHeaders.exists(matches)
         case AccessRequirement.MustBeAbsent(_)  => requestHeaders.forall(!matches(_))

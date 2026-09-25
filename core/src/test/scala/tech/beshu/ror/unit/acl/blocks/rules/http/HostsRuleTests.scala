@@ -42,6 +42,7 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -119,7 +120,7 @@ class HostsRuleTests extends AnyWordSpec with MockFactory {
       new Ip4sBasedHostnameResolver
     )
     val requestContext = MockRequestContext.metadata.copy(
-      restRequest = MockRestRequest(allHeaders = Set.empty, remoteAddress = address)
+      restRequest = MockRestRequest(allHeaders = UniqueList.empty, remoteAddress = address)
     )
     val blockContext =
       GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)

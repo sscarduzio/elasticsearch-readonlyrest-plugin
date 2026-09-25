@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.util.concurrent.TimeUnit
 
@@ -70,6 +71,6 @@ class HeaderRuleMatchBenchmark {
     // Filler headers first; the headers satisfying the requirements come last, so scans are full.
     val filler = (0 until math.max(0, 20 - requirements)).map(idx => Header(Header.Name(nes(s"X-Filler-$idx")), nes(s"value-$idx")))
     val matching = (0 until requirements).map(idx => Header(Header.Name(nes(s"X-Required-$idx")), nes(s"allowed-$idx-x")))
-    new NonIndexRequestContext((filler ++ matching).toCovariantSet).initialBlockContext(noBlock)
+    new NonIndexRequestContext(UniqueList.from(filler ++ matching)).initialBlockContext(noBlock)
   }
 }

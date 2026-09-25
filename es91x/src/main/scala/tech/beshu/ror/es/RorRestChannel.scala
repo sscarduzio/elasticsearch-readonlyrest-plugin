@@ -31,6 +31,7 @@ import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.net.InetSocketAddress
 import scala.jdk.CollectionConverters.*
@@ -67,7 +68,7 @@ object RorRestRequest {
 
 }
 
-final class RorRestRequest private (underlying: EsRestRequest, headers: Set[Header]) extends RestRequest {
+final class RorRestRequest private (underlying: EsRestRequest, headers: UniqueList[Header]) extends RestRequest {
 
   override lazy val method: Method = Method.fromStringUnsafe(underlying.method().name())
 
@@ -75,7 +76,7 @@ final class RorRestRequest private (underlying: EsRestRequest, headers: Set[Head
     .from(underlying.path())
     .getOrElse(UriPath.from(nes("/")))
 
-  override lazy val allHeaders: Set[Header] = headers
+  override lazy val allHeaders: UniqueList[Header] = headers
 
   override lazy val localAddress: Address =
     createAddressFrom(_.getLocalAddress)

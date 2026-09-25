@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
 
@@ -40,7 +41,7 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
       "x-api-key header contains defined in settings value" in {
         assertMatchRule(
           configuredApiKeys = NonEmptySet.of(ApiKey("1234567890")),
-          requestHeaders = Set(headerFrom("X-Api-Key" -> "1234567890"))
+          requestHeaders = UniqueList.of(headerFrom("X-Api-Key" -> "1234567890"))
         )
       }
     }
@@ -49,37 +50,41 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
       "x-api-key header contains not defined in settings value" in {
         assertNotMatchRule(
           configuredApiKeys = NonEmptySet.of(ApiKey("1234567890")),
-          requestHeaders = Set(headerFrom("X-Api-Key" -> "x"))
+          requestHeaders = UniqueList.of(headerFrom("X-Api-Key" -> "x"))
         )
       }
       "x-api-key header is absent" in {
         assertNotMatchRule(
           configuredApiKeys = NonEmptySet.of(ApiKey("1234567890")),
-          requestHeaders = Set.empty
+          requestHeaders = UniqueList.empty
         )
       }
       "x-api-key header holds a valid key next to an invalid one" in {
         assertNotMatchRule(
           configuredApiKeys = NonEmptySet.of(ApiKey("1234567890")),
-          requestHeaders = Set(headerFrom("X-Api-Key" -> "1234567890"), headerFrom("X-Api-Key" -> "x"))
+          requestHeaders = UniqueList.of(headerFrom("X-Api-Key" -> "1234567890"), headerFrom("X-Api-Key" -> "x"))
         )
       }
       "x-api-key header holds a valid key next to an invalid one, given in the other order" in {
         assertNotMatchRule(
           configuredApiKeys = NonEmptySet.of(ApiKey("1234567890")),
-          requestHeaders = Set(headerFrom("X-Api-Key" -> "x"), headerFrom("X-Api-Key" -> "1234567890"))
+          requestHeaders = UniqueList.of(headerFrom("X-Api-Key" -> "x"), headerFrom("X-Api-Key" -> "1234567890"))
         )
       }
     }
   }
 
-  private def assertMatchRule(configuredApiKeys: NonEmptySet[ApiKey], requestHeaders: Set[Header]) =
+  private def assertMatchRule(configuredApiKeys: NonEmptySet[ApiKey], requestHeaders: UniqueList[Header]) =
     assertRule(configuredApiKeys, requestHeaders, isPermitted = true)
 
-  private def assertNotMatchRule(configuredApiKeys: NonEmptySet[ApiKey], requestHeaders: Set[Header]) =
+  private def assertNotMatchRule(configuredApiKeys: NonEmptySet[ApiKey], requestHeaders: UniqueList[Header]) =
     assertRule(configuredApiKeys, requestHeaders, isPermitted = false)
 
-  private def assertRule(configuredApiKeys: NonEmptySet[ApiKey], requestHeaders: Set[Header], isPermitted: Boolean) = {
+  private def assertRule(
+      configuredApiKeys: NonEmptySet[ApiKey],
+      requestHeaders: UniqueList[Header],
+      isPermitted: Boolean
+  ) = {
     val rule = new ApiKeysRule(ApiKeysRule.Settings(configuredApiKeys))
     val restRequest = mock[RestRequest]
     (() => restRequest.allHeaders).expects().returning(requestHeaders)

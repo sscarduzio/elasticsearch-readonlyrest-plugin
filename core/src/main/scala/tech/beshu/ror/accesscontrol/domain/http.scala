@@ -30,6 +30,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.net.InetSocketAddress
 import java.util.{Locale, UUID}
@@ -100,7 +101,7 @@ object Header {
 
   def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-  def singleHeaderOrNone(name: Header.Name, in: Set[Header])(
+  def singleHeaderOrNone(name: Header.Name, in: UniqueList[Header])(
       implicit requestId: RequestId
   ): Option[Header] = {
     findSingleHeader(name, in) match {
@@ -111,7 +112,7 @@ object Header {
     }
   }
 
-  def findSingleHeader(name: Header.Name, in: Set[Header]): Either[AmbiguousHeader, Option[Header]] = {
+  def findSingleHeader(name: Header.Name, in: UniqueList[Header]): Either[AmbiguousHeader, Option[Header]] = {
     in.filter(_.name === name).toList match {
       case Nil           => Right(None)
       case header :: Nil => Right(Some(header))
@@ -126,44 +127,48 @@ object Header {
 
   def fromRawHeaders(
       headers: java.util.Map[String, java.util.List[String]]
-  ): Either[AuthorizationValueError, Set[Header]] = {
+  ): Either[AuthorizationValueError, UniqueList[Header]] = {
     fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
   }
 
+  /** Keeps the order in which the headers arrived. Two values under one name stay in the order the
+    * client sent them, because a reader which walks the collection must see the first value first.
+    */
   def fromRawHeaders(
       headers: collection.Map[String, Iterable[String]]
-  ): Either[AuthorizationValueError, Set[Header]] = {
+  ): Either[AuthorizationValueError, UniqueList[Header]] = {
     val (authorizationHeaders, nonAuthorizationHeaders) =
-      headers
-        .map { case (name, values) => (name, values.toCovariantSet) }
-        .flatMap { case (name, values) => createHeadersFrom(name, values) }
+      headers.toList
+        .flatMap { case (name, values) => createHeadersFrom(name, values.toList.distinct) }
         .partition(h => h.name === Header.Name.authorization)
     for {
-      extractedHeaders <- authorizationHeaders.toList
+      extractedHeaders <- authorizationHeaders
         .map(header => fromAuthorizationValue(header.value))
         .sequence
-      httpHeaders = (nonAuthorizationHeaders ++ extractedHeaders.map(_.head)).toCovariantSet
-      rorMetadataHeaders = extractedHeaders.flatMap(_.tail).toCovariantSet
+      httpHeaders = UniqueList.from(nonAuthorizationHeaders ++ extractedHeaders.map(_.head))
+      rorMetadataHeaders = UniqueList.from(extractedHeaders.flatMap(_.tail))
       mergedHeaders <- mergeChannels(httpHeaders, rorMetadataHeaders)
     } yield mergedHeaders
   }
 
   private def mergeChannels(
-      httpHeaders: Set[Header],
-      rorMetadataHeaders: Set[Header]
-  ): Either[AuthorizationValueError, Set[Header]] = {
+      httpHeaders: UniqueList[Header],
+      rorMetadataHeaders: UniqueList[Header]
+  ): Either[AuthorizationValueError, UniqueList[Header]] = {
     val httpHeadersByName = httpHeaders.groupBy(_.name)
     val rorMetadataHeadersByName = rorMetadataHeaders.groupBy(_.name)
-    (httpHeadersByName.keys ++ rorMetadataHeadersByName.keys).toCovariantSet.toList
+    (httpHeaders ++ rorMetadataHeaders)
+      .map(_.name)
+      .toList
       .traverse { name =>
-        val fromHttp = httpHeadersByName.getOrElse(name, Set.empty)
-        val fromRorMetadata = rorMetadataHeadersByName.getOrElse(name, Set.empty)
+        val fromHttp = httpHeadersByName.getOrElse(name, UniqueList.empty)
+        val fromRorMetadata = rorMetadataHeadersByName.getOrElse(name, UniqueList.empty)
         if (fromRorMetadata.isEmpty) Right(fromHttp)
         else if (fromHttp.isEmpty) Right(fromRorMetadata)
-        else if (fromHttp == fromRorMetadata) Right(fromHttp)
+        else if (fromHttp.toCovariantSet == fromRorMetadata.toCovariantSet) Right(fromHttp)
         else Left(HeaderValuesConflict(name, fromHttp.size, fromRorMetadata.size))
       }
-      .map(_.flatten.toCovariantSet)
+      .map(headerGroups => UniqueList.from(headerGroups.flatten))
   }
 
   private def createHeadersFrom(name: String, values: Iterable[String]) = {
