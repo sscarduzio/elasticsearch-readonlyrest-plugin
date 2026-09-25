@@ -75,8 +75,12 @@ class QueryTest extends AnyWordSpec {
       "have no index list when the statement names no table" in {
         queryFrom("SELECT 1 + 1", SqlPlan.Statement(Nil)) shouldBe Query.WithoutIndices("SELECT 1 + 1")
       }
-      "be left for Elasticsearch to reject when Elasticsearch cannot parse it" in {
-        Query.from("SELECT", readerFailingWith(esRejection)) shouldBe Query.RejectedByEs("SELECT")
+      "be unreadable when Elasticsearch cannot parse it" in {
+        Query.from("SELECT", readerFailingWith(esRejection)) shouldBe
+          Query.Unreadable("SELECT", Rejection.CannotParseQuery)
+      }
+      "have no index list when it is the empty query of a cursor request" in {
+        Query.from("", readerFailingWith(esRejection)) shouldBe Query.WithoutIndices("")
       }
       "be unreadable when ReadonlyREST cannot read the plan Elasticsearch built" in {
         Query.from("SELECT * FROM library", readerFailingWith(readingFailure)) shouldBe
@@ -261,9 +265,27 @@ class QueryTest extends AnyWordSpec {
         Query.Unreadable("SELECT", Rejection.CannotReadQuery).narrowedTo(allowed("bookstore")) shouldBe
           Left(Rejection.CannotReadQuery)
       }
-      "stay as written when Elasticsearch will reject it" in {
-        Query.RejectedByEs("SELECT FROM").narrowedTo(allowed("bookstore")).map(_.stringify) shouldBe
+      "be rejected when Elasticsearch cannot parse it and the ACL narrowed the indices down" in {
+        Query.from("SELECT FROM", readerFailingWith(esRejection)).narrowedTo(allowed("bookstore")) shouldBe
+          Left(Rejection.CannotParseQuery)
+      }
+      "stay as written when Elasticsearch cannot parse it and the ACL allows all indices" in {
+        Query.from("SELECT FROM", readerFailingWith(esRejection)).narrowedTo(allowed("*")).map(_.stringify) shouldBe
           Right("SELECT FROM")
+      }
+      "stay as written when it is the empty query of a cursor request" in {
+        Query.from("", readerFailingWith(esRejection)).narrowedTo(allowed("bookstore")).map(_.stringify) shouldBe
+          Right("")
+      }
+      "rewrite a table written in backticks" in {
+        narrow(
+          query = "SELECT name FROM `book*`",
+          allowed = allowed("bookstore"),
+          reads = Map(
+            "SELECT name FROM `book*`" -> select("`book*`" -> "book*"),
+            """SELECT name FROM "bookstore"""" -> select(""""bookstore"""" -> "bookstore")
+          )
+        ) shouldBe Right("""SELECT name FROM "bookstore"""")
       }
     }
   }

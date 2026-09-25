@@ -144,6 +144,6 @@ private[sql] object IndexListLocator {
     quotingAndSpacingAside(one) == quotingAndSpacingAside(other)
 
   private def quotingAndSpacingAside(indexList: String): String =
-    indexList.filterNot(char => char.isWhitespace || char == '"')
+    indexList.filterNot(char => char.isWhitespace || char == '"' || char == '`')
 
 }

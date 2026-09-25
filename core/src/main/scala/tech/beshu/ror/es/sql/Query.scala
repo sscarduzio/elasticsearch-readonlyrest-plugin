@@ -52,16 +52,18 @@ object Query extends RequestIdAwareLogging {
   def from(query: String, reader: SqlPlanReader)(
       implicit requestId: RequestId
   ): Query = {
-    reader.planIn(query) match {
-      case Right(plan) =>
-        located(query, reader, plan)
-      case Left(PlanFailure.RejectedByEs(cause)) =>
-        logger.debug("Elasticsearch cannot parse the SQL query, so it will reject the query itself", cause)
-        RejectedByEs(query)
-      case Left(PlanFailure.CannotReadPlan(cause)) =>
-        logger.warn("ReadonlyREST cannot read the plan Elasticsearch built for the SQL query", cause)
-        Unreadable(query, Rejection.CannotReadQuery)
-    }
+    if (Option(query).forall(_.isBlank)) WithoutIndices(query)
+    else
+      reader.planIn(query) match {
+        case Right(plan) =>
+          located(query, reader, plan)
+        case Left(PlanFailure.RejectedByEs(cause)) =>
+          logger.debug("Elasticsearch cannot parse the SQL query", cause)
+          Unreadable(query, Rejection.CannotParseQuery)
+        case Left(PlanFailure.CannotReadPlan(cause)) =>
+          logger.warn("ReadonlyREST cannot read the plan Elasticsearch built for the SQL query", cause)
+          Unreadable(query, Rejection.CannotReadQuery)
+      }
   }
 
   final class WithIndexLists private[sql] (
@@ -104,18 +106,6 @@ object Query extends RequestIdAwareLogging {
   }
 
   final case class WithoutIndices(text: String) extends Query {
-
-    override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
-
-    override def narrowedTo(
-        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-    )(
-        implicit requestId: RequestId
-    ): Either[Rejection, Query] = Right(this)
-
-  }
-
-  final case class RejectedByEs(text: String) extends Query {
 
     override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
 
@@ -215,6 +205,8 @@ sealed trait Rejection
 object Rejection {
 
   case object CannotReadQuery extends Rejection
+
+  case object CannotParseQuery extends Rejection
 
   final case class CannotLocateIndexList(failure: ReadingFailure) extends Rejection
 

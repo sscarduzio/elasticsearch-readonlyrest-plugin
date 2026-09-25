@@ -1119,6 +1119,11 @@ trait BaseXpackApiSuite
         result should have statusCode 200
         result.rows.size should be(5)
       }
+      "read a table written in backticks" in {
+        val result = dev1SqlManager.execute("""SELECT name FROM `bookstore`""")
+        result should have statusCode 200
+        result.rows.size should be(3)
+      }
       "rewrite the table written after a character that takes two UTF-16 units" in {
         val result = dev1SqlManager.execute("""SELECT '\ud83d\ude00' AS e, name FROM \"book*\"""")
         result should have statusCode 200
@@ -1127,10 +1132,10 @@ trait BaseXpackApiSuite
     }
     "a query is read page by page" should {
       "return every page to a user who has access to some indices only" in {
-        val firstPage = adminSqlManager.execute("SELECT author FROM library", fetchSize = 1)
+        val firstPage = dev1SqlManager.execute("SELECT author FROM bookstore", fetchSize = 1)
         firstPage should have statusCode 200
         firstPage.rows.size should be(1)
-        val secondPage = adminSqlManager.nextPage(firstPage.responseJson("cursor").str)
+        val secondPage = dev1SqlManager.nextPage(firstPage.responseJson("cursor").str)
         secondPage should have statusCode 200
         secondPage.rows.size should be(1)
       }
