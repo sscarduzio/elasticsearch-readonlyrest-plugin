@@ -18,15 +18,23 @@ package tech.beshu.ror.accesscontrol.request
 
 import cats.Eval
 import cats.implicits.*
+import eu.timepit.refined.types.string.NonEmptyString
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.Header.singleHeaderOrNone
+import tech.beshu.ror.accesscontrol.domain.Header.{findSingleHeader, singleHeaderOrNone}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.request.RequestContext.Id
+import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{
+  InvalidValue,
+  MissingHeader
+}
+import tech.beshu.ror.accesscontrol.request.RequestContext.{HeaderValuesExtractors, Id}
 import tech.beshu.ror.es.{EsNodeSettings, EsServices}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -42,7 +50,7 @@ trait BaseEsContext {
   def esServices: EsServices
 }
 
-trait RequestContext {
+trait RequestContext extends HeaderValuesExtractors {
 
   type BLOCK_CONTEXT <: BlockContext
 
@@ -99,8 +107,7 @@ trait RequestContext {
    * static context.
    */
   def shouldAddBasicAuthPrompt(aclStaticContext: AccessControlStaticContext): Boolean = {
-    implicit val requestId: RequestId = id.toRequestId
-    aclStaticContext.doesRequirePassword && this.restRequest.rorKbnLicenseType.isEmpty
+    aclStaticContext.doesRequirePassword && this.rorKbnLicenseType.isEmpty
   }
 
 }
@@ -214,6 +221,64 @@ object RequestContext extends RequestIdAwareLogging {
   object AuthorizationTokenRetrievingError {
     case object MissingHeader extends AuthorizationTokenRetrievingError
     case object InvalidValue extends AuthorizationTokenRetrievingError
+  }
+
+  trait HeaderValuesExtractors {
+    this: RequestContext =>
+
+    lazy val impersonateAs: Option[User.Id] = {
+      singleHeaderOf(Header.Name.impersonateAs)
+        .map { header => User.Id(header.value) }
+    }
+
+    /** Returns the first entry of the forwarded chain, which is the client address, and `None` when no
+     * entry parses. X-Forwarded-For repeats by design, so two values are not an ambiguity to reject.
+     */
+    lazy val xForwardedForHeaderValue: Option[Address] = {
+      this.restRequest.allHeaders.view
+        .filter(_.name === Header.Name.xForwardedFor)
+        .flatMap(_.value.value.split(",").toList)
+        .map(_.trim)
+        .flatMap(Address.from)
+        .headOption
+    }
+
+    lazy val userAgent: Option[NonEmptyString] =
+      findSingleHeader(Header.Name.userAgent, in = this.restRequest.allHeaders).toOption.flatten.map(_.value)
+
+    lazy val rawAuthHeader: Option[Header] =
+      singleHeaderOf(Header.Name.authorization)
+
+    lazy val bearerToken: Either[AuthorizationTokenRetrievingError, AuthorizationToken] =
+      authorizationTokenBy(
+        AuthorizationTokenDef(headerName = Header.Name.authorization, allowedPrefix = StrictlyDefined(bearer))
+      )
+
+    lazy val rorKbnLicenseType: Option[RorKbnLicenseType] = {
+      singleHeaderOf(Header.Name.rorKbnLicenseType)
+        .flatMap(h => RorKbnLicenseType.from(h.value.value).toOption)
+    }
+
+    def authorizationTokenBy(
+        config: AuthorizationTokenDef
+    ): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
+      for {
+        tokenHeader <- singleHeaderOf(config.headerName).toRight(MissingHeader)
+        authorizationToken <- AuthorizationToken.from(tokenHeader.value).toRight(InvalidValue)
+        _ <- config.allowedPrefix match {
+          case AllowedPrefix.Any                                                             => Right(())
+          case AllowedPrefix.StrictlyDefined(prefix) if prefix === authorizationToken.prefix => Right(())
+          case AllowedPrefix.StrictlyDefined(_)                                              => Left(InvalidValue)
+        }
+      } yield authorizationToken
+
+    }
+
+    private def singleHeaderOf(name: Header.Name): Option[Header] = {
+      given RequestId = this.id.toRequestId
+      Header.singleHeaderOrNone(name, in = this.restRequest.allHeaders)
+    }
+
   }
 
 }

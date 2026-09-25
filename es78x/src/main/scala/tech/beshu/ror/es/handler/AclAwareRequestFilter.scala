@@ -70,7 +70,7 @@ import org.elasticsearch.tasks.Task as EsTask
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
 import tech.beshu.ror.accesscontrol.request.{BaseEsContext, RequestContext, RestRequest}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
@@ -283,14 +283,20 @@ object AclAwareRequestFilter {
     val timestamp: Instant = Instant.now()
 
     def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
-      implicit val id: RequestId = RequestContext.Id.from(this).toRequestId
-      val impersonationHeaderPresent = restRequest.impersonateAs.isDefined
-      engines.impersonatorsEngine match {
-        case Some(impersonatorsEngine) if impersonationHeaderPresent => Right(impersonatorsEngine)
-        case None if impersonationHeaderPresent                      => Left(Error.ImpersonatorsEngineNotConfigured)
-        case Some(_) | None                                          => Right(engines.mainEngine)
+      (engines.impersonatorsEngine, containsImpersonationContext) match {
+        case (Some(impersonatorsEngine), true) => Right(impersonatorsEngine)
+        case (Some(_), false)                  => Right(engines.mainEngine)
+        case (None, true)                      => Left(Error.ImpersonatorsEngineNotConfigured)
+        case (None, false)                     => Right(engines.mainEngine)
       }
     }
+
+    private lazy val containsImpersonationContext: Boolean =
+      Header
+        .findSingleHeader(Header.Name.impersonateAs, in = restRequest.allHeaders)
+        .toOption
+        .flatten
+        .isDefined
 
   }
 

@@ -25,7 +25,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.*
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError
-import tech.beshu.ror.accesscontrol.request.RestRequest.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -51,10 +50,8 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
     }
   }
 
-  private def extractJwtTokenFromHeader(blockContext: BlockContext)(
-      implicit requestId: RequestId
-  ) = {
-    blockContext.requestContext.restRequest.bearerToken
+  private def extractJwtTokenFromHeader(blockContext: BlockContext) = {
+    blockContext.requestContext.bearerToken
       .map(t => Jwt.Token(t.value))
       .left
       .map {

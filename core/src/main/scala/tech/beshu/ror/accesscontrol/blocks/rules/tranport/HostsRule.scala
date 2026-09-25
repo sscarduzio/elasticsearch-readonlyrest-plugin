@@ -32,7 +32,7 @@ class HostsRule(val settings: Settings, resolver: HostnameResolver) extends Base
   override val name: Rule.Name = HostsRule.Name.name
 
   override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    blockContext.requestContext.restRequest.xForwardedForHeaderValue match {
+    blockContext.requestContext.xForwardedForHeaderValue match {
       case Some(xForwardedHeaderValue) if settings.acceptXForwardedForHeader =>
         checkAllowedAddresses(blockContext)(
           allowedAddresses = settings.allowedHosts,

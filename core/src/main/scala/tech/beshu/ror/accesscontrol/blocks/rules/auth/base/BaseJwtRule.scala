@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationSe
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError
-import tech.beshu.ror.accesscontrol.request.RestRequest.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -90,10 +89,8 @@ trait BaseJwtRule extends RequestIdAwareLogging {
       blockContext: BlockContext,
       jwt: JWT_DEF,
       failedJwtCauseCreator: String => Cause
-  )(
-      implicit requestId: RequestId
   ) = {
-    blockContext.requestContext.restRequest
+    blockContext.requestContext
       .authorizationTokenBy(jwt.authorizationTokenDef)
       .map(h => Jwt.Token(h.value))
       .left
