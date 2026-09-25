@@ -647,6 +647,24 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               expectedPipeline = Some("my_ingest_pipeline")
             )
           }
+          "custom ingest pipeline with surrounding whitespace is set" in {
+            val settings = rorSettingsWithAuditUnsafe(
+              """
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: index
+                |      pipeline: " my_ingest_pipeline "
+              """.stripMargin
+            )
+
+            assertIndexBasedAuditOutputConfigPresent[BlockVerbosityAwareAuditLogSerializer](
+              settings,
+              expectedIndexName = "readonlyrest_audit-2018-12-31",
+              expectedAuditCluster = LocalAuditCluster,
+              expectedPipeline = Some("my_ingest_pipeline")
+            )
+          }
           "serializer is set" when {
             "QueryAuditLogSerializer serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(

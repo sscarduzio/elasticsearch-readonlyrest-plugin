@@ -51,11 +51,13 @@ class AuditPipelineMissingIntegrationSuite
     "not affect the other audit outputs" in {
       sendAuditedRequest()
 
-      new AuditIndexManager(
-        adminClient,
-        esVersionUsed,
-        "audit_index_next_to_missing_pipeline"
-      ).getEntries.jsons should not be empty
+      eventually {
+        new AuditIndexManager(
+          adminClient,
+          esVersionUsed,
+          "audit_index_next_to_missing_pipeline"
+        ).getEntries.jsons should not be empty
+      }
     }
     "log the rejection with the index of the output and the ES error" in {
       sendAuditedRequest()

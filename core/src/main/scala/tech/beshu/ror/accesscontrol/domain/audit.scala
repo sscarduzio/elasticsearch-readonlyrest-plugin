@@ -228,7 +228,7 @@ final case class AuditIngestPipeline private (name: NonEmptyString)
 object AuditIngestPipeline {
 
   def from(name: String): Option[AuditIngestPipeline] =
-    NonEmptyString.unapply(name).filter(_.value.trim.nonEmpty).map(new AuditIngestPipeline(_))
+    NonEmptyString.unapply(name.trim).map(new AuditIngestPipeline(_))
 
   given Show[AuditIngestPipeline] = Show.show(_.name.value)
 }
