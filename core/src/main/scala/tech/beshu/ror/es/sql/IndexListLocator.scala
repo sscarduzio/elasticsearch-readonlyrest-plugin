@@ -33,7 +33,6 @@ import scala.util.matching.Regex
 
 private[sql] object IndexListLocator {
 
-  /** A `LIKE` clause with its optional `ESCAPE`, both taking a string literal that doubles its quotes. */
   private val likeClause: Regex =
     """(?is)\bLIKE\s+'(?:[^']|'')*'(?:\s+ESCAPE\s+'(?:[^']|'')*')?""".r
 
@@ -78,7 +77,6 @@ private[sql] object IndexListLocator {
       .requestedIndicesIn(indexList)
       .toRight(ReadingFailure.UnsupportedIndexList(indexList))
 
-  /** ES reports the list it read, not the text it read it from, so the span has to read back as that list. */
   private def spanOf(query: String, table: TableInQuery): Either[ReadingFailure, TextSpan] =
     offsetsOf(query, table.writtenAt)
       .map(start => TextSpan(start, start + table.writtenText.length))

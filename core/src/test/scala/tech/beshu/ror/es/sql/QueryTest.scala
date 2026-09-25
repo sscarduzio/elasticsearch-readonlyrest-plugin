@@ -361,7 +361,6 @@ class QueryTest extends AnyWordSpec {
     override def planIn(query: String): Either[PlanFailure, SqlPlan] = reads(query)
   }
 
-  /** The shapes Elasticsearch hands back, named and spelled the way its own classes are. */
   private final class Location(line: Int, column: Int) {
     def getLineNumber: Int = line
     def getColumnNumber: Int = column

@@ -25,7 +25,6 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 private[sql] final case class TextSpan(start: Int, end: Int)
 
-/** A 1-based line and a 0-based column, the way Elasticsearch reports them. */
 final case class SourceLocation(line: Int, column: Int)
 
 private[sql] final case class TableInQuery(
@@ -44,7 +43,6 @@ private[sql] object CommandSelector {
 
   final case class LiteralIndexList(indexList: String) extends CommandSelector
 
-  /** The wildcard is ES's reading of the pattern, so it is nowhere in the query text - the whole clause goes. */
   final case class MatchingPattern(indexNameWildcard: String, commandName: String) extends CommandSelector
 
   final case class CannotNarrow(commandName: String) extends CommandSelector
@@ -84,7 +82,6 @@ private[sql] object LocatedIndexList {
 
 private[sql] final case class ReplacedQuery(query: String, intendedIndices: Set[String]) {
 
-  /** ROR trusts what ES reads back, not its own rewrite: a mismatch means the query is not narrowed. */
   def checkedAgainst(readIndices: Set[String]): Either[Rejection, String] =
     Either.cond(
       test = intendedIndices == readIndices,

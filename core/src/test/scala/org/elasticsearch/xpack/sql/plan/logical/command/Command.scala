@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.xpack.sql.plan.logical.command
 
-/** Stand-ins named after the Elasticsearch SQL command classes the plan reader looks up by name. */
 abstract class Command
 
 final class ShowTables(val index: String) extends Command

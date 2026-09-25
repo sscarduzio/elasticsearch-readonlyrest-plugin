@@ -29,7 +29,6 @@ import scala.util.Try
 
 private[sql] object EsSqlObjects {
 
-  /** Every other command reads no index - `SHOW FUNCTIONS` carries a pattern too, but it matches function names. */
   private val commandsReadingIndices = Set("ShowTables", "ShowColumns", "SysTables", "SysColumns")
 
   private val commandsTakingAnIndexList = Set("ShowTables", "ShowColumns", "SysTables")
@@ -67,7 +66,6 @@ private[sql] object EsSqlObjects {
   private def literalIndexListOf(command: Any): Option[LiteralIndexList] =
     fieldOf[String](command, "index").map(LiteralIndexList.apply)
 
-  /** `asIndexNameWildcard` is a method, not a field: read as a field it throws and the command reads as index-less. */
   private def matchingPatternOf(command: Any, commandName: String): Option[MatchingPattern] =
     for {
       pattern <- fieldOf[AnyRef](command, "pattern")

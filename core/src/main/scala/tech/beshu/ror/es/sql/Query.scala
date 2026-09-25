@@ -115,9 +115,6 @@ object Query extends RequestIdAwareLogging {
 
   }
 
-  /** ES runs nothing for such a query: it answers with its own parse error, or, for an empty query, continues the
-    * cursor the request carries.
-    */
   final case class RejectedByEs(text: String) extends Query {
 
     override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
