@@ -56,24 +56,19 @@ final class NodeClientBasedAuditOutputService(client: NodeClient)
   )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(indexName, documentId, jsonRecord, pipeline)
+    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline.map(_.name.value))
   }
 
   override def close(): Unit = {
     bulkProcessor.close()
   }
 
-  private def submitDocument(
-      indexName: IndexName.Full,
-      documentId: String,
-      jsonRecord: String,
-      pipeline: Option[AuditIngestPipeline]
-  ): Unit = {
+  private def submitDocument(indexName: String, documentId: String, record: String, pipeline: Option[String]): Unit = {
     bulkProcessor.add(
-      new IndexRequest(indexName.name.value, "ror_audit_evt", documentId)
-        .source(jsonRecord, XContentType.JSON)
+      new IndexRequest(indexName, "ror_audit_evt", documentId)
+        .source(record, XContentType.JSON)
         .opType(DocWriteRequest.OpType.CREATE)
-        .setPipeline(pipeline.map(_.name.value).orNull)
+        .setPipeline(pipeline.orNull)
     )
   }
 
