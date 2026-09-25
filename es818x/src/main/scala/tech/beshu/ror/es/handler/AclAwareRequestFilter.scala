@@ -73,7 +73,7 @@ import org.elasticsearch.tasks.Task as EsTask
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
+import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header, RequestId}
 import tech.beshu.ror.accesscontrol.request.{BaseEsContext, RequestContext, RestRequest}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
@@ -101,6 +101,7 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
   import systemContext.{scheduler, uniqueIdentifierGenerator}
 
   def handle(engines: Engines, esContext: EsContext): Task[Either[Error, Unit]] = {
+    implicit val id: RequestContext.Id = RequestContext.Id.from(esContext)
     esContext
       .pickEngineToHandle(engines)
       .map(handleRequestWithEngine(_, esContext))
@@ -313,7 +314,9 @@ object AclAwareRequestFilter {
 
     val timestamp: Instant = Instant.now()
 
-    def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
+    def pickEngineToHandle(engines: Engines)(
+        implicit requestId: RequestId
+    ): Either[Error, Engine] = {
       (engines.impersonatorsEngine, containsImpersonationContext) match {
         case (Some(impersonatorsEngine), true) => Right(impersonatorsEngine)
         case (Some(_), false)                  => Right(engines.mainEngine)
@@ -322,11 +325,11 @@ object AclAwareRequestFilter {
       }
     }
 
-    private lazy val containsImpersonationContext: Boolean =
+    private def containsImpersonationContext(
+        implicit requestId: RequestId
+    ): Boolean =
       Header
-        .findSingleHeader(Header.Name.impersonateAs, in = restRequest.allHeaders)
-        .toOption
-        .flatten
+        .singleHeaderOrNone(Header.Name.impersonateAs, in = restRequest.allHeaders)
         .isDefined
 
   }

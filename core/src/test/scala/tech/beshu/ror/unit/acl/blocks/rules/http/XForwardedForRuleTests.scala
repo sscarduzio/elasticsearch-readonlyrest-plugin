@@ -128,6 +128,24 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
             xForwardedForHeaderValue = Some("google.com")
           )
         }
+        "the first entry of the chain does not parse, and a later entry is in the configured net" in {
+          assertNotMatchRule(
+            settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.0/24"))),
+            xForwardedForHeaderValue = Some("1.1.1.1:8080, 1.1.1.2")
+          )
+        }
+        "the first entry of the chain is not in the configured net, and a later entry is" in {
+          assertNotMatchRule(
+            settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.0/24"))),
+            xForwardedForHeaderValue = Some("2.2.2.2, 1.1.1.2")
+          )
+        }
+        "the first X-Forwarded-For header is not in the configured net, and a later header is" in {
+          assertNotMatchRule(
+            settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.0/24"))),
+            xForwardedForHeaderValues = List("2.2.2.2", "1.1.1.2")
+          )
+        }
         "0.0.0.0/0 is configured and X-Forwarded-For is not present" in {
           assertNotMatchRule(
             settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("0.0.0.0/0"))),
@@ -166,10 +184,16 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
 
   private def assertNotMatchRule(
       settings: XForwardedForRule.Settings,
-      xForwardedForHeaderValue: Option[String],
+      xForwardedForHeaderValue: Option[String] = None,
+      xForwardedForHeaderValues: List[String] = List.empty,
       hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver
   ) =
-    assertRule(settings, xForwardedForHeaderValue.toList, hostnameResolver, isMatched = false)
+    assertRule(
+      settings,
+      xForwardedForHeaderValue.toList ++ xForwardedForHeaderValues,
+      hostnameResolver,
+      isMatched = false
+    )
 
   private def assertRule(
       settings: XForwardedForRule.Settings,

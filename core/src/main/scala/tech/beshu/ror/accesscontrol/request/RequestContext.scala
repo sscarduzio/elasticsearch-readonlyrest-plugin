@@ -231,16 +231,18 @@ object RequestContext extends RequestIdAwareLogging {
         .map { header => User.Id(header.value) }
     }
 
-    /** Returns the first entry of the forwarded chain, which is the client address, and `None` when no
-     * entry parses. X-Forwarded-For repeats by design, so two values are not an ambiguity to reject.
+    /** Returns the first entry of the forwarded chain, which is the client address, and `None` when that
+     * entry does not parse. ROR reads the first entry only, because every later entry is a proxy.
+     * X-Forwarded-For repeats by design, so two values are not an ambiguity to reject. The headers keep
+     * the order they arrive, so the first one holds the start of the chain.
      */
     lazy val xForwardedForHeaderValue: Option[Address] = {
       this.restRequest.allHeaders.view
         .filter(_.name === Header.Name.xForwardedFor)
-        .flatMap(_.value.value.split(",").toList)
+        .headOption
+        .flatMap(_.value.value.split(",").headOption)
         .map(_.trim)
         .flatMap(Address.from)
-        .headOption
     }
 
     lazy val userAgent: Option[NonEmptyString] =
