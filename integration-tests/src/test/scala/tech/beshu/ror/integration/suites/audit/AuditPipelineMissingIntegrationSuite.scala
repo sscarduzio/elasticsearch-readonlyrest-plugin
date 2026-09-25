@@ -23,6 +23,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 class AuditPipelineMissingIntegrationSuite
@@ -59,33 +60,39 @@ class AuditPipelineMissingIntegrationSuite
         ).getEntries.jsons should not be empty
       }
     }
-    "log the rejection with the index of the output and the ES error" in {
-      sendAuditedRequest()
+  }
 
-      eventually {
-        rejectionLogLines("audit_index_missing_pipeline") should not be empty
-      }
-    }
-    "not store the audit events in the index" in {
-      sendAuditedRequest()
-
-      eventually {
-        rejectionLogLines("audit_index_missing_pipeline") should not be empty
-      }
-      new AuditIndexManager(
-        adminClient,
-        esVersionUsed,
-        "audit_index_missing_pipeline"
-      ).getEntries should have statusCode 404
-    }
-    if (isDataStreamSupported) {
-      "not store the audit events in the data stream" in {
+  // On Windows, ES runs as a native process, so there are no container logs to read
+  ignoreOnWindows {
+    "An audit output with an ingest pipeline that does not exist" should {
+      "log the rejection with the index of the output and the ES error" in {
         sendAuditedRequest()
 
         eventually {
-          rejectionLogLines("audit_data_stream_missing_pipeline") should not be empty
+          rejectionLogLines("audit_index_missing_pipeline") should not be empty
         }
-        new AuditIndexManager(adminClient, esVersionUsed, "audit_data_stream_missing_pipeline").hasNoEntries
+      }
+      "not store the audit events in the index" in {
+        sendAuditedRequest()
+
+        eventually {
+          rejectionLogLines("audit_index_missing_pipeline") should not be empty
+        }
+        new AuditIndexManager(
+          adminClient,
+          esVersionUsed,
+          "audit_index_missing_pipeline"
+        ).getEntries should have statusCode 404
+      }
+      if (isDataStreamSupported) {
+        "not store the audit events in the data stream" in {
+          sendAuditedRequest()
+
+          eventually {
+            rejectionLogLines("audit_data_stream_missing_pipeline") should not be empty
+          }
+          new AuditIndexManager(adminClient, esVersionUsed, "audit_data_stream_missing_pipeline").hasNoEntries
+        }
       }
     }
   }

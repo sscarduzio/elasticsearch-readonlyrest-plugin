@@ -194,10 +194,10 @@ class RemoteClusterAuditingToolsSuite
         val traceId = sendTracedRequest("missing-pipeline")
 
         eventually {
-          targetEs.container.getLogs.linesIterator.exists { line =>
-            line.contains("Cannot submit audit event [index: audit_index, doc: ") &&
-            line.contains("pipeline with id [missing_remote_audit_pipeline] does not exist")
-          } shouldBe true
+          // ES < 8 logs the stack trace, which holds the ES error, on lines separate from the log message
+          val logs = targetEs.container.getLogs
+          logs should include("Cannot submit audit event [index: audit_index, doc: ")
+          logs should include("pipeline with id [missing_remote_audit_pipeline] does not exist")
         }
         consistently(during = 3.seconds) {
           forEachAuditManager { adminAuditManager =>
