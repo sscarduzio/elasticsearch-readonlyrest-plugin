@@ -25,7 +25,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.Header.singleHeaderOrNone
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*
 import tech.beshu.ror.implicits.*
@@ -169,8 +168,7 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private def isRequestRelatedToTagsPath(pathPart: String) = ProcessingContext.create { (bc, _) =>
     given BlockContext = bc
-    val result = singleHeaderOrNone(Header.Name.kibanaRequestPath, in = bc.requestContext.restRequest.allHeaders)
-      .exists(_.value.value.contains(s"/$pathPart/"))
+    val result = bc.requestContext.kibanaRequestPath.exists(_.value.contains(s"/$pathPart/"))
     logger.debug(s"Does kibana request contains '${pathPart.show}' in path? ${result.show}")
     result
   }

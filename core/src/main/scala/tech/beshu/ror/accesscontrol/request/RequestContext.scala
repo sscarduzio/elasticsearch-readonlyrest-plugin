@@ -259,6 +259,14 @@ object RequestContext extends RequestIdAwareLogging {
         .flatMap(h => RorKbnLicenseType.from(h.value.value).toOption)
     }
 
+    lazy val kibanaRequestPath: Option[NonEmptyString] = {
+      singleHeaderOf(Header.Name.kibanaRequestPath).map(_.value)
+    }
+
+    lazy val xApiKey: Option[NonEmptyString] = {
+      singleHeaderOf(Header.Name.xApiKeyHeaderName).map(_.value)
+    }
+
     def authorizationTokenBy(
         config: AuthorizationTokenDef
     ): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
