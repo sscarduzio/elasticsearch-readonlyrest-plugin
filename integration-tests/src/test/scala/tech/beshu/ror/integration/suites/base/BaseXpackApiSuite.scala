@@ -1115,7 +1115,7 @@ trait BaseXpackApiSuite
         result.rows.size should be(3)
       }
       "quote the indices an alias written without quotes resolves to" in {
-        val result = adminSqlManager.execute("""SELECT name FROM books_and_library""")
+        val result = adminSqlManager.execute("""SELECT name FROM library_and_bookstore""")
         result should have statusCode 200
         result.rows.size should be(5)
       }
@@ -1192,7 +1192,7 @@ object BaseXpackApiSuite {
     storeScriptTemplate(adminRestClient, esVersion)
     configureBookstore(documentManager, indexManager)
     configureLibrary(documentManager)
-    indexManager.createAliasOf("bookstore,library", "books_and_library").force()
+    indexManager.createAliasOf("bookstore,library", "library_and_bookstore").force()
 
     indexManager.closeIndex("test3_index_c").force()
   }
