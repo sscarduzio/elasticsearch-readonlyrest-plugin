@@ -23,14 +23,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.ApiKeysRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
-import tech.beshu.ror.accesscontrol.domain.{ApiKey, RequestId}
+import tech.beshu.ror.accesscontrol.domain.ApiKey
 
 class ApiKeysRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = ApiKeysRule.Name.name
 
   def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
-    given RequestId = blockContext.requestContext.id.toRequestId
     Decision.permit(`with` = blockContext)(
       when = blockContext.requestContext.xApiKey.exists { apiKey => settings.apiKeys.contains(ApiKey(apiKey)) }
     )
