@@ -54,7 +54,7 @@ final class NodeClientBasedAuditOutputService(client: NodeClient, threadPool: Th
   )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline.map(_.name.value))
+    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline.map(_.id.value))
   }
 
   override def close(): Unit = {

@@ -50,7 +50,7 @@ final class RestClientAuditOutputService private (
   )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline.map(_.name.value))
+    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline.map(_.id.value))
   }
 
   override def close(): Unit = {

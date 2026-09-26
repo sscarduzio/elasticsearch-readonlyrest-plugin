@@ -223,14 +223,16 @@ object RorAuditLoggerName {
   val default: RorAuditLoggerName = RorAuditLoggerName(nes("readonlyrest_audit"))
 }
 
-final case class AuditIngestPipeline private (name: NonEmptyString)
+final case class AuditIngestPipeline private (id: NonEmptyString)
 
 object AuditIngestPipeline {
 
-  def from(name: String): Option[AuditIngestPipeline] =
-    NonEmptyString.unapply(name.trim).map(new AuditIngestPipeline(_))
+  val esNoPipelineId: String = "_none"
 
-  given Show[AuditIngestPipeline] = Show.show(_.name.value)
+  def from(id: String): Option[AuditIngestPipeline] =
+    NonEmptyString.unapply(id.trim).map(new AuditIngestPipeline(_))
+
+  given Show[AuditIngestPipeline] = Show.show(_.id.value)
 }
 
 final case class AuditOutputName(value: String) extends AnyVal

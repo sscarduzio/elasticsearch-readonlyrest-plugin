@@ -30,7 +30,7 @@ private[audit] final class EsIndexBasedAuditOutput private (
     serializer: JsonAuditSerializer,
     rorAuditIndexTemplate: RorAuditIndexTemplate,
     auditOutputService: IndexBasedAuditOutputService,
-    val pipeline: Option[AuditIngestPipeline]
+    pipeline: Option[AuditIngestPipeline]
 )(
     implicit clock: Clock
 ) extends JsonBasedAuditOutput(outputName, serializer) {

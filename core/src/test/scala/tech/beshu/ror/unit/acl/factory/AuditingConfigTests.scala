@@ -1933,7 +1933,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               assertInvalidSettings(
                 settings,
                 expectedErrorMessage =
-                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: \"\""
+                  "The audit 'pipeline' setting must be a non-blank ID of an ES ingest pipeline, got: \"\""
               )
             }
             "ingest pipeline is a blank string" in {
@@ -1950,7 +1950,24 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               assertInvalidSettings(
                 settings,
                 expectedErrorMessage =
-                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: \"  \""
+                  "The audit 'pipeline' setting must be a non-blank ID of an ES ingest pipeline, got: \"  \""
+              )
+            }
+            "ingest pipeline is '_none'" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      pipeline: "_none"
+                """.stripMargin
+              )
+
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "The audit 'pipeline' setting cannot be '_none', because ES would then skip the default ingest pipeline of the target index"
               )
             }
             "ingest pipeline is not a string" in {
@@ -1967,7 +1984,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               assertInvalidSettings(
                 settings,
                 expectedErrorMessage =
-                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: [\"a\",\"b\"]"
+                  "The audit 'pipeline' setting must be a non-blank ID of an ES ingest pipeline, got: [\"a\",\"b\"]"
               )
             }
             "not supported custom serializer is set" in {
@@ -2180,7 +2197,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               assertInvalidSettings(
                 settings,
                 expectedErrorMessage =
-                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: \"\""
+                  "The audit 'pipeline' setting must be a non-blank ID of an ES ingest pipeline, got: \"\""
               )
             }
             "ingest pipeline is a blank string" in {
@@ -2197,7 +2214,24 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               assertInvalidSettings(
                 settings,
                 expectedErrorMessage =
-                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: \"  \""
+                  "The audit 'pipeline' setting must be a non-blank ID of an ES ingest pipeline, got: \"  \""
+              )
+            }
+            "ingest pipeline is '_none'" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      pipeline: "_none"
+                """.stripMargin
+              )
+
+              assertInvalidSettings(
+                settings,
+                expectedErrorMessage =
+                  "The audit 'pipeline' setting cannot be '_none', because ES would then skip the default ingest pipeline of the target index"
               )
             }
             "ingest pipeline is not a string" in {
@@ -2214,7 +2248,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
               assertInvalidSettings(
                 settings,
                 expectedErrorMessage =
-                  "The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: [\"a\",\"b\"]"
+                  "The audit 'pipeline' setting must be a non-blank ID of an ES ingest pipeline, got: [\"a\",\"b\"]"
               )
             }
             "not supported custom serializer is set" in {
@@ -2834,7 +2868,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
       outputConfig.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName(expectedIndexName))
       serializerAssertion(outputConfig.serializer)
       outputConfig.auditCluster shouldBe expectedAuditCluster
-      outputConfig.pipeline.map(_.name.value) shouldBe expectedPipeline
+      outputConfig.pipeline.map(_.id.value) shouldBe expectedPipeline
     }
   }
 
@@ -2881,7 +2915,7 @@ class AuditingConfigTests extends AnyWordSpec with Inside {
       outputConfig.rorAuditDataStream.dataStream should be(fullDataStreamName(expectedDataStreamName))
       serializerAssertion(outputConfig.serializer)
       outputConfig.auditCluster shouldBe expectedAuditCluster
-      outputConfig.pipeline.map(_.name.value) shouldBe expectedPipeline
+      outputConfig.pipeline.map(_.id.value) shouldBe expectedPipeline
     }
   }
 

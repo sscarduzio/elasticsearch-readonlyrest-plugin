@@ -37,7 +37,7 @@ private[audit] final class EsDataStreamBasedAuditOutput private (
     serializer: JsonAuditSerializer,
     rorAuditDataStream: RorAuditDataStream,
     auditOutputService: DataStreamBasedAuditOutputService,
-    val pipeline: Option[AuditIngestPipeline]
+    pipeline: Option[AuditIngestPipeline]
 ) extends JsonBasedAuditOutput(outputName, serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(

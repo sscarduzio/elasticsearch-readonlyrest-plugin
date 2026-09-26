@@ -23,6 +23,13 @@ readonlyrest:
           type: "static"
           class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
           verbosity_level_serialization_mode: [INFO]
+      - type: index
+        index_template: "'audit_index_missing_pipeline'"
+        pipeline: "missing_pipeline"
+        serializer:
+          type: "static"
+          class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
+          verbosity_level_serialization_mode: [INFO]
 
   access_control_rules:
 

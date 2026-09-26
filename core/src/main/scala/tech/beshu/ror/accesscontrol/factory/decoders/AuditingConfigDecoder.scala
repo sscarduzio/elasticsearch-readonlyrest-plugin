@@ -403,21 +403,25 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
 
   private given Decoder[AuditIngestPipeline] = Decoder.instance { c =>
     c.value.asString.flatMap(AuditIngestPipeline.from) match {
+      case Some(pipeline) if pipeline.id.value == AuditIngestPipeline.esNoPipelineId =>
+        Left(
+          pipelineDecodingFailure(
+            s"The audit 'pipeline' setting cannot be '${AuditIngestPipeline.esNoPipelineId}', because ES would then skip the default ingest pipeline of the target index"
+          )
+        )
       case Some(pipeline) =>
         Right(pipeline)
       case None =>
         Left(
-          DecodingFailure(
-            AclCreationErrorCoders.stringify(
-              auditSettingsError(
-                s"The audit 'pipeline' setting must be a non-blank name of an ES ingest pipeline, got: ${c.value.noSpaces}"
-              )
-            ),
-            Nil
+          pipelineDecodingFailure(
+            s"The audit 'pipeline' setting must be a non-blank ID of an ES ingest pipeline, got: ${c.value.noSpaces}"
           )
         )
     }
   }
+
+  private def pipelineDecodingFailure(message: String) =
+    DecodingFailure(AclCreationErrorCoders.stringify(auditSettingsError(message)), Nil)
 
   private given Decoder[AuditOutputName] = Decoder.decodeString.map(AuditOutputName.apply)
 

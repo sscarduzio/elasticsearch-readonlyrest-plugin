@@ -29,6 +29,7 @@ import tech.beshu.ror.utils.elasticsearch.{
   ElasticsearchTweetsInitializer,
   IndexManager
 }
+import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 class AuditPipelineIntegrationSuite
@@ -95,6 +96,55 @@ class AuditPipelineIntegrationSuite
     }
   }
 
+  "An audit output with an ingest pipeline that does not exist" should {
+    "not affect the audited request" in {
+      sendAuditedRequest()
+    }
+    "not affect the other audit outputs" in {
+      sendAuditedRequest()
+
+      eventually {
+        markersIn("audit_index_pipeline_a") shouldBe Set(Some("a"))
+        markersIn("audit_index_without_pipeline") shouldBe Set(None)
+      }
+    }
+  }
+
+  // On Windows, ES runs as a native process, so there are no container logs to read
+  ignoreOnWindows {
+    "An audit output with an ingest pipeline that does not exist" should {
+      "log the rejection with the index of the output and the ES error" in {
+        sendAuditedRequest()
+
+        eventually {
+          rejectionLogLines("audit_index_missing_pipeline") should not be empty
+        }
+      }
+      "not store the audit events in the index" in {
+        sendAuditedRequest()
+
+        eventually {
+          rejectionLogLines("audit_index_missing_pipeline") should not be empty
+        }
+        new AuditIndexManager(
+          adminClient,
+          esVersionUsed,
+          "audit_index_missing_pipeline"
+        ).getEntries should have statusCode 404
+      }
+      if (isDataStreamSupported) {
+        "not store the audit events in the data stream" in {
+          sendAuditedRequest()
+
+          eventually {
+            rejectionLogLines("audit_data_stream_missing_pipeline") should not be empty
+          }
+          new AuditIndexManager(adminClient, esVersionUsed, "audit_data_stream_missing_pipeline").hasNoEntries
+        }
+      }
+    }
+  }
+
   private def sendAuditedRequest(): Unit = {
     val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
     indexManager.getIndex("twitter") should have statusCode 200
@@ -105,5 +155,13 @@ class AuditPipelineIntegrationSuite
     entries should not be empty
     entries.map(_.obj.get(markerField).map(_.str)).toSet
   }
+
+  private def rejectionLogLines(indexName: String): List[String] =
+    targetEs.container.getLogs.linesIterator
+      .filter(line =>
+        line.contains(s"x: [$indexName] ") &&
+          line.contains("pipeline with id [missing_pipeline] does not exist")
+      )
+      .toList
 
 }

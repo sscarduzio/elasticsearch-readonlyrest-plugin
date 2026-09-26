@@ -555,14 +555,11 @@ object AuditingTool extends RequestIdAwareLogging {
     RollingFileBasedAuditOutput
 
   private given showSupportedAuditOutput: Show[SupportedAuditOutput] = Show.show {
-    case output: EsIndexBasedAuditOutput      => withPipeline("index", output.pipeline)
-    case _: LogBasedAuditOutput               => "log"
-    case _: RollingFileBasedAuditOutput       => "log_file"
-    case output: EsDataStreamBasedAuditOutput => withPipeline("data_stream", output.pipeline)
+    case _: EsIndexBasedAuditOutput      => "index"
+    case _: LogBasedAuditOutput          => "log"
+    case _: RollingFileBasedAuditOutput  => "log_file"
+    case _: EsDataStreamBasedAuditOutput => "data_stream"
   }
-
-  private def withPipeline(outputType: String, pipeline: Option[AuditIngestPipeline]) =
-    pipeline.fold(outputType)(p => s"$outputType (pipeline: ${p.show})")
 
   private given Show[List[SupportedAuditOutput]] = outputs => outputs.map(_.show).mkString(", ")
 
