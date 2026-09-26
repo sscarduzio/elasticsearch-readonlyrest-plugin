@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.QueryIndices
-import tech.beshu.ror.es.esql.{EsqlQueryIndicesReader, Query}
+import tech.beshu.ror.es.esql.{EsqlQuery, EsqlQueryIndicesReader}
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
 import tech.beshu.ror.es.query.{IndexPatternInQuery, SourceLocation}
@@ -49,11 +49,11 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
   def extractEsqlQueryFrom(request: CompositeIndicesRequest)(
       implicit requestId: RequestId
-  ): Query = {
-    Query.from(getQuery(request), readerFor(request))
+  ): EsqlQuery = {
+    EsqlQuery.from(getQuery(request), readerFor(request))
   }
 
-  def setEsqlQueryTo(request: CompositeIndicesRequest, query: Query): Unit = {
+  def setEsqlQueryTo(request: CompositeIndicesRequest, query: EsqlQuery): Unit = {
     setQuery(request, query.stringify)
   }
 

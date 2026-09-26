@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.es.esql.EsqlQuery.Rejection
 import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.QueryIndices
 import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
 import tech.beshu.ror.es.esql.ReadingFailure.*

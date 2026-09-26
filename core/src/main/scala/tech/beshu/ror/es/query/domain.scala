@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.query
 
-import enumeratum.{Enum, EnumEntry}
-
 import scala.util.Try
 
 private[es] final case class TextSpan(start: Int, end: Int)
@@ -28,13 +26,13 @@ final case class SourceLocation(line: Int, column: Int)
 final case class IndexPatternInQuery(reportedIndexList: String, writtenAt: SourceLocation, writtenText: String)
 
 /** The unit a parser counts the column of a source location in. */
-private[es] sealed trait ColumnUnit extends EnumEntry {
+private[es] sealed trait ColumnUnit {
 
   def offsetIn(query: String, lineStart: Int, column: Int): Option[Int]
 
 }
 
-private[es] object ColumnUnit extends Enum[ColumnUnit] {
+private[es] object ColumnUnit {
 
   case object CodePoints extends ColumnUnit {
     override def offsetIn(query: String, lineStart: Int, column: Int): Option[Int] =
@@ -45,7 +43,5 @@ private[es] object ColumnUnit extends Enum[ColumnUnit] {
     override def offsetIn(query: String, lineStart: Int, column: Int): Option[Int] =
       Some(lineStart + column).filter(_ <= query.length)
   }
-
-  override val values: IndexedSeq[ColumnUnit] = findValues
 
 }

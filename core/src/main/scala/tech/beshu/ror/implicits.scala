@@ -76,8 +76,10 @@ import tech.beshu.ror.accesscontrol.logging.ResponseContext.{
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.es.esql.{ReadingFailure, Rejection}
-import tech.beshu.ror.es.sql.{ReadingFailure as SqlReadingFailure, Rejection as SqlRejection}
+import tech.beshu.ror.es.esql.EsqlQuery.Rejection
+import tech.beshu.ror.es.esql.ReadingFailure
+import tech.beshu.ror.es.sql.ReadingFailure as SqlReadingFailure
+import tech.beshu.ror.es.sql.SqlQuery.Rejection as SqlRejection
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader
@@ -802,9 +804,6 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   }
 
   implicit val sqlIndexListReadingFailureShow: Show[SqlReadingFailure] = Show.show {
-    case SqlReadingFailure.CannotReadTable =>
-      "Elasticsearch does not say where the query names the table it reads, so there is nothing ReadonlyREST can " +
-        "safely rewrite. Please report this query to the ReadonlyREST team"
     case SqlReadingFailure.NotWhereEsReportedIt(indexList) =>
       s"Elasticsearch says the query reads [${indexList.show}], but points at a place in the query text where " +
         s"that is not what is written - so there is nothing ReadonlyREST can safely rewrite. Please report " +

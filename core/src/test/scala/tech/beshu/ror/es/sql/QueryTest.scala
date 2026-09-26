@@ -22,6 +22,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
 import tech.beshu.ror.es.query.{IndexLists, TextSpan}
+import tech.beshu.ror.es.sql.SqlQuery.Rejection
 import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
 
 class QueryTest extends AnyWordSpec {
@@ -60,7 +61,7 @@ class QueryTest extends AnyWordSpec {
       }
       "read all indices when a command names none" in {
         queryFrom("SHOW TABLES", showTables()) shouldBe
-          Query.WithIndices(
+          SqlQuery.WithIndices(
             "SHOW TABLES",
             NonEmptyList.one(
               LocatedIndexList(TextSpan(11, 11), requestedIndicesIn("*"), IndexListSyntax.AppendedToQuery)
@@ -69,7 +70,7 @@ class QueryTest extends AnyWordSpec {
       }
       "have no index list when the command matches something other than index names" in {
         queryFrom("SHOW FUNCTIONS LIKE 'A%'", showFunctions()) shouldBe
-          Query.WithoutIndices("SHOW FUNCTIONS LIKE 'A%'")
+          SqlQuery.WithoutIndices("SHOW FUNCTIONS LIKE 'A%'")
       }
       "read every index of a list written with spaces" in {
         val query = """SELECT name FROM "a, b""""
@@ -79,36 +80,36 @@ class QueryTest extends AnyWordSpec {
       }
       "not locate an index list inside a longer name" in {
         queryFrom("SHOW COLUMNS IN self:library", showColumns(index = "library")) shouldBe
-          Query.Unreadable(
+          SqlQuery.Unreadable(
             "SHOW COLUMNS IN self:library",
             Rejection.CannotExtractIndices(ReadingFailure.IndexListNotWrittenOnce("library"))
           )
       }
       "have no index list when the statement names no table" in {
-        queryFrom("SELECT 1 + 1", EsPlan.Statement(Nil)) shouldBe Query.WithoutIndices("SELECT 1 + 1")
+        queryFrom("SELECT 1 + 1", EsPlan.Statement(Nil)) shouldBe SqlQuery.WithoutIndices("SELECT 1 + 1")
       }
       "be unreadable when Elasticsearch cannot parse it" in {
-        Query.from("SELECT", readerFailingWith(esRejection)) shouldBe
-          Query.Unreadable("SELECT", Rejection.CannotParseQuery)
+        SqlQuery.from("SELECT", readerFailingWith(esRejection)) shouldBe
+          SqlQuery.Unreadable("SELECT", Rejection.CannotParseQuery)
       }
       "have no index list when it is the empty query of a cursor request" in {
-        Query.from("", readerFailingWith(esRejection)) shouldBe Query.WithoutIndices("")
+        SqlQuery.from("", readerFailingWith(esRejection)) shouldBe SqlQuery.WithoutIndices("")
       }
       "be unreadable when ReadonlyREST cannot read the plan Elasticsearch built" in {
-        Query.from("SELECT * FROM library", readerFailingWith(readingFailure)) shouldBe
-          Query.Unreadable("SELECT * FROM library", Rejection.CannotReadQuery)
+        SqlQuery.from("SELECT * FROM library", readerFailingWith(readingFailure)) shouldBe
+          SqlQuery.Unreadable("SELECT * FROM library", Rejection.CannotReadQuery)
       }
       "be unreadable when the table is not where Elasticsearch reported it" in {
         val query = """SELECT name FROM "bookstore""""
 
-        Query.from(query, readerReading(_ => select("elsewhere" -> "bookstore")(query))) shouldBe
-          Query.Unreadable(query, Rejection.CannotExtractIndices(ReadingFailure.NotWhereEsReportedIt("bookstore")))
+        SqlQuery.from(query, readerReading(_ => select("elsewhere" -> "bookstore")(query))) shouldBe
+          SqlQuery.Unreadable(query, Rejection.CannotExtractIndices(ReadingFailure.NotWhereEsReportedIt("bookstore")))
       }
       "be unreadable when both ways of counting the column point at the table" in {
         val query = """SELECT '😀' AS e FROM aaa"""
 
-        Query.from(query, readerReading(selectCountingUtf16Units("aa" -> "aa"))) shouldBe
-          Query.Unreadable(query, Rejection.CannotExtractIndices(ReadingFailure.NotWhereEsReportedIt("aa")))
+        SqlQuery.from(query, readerReading(selectCountingUtf16Units("aa" -> "aa"))) shouldBe
+          SqlQuery.Unreadable(query, Rejection.CannotExtractIndices(ReadingFailure.NotWhereEsReportedIt("aa")))
       }
     }
     "narrowed down" should {
@@ -273,7 +274,7 @@ class QueryTest extends AnyWordSpec {
           case _               => Left(esRejection)
         })
 
-        Query.narrowed(Query.from(query, reader), allowed("bookstore"), reader) shouldBe
+        SqlQuery.narrowed(SqlQuery.from(query, reader), allowed("bookstore"), reader) shouldBe
           Left(Rejection.CannotParseRewrittenQuery(List("bookstore")))
       }
       "stay as written when the ACL narrowed nothing" in {
@@ -286,8 +287,8 @@ class QueryTest extends AnyWordSpec {
         ) shouldBe Right(query)
       }
       "be rejected when it is unreadable and the ACL narrowed the indices down" in {
-        Query.narrowed(
-          Query.Unreadable("SELECT", Rejection.CannotReadQuery),
+        SqlQuery.narrowed(
+          SqlQuery.Unreadable("SELECT", Rejection.CannotReadQuery),
           allowed("bookstore"),
           readerOf(Map.empty)
         ) shouldBe
@@ -296,19 +297,21 @@ class QueryTest extends AnyWordSpec {
       "be rejected when Elasticsearch cannot parse it and the ACL narrowed the indices down" in {
         val reader = readerFailingWith(esRejection)
 
-        Query.narrowed(Query.from("SELECT FROM", reader), allowed("bookstore"), reader) shouldBe
+        SqlQuery.narrowed(SqlQuery.from("SELECT FROM", reader), allowed("bookstore"), reader) shouldBe
           Left(Rejection.CannotParseQuery)
       }
       "stay as written when Elasticsearch cannot parse it and the ACL allows all indices" in {
         val reader = readerFailingWith(esRejection)
 
-        Query.narrowed(Query.from("SELECT FROM", reader), allowed("*"), reader) shouldBe
-          Right(Query.Unreadable("SELECT FROM", Rejection.CannotParseQuery))
+        SqlQuery.narrowed(SqlQuery.from("SELECT FROM", reader), allowed("*"), reader) shouldBe
+          Right(SqlQuery.Unreadable("SELECT FROM", Rejection.CannotParseQuery))
       }
       "stay as written when it is the empty query of a cursor request" in {
         val reader = readerFailingWith(esRejection)
 
-        Query.narrowed(Query.from("", reader), allowed("bookstore"), reader) shouldBe Right(Query.WithoutIndices(""))
+        SqlQuery.narrowed(SqlQuery.from("", reader), allowed("bookstore"), reader) shouldBe Right(
+          SqlQuery.WithoutIndices("")
+        )
       }
     }
   }
@@ -319,11 +322,11 @@ class QueryTest extends AnyWordSpec {
 
   private val readingFailure = ReadError.PlanNotRead(new IllegalStateException("no such field"))
 
-  private def queryFrom(query: String, plan: String => EsPlan): Query =
-    Query.from(query, readerReading(plan))
+  private def queryFrom(query: String, plan: String => EsPlan): SqlQuery =
+    SqlQuery.from(query, readerReading(plan))
 
-  private def queryFrom(query: String, plan: EsPlan): Query =
-    Query.from(query, readerReading(_ => plan))
+  private def queryFrom(query: String, plan: EsPlan): SqlQuery =
+    SqlQuery.from(query, readerReading(_ => plan))
 
   private def narrow(
       query: String,
@@ -331,12 +334,12 @@ class QueryTest extends AnyWordSpec {
       reads: Map[String, Any]
   ): Either[Rejection, String] = {
     val reader = readerOf(reads)
-    Query.narrowed(Query.from(query, reader), allowed, reader).map(_.stringify)
+    SqlQuery.narrowed(SqlQuery.from(query, reader), allowed, reader).map(_.stringify)
   }
 
-  private def withIndexList(query: String, writtenText: String, indexList: String): Query = {
+  private def withIndexList(query: String, writtenText: String, indexList: String): SqlQuery = {
     val start = query.indexOf(writtenText)
-    Query.WithIndices(
+    SqlQuery.WithIndices(
       query,
       NonEmptyList.one(
         LocatedIndexList(
@@ -434,9 +437,10 @@ class QueryTest extends AnyWordSpec {
       reads(query).flatMap {
         case EsPlan.Statement(tableIdentifiers) =>
           tableIdentifiers
-            .traverse(EsSqlObjects.indexPatternIn)
+            .traverse(EsSqlObjects.indexPatternIn(_).toEither)
             .map(QueryIndices.StatementTables.apply)
-            .toRight(ReadError.IndicesNotLocated(ReadingFailure.CannotReadTable))
+            .left
+            .map(ReadError.PlanNotRead.apply)
         case EsPlan.Command(command) =>
           Right(QueryIndices.CommandIndices(EsSqlObjects.selectorOf(command)))
       }

@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
-import tech.beshu.ror.es.sql.{Query, ReflectiveSqlQueryIndicesReader, SqlQueryIndicesReader}
+import tech.beshu.ror.es.sql.{ReflectiveSqlQueryIndicesReader, SqlQuery, SqlQueryIndicesReader}
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.ZoneId
@@ -34,11 +34,11 @@ object SqlRequestHelper {
 
   def extractSqlQueryFrom(request: CompositeIndicesRequest)(
       implicit requestId: RequestId
-  ): Query = {
-    Query.from(getQuery(request), readerFor(request))
+  ): SqlQuery = {
+    SqlQuery.from(getQuery(request), readerFor(request))
   }
 
-  def setSqlQueryTo(request: CompositeIndicesRequest, query: Query): Unit = {
+  def setSqlQueryTo(request: CompositeIndicesRequest, query: SqlQuery): Unit = {
     if (query.stringify != getQuery(request)) setQuery(request, query.stringify)
   }
 

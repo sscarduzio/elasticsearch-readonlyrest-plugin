@@ -36,7 +36,7 @@ private[sql] object EsSqlObjects {
 
   private val commandsTakingNoSelector = Set("ShowTables", "SysTables")
 
-  def indexPatternIn(tableIdentifier: Any): Option[IndexPatternInQuery] =
+  def indexPatternIn(tableIdentifier: Any): Try[IndexPatternInQuery] =
     Try {
       val source = on(tableIdentifier).call("source").get[Any]()
       val location = on(source).call("source").get[Any]()
@@ -49,7 +49,7 @@ private[sql] object EsSqlObjects {
         ),
         writtenText = on(source).call("text").get[String]()
       )
-    }.toOption
+    }
 
   def selectorOf(command: Any): CommandSelector = {
     val commandName = command.getClass.getSimpleName

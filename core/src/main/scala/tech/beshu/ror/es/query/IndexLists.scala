@@ -39,9 +39,11 @@ private[es] object IndexLists {
    * A rewritten index list cannot express an exclusion, so one the ACL left in has to be applied here - and an
    * allowed pattern an exclusion falls under has to go whole, since keeping it would read that exclusion back in.
    */
-  def allowedIndexNamesOf(allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]): Set[ClusterIndexName] = {
-    val included = allowedIndices.includedOnly
-    allowedIndices.toList.filter(_.excluded).map(_.name) match {
+  def allowedIndexNamesOf(
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ): Set[ClusterIndexName] = {
+    val included = filteredRequestedIndices.includedOnly
+    filteredRequestedIndices.toList.filter(_.excluded).map(_.name) match {
       case Nil      => included
       case excluded => included.filterNot(name => excluded.exists(overlapping(name, _)))
     }

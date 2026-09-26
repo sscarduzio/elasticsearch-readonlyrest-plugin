@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.sql
 
 import cats.data.NonEmptyList
-import enumeratum.{Enum, EnumEntry}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.query.TextSpan
 import tech.beshu.ror.syntax.*
@@ -38,15 +37,13 @@ private[sql] object CommandSelector {
 
 }
 
-private[sql] sealed trait IndexListSyntax extends EnumEntry
+private[sql] sealed trait IndexListSyntax
 
-private[sql] object IndexListSyntax extends Enum[IndexListSyntax] {
+private[sql] object IndexListSyntax {
 
   case object InQueryText extends IndexListSyntax
 
   case object AppendedToQuery extends IndexListSyntax
-
-  override val values: IndexedSeq[IndexListSyntax] = findValues
 
 }
 

@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.syntax.*
 
 /** A query of an API that names its indices in the query text, which ROR narrows by rewriting that text. */
-trait Query[+R] {
+trait Query[+REJECTION] {
 
   protected def text: String
 
@@ -39,20 +39,20 @@ object Query {
 
   }
 
-  final case class Unreadable[+R](text: String, reason: R) extends Query[R] {
+  final case class Unreadable[+REJECTION](text: String, reason: REJECTION) extends Query[REJECTION] {
 
     override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
 
   }
 
-  private[es] def narrowedWithoutRewrite[R](
-      query: WithoutIndices | Unreadable[R],
-      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Either[R, Query[R]] =
+  private[es] def narrowedWithoutRewrite[REJECTION](
+      query: WithoutIndices | Unreadable[REJECTION],
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ): Either[REJECTION, Query[REJECTION]] =
     query match {
-      case withoutIndices: WithoutIndices => Right(withoutIndices)
-      case unreadable: Unreadable[R]      =>
-        Either.cond(allowedIndices.toList.toCovariantSet == unreadable.indices, unreadable, unreadable.reason)
+      case withoutIndices: WithoutIndices    => Right(withoutIndices)
+      case unreadable: Unreadable[REJECTION] =>
+        Either.cond(filteredRequestedIndices.toList.toCovariantSet == unreadable.indices, unreadable, unreadable.reason)
     }
 
   private val allIndices: Set[RequestedIndex[ClusterIndexName]] =

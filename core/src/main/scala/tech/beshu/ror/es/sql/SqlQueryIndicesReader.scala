@@ -71,6 +71,8 @@ abstract class ReflectiveSqlQueryIndicesReader(
 
   protected def tableIdentifiersIn(plan: AnyRef): List[Any]
 
+  protected val commandClassName: String = "org.elasticsearch.xpack.sql.plan.logical.command.Command"
+
   override private[sql] final def queryIndicesFrom(query: String): Either[ReadError, QueryIndices] =
     Try(parsed(query)) match {
       case Success(statement) =>
@@ -85,13 +87,14 @@ abstract class ReflectiveSqlQueryIndicesReader(
     if (isCommand(statement)) Right(QueryIndices.CommandIndices(EsSqlObjects.selectorOf(statement)))
     else
       tableIdentifiersIn(statement)
-        .traverse(EsSqlObjects.indexPatternIn)
+        .traverse(EsSqlObjects.indexPatternIn(_).toEither)
         .map(QueryIndices.StatementTables.apply)
-        .toRight(ReadError.IndicesNotLocated(ReadingFailure.CannotReadTable))
+        .left
+        .map(ReadError.PlanNotRead.apply)
 
   private def isCommand(statement: AnyRef): Boolean =
     classLoader
-      .loadClass("org.elasticsearch.xpack.sql.plan.logical.command.Command")
+      .loadClass(commandClassName)
       .isInstance(statement)
 
 }

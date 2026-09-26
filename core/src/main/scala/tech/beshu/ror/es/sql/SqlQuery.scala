@@ -23,17 +23,17 @@ import tech.beshu.ror.es.sql.SqlQueryIndicesReader.ReadError
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-type Query = tech.beshu.ror.es.query.Query[Rejection]
+type SqlQuery = tech.beshu.ror.es.query.Query[SqlQuery.Rejection]
 
-object Query extends RequestIdAwareLogging {
+object SqlQuery extends RequestIdAwareLogging {
 
   export tech.beshu.ror.es.query.Query.{Unreadable, WithoutIndices}
 
   def from(query: String, reader: SqlQueryIndicesReader)(
       implicit requestId: RequestId
-  ): Query = {
+  ): SqlQuery = {
     // A cursor request has no query. ES reads the next page from the cursor, which holds a query that ROR narrowed.
-    if (Option(query).forall(_.isBlank)) WithoutIndices(query)
+    if (query.isBlank) WithoutIndices(query)
     else
       reader.indicesIn(query) match {
         case Right(indexLists) =>
@@ -50,21 +50,21 @@ object Query extends RequestIdAwareLogging {
   }
 
   def narrowed(
-      query: Query,
-      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      query: SqlQuery,
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
       reader: SqlQueryIndicesReader
   )(
       implicit requestId: RequestId
-  ): Either[Rejection, Query] =
+  ): Either[Rejection, SqlQuery] =
     query match {
-      case withIndices: WithIndices                        => narrowedWithRewrite(withIndices, allowedIndices, reader)
-      case other: (WithoutIndices | Unreadable[Rejection]) => narrowedWithoutRewrite(other, allowedIndices)
+      case withIndices: WithIndices => narrowedWithRewrite(withIndices, filteredRequestedIndices, reader)
+      case other: (WithoutIndices | Unreadable[Rejection]) => narrowedWithoutRewrite(other, filteredRequestedIndices)
     }
 
   final case class WithIndices private[sql] (
       text: String,
       private[sql] val indexLists: NonEmptyList[LocatedIndexList]
-  ) extends Query {
+  ) extends SqlQuery {
 
     override lazy val indices: Set[RequestedIndex[ClusterIndexName]] =
       indexLists.toList.flatMap(_.requestedIndices.toList).toCovariantSet
@@ -73,14 +73,14 @@ object Query extends RequestIdAwareLogging {
 
   private def narrowedWithRewrite(
       query: WithIndices,
-      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
       reader: SqlQueryIndicesReader
   )(
       implicit requestId: RequestId
-  ): Either[Rejection, Query] = {
-    if (allowedIndices.toList.toCovariantSet == query.indices) Right(query)
+  ): Either[Rejection, SqlQuery] = {
+    if (filteredRequestedIndices.toList.toCovariantSet == query.indices) Right(query)
     else {
-      val replaced = IndexListReplacer.replacing(query.text, query.indexLists, allowedIndices)
+      val replaced = IndexListReplacer.replacing(query.text, query.indexLists, filteredRequestedIndices)
       val intendedIndices = replaced.intendedIndices.toList.sorted
       reader.indicesIn(replaced.query) match {
         case Right(readIndexLists) =>
@@ -103,37 +103,36 @@ object Query extends RequestIdAwareLogging {
     }
   }
 
-  private def readable(query: String, indexLists: List[LocatedIndexList]): Query =
+  private def readable(query: String, indexLists: List[LocatedIndexList]): SqlQuery =
     NonEmptyList.fromList(indexLists) match {
       case Some(nonEmptyIndexLists) => WithIndices(query, nonEmptyIndexLists)
       case None                     => WithoutIndices(query)
     }
 
-}
+  sealed trait Rejection
 
-sealed trait Rejection
+  object Rejection {
 
-object Rejection {
+    case object CannotParseQuery extends Rejection
 
-  case object CannotParseQuery extends Rejection
+    case object CannotReadQuery extends Rejection
 
-  case object CannotReadQuery extends Rejection
+    final case class CannotExtractIndices(failure: ReadingFailure) extends Rejection
 
-  final case class CannotExtractIndices(failure: ReadingFailure) extends Rejection
+    final case class CannotParseRewrittenQuery(intendedIndices: List[String]) extends Rejection
 
-  final case class CannotParseRewrittenQuery(intendedIndices: List[String]) extends Rejection
+    final case class SubstitutionNotConfirmed(intendedIndices: List[String], readIndices: List[String])
+        extends Rejection
 
-  final case class SubstitutionNotConfirmed(intendedIndices: List[String], readIndices: List[String]) extends Rejection
+    final case class RewriteNotConfirmed(intendedIndices: List[String], failure: ReadingFailure) extends Rejection
 
-  final case class RewriteNotConfirmed(intendedIndices: List[String], failure: ReadingFailure) extends Rejection
+  }
 
 }
 
 sealed trait ReadingFailure
 
 object ReadingFailure {
-
-  case object CannotReadTable extends ReadingFailure
 
   final case class NotWhereEsReportedIt(indexList: String) extends ReadingFailure
 

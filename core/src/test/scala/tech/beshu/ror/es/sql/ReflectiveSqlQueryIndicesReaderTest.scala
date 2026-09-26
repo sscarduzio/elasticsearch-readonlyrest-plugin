@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.sql
 
-import org.elasticsearch.xpack.sql.plan.logical.command.ShowTables
 import org.joor.Reflect.on
 import org.scalatest.Inside.inside
 import org.scalatest.matchers.should.Matchers.*
@@ -50,36 +49,41 @@ class ReflectiveSqlQueryIndicesReaderTest extends AnyWordSpec {
       }
     }
     "tell that it cannot read the plan when the pre-analysis fails" in {
-      val reader = new ReflectiveSqlQueryIndicesReader()(
-        using getClass.getClassLoader
-      ) {
+      val reader = new TestReader {
         override protected def parsed(query: String): AnyRef = new Select(new TableIdentifier("library"))
         override protected def tableIdentifiersIn(plan: AnyRef): List[Any] = on(plan).get[List[Any]]("indices")
       }
 
       inside(reader.queryIndicesFrom("q")) { case Left(ReadError.PlanNotRead(_)) => }
     }
-    "tell that it cannot read a table Elasticsearch reported without its place in the query" in {
-      val reader = new ReflectiveSqlQueryIndicesReader()(
-        using getClass.getClassLoader
-      ) {
+    "tell that it cannot read the plan when a table Elasticsearch reported has no place in the query" in {
+      val reader = new TestReader {
         override protected def parsed(query: String): AnyRef = new Select(new TableIdentifier("library"))
         override protected def tableIdentifiersIn(plan: AnyRef): List[Any] = List("library")
       }
 
-      reader.queryIndicesFrom("q") shouldBe Left(ReadError.IndicesNotLocated(ReadingFailure.CannotReadTable))
+      inside(reader.queryIndicesFrom("q")) { case Left(ReadError.PlanNotRead(_)) => }
     }
   }
 
   private def readerParsingTo(statement: AnyRef): ReflectiveSqlQueryIndicesReader = readerOf(_ => statement)
 
   private def readerOf(parse: String => AnyRef): ReflectiveSqlQueryIndicesReader =
-    new ReflectiveSqlQueryIndicesReader()(
-      using getClass.getClassLoader
-    ) {
+    new TestReader {
       override protected def parsed(query: String): AnyRef = parse(query)
       override protected def tableIdentifiersIn(plan: AnyRef): List[Any] = List(on(plan).get[TableIdentifier]("table"))
     }
+
+  private abstract class TestReader
+      extends ReflectiveSqlQueryIndicesReader()(
+        using classOf[ReflectiveSqlQueryIndicesReaderTest].getClassLoader
+      ) {
+    override protected val commandClassName: String = classOf[Command].getName
+  }
+
+  private abstract class Command
+
+  private final class ShowTables(val index: String) extends Command
 
   private final class Select(val table: TableIdentifier)
 

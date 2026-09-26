@@ -18,6 +18,7 @@ package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.es.esql.EsqlQuery.Rejection
 import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
 import tech.beshu.ror.es.query.IndexLists.allowedIndexNamesOf
 import tech.beshu.ror.es.query.{QueryText, TextSpan}
@@ -28,9 +29,9 @@ private[esql] object IndexListReplacer {
   def replacing(
       query: String,
       indexLists: NonEmptyList[LocatedIndexList],
-      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): ReplacedQuery = {
-    val allowedIndexNames: Set[ClusterIndexName] = allowedIndexNamesOf(allowedIndices)
+    val allowedIndexNames: Set[ClusterIndexName] = allowedIndexNamesOf(filteredRequestedIndices)
 
     val (lookupJoinTargets, sourceCommandIndices) = indexLists.toList.partitionMap {
       case indexList: LookupJoinTarget     => Left(indexList)

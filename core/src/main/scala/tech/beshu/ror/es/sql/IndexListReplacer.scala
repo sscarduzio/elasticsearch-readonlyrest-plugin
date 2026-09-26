@@ -19,6 +19,7 @@ package tech.beshu.ror.es.sql
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.query.{IndexLists, QueryText}
+import tech.beshu.ror.es.sql.SqlQuery.Rejection
 import tech.beshu.ror.syntax.*
 
 private[sql] object IndexListReplacer {
@@ -26,18 +27,18 @@ private[sql] object IndexListReplacer {
   def replacing(
       query: String,
       indexLists: NonEmptyList[LocatedIndexList],
-      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): ReplacedQuery = {
-    val names = allowedIndexNamesOf(allowedIndices)
+    val names = allowedIndexNamesOf(filteredRequestedIndices)
     val indexList = names.toList.map(_.stringify).sorted.mkString(",")
     val edits = indexLists.toList.map(located => (located.span, textOf(located.writtenAs, indexList)))
     ReplacedQuery(QueryText.rewritten(query, edits), names.map(_.stringify))
   }
 
   private def allowedIndexNamesOf(
-      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
   ): Set[ClusterIndexName] = {
-    val names = IndexLists.allowedIndexNamesOf(allowedIndices)
+    val names = IndexLists.allowedIndexNamesOf(filteredRequestedIndices)
     if (names.nonEmpty) names else Set(ClusterIndexName.Local.randomNonexistentIndex())
   }
 

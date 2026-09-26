@@ -17,19 +17,16 @@
 package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
-import enumeratum.{Enum, EnumEntry}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.query.IndexLists.requestedIndicesIn
 import tech.beshu.ror.es.query.TextSpan
 
-private[esql] sealed trait IndexListSyntax extends EnumEntry
+private[esql] sealed trait IndexListSyntax
 
-private[esql] object IndexListSyntax extends Enum[IndexListSyntax] {
+private[esql] object IndexListSyntax {
   case object BareIndexList extends IndexListSyntax
   case object PromqlIndexParameter extends IndexListSyntax
-
-  override val values: IndexedSeq[IndexListSyntax] = findValues
 }
 
 private[esql] sealed trait LocatedIndexList {
