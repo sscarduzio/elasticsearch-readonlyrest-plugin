@@ -22,7 +22,7 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.common.xcontent.XContentType
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{AuditIngestPipeline, IndexName, RequestId}
 import tech.beshu.ror.constants.{
   AUDIT_OUTPUT_MAX_ITEMS,
   AUDIT_OUTPUT_MAX_KB,
@@ -48,21 +48,27 @@ final class NodeClientBasedAuditOutputService(client: NodeClient)
       .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_OUTPUT_MAX_RETRIES))
       .build
 
-  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+  override def submit(
+      indexName: IndexName.Full,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[AuditIngestPipeline]
+  )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(indexName, documentId, jsonRecord)
+    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline.map(_.id.value))
   }
 
   override def close(): Unit = {
     bulkProcessor.close()
   }
 
-  private def submitDocument(indexName: IndexName.Full, documentId: String, jsonRecord: String): Unit = {
+  private def submitDocument(indexName: String, documentId: String, record: String, pipeline: Option[String]): Unit = {
     bulkProcessor.add(
-      new IndexRequest(indexName.name.value, "ror_audit_evt", documentId)
-        .source(jsonRecord, XContentType.JSON)
+      new IndexRequest(indexName, "ror_audit_evt", documentId)
+        .source(record, XContentType.JSON)
         .opType(DocWriteRequest.OpType.CREATE)
+        .setPipeline(pipeline.orNull)
     )
   }
 
@@ -78,7 +84,7 @@ final class NodeClientBasedAuditOutputService(client: NodeClient)
         response.getItems
           .to(LazyList)
           .filter(_.isFailed)
-          .map(_.getFailureMessage)
+          .map(item => s"[${item.getIndex}] ${item.getFailureMessage}")
           .groupBy(identity)
           .foreach { case (message, stream) =>
             noRequestIdLogger.error(s"${stream.size}x: $message")

@@ -240,7 +240,8 @@ object AuditingTool extends RequestIdAwareLogging {
       final case class Config(
           serializer: JsonAuditSerializer,
           rorAuditIndexTemplate: RorAuditIndexTemplate,
-          auditCluster: AuditCluster
+          auditCluster: AuditCluster,
+          pipeline: Option[AuditIngestPipeline] = None
       )
 
       object Config {
@@ -249,6 +250,7 @@ object AuditingTool extends RequestIdAwareLogging {
           serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
           rorAuditIndexTemplate = RorAuditIndexTemplate.default,
           auditCluster = LocalAuditCluster,
+          pipeline = None,
         )
 
       }
@@ -263,7 +265,8 @@ object AuditingTool extends RequestIdAwareLogging {
       final case class Config(
           serializer: JsonAuditSerializer,
           rorAuditDataStream: RorAuditDataStream,
-          auditCluster: AuditCluster
+          auditCluster: AuditCluster,
+          pipeline: Option[AuditIngestPipeline] = None
       )
 
       object Config {
@@ -272,6 +275,7 @@ object AuditingTool extends RequestIdAwareLogging {
           serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
           rorAuditDataStream = RorAuditDataStream.default,
           auditCluster = LocalAuditCluster,
+          pipeline = None,
         )
 
       }
@@ -455,7 +459,8 @@ object AuditingTool extends RequestIdAwareLogging {
       outputName = output.name,
       serializer = output.config.serializer,
       indexTemplate = output.config.rorAuditIndexTemplate,
-      auditOutputService = service
+      auditOutputService = service,
+      pipeline = output.config.pipeline
     )).value
   }
 
@@ -475,7 +480,8 @@ object AuditingTool extends RequestIdAwareLogging {
             output.config.serializer,
             output.config.rorAuditDataStream,
             service,
-            output.config.auditCluster
+            output.config.auditCluster,
+            output.config.pipeline
           )
           .map(_.leftMap(error => CreationError(error.message)))
           .redeemWith(

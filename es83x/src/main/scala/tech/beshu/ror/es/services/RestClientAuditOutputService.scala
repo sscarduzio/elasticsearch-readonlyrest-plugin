@@ -30,7 +30,7 @@ import org.elasticsearch.client.*
 import org.elasticsearch.client.RestClient.FailureListener
 import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, AuditIngestPipeline, DataStreamName, IndexName, RequestId}
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -46,28 +46,38 @@ final class RestClientAuditOutputService private (
     with DataStreamBasedAuditOutputService
     with RequestIdAwareLogging {
 
-  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+  override def submit(
+      indexName: IndexName.Full,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[AuditIngestPipeline]
+  )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(indexName.name.value, documentId, jsonRecord)
+    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline.map(_.id.value))
   }
 
-  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
+  override def submit(
+      dataStreamName: DataStreamName.Full,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[AuditIngestPipeline]
+  )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(dataStreamName.value.value, documentId, jsonRecord)
+    submitDocument(dataStreamName.value.value, documentId, jsonRecord, pipeline.map(_.id.value))
   }
 
   override def close(): Unit = {
     client.close()
   }
 
-  private def submitDocument(indexName: String, documentId: String, jsonRecord: String)(
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String, pipeline: Option[String])(
       implicit requestId: RequestId
   ): Unit = {
     if (inFlightRequestSemaphore.tryAcquire()) {
       client
-        .perform(createRequest(indexName, documentId, jsonRecord))
+        .perform(createRequest(indexName, documentId, jsonRecord, pipeline))
         .flatMap(response => Task.delay(handleResponse(indexName, documentId, response)))
         .onErrorHandleWith(ex =>
           Task.delay(logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex))
@@ -79,9 +89,10 @@ final class RestClientAuditOutputService private (
     }
   }
 
-  private def createRequest(indexName: String, documentId: String, jsonBody: String) = {
+  private def createRequest(indexName: String, documentId: String, jsonBody: String, pipeline: Option[String]) = {
     val request = new Request("PUT", s"/$indexName/_doc/$documentId")
     request.addParameter("op_type", "create")
+    pipeline.foreach(request.addParameter("pipeline", _))
     request.setJsonEntity(jsonBody)
     request
   }
