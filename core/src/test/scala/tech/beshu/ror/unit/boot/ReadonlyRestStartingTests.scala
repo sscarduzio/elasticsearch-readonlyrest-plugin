@@ -2118,7 +2118,12 @@ class ReadonlyRestStartingTests
   private def noOpIndexBasedAuditOutputServiceCreator: IndexBasedAuditOutputServiceCreator =
     (_: AuditCluster) =>
       new IndexBasedAuditOutputService {
-        override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+        override def submit(
+            indexName: IndexName.Full,
+            documentId: String,
+            jsonRecord: String,
+            pipeline: Option[AuditIngestPipeline]
+        )(
             implicit requestId: RequestId
         ): Unit = ()
         override def close(): Unit = ()

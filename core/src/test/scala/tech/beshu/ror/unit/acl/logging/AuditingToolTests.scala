@@ -124,13 +124,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestId = RequestId("mock-1")
             val indexAuditOutput = mock[IndexBasedAuditOutputService]
             (indexAuditOutput
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
             (dataStreamAuditOutput
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, RequestId("mock-1"))
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, RequestId("mock-1"))
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -151,17 +151,60 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               .get
             auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.outputs)).runSyncUnsafe()
           }
+          "a pipeline is configured for the output" in {
+            val requestId = RequestId("mock-1")
+            val indexAuditOutput = mock[IndexBasedAuditOutputService]
+            (indexAuditOutput
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(
+                fullIndexName("test_2018-12-31"),
+                "mock-1",
+                *,
+                Some(auditIngestPipeline("index_pipeline")),
+                requestId
+              )
+              .returning(())
+            val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
+            (dataStreamAuditOutput
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(
+                fullDataStreamName("test_ds"),
+                "mock-1",
+                *,
+                Some(auditIngestPipeline("data_stream_pipeline")),
+                requestId
+              )
+              .returning(())
+            @nowarn("cat=deprecation")
+            val auditingTool = AuditingTool
+              .create(
+                auditSetupForAnyOutput(
+                  config = AuditingConfig(
+                    configuredAuditOutputsWithPipeline(new DefaultAuditLogSerializer),
+                    defaultAclLog = true,
+                    defaultTestEsNodeSettings
+                  ),
+                  indexCreator = (_: AuditCluster) => indexAuditOutput,
+                  dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
+                ),
+                httpClientsFactory = MockHttpClientsFactory
+              )
+              .runSyncUnsafe()
+              .toOption
+              .get
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.outputs)).runSyncUnsafe()
+          }
           "request was matched by forbidden rule" in {
             val requestId = RequestId("mock-1")
             val indexAuditOutput = mock[IndexBasedAuditOutputService]
             (indexAuditOutput
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
             (dataStreamAuditOutput
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, requestId)
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -211,13 +254,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestId = RequestId("mock-1")
             val indexAuditOutput = mock[IndexBasedAuditOutputService]
             (indexAuditOutput
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
             (dataStreamAuditOutput
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, requestId)
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -249,13 +292,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestId = RequestId("mock-1")
             val indexAuditOutput = mock[IndexBasedAuditOutputService]
             (indexAuditOutput
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
             (dataStreamAuditOutput
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, requestId)
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -560,8 +603,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val requestId = RequestId("mock-withgroups-dedup")
         val indexAuditOutput = mock[IndexBasedAuditOutputService]
         (indexAuditOutput
-          .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-          .expects(fullIndexName("test_2018-12-31"), "mock-withgroups-dedup", *, requestId)
+          .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+          .expects(fullIndexName("test_2018-12-31"), "mock-withgroups-dedup", *, None, requestId)
           .returning(())
           .once()
 
@@ -640,8 +683,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val requestId = RequestId("mock-1")
         val indexAuditOutput = mock[IndexBasedAuditOutputService]
         (indexAuditOutput
-          .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-          .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+          .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+          .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
           .returning(())
         @nowarn("cat=deprecation")
         val auditingTool = AuditingTool
@@ -766,6 +809,29 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           AuditSerializer.Delegating(serializer),
           RorAuditDataStream.from("test_ds").toOption.get,
           AuditCluster.LocalAuditCluster
+        )
+      )
+    )
+  )
+
+  private def configuredAuditOutputsWithPipeline(serializer: AuditLogSerializer) = AuditOutputs.Configured(
+    outputs = NonEmptyList.of(
+      EsIndexBased(
+        AuditOutputName.random(),
+        EsIndexBased.Config(
+          AuditSerializer.Delegating(serializer),
+          RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
+          AuditCluster.LocalAuditCluster,
+          pipeline = Some(auditIngestPipeline("index_pipeline"))
+        )
+      ),
+      EsDataStreamBased(
+        AuditOutputName.random(),
+        EsDataStreamBased.Config(
+          AuditSerializer.Delegating(serializer),
+          RorAuditDataStream.from("test_ds").toOption.get,
+          AuditCluster.LocalAuditCluster,
+          pipeline = Some(auditIngestPipeline("data_stream_pipeline"))
         )
       )
     )
