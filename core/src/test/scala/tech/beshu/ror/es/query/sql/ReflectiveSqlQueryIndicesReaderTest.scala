@@ -14,15 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.sql
+package tech.beshu.ror.es.query.sql
 
 import org.joor.Reflect.on
 import org.scalatest.Inside.inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.es.query.sql.CommandSelector.LiteralIndexList
+import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
 import tech.beshu.ror.es.query.{IndexPatternInQuery, SourceLocation}
-import tech.beshu.ror.es.sql.CommandSelector.LiteralIndexList
-import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
 
 class ReflectiveSqlQueryIndicesReaderTest extends AnyWordSpec {
 

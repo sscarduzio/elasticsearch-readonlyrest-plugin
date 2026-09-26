@@ -76,10 +76,10 @@ import tech.beshu.ror.accesscontrol.logging.ResponseContext.{
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.es.esql.EsqlQuery.Rejection
-import tech.beshu.ror.es.esql.ReadingFailure
-import tech.beshu.ror.es.sql.ReadingFailure as SqlReadingFailure
-import tech.beshu.ror.es.sql.SqlQuery.Rejection as SqlRejection
+import tech.beshu.ror.es.query.esql.EsqlQuery.Rejection
+import tech.beshu.ror.es.query.esql.ReadingFailure
+import tech.beshu.ror.es.query.sql.ReadingFailure as SqlReadingFailure
+import tech.beshu.ror.es.query.sql.SqlQuery.Rejection as SqlRejection
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader

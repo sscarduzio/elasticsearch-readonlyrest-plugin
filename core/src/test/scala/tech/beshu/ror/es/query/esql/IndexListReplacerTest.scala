@@ -14,16 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.esql
+package tech.beshu.ror.es.query.esql
 
 import cats.data.NonEmptyList
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.esql.EsqlQuery.Rejection
-import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.QueryIndices
-import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
-import tech.beshu.ror.es.esql.ReadingFailure.*
+import tech.beshu.ror.es.query.esql.EsqlQuery.Rejection
+import tech.beshu.ror.es.query.esql.EsqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
+import tech.beshu.ror.es.query.esql.ReadingFailure.*
 import tech.beshu.ror.es.query.{IndexPatternInQuery, SourceLocation, TextSpan}
 
 class IndexListReplacerTest extends AnyWordSpec {

@@ -14,12 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.esql
+package tech.beshu.ror.es.query.esql
 
 import cats.implicits.*
-import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.QueryIndices
-import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
 import tech.beshu.ror.es.query.QueryText.sameIndexList
+import tech.beshu.ror.es.query.esql.EsqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
 import tech.beshu.ror.es.query.{ColumnUnit, IndexPatternInQuery, QueryText, TextSpan}
 
 import scala.annotation.tailrec

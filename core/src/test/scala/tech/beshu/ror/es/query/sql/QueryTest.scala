@@ -14,16 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.sql
+package tech.beshu.ror.es.query.sql
 
 import cats.data.NonEmptyList
 import cats.syntax.traverse.*
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
+import tech.beshu.ror.es.query.sql.SqlQuery.Rejection
+import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
 import tech.beshu.ror.es.query.{IndexLists, TextSpan}
-import tech.beshu.ror.es.sql.SqlQuery.Rejection
-import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
 
 class QueryTest extends AnyWordSpec {
 

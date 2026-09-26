@@ -14,12 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.sql
+package tech.beshu.ror.es.query.sql
 
 import cats.syntax.traverse.*
 import org.joor.ReflectException
 import tech.beshu.ror.es.query.IndexPatternInQuery
-import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
+import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
 
 import java.lang.reflect.InvocationTargetException
 import scala.util.{Failure, Success, Try}

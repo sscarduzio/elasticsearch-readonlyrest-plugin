@@ -29,11 +29,11 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.esql.EsqlQuery
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
+import tech.beshu.ror.es.query.esql.EsqlQuery
 import tech.beshu.ror.es.utils.EsqlRequestHelper
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*

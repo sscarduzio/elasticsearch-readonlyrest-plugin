@@ -14,12 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.sql
+package tech.beshu.ror.es.query.sql
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.es.query.sql.SqlQuery.Rejection
 import tech.beshu.ror.es.query.{IndexLists, QueryText}
-import tech.beshu.ror.es.sql.SqlQuery.Rejection
 import tech.beshu.ror.syntax.*
 
 private[sql] object IndexListReplacer {

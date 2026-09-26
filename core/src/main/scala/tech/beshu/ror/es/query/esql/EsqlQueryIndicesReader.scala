@@ -14,10 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.esql
+package tech.beshu.ror.es.query.esql
 
-import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.QueryIndices
 import tech.beshu.ror.es.query.IndexPatternInQuery
+import tech.beshu.ror.es.query.esql.EsqlQueryIndicesReader.QueryIndices
 
 trait EsqlQueryIndicesReader {
 

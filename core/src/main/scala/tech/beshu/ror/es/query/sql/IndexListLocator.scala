@@ -14,22 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.sql
+package tech.beshu.ror.es.query.sql
 
 import cats.data.NonEmptyList
 import cats.syntax.traverse.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.domain.RequestedIndex
 import tech.beshu.ror.es.query.QueryText.sameIndexList
-import tech.beshu.ror.es.query.{ColumnUnit, IndexLists, IndexPatternInQuery, QueryText, TextSpan}
-import tech.beshu.ror.es.sql.CommandSelector.{
+import tech.beshu.ror.es.query.sql.CommandSelector.{
   AppendableIndexList,
   CannotNarrow,
   LiteralIndexList,
   MatchingPattern,
   NotIndexRelated
 }
-import tech.beshu.ror.es.sql.SqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.{ColumnUnit, IndexLists, IndexPatternInQuery, QueryText, TextSpan}
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex

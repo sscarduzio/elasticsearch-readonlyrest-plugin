@@ -32,7 +32,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
-import tech.beshu.ror.es.sql.SqlQuery
+import tech.beshu.ror.es.query.sql.SqlQuery
 import tech.beshu.ror.es.utils.SqlRequestHelper
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*

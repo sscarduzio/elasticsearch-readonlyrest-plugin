@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
-import tech.beshu.ror.es.sql.{ReflectiveSqlQueryIndicesReader, SqlQuery, SqlQueryIndicesReader}
+import tech.beshu.ror.es.query.sql.{ReflectiveSqlQueryIndicesReader, SqlQuery, SqlQueryIndicesReader}
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.ZoneId

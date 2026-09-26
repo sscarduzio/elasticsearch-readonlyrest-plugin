@@ -14,17 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.sql
+package tech.beshu.ror.es.query.sql
 
 import org.joor.Reflect.on
-import tech.beshu.ror.es.query.{IndexPatternInQuery, SourceLocation}
-import tech.beshu.ror.es.sql.CommandSelector.{
+import tech.beshu.ror.es.query.sql.CommandSelector.{
   AppendableIndexList,
   CannotNarrow,
   LiteralIndexList,
   MatchingPattern,
   NotIndexRelated
 }
+import tech.beshu.ror.es.query.{IndexPatternInQuery, SourceLocation}
 
 import scala.util.Try
 
