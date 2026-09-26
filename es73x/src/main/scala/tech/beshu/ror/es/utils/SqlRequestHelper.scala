@@ -17,71 +17,28 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
-import org.joor.Reflect.on
-import org.joor.ReflectException
+import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
-import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices
-import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
-import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
-import tech.beshu.ror.es.utils.SqlRequestHelper.IndicesError
-import tech.beshu.ror.syntax.*
+import tech.beshu.ror.es.query.sql.{ReflectiveSqlQueryIndicesReader, SqlQuery, SqlQueryIndicesReader}
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.List as JList
-import java.util.regex.Pattern
 import scala.jdk.CollectionConverters.*
-import scala.util.{Failure, Success, Try}
-
-sealed trait ExtractedIndices {
-  def indices: Set[String]
-}
-
-object ExtractedIndices {
-
-  case object NoIndices extends ExtractedIndices {
-    override def indices: Set[String] = Set.empty
-  }
-
-  final case class RegularIndices(override val indices: Set[String]) extends ExtractedIndices
-
-  sealed trait SqlIndices extends ExtractedIndices {
-    def indices: Set[String]
-  }
-
-  object SqlIndices {
-
-    final case class SqlTableRelated(tables: List[IndexSqlTable]) extends SqlIndices {
-      override lazy val indices: Set[String] = tables.flatMap(_.indices).toCovariantSet
-    }
-
-    object SqlTableRelated {
-      final case class IndexSqlTable(tableStringInQuery: String, indices: Set[String])
-    }
-
-    case object SqlNotTableRelated extends SqlIndices {
-      override def indices: Set[String] = Set.empty
-    }
-
-  }
-
-}
 
 object SqlRequestHelper {
 
-  def modifyIndicesOf(
-      request: CompositeIndicesRequest,
-      extractedIndices: SqlIndices,
-      finalIndices: Set[String]
-  ): CompositeIndicesRequest = {
-    extractedIndices match {
-      case s: SqlTableRelated =>
-        setQuery(request, newQueryFrom(getQuery(request), s, finalIndices))
-      case SqlNotTableRelated =>
-        request
-    }
+  def extractSqlQueryFrom(request: CompositeIndicesRequest)(
+      implicit requestId: RequestId
+  ): SqlQuery = {
+    SqlQuery.from(getQuery(request), readerFor(request))
+  }
+
+  def setSqlQueryTo(request: CompositeIndicesRequest, query: SqlQuery): Unit = {
+    if (query.stringify != getQuery(request)) setQuery(request, query.stringify)
   }
 
   def modifyResponseAccordingToFieldLevelSecurity(
@@ -92,181 +49,46 @@ object SqlRequestHelper {
     response
   }
 
-  sealed trait IndicesError
-
-  object IndicesError {
-    final case class ParsingException(cause: Throwable) extends IndicesError
-  }
-
-  def indicesFrom(request: CompositeIndicesRequest): Either[IndicesError, SqlIndices] = {
-    val query = getQuery(request)
-    val params = getParams(request)
-
+  def readerFor(request: CompositeIndicesRequest): SqlQueryIndicesReader = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-    new SqlParser()
-      .createStatement(query, params)
-      .map {
-        case statement: SimpleStatement => statement.indices
-        case command: Command           => command.indices
-      }
+    new SqlParser(request)
   }
 
   private def getQuery(request: CompositeIndicesRequest): String = {
     on(request).call("query").get[String]
   }
 
-  private def setQuery(request: CompositeIndicesRequest, newQuery: String): CompositeIndicesRequest = {
+  private def setQuery(request: CompositeIndicesRequest, newQuery: String): Unit = {
     on(request).call("query", newQuery)
-    request
   }
 
   private def getParams(request: CompositeIndicesRequest): AnyRef = {
     on(request).call("params").get[AnyRef]
   }
 
-  private def newQueryFrom(
-      oldQuery: String,
-      extractedIndices: SqlIndices.SqlTableRelated,
-      finalIndices: Set[String]
-  ) = {
-    extractedIndices.tables match {
-      case Nil =>
-        s"""$oldQuery "${finalIndices.mkString(",")}""""
-      case tables =>
-        tables.foldLeft(oldQuery) { case (currentQuery, table) =>
-          val (beforeFrom, afterFrom) = currentQuery.splitBy("FROM")
-          afterFrom match {
-            case None =>
-              replaceTableNameInQueryPart(currentQuery, table.tableStringInQuery, finalIndices)
-            case Some(tablesPart) =>
-              s"${beforeFrom}FROM ${replaceTableNameInQueryPart(tablesPart, table.tableStringInQuery, finalIndices)}"
-          }
-        }
-    }
-  }
-
-  private def replaceTableNameInQueryPart(currentQuery: String, originTable: String, finalIndices: Set[String]) = {
-    currentQuery.replaceAll(Pattern.quote(originTable), finalIndices.mkString(","))
-  }
-
-}
-
-final class SqlParser(
-    implicit classLoader: ClassLoader
-) {
-
-  private val aClass = classLoader.loadClass("org.elasticsearch.xpack.sql.parser.SqlParser")
-  private val underlyingObject = aClass.getConstructor().newInstance()
-
-  def createStatement(query: String, params: AnyRef): Either[IndicesError.ParsingException, Statement] = {
-    Try(on(underlyingObject).call("createStatement", query, params).get[AnyRef]) match {
-      case Success(s) if Command.isClassOf(s) => Right(new Command(s))
-      case Success(s)                         => Right(new SimpleStatement(s))
-      case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[NoSuchMethodException] => throw ex
-      case Failure(ex) => Left(IndicesError.ParsingException(ex))
-    }
-  }
-
-}
-
-sealed trait Statement {
-
-  protected def splitToIndicesPatterns(value: String): Set[String] = {
-    value.split(',').asSafeSet.filter(_.nonEmpty)
-  }
-
-}
-
-final class SimpleStatement(val underlyingObject: AnyRef)(
-    implicit classLoader: ClassLoader
-) extends Statement {
-
-  lazy val indices: SqlIndices = {
-    val tableInfoList = tableInfosFrom {
-      doPreAnalyze(newPreAnalyzer, underlyingObject)
-    }
-    SqlIndices.SqlTableRelated {
-      tableInfoList
-        .map(tableIdentifierFrom)
-        .map(indicesStringFrom)
-        .map { tableString =>
-          IndexSqlTable(tableString, splitToIndicesPatterns(tableString))
-        }
-    }
-  }
-
-  private def newPreAnalyzer(
+  private final class SqlParser(
+      request: CompositeIndicesRequest
+  )(
       implicit classLoader: ClassLoader
-  ) = {
-    val preAnalyzerConstructor = preAnalyzerClass.getConstructor()
-    preAnalyzerConstructor.newInstance()
-  }
+  ) extends ReflectiveSqlQueryIndicesReader {
 
-  private def doPreAnalyze(preAnalyzer: Any, statement: AnyRef) = {
-    on(preAnalyzer).call("preAnalyze", statement).get[Any]()
-  }
-
-  private def tableInfosFrom(preAnalysis: Any) = {
-    on(preAnalysis)
-      .get[java.util.List[AnyRef]]("indices")
-      .asScala
-      .toList
-  }
-
-  private def tableIdentifierFrom(tableInfo: Any) = {
-    on(tableInfo).get[AnyRef]("id")
-  }
-
-  private def indicesStringFrom(tableIdentifier: Any) = {
-    on(tableIdentifier).get[String]("index")
-  }
-
-  private def preAnalyzerClass(
-      implicit classLoader: ClassLoader
-  ) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.PreAnalyzer")
-
-}
-
-final class Command(val underlyingObject: Any) extends Statement {
-
-  lazy val indices: SqlIndices = {
-    Try {
-      getIndicesString
-        .orElse(getIndexPatternsString)
-        .map { indicesString =>
-          SqlTableRelated(IndexSqlTable(indicesString, splitToIndicesPatterns(indicesString)) :: Nil)
-        }
-        .getOrElse(SqlTableRelated(Nil))
-    } getOrElse {
-      SqlNotTableRelated
+    override protected def parsed(query: String): AnyRef = {
+      val parser = onClass(classLoader.loadClass("org.elasticsearch.xpack.sql.parser.SqlParser")).create().get[Any]()
+      on(parser).call("createStatement", query, getParams(request)).get[AnyRef]
     }
+
+    override protected def tableIdentifiersIn(plan: AnyRef): List[Any] = {
+      val preAnalyzer =
+        onClass(classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.PreAnalyzer")).create()
+      val preAnalysis = preAnalyzer.call("preAnalyze", plan).get[Any]()
+      on(preAnalysis)
+        .get[JList[AnyRef]]("indices")
+        .asScala
+        .toList
+        .map(tableInfo => on(tableInfo).get[AnyRef]("id"))
+    }
+
   }
-
-  private def getIndicesString = Option {
-    on(underlyingObject).get[String]("index")
-  }
-
-  private def getIndexPatternsString = {
-    for {
-      pattern <- Option(on(underlyingObject).get[AnyRef]("pattern"))
-      index <- Option(on(pattern).get[String]("asIndexNameWildcard"))
-    } yield index
-  }
-
-}
-
-object Command {
-
-  def isClassOf(obj: Any)(
-      implicit classLoader: ClassLoader
-  ): Boolean =
-    commandClass.isAssignableFrom(obj.getClass)
-
-  private def commandClass(
-      implicit classLoader: ClassLoader
-  ): Class[_] =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.plan.logical.command.Command")
 
 }
 

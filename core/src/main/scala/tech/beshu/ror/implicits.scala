@@ -76,7 +76,10 @@ import tech.beshu.ror.accesscontrol.logging.ResponseContext.{
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.es.esql.{ReadingFailure, Rejection}
+import tech.beshu.ror.es.query.esql.EsqlQuery.Rejection
+import tech.beshu.ror.es.query.esql.ReadingFailure
+import tech.beshu.ror.es.query.sql.ReadingFailure as SqlReadingFailure
+import tech.beshu.ror.es.query.sql.SqlQuery.Rejection as SqlRejection
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader
@@ -798,6 +801,54 @@ trait LogsShowInstances extends cats.instances.AllInstances {
     case Rejection.SubstitutionNotConfirmed(intended, read) =>
       s"The ES|QL query has been forbidden, because its rewrite reads [${read.mkString(", ")}] instead of " +
         s"[${intended.mkString(", ")}]. Please report this query to the ReadonlyREST team."
+  }
+
+  implicit val sqlIndexListReadingFailureShow: Show[SqlReadingFailure] = Show.show {
+    case SqlReadingFailure.NotWhereEsReportedIt(indexList) =>
+      s"Elasticsearch says the query reads [${indexList.show}], but points at a place in the query text where " +
+        s"that is not what is written - so there is nothing ReadonlyREST can safely rewrite. Please report " +
+        s"this query to the ReadonlyREST team"
+    case SqlReadingFailure.UnsupportedIndexList(indexList) =>
+      s"[${indexList.show}] is not something ReadonlyREST can read as a list of index names"
+    case SqlReadingFailure.IndexListNotWrittenOnce(indexList) =>
+      s"the indices [${indexList.show}] are not written exactly once in the query, so ReadonlyREST cannot tell " +
+        s"which part of the query text names the tables the statement reads"
+    case SqlReadingFailure.PatternNotWrittenOnce(commandName, wildcard) =>
+      s"the [${commandName.show}] statement matches index names with a pattern that Elasticsearch reads as " +
+        s"[${wildcard.show}], and it holds more than one LIKE clause - so ReadonlyREST cannot tell which one " +
+        s"picks the indices"
+    case SqlReadingFailure.CommandTakesNoIndexList(commandName) =>
+      s"the [${commandName.show}] statement takes no index list ReadonlyREST could put the allowed names in. " +
+        s"Name the indices in a statement that takes them to have such a request authorized"
+    case SqlReadingFailure.OverlappingIndexLists(one, other) =>
+      s"Elasticsearch points at two index lists, [${one.show}] and [${other.show}], that share text in the " +
+        s"query - so ReadonlyREST cannot narrow one down without changing the other. Please report this query " +
+        s"to the ReadonlyREST team"
+  }
+
+  implicit val sqlQueryRejectionShow: Show[SqlRejection] = Show.show {
+    case SqlRejection.CannotReadQuery =>
+      "The SQL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
+        "indices the user is allowed to, and it could not read how Elasticsearch parsed the query - so it cannot " +
+        "tell which indices the query would run against. Please report this query to the ReadonlyREST team."
+    case SqlRejection.CannotParseQuery =>
+      "The SQL query has been forbidden. Elasticsearch cannot parse it, so ReadonlyREST cannot tell which " +
+        "indices the query would run against."
+    case SqlRejection.CannotExtractIndices(failure) =>
+      s"The SQL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
+        s"indices the user is allowed to, and running it as written would have let the user read the indices " +
+        s"they asked for, unchecked. It could not be rewritten, because ${failure.show}."
+    case SqlRejection.CannotParseRewrittenQuery(intended) =>
+      s"The SQL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
+        s"the indices the user is allowed to, but Elasticsearch cannot parse the rewritten query. Please report " +
+        s"this query to the ReadonlyREST team."
+    case SqlRejection.SubstitutionNotConfirmed(intended, read) =>
+      s"The SQL query has been forbidden, because its rewrite reads [${read.mkString(", ")}] instead of " +
+        s"[${intended.mkString(", ")}]. Please report this query to the ReadonlyREST team."
+    case SqlRejection.RewriteNotConfirmed(intended, failure) =>
+      s"The SQL query has been forbidden. ReadonlyREST rewrote it to read only [${intended.mkString(", ")}], " +
+        s"the indices the user is allowed to, but it cannot tell how Elasticsearch reads the rewritten query, " +
+        s"because ${failure.show}."
   }
 
 }

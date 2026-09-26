@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.index.query.QueryBuilder
 import org.elasticsearch.threadpool.ThreadPool
@@ -33,6 +32,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
+import tech.beshu.ror.es.query.sql.SqlQuery
 import tech.beshu.ror.es.utils.SqlRequestHelper
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -51,15 +51,12 @@ class SqlIndicesEsRequestContext private (
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  private lazy val sqlIndicesExtractResult = SqlRequestHelper.indicesFrom(actionRequest)
+  private lazy val sqlQuery = SqlRequestHelper.extractSqlQueryFrom(actionRequest)
 
   override protected def requestedIndicesFrom(
       request: ActionRequest with CompositeIndicesRequest
   ): Set[RequestedIndex[ClusterIndexName]] = {
-    sqlIndicesExtractResult.map(_.indices.flatMap(RequestedIndex.fromString)) match {
-      case Right(indices) => indices
-      case Left(_)        => Set(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
-    }
+    sqlQuery.indices
   }
 
   override protected def update(
@@ -68,27 +65,15 @@ class SqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    modifyRequestIndices(request, filteredRequestedIndices)
-    applyFieldLevelSecurityTo(request, fieldLevelSecurity)
-    applyFilterTo(request, filter)
-    UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
-  }
-
-  private def modifyRequestIndices(
-      request: ActionRequest with CompositeIndicesRequest,
-      indices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): CompositeIndicesRequest = {
-    sqlIndicesExtractResult match {
-      case Right(sqlIndices) =>
-        val indicesStrings = indices.stringify.toCovariantSet
-        if (indicesStrings != sqlIndices.indices) {
-          SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings)
-        } else {
-          request
-        }
-      case Left(_) =>
-        logger.debug(s"Cannot parse SQL statement - we can pass it though, because ES is going to reject it")
-        request
+    SqlQuery.narrowed(sqlQuery, filteredRequestedIndices, SqlRequestHelper.readerFor(request)) match {
+      case Right(narrowedQuery) =>
+        SqlRequestHelper.setSqlQueryTo(request, narrowedQuery)
+        applyFieldLevelSecurityTo(request, fieldLevelSecurity)
+        applyFilterTo(request, filter)
+        UpdateResponse.sync { response => applyFieldLevelSecurityTo(response, fieldLevelSecurity) }
+      case Left(rejection) =>
+        logger.warn(rejection.show)
+        ModificationResult.ShouldBeInterrupted
     }
   }
 
@@ -112,10 +97,8 @@ class SqlIndicesEsRequestContext private (
 
   private def applyFieldLevelSecurityTo(response: ActionResponse, fieldLevelSecurity: Option[FieldLevelSecurity]) = {
     fieldLevelSecurity match {
-      case Some(fls) =>
-        SqlRequestHelper.modifyResponseAccordingToFieldLevelSecurity(response, fls)
-      case None =>
-        response
+      case Some(fls) => SqlRequestHelper.modifyResponseAccordingToFieldLevelSecurity(response, fls)
+      case None      => response
     }
   }
 

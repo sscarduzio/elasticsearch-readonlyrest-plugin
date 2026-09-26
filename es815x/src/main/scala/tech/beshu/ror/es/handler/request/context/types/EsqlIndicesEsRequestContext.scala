@@ -33,6 +33,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
+import tech.beshu.ror.es.query.esql.EsqlQuery
 import tech.beshu.ror.es.utils.EsqlRequestHelper
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -65,7 +66,7 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    esqlQuery.narrowedTo(filteredRequestedIndices) match {
+    EsqlQuery.narrowed(esqlQuery, filteredRequestedIndices, EsqlRequestHelper.readerFor(request)) match {
       case Right(narrowedQuery) =>
         EsqlRequestHelper.setEsqlQueryTo(request, narrowedQuery)
         applyFieldLevelSecurityTo(request, fieldLevelSecurity)

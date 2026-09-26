@@ -29,7 +29,24 @@ class SqlApiManager(restClient: RestClient, esVersion: String) extends BaseManag
     call(createSqlQueryRequest(selectQuery), new SqlResult(_))
   }
 
-  private def createSqlQueryRequest(query: String) = {
+  def execute(selectQuery: String, fetchSize: Int): SqlResult = {
+    call(createSqlQueryRequest(selectQuery, Some(fetchSize)), new SqlResult(_))
+  }
+
+  def nextPage(cursor: String): SqlResult = {
+    call(createSqlRequest(s"""{ "cursor": "$cursor" }"""), new SqlResult(_))
+  }
+
+  private def createSqlQueryRequest(query: String, fetchSize: Option[Int] = None) = {
+    createSqlRequest(requestBody(query, fetchSize))
+  }
+
+  private def requestBody(query: String, fetchSize: Option[Int]) = fetchSize match {
+    case Some(definedFetchSize) => s"""{ "query": "$query", "fetch_size": $definedFetchSize }"""
+    case None                   => s"""{ "query": "$query" }"""
+  }
+
+  private def createSqlRequest(body: String) = {
     val request = if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       new HttpGetWithEntity(restClient.from("_sql", Map("format" -> "json")))
     } else {
@@ -37,7 +54,7 @@ class SqlApiManager(restClient: RestClient, esVersion: String) extends BaseManag
     }
     request.setHeader("Content-Type", "application/json")
     request.setHeader("timeout", "50s")
-    request.setEntity(new StringEntity(s"""{ "query": "$query" }"""))
+    request.setEntity(new StringEntity(body))
     request
   }
 

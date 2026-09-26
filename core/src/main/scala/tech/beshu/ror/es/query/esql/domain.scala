@@ -14,24 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.esql
+package tech.beshu.ror.es.query.esql
 
 import cats.data.NonEmptyList
-import cats.syntax.traverse.*
-import enumeratum.{Enum, EnumEntry}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.es.query.IndexLists.requestedIndicesIn
+import tech.beshu.ror.es.query.TextSpan
 
-private[esql] final case class TextSpan(start: Int, end: Int)
+private[esql] sealed trait IndexListSyntax
 
-private[esql] sealed trait IndexListSyntax extends EnumEntry
-
-private[esql] object IndexListSyntax extends Enum[IndexListSyntax] {
+private[esql] object IndexListSyntax {
   case object BareIndexList extends IndexListSyntax
   case object PromqlIndexParameter extends IndexListSyntax
-
-  override val values: IndexedSeq[IndexListSyntax] = findValues
 }
 
 private[esql] sealed trait LocatedIndexList {
@@ -89,14 +84,5 @@ private[esql] object LocatedIndexList {
       }
 
   }
-
-  /** All of them or none: an entry ROR cannot read is an index it would leave the ACL unaware of. */
-  private def requestedIndicesIn(indexPattern: String): Option[NonEmptyList[RequestedIndex[ClusterIndexName]]] =
-    indexPattern
-      .split(',')
-      .asSafeList
-      .filter(_.nonEmpty)
-      .traverse(RequestedIndex.fromString)
-      .flatMap(NonEmptyList.fromList)
 
 }

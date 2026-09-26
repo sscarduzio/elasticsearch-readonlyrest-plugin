@@ -14,14 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.esql
+package tech.beshu.ror.es.query.esql
 
 import cats.implicits.*
-import tech.beshu.ror.es.esql.EsqlQueryIndicesReader.{IndexPatternInQuery, QueryIndices, SourceLocation}
-import tech.beshu.ror.es.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
+import tech.beshu.ror.es.query.QueryText.sameIndexList
+import tech.beshu.ror.es.query.esql.EsqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}
+import tech.beshu.ror.es.query.{ColumnUnit, IndexPatternInQuery, QueryText, TextSpan}
 
 import scala.annotation.tailrec
-import scala.util.Try
 import scala.util.matching.Regex
 
 /**
@@ -59,20 +60,11 @@ private[esql] object IndexListLocator {
     } yield indexLists
   }
 
-  private def checkNoneOverlaps(query: String, indexLists: List[LocatedIndexList]): Either[ReadingFailure, Unit] = {
-    indexLists
-      .map(_.span)
-      .sortBy(span => (span.start, span.end))
-      .sliding(2)
-      .collectFirst {
-        case List(one, next) if next.start < one.end || next.start == one.start =>
-          ReadingFailure.OverlappingIndexLists(
-            query.substring(one.start, one.end),
-            query.substring(next.start, next.end)
-          )
-      }
+  private def checkNoneOverlaps(query: String, indexLists: List[LocatedIndexList]): Either[ReadingFailure, Unit] =
+    QueryText
+      .firstOverlapIn(query, indexLists.map(_.span))
+      .map { case (one, other) => ReadingFailure.OverlappingIndexLists(one, other) }
       .toLeft(())
-  }
 
   private def locateFromSource(
       query: String,
@@ -116,29 +108,12 @@ private[esql] object IndexListLocator {
   private def writtenSpanOf(
       query: String,
       pattern: IndexPatternInQuery
-  ): Either[ReadingFailure, TextSpan] = {
-    offsetOf(query, pattern.writtenAt)
-      .map(start => TextSpan(start, start + pattern.writtenText.length))
-      .filter(span => span.end <= query.length && query.substring(span.start, span.end) == pattern.writtenText)
+  ): Either[ReadingFailure, TextSpan] =
+    // ES|QL's ANTLR stream counts the column in code points, not in the UTF-16 units a Scala string indexes by
+    QueryText
+      .spansOf(query, pattern, List(ColumnUnit.CodePoints))
+      .headOption
       .toRight(ReadingFailure.NotWhereEsReportedIt(pattern.reportedIndexList))
-  }
-
-  private def offsetOf(query: String, location: SourceLocation): Option[Int] = {
-    @tailrec
-    def startOfLine(idx: Int, line: Int): Option[Int] = {
-      if (line >= location.line) Some(idx)
-      else
-        query.indexOf('\n', idx) match {
-          case -1        => None
-          case newLineAt => startOfLine(newLineAt + 1, line + 1)
-        }
-    }
-    Option
-      .when(location.line >= 1 && location.column >= 0)(())
-      .flatMap(_ => startOfLine(0, 1))
-      // ES|QL's ANTLR stream counts the column in code points, not in the UTF-16 units a Scala string indexes by
-      .flatMap(lineStart => Try(query.offsetByCodePoints(lineStart, location.column)).toOption)
-  }
 
   private def fromSourcePlaceIn(
       pattern: IndexPatternInQuery,
@@ -194,16 +169,6 @@ private[esql] object IndexListLocator {
     else if (anonymousQueryParameter.matches(spanText)) Left(ReadingFailure.IndexListInAnonymousParameter)
     else Left(ReadingFailure.NotWhereEsReportedIt(pattern.reportedIndexList))
   }
-
-  /**
-   * Compared with the quoting and the spacing dropped from both sides: ES hides whitespace anywhere inside a source
-   * command (`FROM remote : idx`) and reports the list unquoted, neither of which makes it a different list.
-   */
-  private def sameIndexList(one: String, other: String): Boolean =
-    quotingAndSpacingAside(one) == quotingAndSpacingAside(other)
-
-  private def quotingAndSpacingAside(indexList: String): String =
-    indexList.filterNot(char => char.isWhitespace || char == '"')
 
   /** Blanked, not dropped, so what is left keeps its offsets. */
   private def withoutComments(commandText: String): String = {
