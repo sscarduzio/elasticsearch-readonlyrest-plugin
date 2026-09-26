@@ -18,6 +18,7 @@ package tech.beshu.ror.es.esql
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
+import tech.beshu.ror.es.query.Query.narrowedWithoutRewrite
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -32,7 +33,7 @@ object Query extends RequestIdAwareLogging {
   ): Query = {
     reader.indicesIn(query) match {
       case Right(indexLists) =>
-        readable(query, reader, indexLists)
+        readable(query, indexLists)
       case Left(ReadError.QueryNotParsed(cause)) =>
         logger.debug("Cannot parse the ES|QL statement", cause)
         Unreadable(query, Rejection.CannotParseQuery)
@@ -41,46 +42,59 @@ object Query extends RequestIdAwareLogging {
     }
   }
 
-  final class WithIndices private[esql] (
-      protected val text: String,
-      private val reader: EsqlQueryIndicesReader,
+  def narrowed(
+      query: Query,
+      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      reader: EsqlQueryIndicesReader
+  )(
+      implicit requestId: RequestId
+  ): Either[Rejection, Query] =
+    query match {
+      case withIndices: WithIndices                        => narrowedWithRewrite(withIndices, allowedIndices, reader)
+      case other: (WithoutIndices | Unreadable[Rejection]) => narrowedWithoutRewrite(other, allowedIndices)
+    }
+
+  final case class WithIndices private[esql] (
+      text: String,
       private[esql] val indexLists: NonEmptyList[LocatedIndexList]
   ) extends Query {
 
     override lazy val indices: Set[RequestedIndex[ClusterIndexName]] =
       indexLists.toList.flatMap(_.requestedIndices.toList).toCovariantSet
 
-    override def narrowedTo(
-        allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-    )(
-        implicit requestId: RequestId
-    ): Either[Rejection, Query] = {
-      if (allowedIndices.toList.toCovariantSet == indices) Right(this)
-      else {
-        val replaced = IndexListReplacer.replacing(text, indexLists, allowedIndices)
-        reader.indicesIn(replaced.query) match {
-          case Right(readIndexLists) =>
-            replaced.checkedAgainst(readIndexLists) match {
-              case Right(narrowed) =>
-                Right(readable(narrowed, reader, readIndexLists))
-              case Left(rejection) =>
-                logger.debug(s"The ES|QL query [$text] was rewritten to [${replaced.query}]")
-                Left(rejection)
-            }
-          case Left(ReadError.QueryNotParsed(cause)) =>
-            logger.warn("Elasticsearch cannot parse the ES|QL query ReadonlyREST rewrote", cause)
-            Left(Rejection.CannotParseRewrittenQuery(replaced.intendedIndexLists))
-          case Left(ReadError.IndicesNotLocated(failure)) =>
-            Left(Rejection.RewriteNotConfirmed(replaced.intendedIndexLists, failure))
-        }
-      }
-    }
-
   }
 
-  private def readable(query: String, reader: EsqlQueryIndicesReader, indexLists: List[LocatedIndexList]): Query =
+  private def narrowedWithRewrite(
+      query: WithIndices,
+      allowedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      reader: EsqlQueryIndicesReader
+  )(
+      implicit requestId: RequestId
+  ): Either[Rejection, Query] = {
+    if (allowedIndices.toList.toCovariantSet == query.indices) Right(query)
+    else {
+      val replaced = IndexListReplacer.replacing(query.text, query.indexLists, allowedIndices)
+      reader.indicesIn(replaced.query) match {
+        case Right(readIndexLists) =>
+          replaced.checkedAgainst(readIndexLists) match {
+            case Right(narrowed) =>
+              Right(readable(narrowed, readIndexLists))
+            case Left(rejection) =>
+              logger.debug(s"The ES|QL query [${query.text}] was rewritten to [${replaced.query}]")
+              Left(rejection)
+          }
+        case Left(ReadError.QueryNotParsed(cause)) =>
+          logger.warn("Elasticsearch cannot parse the ES|QL query ReadonlyREST rewrote", cause)
+          Left(Rejection.CannotParseRewrittenQuery(replaced.intendedIndexLists))
+        case Left(ReadError.IndicesNotLocated(failure)) =>
+          Left(Rejection.RewriteNotConfirmed(replaced.intendedIndexLists, failure))
+      }
+    }
+  }
+
+  private def readable(query: String, indexLists: List[LocatedIndexList]): Query =
     NonEmptyList.fromList(indexLists) match {
-      case Some(nonEmptyIndexLists) => new WithIndices(query, reader, nonEmptyIndexLists)
+      case Some(nonEmptyIndexLists) => WithIndices(query, nonEmptyIndexLists)
       case None                     => WithoutIndices(query)
     }
 

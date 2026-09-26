@@ -21,6 +21,7 @@ import cats.syntax.traverse.*
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
+import tech.beshu.ror.es.query.{IndexLists, TextSpan}
 import tech.beshu.ror.es.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
 
 class QueryTest extends AnyWordSpec {
@@ -28,43 +29,53 @@ class QueryTest extends AnyWordSpec {
   "An SQL query" when {
     "built from a raw statement" should {
       "read the index a SELECT names" in {
-        val query = queryFrom("""SELECT name FROM "bookstore"""", select(""""bookstore"""" -> "bookstore"))
+        val query = """SELECT name FROM "bookstore""""
 
-        query.indices.toList.map(_.name.stringify).sorted shouldBe List("bookstore")
+        queryFrom(query, select(""""bookstore"""" -> "bookstore")) shouldBe
+          withIndexList(query, writtenText = """"bookstore"""", indexList = "bookstore")
       }
       "read every index of a list a SELECT names" in {
-        val query = queryFrom("""SELECT name FROM "a,b"""", select(""""a,b"""" -> "a,b"))
+        val query = """SELECT name FROM "a,b""""
 
-        query.indices.toList.map(_.name.stringify).sorted shouldBe List("a", "b")
+        queryFrom(query, select(""""a,b"""" -> "a,b")) shouldBe
+          withIndexList(query, writtenText = """"a,b"""", indexList = "a,b")
       }
       "read the remote cluster a SELECT names without quoting it" in {
-        val query = queryFrom("SELECT name FROM self:library", select("self:library" -> "self:library"))
+        val query = "SELECT name FROM self:library"
 
-        query.indices.toList.map(_.name.stringify).sorted shouldBe List("self:library")
+        queryFrom(query, select("self:library" -> "self:library")) shouldBe
+          withIndexList(query, writtenText = "self:library", indexList = "self:library")
       }
       "read the index a command names" in {
-        val query = queryFrom("""SHOW COLUMNS IN "library"""", showColumns(index = "library"))
+        val query = """SHOW COLUMNS IN "library""""
 
-        query.indices.toList.map(_.name.stringify).sorted shouldBe List("library")
+        queryFrom(query, showColumns(index = "library")) shouldBe
+          withIndexList(query, writtenText = """"library"""", indexList = "library")
       }
       "read the pattern a command matches index names with" in {
-        val query = queryFrom("SHOW TABLES LIKE 'book%'", showTables(wildcard = "book*"))
+        val query = "SHOW TABLES LIKE 'book%'"
 
-        query.indices.toList.map(_.name.stringify).sorted shouldBe List("book*")
+        queryFrom(query, showTables(wildcard = "book*")) shouldBe
+          withIndexList(query, writtenText = "LIKE 'book%'", indexList = "book*")
       }
       "read all indices when a command names none" in {
-        val query = queryFrom("SHOW TABLES", showTables())
-
-        query.indices.toList.map(_.name.stringify).sorted shouldBe List("*")
+        queryFrom("SHOW TABLES", showTables()) shouldBe
+          Query.WithIndices(
+            "SHOW TABLES",
+            NonEmptyList.one(
+              LocatedIndexList(TextSpan(11, 11), requestedIndicesIn("*"), IndexListSyntax.AppendedToQuery)
+            )
+          )
       }
       "have no index list when the command matches something other than index names" in {
         queryFrom("SHOW FUNCTIONS LIKE 'A%'", showFunctions()) shouldBe
           Query.WithoutIndices("SHOW FUNCTIONS LIKE 'A%'")
       }
       "read every index of a list written with spaces" in {
-        val query = queryFrom("""SELECT name FROM "a, b"""", select(""""a, b"""" -> "a, b"))
+        val query = """SELECT name FROM "a, b""""
 
-        query.indices.toList.map(_.name.stringify).sorted shouldBe List("a", "b")
+        queryFrom(query, select(""""a, b"""" -> "a, b")) shouldBe
+          withIndexList(query, writtenText = """"a, b"""", indexList = "a, b")
       }
       "not locate an index list inside a longer name" in {
         queryFrom("SHOW COLUMNS IN self:library", showColumns(index = "library")) shouldBe
@@ -262,7 +273,7 @@ class QueryTest extends AnyWordSpec {
           case _               => Left(esRejection)
         })
 
-        Query.from(query, reader).narrowedTo(allowed("bookstore")) shouldBe
+        Query.narrowed(Query.from(query, reader), allowed("bookstore"), reader) shouldBe
           Left(Rejection.CannotParseRewrittenQuery(List("bookstore")))
       }
       "stay as written when the ACL narrowed nothing" in {
@@ -275,20 +286,29 @@ class QueryTest extends AnyWordSpec {
         ) shouldBe Right(query)
       }
       "be rejected when it is unreadable and the ACL narrowed the indices down" in {
-        Query.Unreadable("SELECT", Rejection.CannotReadQuery).narrowedTo(allowed("bookstore")) shouldBe
+        Query.narrowed(
+          Query.Unreadable("SELECT", Rejection.CannotReadQuery),
+          allowed("bookstore"),
+          readerOf(Map.empty)
+        ) shouldBe
           Left(Rejection.CannotReadQuery)
       }
       "be rejected when Elasticsearch cannot parse it and the ACL narrowed the indices down" in {
-        Query.from("SELECT FROM", readerFailingWith(esRejection)).narrowedTo(allowed("bookstore")) shouldBe
+        val reader = readerFailingWith(esRejection)
+
+        Query.narrowed(Query.from("SELECT FROM", reader), allowed("bookstore"), reader) shouldBe
           Left(Rejection.CannotParseQuery)
       }
       "stay as written when Elasticsearch cannot parse it and the ACL allows all indices" in {
-        Query.from("SELECT FROM", readerFailingWith(esRejection)).narrowedTo(allowed("*")).map(_.stringify) shouldBe
-          Right("SELECT FROM")
+        val reader = readerFailingWith(esRejection)
+
+        Query.narrowed(Query.from("SELECT FROM", reader), allowed("*"), reader) shouldBe
+          Right(Query.Unreadable("SELECT FROM", Rejection.CannotParseQuery))
       }
       "stay as written when it is the empty query of a cursor request" in {
-        Query.from("", readerFailingWith(esRejection)).narrowedTo(allowed("bookstore")).map(_.stringify) shouldBe
-          Right("")
+        val reader = readerFailingWith(esRejection)
+
+        Query.narrowed(Query.from("", reader), allowed("bookstore"), reader) shouldBe Right(Query.WithoutIndices(""))
       }
     }
   }
@@ -309,8 +329,27 @@ class QueryTest extends AnyWordSpec {
       query: String,
       allowed: NonEmptyList[RequestedIndex[ClusterIndexName]],
       reads: Map[String, Any]
-  ): Either[Rejection, String] =
-    Query.from(query, readerOf(reads)).narrowedTo(allowed).map(_.stringify)
+  ): Either[Rejection, String] = {
+    val reader = readerOf(reads)
+    Query.narrowed(Query.from(query, reader), allowed, reader).map(_.stringify)
+  }
+
+  private def withIndexList(query: String, writtenText: String, indexList: String): Query = {
+    val start = query.indexOf(writtenText)
+    Query.WithIndices(
+      query,
+      NonEmptyList.one(
+        LocatedIndexList(
+          TextSpan(start, start + writtenText.length),
+          requestedIndicesIn(indexList),
+          IndexListSyntax.InQueryText
+        )
+      )
+    )
+  }
+
+  private def requestedIndicesIn(indexList: String): NonEmptyList[RequestedIndex[ClusterIndexName]] =
+    IndexLists.requestedIndicesIn(indexList).get
 
   private def readerOf(reads: Map[String, Any]): SqlQueryIndicesReader =
     new StubReader({

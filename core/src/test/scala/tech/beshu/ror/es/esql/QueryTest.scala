@@ -118,12 +118,12 @@ class QueryTest extends AnyWordSpec {
         val reader = readerOf(Map("FROM logs-1 | LIMIT 10" -> List(from("FROM logs-1", "logs-1"))))
         val query = Query.from("FROM logs-1 | LIMIT 10", reader)
 
-        query.narrowedTo(allowed("logs-1")) shouldBe Right(query)
+        Query.narrowed(query, allowed("logs-1"), reader) shouldBe Right(query)
       }
       "stay as written when it names no index list" in {
         val query = Query.WithoutIndices("ROW a = 1")
 
-        query.narrowedTo(allowed("logs-1")) shouldBe Right(query)
+        Query.narrowed(query, allowed("logs-1"), readerOf(Map.empty)) shouldBe Right(query)
       }
       "be rejected when Elasticsearch reads no index list out of the rewrite" in {
         narrow(
@@ -155,17 +155,21 @@ class QueryTest extends AnyWordSpec {
             Left(new IllegalArgumentException("cannot parse"))
         })
 
-        Query.from("FROM logs-* | LIMIT 10", reader).narrowedTo(allowed("logs-1")) shouldBe
+        Query.narrowed(Query.from("FROM logs-* | LIMIT 10", reader), allowed("logs-1"), reader) shouldBe
           Left(Rejection.CannotParseRewrittenQuery(List("logs-1")))
       }
       "be rejected when it is unreadable and the ACL narrowed the indices down" in {
-        Query.Unreadable("FROM", Rejection.CannotParseQuery).narrowedTo(allowed("logs-1")) shouldBe
+        Query.narrowed(
+          Query.Unreadable("FROM", Rejection.CannotParseQuery),
+          allowed("logs-1"),
+          readerOf(Map.empty)
+        ) shouldBe
           Left(Rejection.CannotParseQuery)
       }
       "stay as written when it is unreadable and the ACL narrowed nothing" in {
         val query = Query.Unreadable("FROM", Rejection.CannotParseQuery)
 
-        query.narrowedTo(allIndices) shouldBe Right(query)
+        Query.narrowed(query, allIndices, readerOf(Map.empty)) shouldBe Right(query)
       }
     }
   }
@@ -184,7 +188,7 @@ class QueryTest extends AnyWordSpec {
       reads: Map[String, List[ReadWrittenAs]]
   ): Either[Rejection, String] = {
     val reader = readerOf(reads)
-    Query.from(query, reader).narrowedTo(allowed).map(_.stringify)
+    Query.narrowed(Query.from(query, reader), allowed, reader).map(_.stringify)
   }
 
   private def readerOf(reads: Map[String, List[ReadWrittenAs]]): EsqlQueryIndicesReader =

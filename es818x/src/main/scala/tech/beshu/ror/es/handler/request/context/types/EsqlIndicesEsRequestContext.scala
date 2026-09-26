@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{
   FlsAtLuceneLevelApproach
 }
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
+import tech.beshu.ror.es.esql.Query
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
@@ -66,7 +67,7 @@ class EsqlIndicesEsRequestContext private (
       filter: Option[Filter],
       fieldLevelSecurity: Option[FieldLevelSecurity]
   ): ModificationResult = {
-    esqlQuery.narrowedTo(filteredRequestedIndices) match {
+    Query.narrowed(esqlQuery, filteredRequestedIndices, esqlRequestHelper.readerFor(request)) match {
       case Right(narrowedQuery) =>
         esqlRequestHelper.setEsqlQueryTo(request, narrowedQuery)
         applyFieldLevelSecurityTo(request, fieldLevelSecurity)
