@@ -16,18 +16,29 @@
  */
 package tech.beshu.ror.es.query.esql
 
-import tech.beshu.ror.es.query.IndexPatternInQuery
+import org.joor.ReflectException
+import tech.beshu.ror.es.query.QueryIndicesReader.ReadError
 import tech.beshu.ror.es.query.esql.EsqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.{IndexPatternInQuery, QueryIndicesReader}
 
-trait EsqlQueryIndicesReader {
+import java.lang.reflect.InvocationTargetException
 
-  private[esql] final def indicesIn(query: String): Either[ReadError, List[LocatedIndexList]] =
+trait EsqlQueryIndicesReader extends QueryIndicesReader[LocatedIndexList] {
+
+  override private[query] final def indicesIn(query: String): Either[ReadError, List[LocatedIndexList]] =
     for {
-      indices <- queryIndicesFrom(query).left.map(ReadError.QueryNotParsed.apply)
+      indices <- queryIndicesFrom(query).left.map(readErrorOf)
       indexLists <- IndexListLocator.locatedIn(query, indices).left.map(ReadError.IndicesNotLocated.apply)
     } yield indexLists
 
   protected def queryIndicesFrom(query: String): Either[Throwable, QueryIndices]
+
+  private def readErrorOf(throwable: Throwable): ReadError = throwable match {
+    case ex: ReflectException if ex.getCause.isInstanceOf[InvocationTargetException] =>
+      ReadError.QueryNotParsed(Option(ex.getCause.getCause).getOrElse(ex))
+    case ex =>
+      ReadError.PlanNotRead(ex)
+  }
 
 }
 

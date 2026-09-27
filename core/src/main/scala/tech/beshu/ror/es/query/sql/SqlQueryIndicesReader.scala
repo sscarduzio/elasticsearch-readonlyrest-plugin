@@ -18,15 +18,16 @@ package tech.beshu.ror.es.query.sql
 
 import cats.syntax.traverse.*
 import org.joor.ReflectException
-import tech.beshu.ror.es.query.IndexPatternInQuery
-import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
+import tech.beshu.ror.es.query.QueryIndicesReader.ReadError
+import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.{IndexPatternInQuery, QueryIndicesReader}
 
 import java.lang.reflect.InvocationTargetException
 import scala.util.{Failure, Success, Try}
 
-trait SqlQueryIndicesReader {
+trait SqlQueryIndicesReader extends QueryIndicesReader[LocatedIndexList] {
 
-  private[sql] final def indicesIn(query: String): Either[ReadError, List[LocatedIndexList]] =
+  override private[query] final def indicesIn(query: String): Either[ReadError, List[LocatedIndexList]] =
     for {
       indices <- queryIndicesFrom(query)
       indexLists <- IndexListLocator.locatedIn(query, indices).left.map(ReadError.IndicesNotLocated.apply)
@@ -49,18 +50,6 @@ object SqlQueryIndicesReader {
 
   }
 
-  private[sql] sealed trait ReadError
-
-  private[sql] object ReadError {
-
-    final case class RejectedByEs(cause: Throwable) extends ReadError
-
-    final case class PlanNotRead(cause: Throwable) extends ReadError
-
-    final case class IndicesNotLocated(failure: ReadingFailure) extends ReadError
-
-  }
-
 }
 
 abstract class ReflectiveSqlQueryIndicesReader(
@@ -78,7 +67,7 @@ abstract class ReflectiveSqlQueryIndicesReader(
       case Success(statement) =>
         Try(queryIndicesIn(statement)).toEither.left.map(ReadError.PlanNotRead.apply).flatten
       case Failure(ex: ReflectException) if ex.getCause.isInstanceOf[InvocationTargetException] =>
-        Left(ReadError.RejectedByEs(Option(ex.getCause.getCause).getOrElse(ex)))
+        Left(ReadError.QueryNotParsed(Option(ex.getCause.getCause).getOrElse(ex)))
       case Failure(ex) =>
         Left(ReadError.PlanNotRead(ex))
     }

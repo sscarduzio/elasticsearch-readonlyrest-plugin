@@ -20,8 +20,9 @@ import org.joor.Reflect.on
 import org.scalatest.Inside.inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.es.query.QueryIndicesReader.ReadError
 import tech.beshu.ror.es.query.sql.CommandSelector.LiteralIndexList
-import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
+import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.QueryIndices
 import tech.beshu.ror.es.query.{IndexPatternInQuery, SourceLocation}
 
 class ReflectiveSqlQueryIndicesReaderTest extends AnyWordSpec {
@@ -39,7 +40,7 @@ class ReflectiveSqlQueryIndicesReaderTest extends AnyWordSpec {
       val parseError = new IllegalArgumentException("line 1:8: mismatched input")
 
       readerOf(query => on(new ThrowingParser(parseError)).call("createStatement", query).get[AnyRef]())
-        .queryIndicesFrom("SELECT") shouldBe Left(ReadError.RejectedByEs(parseError))
+        .queryIndicesFrom("SELECT") shouldBe Left(ReadError.QueryNotParsed(parseError))
     }
     "tell that it cannot read the plan when the parser has no such method" in {
       inside(

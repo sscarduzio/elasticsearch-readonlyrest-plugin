@@ -21,8 +21,10 @@ import cats.syntax.traverse.*
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
+import tech.beshu.ror.es.query.QueryIndicesReader.{ReadError, ReadingFailure}
 import tech.beshu.ror.es.query.sql.SqlQuery.Rejection
-import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.{QueryIndices, ReadError}
+import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.sql.SqlQueryNarrowing.narrowedTo
 import tech.beshu.ror.es.query.{IndexLists, TextSpan}
 
 class QueryTest extends AnyWordSpec {
@@ -66,7 +68,7 @@ class QueryTest extends AnyWordSpec {
             NonEmptyList.one(
               LocatedIndexList(TextSpan(11, 11), requestedIndicesIn("*"), IndexListSyntax.AppendedToQuery)
             )
-          )
+          )(anyReader)
       }
       "have no index list when the command matches something other than index names" in {
         queryFrom("SHOW FUNCTIONS LIKE 'A%'", showFunctions()) shouldBe
@@ -274,7 +276,7 @@ class QueryTest extends AnyWordSpec {
           case _               => Left(esRejection)
         })
 
-        SqlQuery.narrowed(SqlQuery.from(query, reader), allowed("bookstore"), reader) shouldBe
+        SqlQuery.from(query, reader).narrowedTo(allowed("bookstore")) shouldBe
           Left(Rejection.CannotParseRewrittenQuery(List("bookstore")))
       }
       "stay as written when the ACL narrowed nothing" in {
@@ -287,29 +289,25 @@ class QueryTest extends AnyWordSpec {
         ) shouldBe Right(query)
       }
       "be rejected when it is unreadable and the ACL narrowed the indices down" in {
-        SqlQuery.narrowed(
-          SqlQuery.Unreadable("SELECT", Rejection.CannotReadQuery),
-          allowed("bookstore"),
-          readerOf(Map.empty)
-        ) shouldBe
+        SqlQuery.Unreadable("SELECT", Rejection.CannotReadQuery).narrowedTo(allowed("bookstore")) shouldBe
           Left(Rejection.CannotReadQuery)
       }
       "be rejected when Elasticsearch cannot parse it and the ACL narrowed the indices down" in {
         val reader = readerFailingWith(esRejection)
 
-        SqlQuery.narrowed(SqlQuery.from("SELECT FROM", reader), allowed("bookstore"), reader) shouldBe
+        SqlQuery.from("SELECT FROM", reader).narrowedTo(allowed("bookstore")) shouldBe
           Left(Rejection.CannotParseQuery)
       }
       "stay as written when Elasticsearch cannot parse it and the ACL allows all indices" in {
         val reader = readerFailingWith(esRejection)
 
-        SqlQuery.narrowed(SqlQuery.from("SELECT FROM", reader), allowed("*"), reader) shouldBe
+        SqlQuery.from("SELECT FROM", reader).narrowedTo(allowed("*")) shouldBe
           Right(SqlQuery.Unreadable("SELECT FROM", Rejection.CannotParseQuery))
       }
       "stay as written when it is the empty query of a cursor request" in {
         val reader = readerFailingWith(esRejection)
 
-        SqlQuery.narrowed(SqlQuery.from("", reader), allowed("bookstore"), reader) shouldBe Right(
+        SqlQuery.from("", reader).narrowedTo(allowed("bookstore")) shouldBe Right(
           SqlQuery.WithoutIndices("")
         )
       }
@@ -318,7 +316,7 @@ class QueryTest extends AnyWordSpec {
 
   private implicit val requestId: RequestId = RequestId("test")
 
-  private val esRejection = ReadError.RejectedByEs(new IllegalArgumentException("cannot parse"))
+  private val esRejection = ReadError.QueryNotParsed(new IllegalArgumentException("cannot parse"))
 
   private val readingFailure = ReadError.PlanNotRead(new IllegalStateException("no such field"))
 
@@ -334,7 +332,7 @@ class QueryTest extends AnyWordSpec {
       reads: Map[String, Any]
   ): Either[Rejection, String] = {
     val reader = readerOf(reads)
-    SqlQuery.narrowed(SqlQuery.from(query, reader), allowed, reader).map(_.stringify)
+    SqlQuery.from(query, reader).narrowedTo(allowed).map(_.stringify)
   }
 
   private def withIndexList(query: String, writtenText: String, indexList: String): SqlQuery = {
@@ -348,7 +346,7 @@ class QueryTest extends AnyWordSpec {
           IndexListSyntax.InQueryText
         )
       )
-    )
+    )(anyReader)
   }
 
   private def requestedIndicesIn(indexList: String): NonEmptyList[RequestedIndex[ClusterIndexName]] =
@@ -363,6 +361,8 @@ class QueryTest extends AnyWordSpec {
         }
       case q => throw new IllegalStateException(s"unexpected query: $q")
     })
+
+  private val anyReader: SqlQueryIndicesReader = readerOf(Map.empty)
 
   private def readerReading(plan: String => EsPlan): SqlQueryIndicesReader =
     new StubReader(query => Right(plan(query)))

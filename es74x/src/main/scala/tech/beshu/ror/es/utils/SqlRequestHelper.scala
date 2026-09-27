@@ -49,7 +49,7 @@ object SqlRequestHelper {
     response
   }
 
-  def readerFor(request: CompositeIndicesRequest): SqlQueryIndicesReader = {
+  private def readerFor(request: CompositeIndicesRequest): SqlQueryIndicesReader = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
     new SqlParser(request)
   }

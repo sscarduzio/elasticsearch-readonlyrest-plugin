@@ -55,7 +55,7 @@ object EsqlRequestHelper {
     setQuery(request, query.stringify)
   }
 
-  def readerFor(request: CompositeIndicesRequest): EsqlQueryIndicesReader = {
+  private def readerFor(request: CompositeIndicesRequest): EsqlQueryIndicesReader = {
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
     new EsqlParser(request)
   }

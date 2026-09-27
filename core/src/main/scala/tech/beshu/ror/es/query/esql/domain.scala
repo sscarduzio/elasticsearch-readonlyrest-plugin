@@ -19,6 +19,7 @@ package tech.beshu.ror.es.query.esql
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.es.query
 import tech.beshu.ror.es.query.IndexLists.requestedIndicesIn
 import tech.beshu.ror.es.query.TextSpan
 
@@ -29,11 +30,7 @@ private[esql] object IndexListSyntax {
   case object PromqlIndexParameter extends IndexListSyntax
 }
 
-private[esql] sealed trait LocatedIndexList {
-
-  def span: TextSpan
-
-  def requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+private[esql] sealed trait LocatedIndexList extends query.LocatedIndexList {
 
   def describe: String
 

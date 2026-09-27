@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import cats.syntax.traverse.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.domain.RequestedIndex
+import tech.beshu.ror.es.query.QueryIndicesReader.ReadingFailure
 import tech.beshu.ror.es.query.QueryText.sameIndexList
 import tech.beshu.ror.es.query.sql.CommandSelector.{
   AppendableIndexList,

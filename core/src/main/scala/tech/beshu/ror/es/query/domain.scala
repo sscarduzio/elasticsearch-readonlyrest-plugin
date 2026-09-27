@@ -16,9 +16,20 @@
  */
 package tech.beshu.ror.es.query
 
+import cats.data.NonEmptyList
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+
 import scala.util.Try
 
 private[es] final case class TextSpan(start: Int, end: Int)
+
+private[query] trait LocatedIndexList {
+
+  def span: TextSpan
+
+  def requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+
+}
 
 /** A 1-based line and a 0-based column, the way ES reports them. */
 final case class SourceLocation(line: Int, column: Int)

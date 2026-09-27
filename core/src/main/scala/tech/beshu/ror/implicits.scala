@@ -76,9 +76,8 @@ import tech.beshu.ror.accesscontrol.logging.ResponseContext.{
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.es.query.QueryIndicesReader.ReadingFailure
 import tech.beshu.ror.es.query.esql.EsqlQuery.Rejection
-import tech.beshu.ror.es.query.esql.ReadingFailure
-import tech.beshu.ror.es.query.sql.ReadingFailure as SqlReadingFailure
 import tech.beshu.ror.es.query.sql.SqlQuery.Rejection as SqlRejection
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
@@ -760,11 +759,17 @@ trait LogsShowInstances extends cats.instances.AllInstances {
     }
   }
 
-  implicit val esqlIndexListReadingFailureShow: Show[ReadingFailure] = Show.show {
+  implicit val indexListReadingFailureShow: Show[ReadingFailure] = Show.show {
     case ReadingFailure.NotWhereEsReportedIt(indexList) =>
       s"Elasticsearch says the query reads [${indexList.show}], but points at a place in the query text where " +
         s"that is not what is written - so there is nothing ReadonlyREST can safely rewrite. Please report " +
         s"this query to the ReadonlyREST team"
+    case ReadingFailure.UnsupportedIndexList(indexList) =>
+      s"[${indexList.show}] is not something ReadonlyREST can read as a list of index names"
+    case ReadingFailure.OverlappingIndexLists(one, other) =>
+      s"Elasticsearch points at two index lists, [${one.show}] and [${other.show}], that share text in the " +
+        s"query - so ReadonlyREST cannot narrow one down without changing the other. Please report this query " +
+        s"to the ReadonlyREST team"
     case ReadingFailure.SubqueryInSourceCommand(indexList) =>
       s"the indices [${indexList.show}] are read by a command that also holds a subquery, and Elasticsearch " +
         s"reports the two merged into a single list - so ReadonlyREST cannot tell which part of the query " +
@@ -773,12 +778,16 @@ trait LogsShowInstances extends cats.instances.AllInstances {
       "the indices are named by an anonymous query parameter ([?] or [??]), which Elasticsearch binds by the " +
         "order the parameters are written in - so narrowing it down would rebind every parameter written after " +
         "it. Name the parameter ([?index]) or number it ([?1]) to have such a query authorized"
-    case ReadingFailure.UnsupportedIndexList(indexList) =>
-      s"[${indexList.show}] is not something ReadonlyREST can read as a list of index names"
-    case ReadingFailure.OverlappingIndexLists(one, other) =>
-      s"Elasticsearch points at two index lists, [${one.show}] and [${other.show}], that share text in the " +
-        s"query - so ReadonlyREST cannot narrow one down without changing the other. Please report this query " +
-        s"to the ReadonlyREST team"
+    case ReadingFailure.IndexListNotWrittenOnce(indexList) =>
+      s"the indices [${indexList.show}] are not written exactly once in the query, so ReadonlyREST cannot tell " +
+        s"which part of the query text names the tables the statement reads"
+    case ReadingFailure.PatternNotWrittenOnce(commandName, wildcard) =>
+      s"the [${commandName.show}] statement matches index names with a pattern that Elasticsearch reads as " +
+        s"[${wildcard.show}], and it holds more than one LIKE clause - so ReadonlyREST cannot tell which one " +
+        s"picks the indices"
+    case ReadingFailure.CommandTakesNoIndexList(commandName) =>
+      s"the [${commandName.show}] statement takes no index list ReadonlyREST could put the allowed names in. " +
+        s"Name the indices in a statement that takes them to have such a request authorized"
   }
 
   implicit val esqlQueryRejectionShow: Show[Rejection] = Show.show {
@@ -786,6 +795,10 @@ trait LogsShowInstances extends cats.instances.AllInstances {
       "The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
         "indices the user is allowed to, and it could not read the query at all - so it cannot tell which indices " +
         "the query would run against. If the query is valid ES|QL, please report it to the ReadonlyREST team."
+    case Rejection.CannotReadQuery =>
+      "The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
+        "indices the user is allowed to, and it could not read how Elasticsearch parsed the query - so it cannot " +
+        "tell which indices the query would run against. Please report this query to the ReadonlyREST team."
     case Rejection.CannotExtractIndices(failure) =>
       s"The ES|QL query has been forbidden. ReadonlyREST has to rewrite such a query so that it reads only the " +
         s"indices the user is allowed to, and running it as written would have let the user read the indices " +
@@ -801,29 +814,6 @@ trait LogsShowInstances extends cats.instances.AllInstances {
     case Rejection.SubstitutionNotConfirmed(intended, read) =>
       s"The ES|QL query has been forbidden, because its rewrite reads [${read.mkString(", ")}] instead of " +
         s"[${intended.mkString(", ")}]. Please report this query to the ReadonlyREST team."
-  }
-
-  implicit val sqlIndexListReadingFailureShow: Show[SqlReadingFailure] = Show.show {
-    case SqlReadingFailure.NotWhereEsReportedIt(indexList) =>
-      s"Elasticsearch says the query reads [${indexList.show}], but points at a place in the query text where " +
-        s"that is not what is written - so there is nothing ReadonlyREST can safely rewrite. Please report " +
-        s"this query to the ReadonlyREST team"
-    case SqlReadingFailure.UnsupportedIndexList(indexList) =>
-      s"[${indexList.show}] is not something ReadonlyREST can read as a list of index names"
-    case SqlReadingFailure.IndexListNotWrittenOnce(indexList) =>
-      s"the indices [${indexList.show}] are not written exactly once in the query, so ReadonlyREST cannot tell " +
-        s"which part of the query text names the tables the statement reads"
-    case SqlReadingFailure.PatternNotWrittenOnce(commandName, wildcard) =>
-      s"the [${commandName.show}] statement matches index names with a pattern that Elasticsearch reads as " +
-        s"[${wildcard.show}], and it holds more than one LIKE clause - so ReadonlyREST cannot tell which one " +
-        s"picks the indices"
-    case SqlReadingFailure.CommandTakesNoIndexList(commandName) =>
-      s"the [${commandName.show}] statement takes no index list ReadonlyREST could put the allowed names in. " +
-        s"Name the indices in a statement that takes them to have such a request authorized"
-    case SqlReadingFailure.OverlappingIndexLists(one, other) =>
-      s"Elasticsearch points at two index lists, [${one.show}] and [${other.show}], that share text in the " +
-        s"query - so ReadonlyREST cannot narrow one down without changing the other. Please report this query " +
-        s"to the ReadonlyREST team"
   }
 
   implicit val sqlQueryRejectionShow: Show[SqlRejection] = Show.show {

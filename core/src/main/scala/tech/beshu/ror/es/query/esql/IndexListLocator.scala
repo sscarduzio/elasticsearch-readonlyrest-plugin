@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.query.esql
 
 import cats.implicits.*
+import tech.beshu.ror.es.query.QueryIndicesReader.ReadingFailure
 import tech.beshu.ror.es.query.QueryText.sameIndexList
 import tech.beshu.ror.es.query.esql.EsqlQueryIndicesReader.QueryIndices
 import tech.beshu.ror.es.query.esql.LocatedIndexList.{LookupJoinTarget, SourceCommandIndices}

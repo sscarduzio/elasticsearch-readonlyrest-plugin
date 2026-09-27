@@ -17,13 +17,18 @@
 package tech.beshu.ror.es.query.esql
 
 import cats.data.NonEmptyList
+import org.joor.ReflectException
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
+import tech.beshu.ror.es.query.QueryIndicesReader.ReadingFailure
 import tech.beshu.ror.es.query.esql.EsqlQuery.Rejection
 import tech.beshu.ror.es.query.esql.EsqlQueryIndicesReader.QueryIndices
+import tech.beshu.ror.es.query.esql.EsqlQueryNarrowing.narrowedTo
 import tech.beshu.ror.es.query.{IndexPatternInQuery, SourceLocation}
 import tech.beshu.ror.syntax.*
+
+import java.lang.reflect.InvocationTargetException
 
 class QueryTest extends AnyWordSpec {
 
@@ -43,8 +48,12 @@ class QueryTest extends AnyWordSpec {
         queryFrom("ROW a = 1") shouldBe EsqlQuery.WithoutIndices("ROW a = 1")
       }
       "be unreadable when Elasticsearch cannot parse it" in {
-        EsqlQuery.from("FROM", readerFailingWith(new IllegalArgumentException("cannot parse"))) shouldBe
+        EsqlQuery.from("FROM", readerFailingWith(esParseError)) shouldBe
           EsqlQuery.Unreadable("FROM", Rejection.CannotParseQuery)
+      }
+      "be unreadable when ReadonlyREST cannot read the plan Elasticsearch built" in {
+        EsqlQuery.from("FROM logs-1", readerFailingWith(new IllegalStateException("no such method"))) shouldBe
+          EsqlQuery.Unreadable("FROM logs-1", Rejection.CannotReadQuery)
       }
       "be unreadable when its index list is not where Elasticsearch reported it" in {
         val reader = readerReading(_ =>
@@ -119,12 +128,12 @@ class QueryTest extends AnyWordSpec {
         val reader = readerOf(Map("FROM logs-1 | LIMIT 10" -> List(from("FROM logs-1", "logs-1"))))
         val query = EsqlQuery.from("FROM logs-1 | LIMIT 10", reader)
 
-        EsqlQuery.narrowed(query, allowed("logs-1"), reader) shouldBe Right(query)
+        query.narrowedTo(allowed("logs-1")) shouldBe Right(query)
       }
       "stay as written when it names no index list" in {
         val query = EsqlQuery.WithoutIndices("ROW a = 1")
 
-        EsqlQuery.narrowed(query, allowed("logs-1"), readerOf(Map.empty)) shouldBe Right(query)
+        query.narrowedTo(allowed("logs-1")) shouldBe Right(query)
       }
       "be rejected when Elasticsearch reads no index list out of the rewrite" in {
         narrow(
@@ -153,24 +162,20 @@ class QueryTest extends AnyWordSpec {
           case "FROM logs-* | LIMIT 10" =>
             Right(fromSourcesOnly(List(from("FROM logs-*", "logs-*").at("FROM logs-* | LIMIT 10"))))
           case _ =>
-            Left(new IllegalArgumentException("cannot parse"))
+            Left(esParseError)
         })
 
-        EsqlQuery.narrowed(EsqlQuery.from("FROM logs-* | LIMIT 10", reader), allowed("logs-1"), reader) shouldBe
+        EsqlQuery.from("FROM logs-* | LIMIT 10", reader).narrowedTo(allowed("logs-1")) shouldBe
           Left(Rejection.CannotParseRewrittenQuery(List("logs-1")))
       }
       "be rejected when it is unreadable and the ACL narrowed the indices down" in {
-        EsqlQuery.narrowed(
-          EsqlQuery.Unreadable("FROM", Rejection.CannotParseQuery),
-          allowed("logs-1"),
-          readerOf(Map.empty)
-        ) shouldBe
+        EsqlQuery.Unreadable("FROM", Rejection.CannotParseQuery).narrowedTo(allowed("logs-1")) shouldBe
           Left(Rejection.CannotParseQuery)
       }
       "stay as written when it is unreadable and the ACL narrowed nothing" in {
         val query = EsqlQuery.Unreadable("FROM", Rejection.CannotParseQuery)
 
-        EsqlQuery.narrowed(query, allIndices, readerOf(Map.empty)) shouldBe Right(query)
+        query.narrowedTo(allIndices) shouldBe Right(query)
       }
     }
   }
@@ -179,6 +184,9 @@ class QueryTest extends AnyWordSpec {
 
   private val allIndices: NonEmptyList[RequestedIndex[ClusterIndexName]] =
     NonEmptyList.one(RequestedIndex(ClusterIndexName.Local.wildcard, excluded = false))
+
+  private val esParseError: Throwable =
+    new ReflectException(new InvocationTargetException(new IllegalArgumentException("cannot parse")))
 
   private def queryFrom(query: String, reported: ReadWrittenAs*): EsqlQuery =
     EsqlQuery.from(query, readerReading(q => fromSourcesOnly(reported.toList.map(_.at(q)))))
@@ -189,7 +197,7 @@ class QueryTest extends AnyWordSpec {
       reads: Map[String, List[ReadWrittenAs]]
   ): Either[Rejection, String] = {
     val reader = readerOf(reads)
-    EsqlQuery.narrowed(EsqlQuery.from(query, reader), allowed, reader).map(_.stringify)
+    EsqlQuery.from(query, reader).narrowedTo(allowed).map(_.stringify)
   }
 
   private def readerOf(reads: Map[String, List[ReadWrittenAs]]): EsqlQueryIndicesReader =

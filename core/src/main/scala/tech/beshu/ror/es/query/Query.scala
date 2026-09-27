@@ -20,8 +20,7 @@ import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.syntax.*
 
-/** A query of an API that names its indices in the query text, which ROR narrows by rewriting that text. */
-trait Query[+REJECTION] {
+sealed trait Query[+LOCATED <: LocatedIndexList, +REJECTION] {
 
   protected def text: String
 
@@ -33,26 +32,39 @@ trait Query[+REJECTION] {
 
 object Query {
 
-  final case class WithoutIndices(text: String) extends Query[Nothing] {
+  /** The reader is in a second parameter list, so `equals` ignores it. */
+  final case class WithIndices[+LOCATED <: LocatedIndexList] private[query] (
+      text: String,
+      private[query] val indexLists: NonEmptyList[LOCATED]
+  )(
+      private[query] val reader: QueryIndicesReader[LOCATED]
+  ) extends Query[LOCATED, Nothing] {
+
+    override lazy val indices: Set[RequestedIndex[ClusterIndexName]] =
+      indexLists.toList.flatMap(_.requestedIndices.toList).toCovariantSet
+
+  }
+
+  final case class WithoutIndices(text: String) extends Query[Nothing, Nothing] {
 
     override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
 
   }
 
-  final case class Unreadable[+REJECTION](text: String, reason: REJECTION) extends Query[REJECTION] {
+  final case class Unreadable[+REJECTION](text: String, reason: REJECTION) extends Query[Nothing, REJECTION] {
 
     override def indices: Set[RequestedIndex[ClusterIndexName]] = allIndices
 
   }
 
-  private[es] def narrowedWithoutRewrite[REJECTION](
-      query: WithoutIndices | Unreadable[REJECTION],
-      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
-  ): Either[REJECTION, Query[REJECTION]] =
-    query match {
-      case withoutIndices: WithoutIndices    => Right(withoutIndices)
-      case unreadable: Unreadable[REJECTION] =>
-        Either.cond(filteredRequestedIndices.toList.toCovariantSet == unreadable.indices, unreadable, unreadable.reason)
+  private[query] def readable[LOCATED <: LocatedIndexList](
+      text: String,
+      indexLists: List[LOCATED],
+      reader: QueryIndicesReader[LOCATED]
+  ): Query[LOCATED, Nothing] =
+    NonEmptyList.fromList(indexLists) match {
+      case Some(nonEmptyIndexLists) => WithIndices(text, nonEmptyIndexLists)(reader)
+      case None                     => WithoutIndices(text)
     }
 
   private val allIndices: Set[RequestedIndex[ClusterIndexName]] =

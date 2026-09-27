@@ -18,6 +18,7 @@ package tech.beshu.ror.es.query.sql
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.es.query
 import tech.beshu.ror.es.query.TextSpan
 import tech.beshu.ror.syntax.*
 
@@ -51,7 +52,7 @@ private[sql] final case class LocatedIndexList(
     span: TextSpan,
     requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
     writtenAs: IndexListSyntax
-) {
+) extends query.LocatedIndexList {
 
   def indexNames: Set[String] =
     requestedIndices.toList

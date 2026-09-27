@@ -16,18 +16,16 @@
  */
 package tech.beshu.ror.es.query.sql
 
-import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
-import tech.beshu.ror.es.query.Query.narrowedWithoutRewrite
-import tech.beshu.ror.es.query.sql.SqlQueryIndicesReader.ReadError
-import tech.beshu.ror.syntax.*
+import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.es.query.Query
+import tech.beshu.ror.es.query.QueryIndicesReader.{ReadError, ReadingFailure}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-type SqlQuery = tech.beshu.ror.es.query.Query[SqlQuery.Rejection]
+type SqlQuery = Query[LocatedIndexList, SqlQuery.Rejection]
 
 object SqlQuery extends RequestIdAwareLogging {
 
-  export tech.beshu.ror.es.query.Query.{Unreadable, WithoutIndices}
+  export tech.beshu.ror.es.query.Query.{Unreadable, WithIndices, WithoutIndices}
 
   def from(query: String, reader: SqlQueryIndicesReader)(
       implicit requestId: RequestId
@@ -37,8 +35,8 @@ object SqlQuery extends RequestIdAwareLogging {
     else
       reader.indicesIn(query) match {
         case Right(indexLists) =>
-          readable(query, indexLists)
-        case Left(ReadError.RejectedByEs(cause)) =>
+          Query.readable(query, indexLists, reader)
+        case Left(ReadError.QueryNotParsed(cause)) =>
           logger.debug("Elasticsearch cannot parse the SQL query", cause)
           Unreadable(query, Rejection.CannotParseQuery)
         case Left(ReadError.PlanNotRead(cause)) =>
@@ -48,66 +46,6 @@ object SqlQuery extends RequestIdAwareLogging {
           Unreadable(query, Rejection.CannotExtractIndices(failure))
       }
   }
-
-  def narrowed(
-      query: SqlQuery,
-      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      reader: SqlQueryIndicesReader
-  )(
-      implicit requestId: RequestId
-  ): Either[Rejection, SqlQuery] =
-    query match {
-      case withIndices: WithIndices => narrowedWithRewrite(withIndices, filteredRequestedIndices, reader)
-      case other: (WithoutIndices | Unreadable[Rejection]) => narrowedWithoutRewrite(other, filteredRequestedIndices)
-    }
-
-  final case class WithIndices private[sql] (
-      text: String,
-      private[sql] val indexLists: NonEmptyList[LocatedIndexList]
-  ) extends SqlQuery {
-
-    override lazy val indices: Set[RequestedIndex[ClusterIndexName]] =
-      indexLists.toList.flatMap(_.requestedIndices.toList).toCovariantSet
-
-  }
-
-  private def narrowedWithRewrite(
-      query: WithIndices,
-      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-      reader: SqlQueryIndicesReader
-  )(
-      implicit requestId: RequestId
-  ): Either[Rejection, SqlQuery] = {
-    if (filteredRequestedIndices.toList.toCovariantSet == query.indices) Right(query)
-    else {
-      val replaced = IndexListReplacer.replacing(query.text, query.indexLists, filteredRequestedIndices)
-      val intendedIndices = replaced.intendedIndices.toList.sorted
-      reader.indicesIn(replaced.query) match {
-        case Right(readIndexLists) =>
-          replaced.checkedAgainst(readIndexLists) match {
-            case Right(narrowed) =>
-              Right(readable(narrowed, readIndexLists))
-            case Left(rejection) =>
-              logger.debug(s"The SQL query [${query.text}] was rewritten to [${replaced.query}]")
-              Left(rejection)
-          }
-        case Left(ReadError.RejectedByEs(cause)) =>
-          logger.warn("Elasticsearch cannot parse the SQL query ReadonlyREST rewrote", cause)
-          Left(Rejection.CannotParseRewrittenQuery(intendedIndices))
-        case Left(ReadError.PlanNotRead(cause)) =>
-          logger.warn("ReadonlyREST cannot read the plan Elasticsearch built for the rewritten SQL query", cause)
-          Left(Rejection.CannotReadQuery)
-        case Left(ReadError.IndicesNotLocated(failure)) =>
-          Left(Rejection.RewriteNotConfirmed(intendedIndices, failure))
-      }
-    }
-  }
-
-  private def readable(query: String, indexLists: List[LocatedIndexList]): SqlQuery =
-    NonEmptyList.fromList(indexLists) match {
-      case Some(nonEmptyIndexLists) => WithIndices(query, nonEmptyIndexLists)
-      case None                     => WithoutIndices(query)
-    }
 
   sealed trait Rejection
 
@@ -127,23 +65,5 @@ object SqlQuery extends RequestIdAwareLogging {
     final case class RewriteNotConfirmed(intendedIndices: List[String], failure: ReadingFailure) extends Rejection
 
   }
-
-}
-
-sealed trait ReadingFailure
-
-object ReadingFailure {
-
-  final case class NotWhereEsReportedIt(indexList: String) extends ReadingFailure
-
-  final case class UnsupportedIndexList(indexList: String) extends ReadingFailure
-
-  final case class IndexListNotWrittenOnce(indexList: String) extends ReadingFailure
-
-  final case class PatternNotWrittenOnce(commandName: String, indexNameWildcard: String) extends ReadingFailure
-
-  final case class CommandTakesNoIndexList(commandName: String) extends ReadingFailure
-
-  final case class OverlappingIndexLists(oneWrittenAs: String, otherWrittenAs: String) extends ReadingFailure
 
 }
