@@ -70,7 +70,7 @@ ES module entry point pattern: `es{version}x/src/main/scala/tech/beshu/ror/es/Re
 ## Key Patterns & Libraries
 
 - **Functional Scala**: Monix 3.4.1 (Task-based effects), circe 0.14.x (JSON), refined 0.11.x (validated types), enumeratum 1.9.x (sealed enums), Cats
-- **Enums**: always use `enumeratum` (`EnumEntry` / `Enum[T]`), not plain sealed traits with no `findValues`
+- **Enums**: prefer a plain `sealed trait`. Use `enumeratum` (`EnumEntry` / `Enum[T]`) only when code iterates over the values or looks them up by name (e.g. a JSON codec built on `findValues`)
 - **Effects**: all async work uses `monix.eval.Task` — never raw `Future`, never `println` (use structured logging)
 - **Shadow/Shading**: all dependencies auto-relocated under `tech.beshu.ror` prefix
 - **Strict compilation**: `-Xfatal-warnings` with unused imports/params/locals/privates checks — no warnings are acceptable

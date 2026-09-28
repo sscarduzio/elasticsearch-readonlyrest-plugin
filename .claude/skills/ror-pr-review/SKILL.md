@@ -28,7 +28,7 @@ Hunt for these categories on **every** PR, not just security-flagged ones:
 - **False-confidence tests.** Tests that appear to assert the new behavior but actually pass via an incidental code path. Stress-test by mentally running the test with the *fix* reverted — does the test still pass? If yes, the test is decorative. Property-based tests with overly-narrow generators are a common offender.
 - **Behavioral changes without test coverage.** Look for code that changes the shape of a response, the conditions under which a side-effect fires, or the result of a function — without a corresponding test addition.
 - **Silent removals.** A condition, branch, or feature flag deleted with no replacement. Search for the deleted identifier across the codebase to confirm intent.
-- **Wrong enum style.** Sealed traits with implicit case-object children but **no** `enumeratum.Enum[T]` mixin and no `findValues` — they break JSON encoders/decoders that rely on enumeratum's introspection. Always `enumeratum`.
+- **Wrong enum style.** Prefer a plain sealed trait. Flag `enumeratum` (`EnumEntry` / `Enum[T]`) on a type whose values nothing iterates or looks up by name. Flag the opposite only when code needs the values: a sealed trait that a JSON encoder/decoder or other code iterates or looks up by name without `enumeratum`'s `findValues`.
 - **Raw `Future` instead of `monix.eval.Task`.** All async work in this codebase uses `Task`. Adding a `Future`-based code path forces an awkward conversion at the boundary and breaks structured concurrency.
 - **`println` / `System.out` / `System.err`.** Forbidden — use structured logging.
 - **`-Xfatal-warnings` violations.** Compilation will fail anyway, but flag obvious cases: unused imports/params/locals/privates, deprecated API usage, exhaustiveness warnings on `match`.
@@ -42,7 +42,7 @@ Hunt for these categories on **every** PR, not just security-flagged ones:
 
 - `Future` instead of `monix.eval.Task` in new code
 - `println` / `System.out` / `System.err` instead of structured logging
-- Sealed trait + case objects without `enumeratum.Enum[T]` / `EnumEntry`
+- `enumeratum` on a type whose values nothing iterates or looks up by name (use a plain sealed trait)
 - `scala.runtime.ScalaRunTime._*` or other `_`-prefixed internal Scala APIs
 - Missing GNU GPL v3 license header on new `.scala` files
 - `-Xfatal-warnings` violations (unused imports/params/locals/privates)

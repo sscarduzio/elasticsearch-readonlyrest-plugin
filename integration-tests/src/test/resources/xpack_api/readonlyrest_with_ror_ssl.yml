@@ -56,27 +56,6 @@ readonlyrest:
       indices: ["test6*", "rollup_test6_*"]
       auth_key: dev6:test
 
-    - name: "admin sql"
-      verbosity: error
-      type: allow
-      indices: ["bookstore", "library", "bookshop"]
-      auth_key: sqladmin:pass
-
-    - name: "dev1 sql"
-      auth_key: dev1sql:test
-      indices: ["bookstore"]
-      fields: ["~price"]
-
-    - name: "dev2 sql"
-      auth_key: dev2sql:test
-      indices: ["library"]
-      fields: ["~internal_id"]
-
-    - name: "dev3 sql"
-      auth_key: dev3sql:test
-      indices: ["bookstore"]
-      filter: '{"query_string":{"query":"name:(Dune)"}}'
-
     - name: "dev7"
       auth_key: dev7:test
       indices: ["test7_*"]
