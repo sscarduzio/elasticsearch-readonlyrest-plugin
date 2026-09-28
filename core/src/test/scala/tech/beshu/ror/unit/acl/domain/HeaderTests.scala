@@ -82,19 +82,31 @@ class HeaderTests extends AnyWordSpec with Matchers {
 
         valuesOf(headers, "Authorization") should be(List("Basic dXNlcjpwYXNz"))
       }
-      "reject a ror_metadata header which has another value than the real header" in {
-        errorFrom(
+      "keep the real header when a ror_metadata header has another value" in {
+        val headers = headersFrom(
           realHeaders = Map("X-Forwarded-User" -> "bob"),
           rorMetadataHeaders = "X-Forwarded-User:admin"
-        ) should be(HeaderValuesConflict(Header.Name.xForwardedUser, 1, 1))
+        )
+
+        valuesOf(headers, "x-forwarded-user") should be(List("bob"))
       }
-      "report the count of values of each channel in the conflict" in {
-        errorFrom(
+      "keep all values of the real header when ror_metadata has other values" in {
+        val headers = headersFromMultiValued(
           realHeaders = Map("X-Forwarded-For" -> List("10.0.0.1", "10.0.0.2")),
           rorMetadataHeaders = List("X-Forwarded-For:10.0.0.3")
-        ) should be(HeaderValuesConflict(Header.Name.xForwardedFor, 2, 1))
+        )
+
+        valuesOf(headers, "x-forwarded-for") should be(List("10.0.0.1", "10.0.0.2"))
       }
-      "reject a clashing ror_metadata header written in a different case" in {
+      "keep the real X-Forwarded-For header when ror_metadata has another value" in {
+        val headers = headersFrom(
+          realHeaders = Map("X-Forwarded-For" -> "10.0.0.1"),
+          rorMetadataHeaders = "x-forwarded-for:10.0.0.2"
+        )
+
+        valuesOf(headers, "x-forwarded-for") should be(List("10.0.0.1"))
+      }
+      "keep the real header when the ror_metadata header has the same name in a different case" in {
         val caseVariants = List(
           "x-forwarded-user",
           "X-FORWARDED-USER",
@@ -106,12 +118,23 @@ class HeaderTests extends AnyWordSpec with Matchers {
 
         caseVariants.foreach { name =>
           withClue(s"ror_metadata header name: $name") {
-            errorFrom(
+            val headers = headersFrom(
               realHeaders = Map("X-Forwarded-User" -> "bob"),
               rorMetadataHeaders = s"$name:admin"
-            ) should be(HeaderValuesConflict(Header.Name.xForwardedUser, 1, 1))
+            )
+
+            valuesOf(headers, "x-forwarded-user") should be(List("bob"))
           }
         }
+      }
+      "keep a ror_metadata header which the request does not have" in {
+        val headers = headersFrom(
+          realHeaders = Map("X-Forwarded-For" -> "10.0.0.1"),
+          rorMetadataHeaders = "X-Forwarded-User:bob"
+        )
+
+        valuesOf(headers, "x-forwarded-user") should be(List("bob"))
+        valuesOf(headers, "x-forwarded-for") should be(List("10.0.0.1"))
       }
       "reject a ror_metadata header which has no colon" in {
         errorFrom(realHeaders = Map.empty, rorMetadataHeaders = "x-ror-current-group") should be(

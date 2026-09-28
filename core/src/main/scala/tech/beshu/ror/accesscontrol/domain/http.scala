@@ -147,29 +147,38 @@ object Header {
         .sequence
       httpHeaders = UniqueList.from(nonAuthorizationHeaders ++ extractedHeaders.map(_.head))
       rorMetadataHeaders = UniqueList.from(extractedHeaders.flatMap(_.tail))
-      mergedHeaders <- mergeChannels(httpHeaders, rorMetadataHeaders)
-    } yield mergedHeaders
+    } yield mergeChannels(httpHeaders, rorMetadataHeaders)
   }
 
+  /** A name which the HTTP channel carries takes its values only from the HTTP channel. The ror_metadata
+    * channel gives the values of the other names. The log names the header but not its values, because
+    * the values can hold credentials.
+    */
   private def mergeChannels(
       httpHeaders: UniqueList[Header],
       rorMetadataHeaders: UniqueList[Header]
-  ): Either[AuthorizationValueError, UniqueList[Header]] = {
+  ): UniqueList[Header] = {
     val httpHeadersByName = httpHeaders.groupBy(_.name)
     val rorMetadataHeadersByName = rorMetadataHeaders.groupBy(_.name)
-    (httpHeaders ++ rorMetadataHeaders)
+    val headerGroups = (httpHeaders ++ rorMetadataHeaders)
       .map(_.name)
       .toList
-      .traverse { name =>
+      .map { name =>
         val fromHttp = httpHeadersByName.getOrElse(name, UniqueList.empty)
         val fromRorMetadata = rorMetadataHeadersByName.getOrElse(name, UniqueList.empty)
-        if (fromRorMetadata.isEmpty) Right(fromHttp)
-        else if (fromHttp.isEmpty) Right(fromRorMetadata)
-        else if (fromHttp.toCovariantSet == fromRorMetadata.toCovariantSet) Right(fromHttp)
-        else Left(HeaderValuesConflict(name, fromHttp.size, fromRorMetadata.size))
+        if (fromHttp.isEmpty) fromRorMetadata
+        else {
+          if (fromRorMetadata.nonEmpty && fromHttp.toCovariantSet != fromRorMetadata.toCovariantSet) {
+            logging.noRequestIdLogger.warn(headerValuesConflictMessage(name))
+          }
+          fromHttp
+        }
       }
-      .map(headerGroups => UniqueList.from(headerGroups.flatten))
+    UniqueList.from(headerGroups.flatten)
   }
+
+  private def headerValuesConflictMessage(name: Header.Name) =
+    s"Header '${name.show}' has different values in the request and in ror_metadata. ROR uses the values from the request"
 
   private def createHeadersFrom(name: String, values: Iterable[String]) = {
     val value = for {
@@ -228,16 +237,6 @@ object Header {
     case object EmptyAuthorizationValue extends AuthorizationValueError
     final case class InvalidHeaderFormat(value: String) extends AuthorizationValueError
     final case class RorMetadataInvalidFormat(value: String, message: String) extends AuthorizationValueError
-
-    /** The HTTP channel and the ror_metadata channel both carry the header, with different values.
-      * Only the counts are kept, because the error reaches the log and the client response.
-      */
-    final case class HeaderValuesConflict(
-        name: Header.Name,
-        httpValuesCount: Int,
-        rorMetadataValuesCount: Int
-    ) extends AuthorizationValueError
-
   }
 
   implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
