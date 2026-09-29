@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.actions.rrmetadata
 
-import cats.implicits.*
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext

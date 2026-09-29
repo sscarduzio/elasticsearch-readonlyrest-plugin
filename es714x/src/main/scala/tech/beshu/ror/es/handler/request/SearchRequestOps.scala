@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{AbstractQueryBuilder, QueryBuilder, QueryBuilders}
 import org.elasticsearch.search.aggregations.AggregatorFactories
@@ -170,7 +169,7 @@ object SearchRequestOps extends RequestIdAwareLogging {
         case None =>
           builder
         case Some(currentQuery) =>
-          val newQuery = currentQuery.handleNotAllowedFields(notAllowedFields)
+          val newQuery = QueryWithModifiableFieldsOps(currentQuery).handleNotAllowedFields(notAllowedFields)
           builder.query(newQuery)
       }
     }
@@ -205,7 +204,7 @@ object SearchRequestOps extends RequestIdAwareLogging {
     def fieldsUsageInQuery: RequestFieldsUsage = {
       Option(builder.query()) match {
         case None        => NotUsingFields
-        case Some(query) => query.fieldsUsage
+        case Some(query) => QueryFieldsUsageOps(query).fieldsUsage
       }
     }
 

@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext

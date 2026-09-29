@@ -15,7 +15,6 @@
  */
 package tech.beshu.ror.utils.yaml
 
-import cats.syntax.either.*
 import io.circe.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.org.yaml.snakeyaml.constructor.SafeConstructor

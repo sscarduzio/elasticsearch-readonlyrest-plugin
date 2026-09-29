@@ -25,7 +25,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.settings.es.RorBootSettings
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
-import tech.beshu.ror.utils.TestsUtils.{nes, unsafeNes, withEsEnv}
+import tech.beshu.ror.utils.TestsUtils.{nes, withEsEnv}
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 
 class RorBootSettingsTest extends AnyWordSpec with Inside {

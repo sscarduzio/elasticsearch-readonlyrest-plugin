@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.utils
 
 import cats.Show
-import cats.implicits.*
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.settings.Settings

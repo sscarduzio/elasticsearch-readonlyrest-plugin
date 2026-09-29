@@ -17,11 +17,8 @@
 package tech.beshu.ror.unit.acl.domain
 
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
-import org.scalatest.matchers.must.Matchers.*
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Address
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AddressTests extends AnyWordSpec {
 

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.settings.ror.source
 
-import cats.implicits.*
 import io.circe.Decoder.Result
 import io.circe.{Codec, Decoder, HCursor, Json}
 import tech.beshu.ror.implicits.*

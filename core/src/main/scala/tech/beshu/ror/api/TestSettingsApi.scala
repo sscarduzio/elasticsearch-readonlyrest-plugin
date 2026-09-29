@@ -17,7 +17,6 @@
 package tech.beshu.ror.api
 
 import cats.data.EitherT
-import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
@@ -30,9 +29,7 @@ import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, RawSetti
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser}
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
-import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Instant

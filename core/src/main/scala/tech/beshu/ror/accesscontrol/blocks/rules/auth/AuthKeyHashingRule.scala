@@ -35,7 +35,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Hasher
 import tech.beshu.ror.utils.RequestIdAwareLogging
 

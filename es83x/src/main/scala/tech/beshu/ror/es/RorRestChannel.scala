@@ -33,7 +33,6 @@ import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.net.InetSocketAddress
-import scala.jdk.CollectionConverters.*
 
 object RorRestChannel {
 

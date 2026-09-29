@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.boot
 
 import better.files.File
-import cats.implicits.toShow
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
 import monix.eval.Task
@@ -52,7 +51,6 @@ import tech.beshu.ror.utils.TestsUtils.*
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class IndexSettingsRelatedRorCoreTest

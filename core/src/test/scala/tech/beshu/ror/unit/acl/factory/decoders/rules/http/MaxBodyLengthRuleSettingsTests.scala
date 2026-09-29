@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
   Message
 }
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 
 class MaxBodyLengthRuleSettingsTests extends BaseRuleSettingsDecoderTest[MaxBodyLengthRule] {

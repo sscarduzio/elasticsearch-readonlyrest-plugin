@@ -16,13 +16,11 @@
  */
 package tech.beshu.ror.es.actions.rrtestsettings
 
-import cats.implicits.toShow
 import monix.execution.Scheduler
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.TestSettingsApi.TestSettingsResponse
 import tech.beshu.ror.boot.RorSchedulers
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.RorInstanceSupplier

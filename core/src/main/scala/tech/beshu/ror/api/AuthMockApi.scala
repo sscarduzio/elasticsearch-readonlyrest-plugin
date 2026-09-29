@@ -17,7 +17,6 @@
 package tech.beshu.ror.api
 
 import cats.data.EitherT
-import cats.implicits.*
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*

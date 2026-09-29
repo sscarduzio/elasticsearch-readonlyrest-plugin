@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
-import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
@@ -27,7 +26,6 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ScalaOps.*
 
 class DeleteSnapshotEsRequestContext(
     actionRequest: DeleteSnapshotRequest,

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.implicits.catsSyntaxOptionId
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor.noWarnings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
@@ -30,7 +29,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRu
 import tech.beshu.ror.accesscontrol.blocks.rules.http.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{HostsRule, LocalHostsRule}
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
 import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, RequestId}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.*

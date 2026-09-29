@@ -50,7 +50,6 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.security.Key
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class JwtAuthenticationRuleTokenTests extends JwtTokenTests[JwtAuthenticationRule, AuthenticationJwtDef] {

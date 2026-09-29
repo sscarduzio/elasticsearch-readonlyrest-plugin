@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput

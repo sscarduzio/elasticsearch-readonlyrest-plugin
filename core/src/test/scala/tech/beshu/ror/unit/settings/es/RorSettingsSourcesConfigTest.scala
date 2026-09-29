@@ -29,7 +29,7 @@ import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.settings.es.RorSettingsSourcesConfig
 import tech.beshu.ror.utils.RefinedUtils.nes
-import tech.beshu.ror.utils.TestsUtils.{unsafeNes, withEsEnv}
+import tech.beshu.ror.utils.TestsUtils.withEsEnv
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 
 class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {

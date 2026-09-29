@@ -24,7 +24,6 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
-import tech.beshu.ror.syntax.*
 
 class DeleteDocumentEsRequestContext(
     actionRequest: DeleteRequest,

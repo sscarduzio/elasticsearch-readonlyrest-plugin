@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import com.google.common.collect.Sets
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool

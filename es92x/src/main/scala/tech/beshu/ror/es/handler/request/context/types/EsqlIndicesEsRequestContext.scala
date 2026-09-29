@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.index.query.QueryBuilder
 import org.elasticsearch.threadpool.ThreadPool

@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.elasticsearch.action.ActionResponse

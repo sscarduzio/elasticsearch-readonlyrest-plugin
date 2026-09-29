@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
-import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext

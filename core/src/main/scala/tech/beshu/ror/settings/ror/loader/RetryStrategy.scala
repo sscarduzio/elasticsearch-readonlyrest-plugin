@@ -18,7 +18,6 @@ package tech.beshu.ror.settings.ror.loader
 
 import cats.Show
 import cats.data.EitherT
-import cats.implicits.toShow
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*

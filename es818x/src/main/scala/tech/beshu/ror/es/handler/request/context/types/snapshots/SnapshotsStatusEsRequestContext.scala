@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.threadpool.ThreadPool
