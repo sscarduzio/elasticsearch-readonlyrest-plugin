@@ -28,19 +28,7 @@ object RorSchedulers {
     implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
   }
 
-  val mainScheduler: Scheduler = new ContextRestoringScheduler(TracingScheduler {
-    // This is hack for this specific version of java(1.8.0_262). There were permission issues when default scheduler was used.
-    // Java 1.8.0_265 have that fixed, but we have found that using ThreadPoolExecutor instead of ForkJoinPool solves permission
-    // issues with version 262.
-    if (System.getProperty("java.version") == "1.8.0_262") cachedScheduler
-    else global
-  })
-
-  private lazy val cachedScheduler = Scheduler.cached(
-    "CustomThreadPoolExecutor",
-    getInt("scala.concurrent.context.minThreads", "1"),
-    getInt("scala.concurrent.context.maxThreads", "x1")
-  )
+  val mainScheduler: Scheduler = new ContextRestoringScheduler(TracingScheduler(global))
 
   val blockingScheduler: Scheduler = new ContextRestoringScheduler(
     TracingScheduler(Scheduler.io("blocking-index-content-provider"))
@@ -49,13 +37,5 @@ object RorSchedulers {
   val restApiScheduler: Scheduler = new ContextRestoringScheduler(
     TracingScheduler(Scheduler.fixedPool("ror-rest-api-executor", 10))
   )
-
-  private def getInt(name: String, default: String) = (try System.getProperty(name, default)
-  catch {
-    case _: SecurityException => default
-  }) match {
-    case s if s.charAt(0) == 'x' => (Runtime.getRuntime.availableProcessors * s.substring(1).toDouble).ceil.toInt
-    case other                   => other.toInt
-  }
 
 }
