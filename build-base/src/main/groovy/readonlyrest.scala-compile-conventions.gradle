@@ -26,7 +26,6 @@ tasks.withType(ScalaCompile).configureEach {
             "-Wunused:implicits",
             "-Wunused:imports",
             "-Wunused:explicits",
-            "-Wunused:strict-no-implicit-warn",
             "-Wunused:locals",
             "-Wunused:params",
             "-Wunused:privates",

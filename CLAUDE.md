@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
-ReadonlyREST is an Elasticsearch security plugin providing access control, authentication (LDAP, JWT, SAML, proxy), and field-level security. Written primarily in **Scala 3.3.7** with Java interop, it supports 30+ Elasticsearch versions (6.7.x through 9.2.x) via version-specific adapter modules.
+ReadonlyREST is an Elasticsearch security plugin providing access control, authentication (LDAP, JWT, SAML, proxy), and field-level security. Written primarily in **Scala 3.3.8** with Java interop, it supports 30+ Elasticsearch versions (6.7.x through 9.2.x) via version-specific adapter modules.
 
 ## Build Commands
 

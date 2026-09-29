@@ -20,7 +20,6 @@ tasks.withType(ScalaCompile).configureEach {
             "-Wunused:implicits",
             "-Wunused:imports",
             "-Wunused:explicits",
-            "-Wunused:strict-no-implicit-warn",
             "-Wunused:locals",
             "-Wunused:params",
             "-Wunused:privates",
@@ -196,7 +195,7 @@ dependencies {
     testImplementation  group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.5.22'
     testRuntimeOnly     group: 'co.helmethair',                 name: 'scalatest-junit-runner',     version: '0.2.0'
     testRuntimeOnly     group: 'org.junit.platform',            name: 'junit-platform-launcher',    version: '1.10.2'
-    testImplementation  group: 'org.scala-lang',                name: 'scala3-library_3',           version: '3.3.7'
+    testImplementation  group: 'org.scala-lang',                name: 'scala3-library_3',           version: '3.3.8'
     testImplementation  group: 'org.scalatest',                 name: 'scalatest_3',                version: '3.2.19'
 }
 
