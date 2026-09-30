@@ -83,8 +83,8 @@ repositories {
 }
 
 // Each es module declares its target JDK via `ext.javaLanguageVersion` (an int); read lazily because the
-// module body that sets it runs after this convention plugin is applied. Shared by the toolchain below and
-// the jarHellCheck launcher.
+// module body that sets it runs after this convention plugin is applied. Shared by the toolchain below, the
+// jarHellCheck launcher and the `java.version` field of plugin-descriptor.properties.
 def javaLanguageVersionProvider = providers.provider {
     JavaLanguageVersion.of(project.ext.javaLanguageVersion as int)
 }
@@ -323,7 +323,9 @@ tasks.register('resolvePluginDescriptorTemplate', Copy) {
             'descriptor': [
                     'name'         : pluginName,
                     'pluginVersion': pluginVersion,
-                    'esVersion'    : project.ext.baselineEsVersion
+                    'esVersion'    : project.ext.baselineEsVersion,
+                    // ES refuses to install or load the plugin on a JVM older than this version.
+                    'javaVersion'  : javaLanguageVersionProvider.get().asInt()
             ]
     ])
 }

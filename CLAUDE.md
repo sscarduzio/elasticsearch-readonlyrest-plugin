@@ -41,7 +41,7 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 ./gradlew :eshome:clean
 ```
 
-**Requirements**: JDK 17+, Gradle (wrapper included). Core module compiles with JDK 11 toolchain; ES plugin modules use JDK 17 toolchain.
+**Requirements**: JDK 17+, Gradle (wrapper included). Core module compiles with JDK 11 toolchain. Each ES module sets its toolchain in `ext.javaLanguageVersion`: 11 for es6x/es7x, 17 for es8x, 21 for es9x. The build writes the same value to `java.version` in `plugin-descriptor.properties`, and ES refuses a JVM older than it.
 
 ## Module Architecture
 
