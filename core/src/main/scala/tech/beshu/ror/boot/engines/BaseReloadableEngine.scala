@@ -17,7 +17,6 @@
 package tech.beshu.ror.boot.engines
 
 import cats.data.EitherT
-import cats.implicits.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Cancelable
@@ -33,7 +32,6 @@ import tech.beshu.ror.boot.engines.SettingsHash.toSettingsHash
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.ror.RawRorSettings
-import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 

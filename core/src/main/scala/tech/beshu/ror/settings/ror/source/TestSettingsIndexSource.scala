@@ -36,7 +36,6 @@ import tech.beshu.ror.settings.ror.TestRorSettings.Expiration
 import tech.beshu.ror.settings.ror.source.TestSettingsIndexSource.Const
 import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.{PositiveFiniteDuration, toRefinedPositive}
 import tech.beshu.ror.utils.json.KeyCodec
 

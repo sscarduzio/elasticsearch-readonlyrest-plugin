@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LocalUsers}
 import tech.beshu.ror.accesscontrol.utils.TaskDecisionOps.*
-import tech.beshu.ror.syntax.*
 
 import scala.annotation.nowarn
 

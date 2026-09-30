@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.utils
 
-import cats.implicits.toShow
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE

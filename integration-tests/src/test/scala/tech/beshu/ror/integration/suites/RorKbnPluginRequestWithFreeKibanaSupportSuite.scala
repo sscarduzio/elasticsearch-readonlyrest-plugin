@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.EnabledPromptForBasicAuthSettingSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest

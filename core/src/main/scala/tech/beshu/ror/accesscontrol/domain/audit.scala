@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.domain
 
 import cats.Show
 import cats.data.Validated
-import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.{Uri, Url}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher

@@ -21,7 +21,6 @@ import eu.timepit.refined.numeric.Positive
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient.Config
-import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.util.concurrent.TimeUnit

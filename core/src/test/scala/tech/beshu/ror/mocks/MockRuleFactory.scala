@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, KibanaAccess, KibanaIndexName, LocalUsers, User}
-import tech.beshu.ror.utils.TestsUtils.{*, given}
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.util.concurrent.atomic.AtomicInteger

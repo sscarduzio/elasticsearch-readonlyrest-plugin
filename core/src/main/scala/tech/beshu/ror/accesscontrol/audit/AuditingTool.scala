@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
 import cats.data.{EitherT, NonEmptyList}
-import cats.implicits.*
 import eu.timepit.refined.types.numeric.PosInt
 import monix.eval.Task
 import org.json.JSONObject

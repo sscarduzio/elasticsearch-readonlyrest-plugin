@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context.types.repositories
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.repositories.put.PutRepositoryRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
@@ -26,7 +25,6 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.types.BaseRepositoriesEsRequestContext
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
 class CreateRepositoryEsRequestContext(

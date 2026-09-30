@@ -17,7 +17,6 @@
 package tech.beshu.ror.boot
 
 import cats.Show
-import cats.implicits.toShow
 import monix.eval.Task
 import monix.execution.Cancelable
 import tech.beshu.ror.SystemContext

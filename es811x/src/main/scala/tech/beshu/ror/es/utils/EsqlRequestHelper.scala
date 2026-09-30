@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.utils
 
-import cats.implicits.*
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
 import org.joor.Reflect.*
 import org.joor.ReflectException
