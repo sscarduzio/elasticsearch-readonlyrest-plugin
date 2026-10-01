@@ -659,6 +659,18 @@ jobs:
           ci/upload-cypress-artifacts-to-s3.sh \
             "${E2E_TESTS_DIR:?run_e2e_tests did not publish the e2e clone path}/results" \
             "${{ matrix.ES_MODULE }}_${E2E_ELK_VERSION:?run_e2e_tests did not publish the ELK version}"
+      # The container logs of the stack, readable from the run page. The S3 copy above needs bucket
+      # access. A job at its time limit is cancelled, so this step runs on cancelled() too.
+      - name: Upload the e2e stack logs
+        if: (failure() || cancelled()) && env.E2E_TESTS_DIR != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e2e-stack-logs-${{ matrix.ES_MODULE }}-attempt-${{ github.run_attempt }}
+          path: |
+            ${{ env.E2E_TESTS_DIR }}/results/stack-logs
+            ${{ env.E2E_TESTS_DIR }}/results/e2e-output.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Host telemetry report
         if: always()

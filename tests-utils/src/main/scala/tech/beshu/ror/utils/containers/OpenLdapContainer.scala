@@ -44,9 +44,10 @@ class OpenLdapContainer private[containers] (name: String, ldapInitScript: InitS
     )
     with LdapContainer {
 
-  // The openldap container occasionally dies on first boot (exit 1) under CI load; a second
-  // attempt reliably succeeds. testcontainers re-creates the container per attempt.
-  this.container.withStartupAttempts(2)
+  // The openldap container sometimes dies on first boot under CI load: exit 1, or "slapd failed with
+  // status 255" while it adds the bootstrap schemas. A new attempt succeeds. testcontainers
+  // re-creates the container for each attempt.
+  this.container.withStartupAttempts(3)
 
   def originalPort: Int = OpenLdapContainer.port
 

@@ -30,10 +30,12 @@ object DockerImageCreator extends StrictLogging {
   def create(elasticsearch: Elasticsearch): ImageFromDockerfile = {
     val imageDescription = elasticsearch.toDockerImageDescription
     // STABLE content-derived tag (DockerImageDescription.imageTag): identical images share one tag →
-    // cache hit across parallel workers (no concurrent rebuilds, fails at shardCount>=3). deleteOnExit
-    // reclaims per-suite images post-use.
+    // cache hit across parallel workers (no concurrent rebuilds, fails at shardCount>=3).
+    // deleteOnExit is false. With true, Ryuk removes the image when this JVM ends, and it also removes
+    // the untagged parent layers. Another shard JVM can be in a build on those layers at that time.
+    // EsContainer.removeImage removes the tag when a cluster stops.
     val stableTag = s"ror-it-es:${imageDescription.imageTag}"
-    copyFilesFrom(imageDescription, to = new ImageFromDockerfile(stableTag, /* deleteOnExit = */ true))
+    copyFilesFrom(imageDescription, to = new ImageFromDockerfile(stableTag, /* deleteOnExit = */ false))
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         val dockerfile = builder
           .from(imageDescription.baseImage)
