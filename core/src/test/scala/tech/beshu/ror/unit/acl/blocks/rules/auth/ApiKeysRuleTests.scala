@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.ApiKeysRule
 import tech.beshu.ror.accesscontrol.domain.{ApiKey, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders.*
-import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -86,12 +86,9 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
       isPermitted: Boolean
   ) = {
     val rule = new ApiKeysRule(ApiKeysRule.Settings(configuredApiKeys))
-    val restRequest = mock[RestRequest]
-    (() => restRequest.allHeaders).expects().returning(requestHeaders)
-    (() => restRequest.path).expects().returning(UriPath.from("/_cat/indices"))
-    val requestContext = mock[RequestContext]
-    (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
-    (() => requestContext.id).expects().returning(RequestContext.Id.fromString("mock")).anyNumberOfTimes()
+    val requestContext = MockRequestContext.nonIndices.copy(
+      restRequest = MockRestRequest(path = UriPath.from("/_cat/indices"), allHeaders = requestHeaders)
+    )
     val blockContext = GeneralNonIndexRequestBlockContext(
       block = mock[Block],
       requestContext = requestContext,
