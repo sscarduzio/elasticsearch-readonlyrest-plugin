@@ -11,9 +11,11 @@
 #
 # Why these JDKs (one Java toolchain per supported target):
 #   * JDK  8  -> :audit            (cross-built lib published to Maven Central; Java-8 floor)
-#   * JDK 11  -> :core + ES 6.7-7.x adapters + ror-tools*/tests-utils (ES 6.7-7.x bundle Java 11)
-#   * JDK 17  -> ES 8.x adapters + :benchmarks + :integration-tests   (ES 8.x bundles Java 17)
-#   * JDK 21  -> ES 9.x adapters                                      (ES 9.x bundles Java 21)
+#   * JDK 11  -> :core + ES 6.7-7.x adapters + ror-tools*/tests-utils
+#   * JDK 17  -> ES 8.x adapters + :benchmarks + :integration-tests
+#   * JDK 21  -> ES 9.x adapters
+# An ES module's toolchain comes from its `ext.javaLanguageVersion`. The build also writes that value
+# to `java.version` in plugin-descriptor.properties, so it is the minimum JVM that ES accepts.
 #
 # Build context MUST be the repo root (the build needs settings.gradle/*/build.gradle to
 # resolve dependencies during the priming step). Built & pushed by the Build toolchains image
