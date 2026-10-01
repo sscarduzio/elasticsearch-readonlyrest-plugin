@@ -87,7 +87,6 @@ import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.Cannot
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.utils.WithReadonlyrestBootSupport
-import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.RetryPolicy
 import tech.beshu.ror.utils.TestsPropertiesProvider

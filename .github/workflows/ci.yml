@@ -632,6 +632,14 @@ jobs:
           source ci/configure-docker.sh
           echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE"
           ci/run-pipeline.sh
+      # The e2e repo writes the per-spec table only when the suite ran, on a pass and on a failure.
+      - name: Put the E2E summary on the run summary page
+        if: always()
+        run: |
+          SUMMARY="${E2E_TESTS_DIR:-}/results/e2e-summary.md"
+          if [ -n "${E2E_TESTS_DIR:-}" ] && [ -f "$SUMMARY" ]; then
+            cat "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Upload Cypress artifacts to S3 on failure
         if: failure()
         continue-on-error: true

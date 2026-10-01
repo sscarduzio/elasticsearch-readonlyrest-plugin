@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.api.MainSettingsApi
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest
 import tech.beshu.ror.es.actions.RorActionRequest
-import tech.beshu.ror.utils.ScalaOps.*
 
 class RRAdminRequest(adminApiRequest: MainSettingsApi.MainSettingsRequest, esRestRequest: RestRequest)
     extends ActionRequest

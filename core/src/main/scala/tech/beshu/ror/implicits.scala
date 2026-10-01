@@ -20,7 +20,7 @@ import better.files.File
 import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits.*
-import eu.timepit.refined.api.{Result as _, *}
+import eu.timepit.refined.api.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.{Uri, Url}
 import squants.information.{Bytes, Information}

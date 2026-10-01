@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.Block

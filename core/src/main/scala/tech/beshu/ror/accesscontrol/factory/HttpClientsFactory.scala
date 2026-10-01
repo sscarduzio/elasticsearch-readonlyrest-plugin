@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory
 
 import cats.effect.Async
-import cats.implicits.{catsSyntaxApplicativeError, toFunctorOps}
 import io.lemonlabs.uri.Url
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean

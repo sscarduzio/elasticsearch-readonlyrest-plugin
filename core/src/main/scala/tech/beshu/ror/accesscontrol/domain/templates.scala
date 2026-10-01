@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
 import cats.data.NonEmptyList
-import cats.implicits.*
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable

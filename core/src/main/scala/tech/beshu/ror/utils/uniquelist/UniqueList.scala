@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.utils.uniquelist
 
-import cats.implicits.*
-
 import scala.collection.{IterableFactory, IterableFactoryDefaults, SeqOps, mutable}
 
 final case class UniqueList[+T] private[uniquelist] (private val underlying: Vector[T])

@@ -39,7 +39,7 @@ crossBuild {
             '2.11': '2.11.12',
             '2.12': '2.12.21',
             '2.13': '2.13.18',
-            '3.3.0': '3.3.7'
+            '3.3.0': '3.3.8'
     ]
 
     builds {
@@ -54,9 +54,9 @@ dependencies {
     implementation                 group: 'org.json',           name: 'json',                version: '20251224'
     crossBuildV211Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.11.12'
     crossBuildV212Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.12.21'
-    crossBuildV213Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.17'
-    crossBuildV3Implementation     group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.7'
-    compileOnly                    group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.7'
+    crossBuildV213Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.18'
+    crossBuildV3Implementation     group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.8'
+    compileOnly                    group: 'org.scala-lang',     name: 'scala3-library_3',    version: '3.3.8'
     testImplementation             group: 'org.scalatest',      name: 'scalatest_3',         version: '3.2.19'
 }
 

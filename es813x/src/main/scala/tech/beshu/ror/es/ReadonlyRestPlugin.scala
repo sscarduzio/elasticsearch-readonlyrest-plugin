@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import cats.implicits.*
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException

@@ -45,7 +45,6 @@ import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListen
 import tech.beshu.ror.syntax.Set
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.{Duration, Instant}
 import scala.util.{Failure, Success, Try}

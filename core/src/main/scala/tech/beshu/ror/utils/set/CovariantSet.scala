@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.set
 
 import cats.*
 import cats.data.NonEmptyList
-import cats.implicits.*
 import cats.kernel.Monoid
 
 import scala.collection.{IterableFactory, IterableFactoryDefaults, IterableOnce, mutable}

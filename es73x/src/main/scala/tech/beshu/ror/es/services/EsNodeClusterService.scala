@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.CancelablePromise

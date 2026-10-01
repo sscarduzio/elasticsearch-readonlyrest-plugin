@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.services
 
-import cats.implicits.*
 import io.circe.Json
 import io.circe.parser.*
 import monix.eval.Task

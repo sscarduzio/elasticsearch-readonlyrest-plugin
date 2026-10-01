@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol
 
 import cats.data.{NonEmptyList, WriterT}
-import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.AccessControlList.*

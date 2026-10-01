@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.snapshots
 
-import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on

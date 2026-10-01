@@ -22,7 +22,6 @@ import org.elasticsearch.rest.RestStatus
 import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
 import tech.beshu.ror.api.MainSettingsApi
 import tech.beshu.ror.api.MainSettingsApi.*
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
 import tech.beshu.ror.es.utils.StatusToXContentObject
 
 class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
