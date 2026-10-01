@@ -662,9 +662,7 @@ class ImpersonationSuite
         val result = searchManager.search("test1_index")
 
         result should have statusCode 403
-        result.responseJson("error")("due_to").arr.map(_.str).toSet should be(
-          Set("IMPERSONATION_NOT_ALLOWED")
-        )
+        result.responseJson("error")("due_to").str should be("IMPERSONATION_NOT_ALLOWED")
       }
     }
   }
