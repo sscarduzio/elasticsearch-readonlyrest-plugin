@@ -241,6 +241,10 @@ order_e2e_kbn_images() {
 # It goes through publish_ror_es_prebuild_plugin, as a plain pre-build publish does, so the
 # sha-frozen-image skip applies: if the image for this commit already exists, that helper only adds
 # the tag in the registry.
+#
+# The image is only for this run's tests, so it is built for the runner's architecture only
+# (ROR_NATIVE_ARCH_ONLY). The e2e jobs that pull it must run on the same architecture.
+# Set ROR_NATIVE_ARCH_ONLY=false for all platforms.
 # Args: <elk version> <build id>
 build_e2e_es_image() {
   if [ "$#" -ne 2 ]; then
@@ -252,7 +256,7 @@ build_e2e_es_image() {
   RUN_TAG=$(e2e_run_tag "$2") || return $?
 
   ci_log "Building the ROR ES dev image: ELK $1, run tag $RUN_TAG."
-  publish_ror_es_prebuild_plugin "$1" "$RUN_TAG"
+  ROR_NATIVE_ARCH_ONLY="${ROR_NATIVE_ARCH_ONLY:-true}" publish_ror_es_prebuild_plugin "$1" "$RUN_TAG"
 }
 
 # Run the Cypress test suite from an already-cloned e2e tests repo, against this run's dev images
