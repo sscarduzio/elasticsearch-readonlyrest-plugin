@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.util.concurrent.TimeUnit

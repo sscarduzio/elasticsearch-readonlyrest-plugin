@@ -131,8 +131,8 @@ object Header {
     fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
   }
 
-  /** Keeps the order in which the headers arrived. Two values under one name stay in the order the
-    * client sent them, because a reader which walks the collection must see the first value first.
+  /** The values under one name keep the order they arrive, so the first value a reader finds is the
+    * first value the client sent. The order across names is not defined.
     */
   def fromRawHeaders(
       headers: collection.Map[String, Iterable[String]]

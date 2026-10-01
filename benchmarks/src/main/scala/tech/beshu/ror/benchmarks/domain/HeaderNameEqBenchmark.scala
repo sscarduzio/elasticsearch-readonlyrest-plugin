@@ -22,7 +22,6 @@ import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.{nes, realisticHeaders}
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.util.concurrent.TimeUnit

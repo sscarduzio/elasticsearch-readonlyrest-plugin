@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
 import tech.beshu.ror.benchmarks.support.BenchmarkAclUtils.*
 import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueList
 

@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.*
 import tech.beshu.ror.accesscontrol.domain.{Address, Header}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.testRequestId
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -69,13 +68,21 @@ class HeaderTests extends AnyWordSpec with Matchers {
 
         valuesOf(headers, "x-forwarded-user") should be(List("bob"))
       }
-      "keep one set of values when a multi-value header arrives on both channels" in {
+      "keep the real values in wire order when a multi-value header arrives on both channels" in {
         val headers = headersFromMultiValued(
           realHeaders = Map("X-Forwarded-For" -> List("10.0.0.1", "10.0.0.2")),
           rorMetadataHeaders = List("X-Forwarded-For:10.0.0.2", "X-Forwarded-For:10.0.0.1")
         )
 
-        valuesOf(headers, "x-forwarded-for").sorted should be(List("10.0.0.1", "10.0.0.2"))
+        valuesOf(headers, "x-forwarded-for") should be(List("10.0.0.1", "10.0.0.2"))
+      }
+      "keep the real values in wire order when the wire order is reversed" in {
+        val headers = headersFromMultiValued(
+          realHeaders = Map("X-Forwarded-For" -> List("10.0.0.2", "10.0.0.1")),
+          rorMetadataHeaders = List("X-Forwarded-For:10.0.0.1", "X-Forwarded-For:10.0.0.2")
+        )
+
+        valuesOf(headers, "x-forwarded-for") should be(List("10.0.0.2", "10.0.0.1"))
       }
       "keep the Authorization header which comes before the ror_metadata part" in {
         val headers = headersFrom(rorMetadataHeaders = "x-ror-current-group:group1")

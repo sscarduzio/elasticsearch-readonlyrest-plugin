@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.Header.{findSingleHeader, singleHeaderOrNone}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{
   InvalidValue,
@@ -43,9 +42,9 @@ import java.time.Instant
 import scala.language.implicitConversions
 
 trait BaseEsContext {
-  def correlationId: Eval[CorrelationId]
   def esTaskId: Long
   def restRequest: RestRequest
+  final def correlationId: Eval[CorrelationId] = restRequest.correlationId
   def esNodeSettings: EsNodeSettings
   def esServices: EsServices
 }
@@ -79,11 +78,9 @@ trait RequestContext extends HeaderValuesExtractors {
   lazy val isReadOnlyRequest: Boolean =
     RequestContext.readActionPatternsMatcher.`match`(action)
 
-  // Computed once per request: Base64-decoding the credentials per block would be redundant.
   lazy val basicAuth: Option[BasicAuth] = {
-    implicit val requestId: RequestId = id.toRequestId
-    singleHeaderOrNone(Header.Name.authorization, in = restRequest.allHeaders)
-      .flatMap(h => BasicAuth.parse(h.value))
+    given RequestId = id.toRequestId
+    singleHeader(Header.Name.authorization).flatMap(h => BasicAuth.parse(h.value))
   }
 
   def isCompositeRequest: Boolean
@@ -92,11 +89,8 @@ trait RequestContext extends HeaderValuesExtractors {
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
-  def currentGroupId: Option[GroupId] = {
-    implicit val requestId: RequestId = id.toRequestId
-    singleHeaderOrNone(Header.Name.currentGroup, in = restRequest.allHeaders)
-      .map(h => GroupId(h.value))
-  }
+  def currentGroupId: Option[GroupId] =
+    singleHeader(Header.Name.currentGroup).map(h => GroupId(h.value))
 
   /**
    * Does ROR ask this request for basic auth credentials?
@@ -227,29 +221,27 @@ object RequestContext extends RequestIdAwareLogging {
     this: RequestContext =>
 
     lazy val impersonateAs: Option[User.Id] = {
-      singleHeaderOf(Header.Name.impersonateAs)
+      singleHeader(Header.Name.impersonateAs)
         .map { header => User.Id(header.value) }
     }
 
-    /** Returns the first entry of the forwarded chain, which is the client address, and `None` when that
-     * entry does not parse. ROR reads the first entry only, because every later entry is a proxy.
-     * X-Forwarded-For repeats by design, so two values are not an ambiguity to reject. The headers keep
-     * the order they arrive, so the first one holds the start of the chain.
+    /** Returns the first address of the forwarded chain, and `None` when that address does not parse.
+     * The client writes this address, so it is the client address only when a front proxy overwrites
+     * the header. Two values of the header are one chain, not an ambiguity.
      */
     lazy val xForwardedForHeaderValue: Option[Address] = {
       this.restRequest.allHeaders.view
-        .filter(_.name === Header.Name.xForwardedFor)
-        .headOption
+        .find(_.name === Header.Name.xForwardedFor)
         .flatMap(_.value.value.split(",").headOption)
         .map(_.trim)
         .flatMap(Address.from)
     }
 
     lazy val userAgent: Option[NonEmptyString] =
-      findSingleHeader(Header.Name.userAgent, in = this.restRequest.allHeaders).toOption.flatten.map(_.value)
+      singleHeader(Header.Name.userAgent).map(_.value)
 
     lazy val rawAuthHeader: Option[Header] =
-      singleHeaderOf(Header.Name.authorization)
+      singleHeader(Header.Name.authorization)
 
     lazy val bearerToken: Either[AuthorizationTokenRetrievingError, AuthorizationToken] =
       authorizationTokenBy(
@@ -257,23 +249,23 @@ object RequestContext extends RequestIdAwareLogging {
       )
 
     lazy val rorKbnLicenseType: Option[RorKbnLicenseType] = {
-      singleHeaderOf(Header.Name.rorKbnLicenseType)
+      singleHeader(Header.Name.rorKbnLicenseType)
         .flatMap(h => RorKbnLicenseType.from(h.value.value).toOption)
     }
 
     lazy val kibanaRequestPath: Option[NonEmptyString] = {
-      singleHeaderOf(Header.Name.kibanaRequestPath).map(_.value)
+      singleHeader(Header.Name.kibanaRequestPath).map(_.value)
     }
 
     lazy val xApiKey: Option[NonEmptyString] = {
-      singleHeaderOf(Header.Name.xApiKeyHeaderName).map(_.value)
+      singleHeader(Header.Name.xApiKeyHeaderName).map(_.value)
     }
 
     def authorizationTokenBy(
         config: AuthorizationTokenDef
     ): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
       for {
-        tokenHeader <- singleHeaderOf(config.headerName).toRight(MissingHeader)
+        tokenHeader <- singleHeader(config.headerName).toRight(MissingHeader)
         authorizationToken <- AuthorizationToken.from(tokenHeader.value).toRight(InvalidValue)
         _ <- config.allowedPrefix match {
           case AllowedPrefix.Any                                                             => Right(())
@@ -284,7 +276,7 @@ object RequestContext extends RequestIdAwareLogging {
 
     }
 
-    private def singleHeaderOf(name: Header.Name): Option[Header] = {
+    def singleHeader(name: Header.Name): Option[Header] = {
       given RequestId = this.id.toRequestId
       Header.singleHeaderOrNone(name, in = this.restRequest.allHeaders)
     }

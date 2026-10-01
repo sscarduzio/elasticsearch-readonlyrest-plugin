@@ -29,12 +29,15 @@ import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
 import tech.beshu.ror.accesscontrol.audit.output.IndexBasedAuditOutputServiceCreator
-import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
+import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster, Header}
 import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.{
+  createImpersonationNotAllowedResponse,
+  createTestSettingsNotConfiguredResponse
+}
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.*
 import tech.beshu.ror.es.utils.ThreadContextOps.*
@@ -165,7 +168,6 @@ class IndexLevelActionFilter(
           proceedByRorEngine(
             new EsContext(
               channel,
-              correlationId,
               esEnv.esNodeSettings,
               task,
               action,
@@ -206,6 +208,8 @@ class IndexLevelActionFilter(
         case Right(Right(()))                                                          =>
         case Right(Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured)) =>
           handleImpersonatorsEngineNotConfigured(esContext)
+        case Right(Left(AclAwareRequestFilter.Error.AmbiguousImpersonationHeader)) =>
+          handleAmbiguousImpersonationHeader(esContext)
         case Left(ex) =>
           esContext.listener.onFailure(new Exception(ex))
       }
@@ -216,6 +220,13 @@ class IndexLevelActionFilter(
       s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.request().path().show} (impersonated) request because no Test Settings are configured"
     )
     esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
+  }
+
+  private def handleAmbiguousImpersonationHeader(esContext: EsContext): Unit = {
+    noRequestIdLogger.warn(
+      s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because the '${Header.Name.impersonateAs.show}' header holds more than one value"
+    )
+    esContext.listener.onFailure(createImpersonationNotAllowedResponse())
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {

@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.RestRequest
 import tech.beshu.ror.es.utils.ThreadRepo
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.uniquelist.UniqueList

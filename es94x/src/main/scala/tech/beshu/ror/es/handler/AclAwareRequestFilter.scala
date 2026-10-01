@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler
 
-import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.*
@@ -73,7 +72,7 @@ import org.elasticsearch.tasks.Task as EsTask
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{Action, Header}
 import tech.beshu.ror.accesscontrol.request.{BaseEsContext, RequestContext, RestRequest}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
@@ -100,7 +99,6 @@ class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
   import systemContext.{scheduler, uniqueIdentifierGenerator}
 
   def handle(engines: Engines, esContext: EsContext): Task[Either[Error, Unit]] = {
-    implicit val id: RequestContext.Id = RequestContext.Id.from(esContext)
     esContext
       .pickEngineToHandle(engines)
       .map(handleRequestWithEngine(_, esContext))
@@ -296,7 +294,6 @@ object AclAwareRequestFilter {
 
   final class EsContext(
       val channel: RorRestChannel,
-      val correlationId: Eval[CorrelationId],
       val esNodeSettings: EsNodeSettings,
       val task: EsTask,
       val action: Action,
@@ -313,23 +310,13 @@ object AclAwareRequestFilter {
 
     val timestamp: Instant = Instant.now()
 
-    def pickEngineToHandle(engines: Engines)(
-        implicit requestId: RequestId
-    ): Either[Error, Engine] = {
-      (engines.impersonatorsEngine, containsImpersonationContext) match {
-        case (Some(impersonatorsEngine), true) => Right(impersonatorsEngine)
-        case (Some(_), false)                  => Right(engines.mainEngine)
-        case (None, true)                      => Left(Error.ImpersonatorsEngineNotConfigured)
-        case (None, false)                     => Right(engines.mainEngine)
+    def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
+      Header.findSingleHeader(Header.Name.impersonateAs, in = restRequest.allHeaders) match {
+        case Left(_)        => Left(Error.AmbiguousImpersonationHeader)
+        case Right(Some(_)) => engines.impersonatorsEngine.toRight(Error.ImpersonatorsEngineNotConfigured)
+        case Right(None)    => Right(engines.mainEngine)
       }
     }
-
-    private def containsImpersonationContext(
-        implicit requestId: RequestId
-    ): Boolean =
-      Header
-        .singleHeaderOrNone(Header.Name.impersonateAs, in = restRequest.allHeaders)
-        .isDefined
 
   }
 
@@ -358,6 +345,7 @@ object AclAwareRequestFilter {
 
   object Error {
     case object ImpersonatorsEngineNotConfigured extends Error
+    case object AmbiguousImpersonationHeader extends Error
   }
 
 }

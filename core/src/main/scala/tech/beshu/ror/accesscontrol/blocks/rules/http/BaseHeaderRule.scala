@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.http.BaseHeaderRule.Settings
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 abstract class BaseHeaderRule(val settings: Settings) extends RegularRule
