@@ -70,7 +70,7 @@ object Header {
     override def toString: String = value.value
   }
 
-  object Name {
+  object Name extends RequestIdAwareLogging {
     def apply(value: NonEmptyString): Name = new Name(value)
 
     val authorization = Name(nes("Authorization"))
@@ -107,7 +107,7 @@ object Header {
     findSingleHeader(name, in) match {
       case Right(header)                     => header
       case Left(AmbiguousHeader(headerName)) =>
-        logging.logger.warn(ambiguousHeaderMessage(headerName))
+        logger.warn(ambiguousHeaderMessage(headerName))
         None
     }
   }
@@ -169,7 +169,7 @@ object Header {
         if (fromHttp.isEmpty) fromRorMetadata
         else {
           if (fromRorMetadata.nonEmpty && fromHttp.toCovariantSet != fromRorMetadata.toCovariantSet) {
-            logging.noRequestIdLogger.warn(headerValuesConflictMessage(name))
+            noRequestIdLogger.warn(headerValuesConflictMessage(name))
           }
           fromHttp
         }
@@ -240,8 +240,6 @@ object Header {
   }
 
   implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
-
-  private object logging extends RequestIdAwareLogging
 }
 
 sealed trait Address

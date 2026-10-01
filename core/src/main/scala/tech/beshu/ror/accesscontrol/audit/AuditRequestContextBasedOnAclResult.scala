@@ -111,7 +111,6 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](
       }
 
   override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
-
   override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
 
 }
