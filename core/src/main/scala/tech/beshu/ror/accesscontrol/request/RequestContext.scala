@@ -239,9 +239,6 @@ object RequestContext extends RequestIdAwareLogging {
         .flatMap(Address.from)
     }
 
-    lazy val userAgent: Option[NonEmptyString] =
-      singleHeader(Header.Name.userAgent).map(_.value)
-
     lazy val rawAuthHeader: Option[Header] =
       singleHeader(Header.Name.authorization)
 

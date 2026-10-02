@@ -350,7 +350,6 @@ trait LogsShowInstances extends cats.instances.AllInstances {
        | TYP:${r.`type`.show},
        | CGR:${stringifyUserGroup.show},
        | USR:${stringifyUsers.show},
-       | BRS:${r.userAgent.isDefined.show},
        | ACT:${r.action.show},
        | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
        | XFF:${r.xForwardedForHeaderValue.map(_.show).getOrElse("null")},

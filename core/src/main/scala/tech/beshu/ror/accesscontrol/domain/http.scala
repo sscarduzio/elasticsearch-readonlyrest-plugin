@@ -80,7 +80,6 @@ object Header extends RequestIdAwareLogging {
     val cookie = Name(nes("Cookie"))
     val setCookie = Name(nes("Set-Cookie"))
     val transientFields = Name(nes("_fields"))
-    val userAgent = Name(nes("User-Agent"))
 
     val xUserOrigin = Name(nes("x-ror-origin"))
     val kibanaRequestPath = Name(nes("x-ror-kibana-request-path"))
