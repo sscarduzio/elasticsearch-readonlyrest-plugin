@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.History.BlockHistory
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{Address, Header, LoggedUser}
+import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, Headers}
@@ -87,16 +87,9 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](
   override lazy val content: String = requestContext.restRequest.content
   override lazy val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
 
-  override val remoteAddress: String = requestContext.restRequest.remoteAddress match {
-    case Some(Address.Ip(value))   => value.toString
-    case Some(Address.Name(value)) => value.toString
-    case None                      => "N/A"
-  }
+  override val remoteAddress: String = requestContext.restRequest.remoteAddress.map(_.asText).getOrElse("N/A")
 
-  override val localAddress: String = requestContext.restRequest.localAddress match {
-    case Address.Ip(value)   => value.toString
-    case Address.Name(value) => value.toString
-  }
+  override val localAddress: String = requestContext.restRequest.localAddress.asText
 
   override val `type`: String = requestContext.`type`.value
   override val taskId: Long = requestContext.taskId
@@ -113,9 +106,6 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](
   override val attemptedUserName: Option[String] = requestContext.headers.basicAuth.map(_.credentials.user.value.value)
   override val rawAuthHeader: Option[String] = requestContext.headers.rawAuthHeader.map(_.value.value)
 
-  override val xForwardedFor: Option[String] = requestContext.headers.xForwardedFor.map {
-    case Address.Ip(value)   => value.toString
-    case Address.Name(value) => value.toString
-  }
+  override val xForwardedFor: Option[String] = requestContext.headers.xForwardedFor.map(_.asText)
 
 }

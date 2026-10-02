@@ -241,6 +241,21 @@ class HeaderTests extends AnyWordSpec with Matchers {
     }
   }
 
+  "Address.asText" should {
+    "show a plain IPv4 address for one host" in {
+      Address.from("192.168.0.1").map(_.asText) should be(Some("192.168.0.1"))
+    }
+    "show the CIDR form for an IPv4 range" in {
+      Address.from("10.0.0.0/8").map(_.asText) should be(Some("10.0.0.0/8"))
+    }
+    "show the CIDR form for an IPv6 range" in {
+      Address.from("2001:db8::/48").map(_.asText) should be(Some("2001:db8::/48"))
+    }
+    "show a host name as it is" in {
+      Address.from("es-node-1.example.com").map(_.asText) should be(Some("es-node-1.example.com"))
+    }
+  }
+
   "RequestHeaders.xForwardedFor" should {
     "return the first X-Forwarded-For entry in wire order when the header arrives twice" in {
       val requestContext = requestContextWith(

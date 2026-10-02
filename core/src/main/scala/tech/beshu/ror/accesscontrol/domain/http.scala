@@ -275,6 +275,16 @@ object Address {
     } yield address
   }
 
+  extension (address: Address) {
+
+    def asText: String = address match {
+      case Address.Ip(cidr) if cidr.prefixBits == cidr.address.fold(_ => 32, _ => 128) => cidr.address.toString
+      case Address.Ip(cidr)                                                            => cidr.toString
+      case Address.Name(hostname)                                                      => hostname.toString
+    }
+
+  }
+
   private def parseCidr(value: String) =
     Cidr.fromString(value).map(Address.Ip.apply)
 

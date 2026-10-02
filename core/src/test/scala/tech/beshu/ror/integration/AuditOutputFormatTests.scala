@@ -103,7 +103,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "content_len_kb":0,
              |  "correlation_id":"${captureCorrelationId(jsonString)}",
              |  "processingMillis":${captureProcessingMillis(jsonString)},
-             |  "xff":"192.168.0.1/32",
+             |  "xff":"192.168.0.1",
              |  "action":"indices:admin/get",
              |  "block":"mismatched",
              |  "id":"mock",
@@ -161,7 +161,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "content_len_kb":0,
              |  "correlation_id":"${captureCorrelationId(jsonString)}",
              |  "processingMillis":${captureProcessingMillis(jsonString)},
-             |  "xff":"192.168.0.1/32",
+             |  "xff":"192.168.0.1",
              |  "action":"indices:admin/get",
              |  "block":"mismatched",
              |  "id":"mock",
@@ -191,7 +191,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         acl.handleRegularRequest(request).runSyncUnsafe()
 
         val (_, jsonStringFromIndex) = Await.result(indexAuditOutputService.result, 5 seconds)
-        ujson.read(jsonStringFromIndex)("xff").str should be("192.168.0.1/32")
+        ujson.read(jsonStringFromIndex)("xff").str should be("192.168.0.1")
       }
     }
     "not be present as XFF in audit" when {
