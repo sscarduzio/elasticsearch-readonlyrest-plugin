@@ -62,6 +62,18 @@ class HostsRuleTests extends AnyWordSpec with MockFactory {
           remoteHost = Address.from("1.1.1.2").get
         )
       }
+      "configured host IPv6 address is the same as remote host IPv6 address in request" in {
+        assertMatchRule(
+          configuredHosts = NonEmptySet.of(addressValueFrom("2001:db8::1")),
+          remoteHost = Address.from("2001:db8::1").get
+        )
+      }
+      "configured host IPv6 net address contains remote host IPv6 address in request" in {
+        assertMatchRule(
+          configuredHosts = NonEmptySet.of(addressValueFrom("2001:db8::/32")),
+          remoteHost = Address.from("2001:db8:ffff::99").get
+        )
+      }
       "configured host domain address is the same as remote host domain address in request" in {
         assertMatchRule(
           configuredHosts = NonEmptySet.of(addressValueFrom("google.com")),
@@ -80,6 +92,18 @@ class HostsRuleTests extends AnyWordSpec with MockFactory {
         assertNotMatchRule(
           configuredHosts = NonEmptySet.of(addressValueFrom("1.1.1.1/24")),
           remoteHost = Address.from("2.2.2.2")
+        )
+      }
+      "configured host IPv6 address is different than remote host IPv6 address in the same /32 net" in {
+        assertNotMatchRule(
+          configuredHosts = NonEmptySet.of(addressValueFrom("2001:db8::1")),
+          remoteHost = Address.from("2001:db8:ffff::99")
+        )
+      }
+      "configured host IPv6 address differs only in the last bit from remote host IPv6 address" in {
+        assertNotMatchRule(
+          configuredHosts = NonEmptySet.of(addressValueFrom("2001:db8::1")),
+          remoteHost = Address.from("2001:db8::2")
         )
       }
       "configured host domain address is different than the one from request" in {

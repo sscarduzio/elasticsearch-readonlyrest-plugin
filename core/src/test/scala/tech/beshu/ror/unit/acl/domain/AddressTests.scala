@@ -27,7 +27,7 @@ class AddressTests extends AnyWordSpec {
   "address" when {
     "passed expected ipv4" should {
       "be parsed" in {
-        Address.from("127.0.0.1").get shouldBe ip("127.0.0.1")
+        Address.from("127.0.0.1").get shouldBe ip("127.0.0.1", prefixBits = 32)
       }
     }
     "passed expected hostname" should {
@@ -37,20 +37,47 @@ class AddressTests extends AnyWordSpec {
     }
     "passed expected ipv6" should {
       "be parsed" in {
-        Address.from("fe80:0:0:0:90ac:ed6b:2b4e:7e5b").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b")
+        Address.from("fe80:0:0:0:90ac:ed6b:2b4e:7e5b").get shouldBe ip(
+          "fe80:0:0:0:90ac:ed6b:2b4e:7e5b",
+          prefixBits = 128
+        )
       }
       "condensed be parsed" in {
-        Address.from("fe80::90ac:ed6b:2b4e:7e5b").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b")
+        Address.from("fe80::90ac:ed6b:2b4e:7e5b").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b", prefixBits = 128)
       }
       "with scoped literal in windows be parsed" in {
-        Address.from("fe80::90ac:ed6b:2b4e:7e5b%12").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b")
+        Address.from("fe80::90ac:ed6b:2b4e:7e5b%12").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b", prefixBits = 128)
       }
       "with scoped literal in unix be parsed" in {
-        Address.from("fe80::90ac:ed6b:2b4e:7e5b%eth0").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b")
+        Address.from("fe80::90ac:ed6b:2b4e:7e5b%eth0").get shouldBe ip(
+          "fe80:0:0:0:90ac:ed6b:2b4e:7e5b",
+          prefixBits = 128
+        )
       }
       "with scoped literal upper cased" in {
-        Address.from("FE80::90AC:ED6B:2B4E:7E5B%eth0").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b")
+        Address.from("FE80::90AC:ED6B:2B4E:7E5B%eth0").get shouldBe ip(
+          "fe80:0:0:0:90ac:ed6b:2b4e:7e5b",
+          prefixBits = 128
+        )
       }
+    }
+  }
+
+  "address asText" should {
+    "show a plain IPv4 address for one host" in {
+      Address.from("192.168.0.1").get.asText shouldBe "192.168.0.1"
+    }
+    "show a plain IPv6 address for one host" in {
+      Address.from("2001:db8::1").get.asText shouldBe "2001:db8::1"
+    }
+    "show the CIDR form for an IPv4 range" in {
+      Address.from("10.0.0.0/8").get.asText shouldBe "10.0.0.0/8"
+    }
+    "show the CIDR form for an IPv6 range" in {
+      Address.from("2001:db8::/48").get.asText shouldBe "2001:db8::/48"
+    }
+    "show a host name as it is" in {
+      Address.from("es-node-1.example.com").get.asText shouldBe "es-node-1.example.com"
     }
   }
 
@@ -58,7 +85,7 @@ class AddressTests extends AnyWordSpec {
     Address.Name(Hostname.fromString(name).get)
   }
 
-  private def ip(ip: String) =
-    IpAddress.fromString(ip).map(Cidr(_, 32)).map(Address.Ip.apply).get
+  private def ip(ip: String, prefixBits: Int) =
+    IpAddress.fromString(ip).map(Cidr(_, prefixBits)).map(Address.Ip.apply).get
 
 }
