@@ -18,10 +18,13 @@ package tech.beshu.ror.accesscontrol.request
 
 import cats.Eval
 import squants.information.Information
+import tech.beshu.ror.accesscontrol.domain.Header.AmbiguousHeader
 import tech.beshu.ror.accesscontrol.domain.Header.findSingleHeader
-import tech.beshu.ror.accesscontrol.domain.{Address, CorrelationId, Header, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{Address, CorrelationId, Header, RequestId, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.utils.uniquelist.UniqueList
+
+import java.util.concurrent.ConcurrentHashMap
 
 trait RestRequest {
   def method: Method
@@ -34,6 +37,16 @@ trait RestRequest {
 
   def content: String
   def contentLength: Information
+
+  private val singleHeaders = new ConcurrentHashMap[Header.Name, Either[AmbiguousHeader, Option[Header]]]()
+
+  /** Resolves each name once for each request, so an ambiguous header logs one warning for each request,
+    * however many blocks and rules read it.
+    */
+  def singleHeaderOrAmbiguity(name: Header.Name)(
+      implicit requestId: RequestId
+  ): Either[AmbiguousHeader, Option[Header]] =
+    singleHeaders.computeIfAbsent(name, _ => Header.singleHeaderOrAmbiguity(name, in = allHeaders))
 
   lazy val correlationId: Eval[CorrelationId] = Eval.later {
     findSingleHeader(Header.Name.correlationId, in = this.allHeaders) match {

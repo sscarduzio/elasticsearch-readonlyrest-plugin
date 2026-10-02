@@ -17,12 +17,14 @@
 package tech.beshu.ror.unit.acl.domain
 
 import eu.timepit.refined.types.string.NonEmptyString
+import org.apache.logging.log4j.Level
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.*
 import tech.beshu.ror.accesscontrol.domain.{Address, Header}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
+import tech.beshu.ror.utils.LogEventsCapture.captureLogEvents
 import tech.beshu.ror.utils.TestsUtils.testRequestId
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -50,6 +52,27 @@ class HeaderTests extends AnyWordSpec with Matchers {
       List(nameOf("X-Beta"), nameOf("x-alpha"), nameOf("X-Gamma"))
         .sorted(Header.Name.orderName.toOrdering)
         .map(_.value.value) should be(List("x-alpha", "X-Beta", "X-Gamma"))
+    }
+  }
+
+  "Header.fromRawHeaders" should {
+    "log one DEBUG line, with at most 10 names, when many headers differ between the request and ror_metadata" in {
+      val names = (1 to 200).map(i => s"x-custom-$i").toList
+      val events = captureLogEvents(headerLoggerName) {
+        headersFromMultiValued(
+          realHeaders = names.map(name => name -> List("http")).toMap,
+          rorMetadataHeaders = names.map(name => s"$name:meta")
+        )
+      }
+      events.map(_.level) should be(List(Level.DEBUG))
+      events.head.message should include("and 190 more")
+      names.count(name => events.head.message.contains(s"'$name'")) should be(10)
+    }
+    "log nothing when the request and ror_metadata hold the same values" in {
+      val events = captureLogEvents(headerLoggerName) {
+        headersFrom(realHeaders = Map("X-Forwarded-User" -> "bob"), rorMetadataHeaders = "X-Forwarded-User:bob")
+      }
+      events should be(List.empty)
     }
   }
 
@@ -272,22 +295,29 @@ class HeaderTests extends AnyWordSpec with Matchers {
     }
   }
 
-  "Header.singleHeaderOrNone" should {
+  "Header.singleHeaderOrAmbiguity" should {
     "return the header when the name holds one value" in {
-      Header.singleHeaderOrNone(nameOf("X-Api-Key"), in = setOf("X-Api-Key" -> "key1")) should be(
-        Some(headerOf("X-Api-Key", "key1"))
+      Header.singleHeaderOrAmbiguity(nameOf("X-Api-Key"), in = setOf("X-Api-Key" -> "key1")) should be(
+        Right(Some(headerOf("X-Api-Key", "key1")))
       )
     }
     "return no header when the name is absent" in {
-      Header.singleHeaderOrNone(nameOf("X-Api-Key"), in = setOf("X-Forwarded-User" -> "bob")) should be(None)
+      Header.singleHeaderOrAmbiguity(nameOf("X-Api-Key"), in = setOf("X-Forwarded-User" -> "bob")) should be(
+        Right(None)
+      )
     }
-    "return no header when the name holds two different values" in {
-      Header.singleHeaderOrNone(
-        nameOf("X-Api-Key"),
-        in = setOf("X-Api-Key" -> "key1", "x-api-key" -> "key2")
-      ) should be(None)
+    "return the ambiguity and log one warning when the name holds two different values" in {
+      val events = captureLogEvents(headerLoggerName) {
+        Header.singleHeaderOrAmbiguity(
+          nameOf("X-Api-Key"),
+          in = setOf("X-Api-Key" -> "key1", "x-api-key" -> "key2")
+        ) should be(Left(Header.AmbiguousHeader(nameOf("X-Api-Key"))))
+      }
+      events.map(_.level) should be(List(Level.WARN))
     }
   }
+
+  private lazy val headerLoggerName = Header.getClass.getName
 
   private def nameOf(name: String) = Header.Name(NonEmptyString.unsafeFrom(name))
 

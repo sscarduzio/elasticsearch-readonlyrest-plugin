@@ -16,11 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.request
 
+import org.apache.logging.log4j.Level
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.LogEventsCapture.captureLogEvents
 import tech.beshu.ror.utils.TestsUtils.*
 
 class RequestContextHeaderReadersTests extends AnyWordSpec with Matchers {
@@ -126,9 +128,22 @@ class RequestContextHeaderReadersTests extends AnyWordSpec with Matchers {
     }
   }
 
+  "an ambiguous header" should {
+    "log one warning for each request, however many times the readers read it" in {
+      val requestContext = request(
+        headerFrom("x-ror-current-group" -> "g1"),
+        headerFrom("x-ror-current-group" -> "g2")
+      )
+      val events = captureLogEvents(Header.getClass.getName) {
+        (1 to 32).foreach(_ => requestContext.currentGroupId should be(None))
+      }
+      events.map(_.level) should be(List(Level.WARN))
+    }
+  }
+
   private def request(header: Header, headers: Header*) =
     MockRequestContext.indices.withHeaders(header, headers*)
 
-  private lazy val userPass = Credentials(User.Id(nes("user")), PlainTextSecret(nes("pass")))
+  private val userPass = Credentials(User.Id(nes("user")), PlainTextSecret(nes("pass")))
 
 }

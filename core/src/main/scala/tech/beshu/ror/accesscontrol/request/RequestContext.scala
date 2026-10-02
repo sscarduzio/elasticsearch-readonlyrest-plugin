@@ -282,7 +282,7 @@ object RequestContext extends RequestIdAwareLogging {
 
     def singleHeaderOrAmbiguity(name: Header.Name): Either[Header.AmbiguousHeader, Option[Header]] = {
       given RequestId = this.id.toRequestId
-      Header.singleHeaderOrAmbiguity(name, in = this.restRequest.allHeaders)
+      this.restRequest.singleHeaderOrAmbiguity(name)
     }
 
   }

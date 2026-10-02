@@ -99,12 +99,6 @@ object Header extends RequestIdAwareLogging {
 
   def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-  def singleHeaderOrNone(name: Header.Name, in: UniqueList[Header])(
-      implicit requestId: RequestId
-  ): Option[Header] = {
-    singleHeaderOrAmbiguity(name, in).toOption.flatten
-  }
-
   def singleHeaderOrAmbiguity(name: Header.Name, in: UniqueList[Header])(
       implicit requestId: RequestId
   ): Either[AmbiguousHeader, Option[Header]] = {
@@ -162,25 +156,38 @@ object Header extends RequestIdAwareLogging {
   ): UniqueList[Header] = {
     val httpHeadersByName = httpHeaders.groupBy(_.name)
     val rorMetadataHeadersByName = rorMetadataHeaders.groupBy(_.name)
-    val headerGroups = (httpHeaders ++ rorMetadataHeaders)
+    val (headerGroups, conflictingNames) = (httpHeaders ++ rorMetadataHeaders)
       .map(_.name)
       .toList
       .map { name =>
         val fromHttp = httpHeadersByName.getOrElse(name, UniqueList.empty)
         val fromRorMetadata = rorMetadataHeadersByName.getOrElse(name, UniqueList.empty)
-        if (fromHttp.isEmpty) fromRorMetadata
+        if (fromHttp.isEmpty) (fromRorMetadata, None)
         else {
-          if (fromRorMetadata.nonEmpty && fromHttp.toCovariantSet != fromRorMetadata.toCovariantSet) {
-            noRequestIdLogger.warn(headerValuesConflictMessage(name))
-          }
-          fromHttp
+          val conflict = fromRorMetadata.nonEmpty && fromHttp.toCovariantSet != fromRorMetadata.toCovariantSet
+          (fromHttp, Option.when(conflict)(name))
         }
       }
+      .unzip
+    logHeaderValuesConflicts(conflictingNames.flatten)
     UniqueList.from(headerGroups.flatten)
   }
 
-  private def headerValuesConflictMessage(name: Header.Name) =
-    s"Header '${name.show}' has different values in the request and in ror_metadata. ROR uses the values from the request"
+  /** One line for each request. It is a DEBUG line, because a normal Kibana setup sends some headers in both
+    * channels. The client controls the names, so the line holds a limited number of them.
+    */
+  private def logHeaderValuesConflicts(names: List[Header.Name]): Unit = {
+    if (names.nonEmpty) {
+      val shownNames = names.take(maxLoggedConflictingNames).map(_.show).mkString("'", "', '", "'")
+      val notShownNamesCount = names.size - maxLoggedConflictingNames
+      val notShownNames = if (notShownNamesCount > 0) s" and $notShownNamesCount more" else ""
+      noRequestIdLogger.debug(
+        s"Headers $shownNames$notShownNames have different values in the request and in ror_metadata. ROR uses the values from the request"
+      )
+    }
+  }
+
+  private val maxLoggedConflictingNames = 10
 
   private def createHeadersFrom(name: String, values: Iterable[String]) = {
     val value = for {
