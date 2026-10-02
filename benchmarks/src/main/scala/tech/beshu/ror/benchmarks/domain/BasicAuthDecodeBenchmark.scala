@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 import java.util.concurrent.TimeUnit
 
 /**
- * Tier-2 KPI: the production `RequestContext.basicAuth` lookup as paid by 5 basic-auth blocks
+ * Tier-2 KPI: the production `RequestHeaders.basicAuth` lookup as paid by 5 basic-auth blocks
  * within one request; a fresh context per op keeps any per-request caching honest.
  */
 @State(Scope.Thread)
@@ -49,6 +49,6 @@ class BasicAuthDecodeBenchmark {
   @Benchmark
   def decodePerRequest(bh: Blackhole): Unit = {
     val context = new NonIndexRequestContext(headers)
-    (1 to authBlocksPerRequest).foreach(_ => bh.consume(context.basicAuth))
+    (1 to authBlocksPerRequest).foreach(_ => bh.consume(context.headers.basicAuth))
   }
 }
