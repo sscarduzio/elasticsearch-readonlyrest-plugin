@@ -20,7 +20,9 @@ import org.apache.logging.log4j.Level
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RequestHeaders}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.LogEventsCapture.captureLogEvents
@@ -131,28 +133,40 @@ class RequestHeadersTests extends AnyWordSpec with Matchers {
   }
 
   "an ambiguous header" should {
-    "log one warning, however many times the readers read it" in {
+    "log one warning, however many readers read it" in {
       val headers = request(
-        headerFrom("x-ror-current-group" -> "g1"),
-        headerFrom("x-ror-current-group" -> "g2")
+        headerFrom("Authorization" -> "Bearer x"),
+        headerFrom("Authorization" -> "Bearer y")
       )
       val events = captureLogEvents(Header.getClass.getName) {
-        (1 to 32).foreach(_ => headers.currentGroupId should be(None))
+        readAuthorizationThroughAllReaders(headers)
       }
       events.map(_.level) should be(List(Level.WARN))
     }
     "log one warning for each REST request, however many request contexts read it" in {
       val requestContext = MockRequestContext.indices.withHeaders(
-        headerFrom("x-ror-current-group" -> "g1"),
-        headerFrom("x-ror-current-group" -> "g2")
+        headerFrom("Authorization" -> "Bearer x"),
+        headerFrom("Authorization" -> "Bearer y")
       )
       val events = captureLogEvents(Header.getClass.getName) {
         (1 to 32).foreach { i =>
-          requestContext.copy(id = RequestContext.Id.fromString(s"id-$i")).headers.currentGroupId should be(None)
+          readAuthorizationThroughAllReaders(requestContext.copy(id = RequestContext.Id.fromString(s"id-$i")).headers)
         }
       }
       events.map(_.level) should be(List(Level.WARN))
     }
+  }
+
+  private def readAuthorizationThroughAllReaders(headers: RequestHeaders) = {
+    headers.basicAuth should be(None)
+    headers.rawAuthHeader should be(None)
+    headers.bearerToken should be(Left(AuthorizationTokenRetrievingError.AmbiguousHeader))
+    headers.authorizationTokenBy(
+      AuthorizationTokenDef(Header.Name.authorization, AllowedPrefix.Any)
+    ) should be(Left(AuthorizationTokenRetrievingError.AmbiguousHeader))
+    headers.authorizationTokenBy(
+      AuthorizationTokenDef(Header.Name.authorization, AllowedPrefix.StrictlyDefined(AuthorizationTokenPrefix.bearer))
+    ) should be(Left(AuthorizationTokenRetrievingError.AmbiguousHeader))
   }
 
   private def request(header: Header, headers: Header*) =
