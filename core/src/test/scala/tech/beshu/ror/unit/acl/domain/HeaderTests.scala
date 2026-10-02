@@ -241,20 +241,20 @@ class HeaderTests extends AnyWordSpec with Matchers {
     }
   }
 
-  "RequestContext.xForwardedForHeaderValue" should {
+  "RequestHeaders.xForwardedFor" should {
     "return the first X-Forwarded-For entry in wire order when the header arrives twice" in {
       val requestContext = requestContextWith(
         headersOf(Map("X-Forwarded-For" -> List("203.0.113.10", "10.0.0.1")))
       )
 
-      requestContext.xForwardedForHeaderValue should be(Address.from("203.0.113.10"))
+      requestContext.headers.xForwardedFor should be(Address.from("203.0.113.10"))
     }
     "return the first X-Forwarded-For entry when the two values arrive in the other order" in {
       val requestContext = requestContextWith(
         headersOf(Map("X-Forwarded-For" -> List("10.0.0.1", "203.0.113.10")))
       )
 
-      requestContext.xForwardedForHeaderValue should be(Address.from("10.0.0.1"))
+      requestContext.headers.xForwardedFor should be(Address.from("10.0.0.1"))
     }
   }
 

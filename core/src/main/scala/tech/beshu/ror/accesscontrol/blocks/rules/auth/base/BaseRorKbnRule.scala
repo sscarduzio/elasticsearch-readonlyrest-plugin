@@ -50,7 +50,7 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
   }
 
   private def extractJwtTokenFromHeader(blockContext: BlockContext) = {
-    blockContext.requestContext.bearerToken
+    blockContext.requestContext.headers.bearerToken
       .map(t => Jwt.Token(t.value))
       .left
       .map {

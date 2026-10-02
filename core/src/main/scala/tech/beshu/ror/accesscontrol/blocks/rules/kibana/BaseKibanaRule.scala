@@ -168,7 +168,7 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   private def isRequestRelatedToTagsPath(pathPart: String) = ProcessingContext.create { (bc, _) =>
     given BlockContext = bc
-    val result = bc.requestContext.kibanaRequestPath.exists(_.value.contains(s"/$pathPart/"))
+    val result = bc.requestContext.headers.kibanaRequestPath.exists(_.value.contains(s"/$pathPart/"))
     logger.debug(s"Does kibana request contains '${pathPart.show}' in path? ${result.show}")
     result
   }

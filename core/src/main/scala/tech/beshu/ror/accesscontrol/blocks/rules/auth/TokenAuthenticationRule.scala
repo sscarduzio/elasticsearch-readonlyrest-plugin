@@ -79,7 +79,7 @@ final class TokenAuthenticationRule(
 
   private def authenticateWithStaticToken(blockContext: BlockContext, tokenType: TokenType.StaticToken) =
     Task.delay {
-      blockContext.requestContext.authorizationTokenBy(tokenType.tokenDef) match {
+      blockContext.requestContext.headers.authorizationTokenBy(tokenType.tokenDef) match {
         case Right(token) if token == tokenType.token => TokenVerificationResult.Valid
         case Right(token)                             => TokenVerificationResult.Invalid
         case Left(error)                              => TokenVerificationResult.from(error)
@@ -89,7 +89,7 @@ final class TokenAuthenticationRule(
   private def authenticateWithServiceToken(blockContext: BlockContext, tokenType: TokenType.ServiceToken)(
       implicit requestId: RequestId
   ) = {
-    blockContext.requestContext.authorizationTokenBy(tokenType.tokenDef) match {
+    blockContext.requestContext.headers.authorizationTokenBy(tokenType.tokenDef) match {
       case Right(token) =>
         blockContext.requestContext.esServices.serviceAccountTokenService
           .validateToken(token)
@@ -102,7 +102,7 @@ final class TokenAuthenticationRule(
   private def authenticateWithApiKey(blockContext: BlockContext, tokenType: TokenType.ApiKey)(
       implicit requestId: RequestId
   ) = {
-    blockContext.requestContext.authorizationTokenBy(tokenType.tokenDef) match {
+    blockContext.requestContext.headers.authorizationTokenBy(tokenType.tokenDef) match {
       case Right(token) =>
         blockContext.requestContext.esServices.apiKeyService
           .validateToken(token)

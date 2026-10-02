@@ -318,7 +318,7 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   ): Show[RequestContext.Aux[B]] = Show.show { r =>
     def stringifyUsers = {
       if (loggedUsers.isEmpty) {
-        r.basicAuth
+        r.headers.basicAuth
           .map(_.credentials.user.value)
           .map(name => s"${name.value} (attempted)")
           .getOrElse("[no info about user]")
@@ -352,7 +352,7 @@ trait LogsShowInstances extends cats.instances.AllInstances {
        | USR:${stringifyUsers.show},
        | ACT:${r.action.show},
        | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
-       | XFF:${r.xForwardedForHeaderValue.map(_.show).getOrElse("null")},
+       | XFF:${r.headers.xForwardedFor.map(_.show).getOrElse("null")},
        | DA:${r.restRequest.localAddress.show},
        | IDX:${stringifyIndices.show},
        | MET:${r.restRequest.method.show},

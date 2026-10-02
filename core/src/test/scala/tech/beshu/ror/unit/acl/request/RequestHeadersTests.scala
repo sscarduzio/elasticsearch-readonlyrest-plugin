@@ -21,11 +21,13 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.request.{RequestContext, RequestHeaders}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.LogEventsCapture.captureLogEvents
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class RequestContextHeaderReadersTests extends AnyWordSpec with Matchers {
+class RequestHeadersTests extends AnyWordSpec with Matchers {
 
   "basicAuth" should {
     "read the credentials from one Authorization header" in {
@@ -115,7 +117,7 @@ class RequestContextHeaderReadersTests extends AnyWordSpec with Matchers {
 
   "correlationId" should {
     "read the correlation ID from one header" in {
-      request(headerFrom("x-ror-correlation-id" -> "id1")).restRequest.correlationId.value should be(
+      request(headerFrom("x-ror-correlation-id" -> "id1")).correlationId.value should be(
         CorrelationId(nes("id1"))
       )
     }
@@ -123,26 +125,38 @@ class RequestContextHeaderReadersTests extends AnyWordSpec with Matchers {
       val correlationId = request(
         headerFrom("x-ror-correlation-id" -> "id1"),
         headerFrom("x-ror-correlation-id" -> "id2")
-      ).restRequest.correlationId.value
+      ).correlationId.value
       List(CorrelationId(nes("id1")), CorrelationId(nes("id2"))) should not contain correlationId
     }
   }
 
   "an ambiguous header" should {
-    "log one warning for each request, however many times the readers read it" in {
-      val requestContext = request(
+    "log one warning, however many times the readers read it" in {
+      val headers = request(
         headerFrom("x-ror-current-group" -> "g1"),
         headerFrom("x-ror-current-group" -> "g2")
       )
       val events = captureLogEvents(Header.getClass.getName) {
-        (1 to 32).foreach(_ => requestContext.currentGroupId should be(None))
+        (1 to 32).foreach(_ => headers.currentGroupId should be(None))
+      }
+      events.map(_.level) should be(List(Level.WARN))
+    }
+    "log one warning for each REST request, however many request contexts read it" in {
+      val requestContext = MockRequestContext.indices.withHeaders(
+        headerFrom("x-ror-current-group" -> "g1"),
+        headerFrom("x-ror-current-group" -> "g2")
+      )
+      val events = captureLogEvents(Header.getClass.getName) {
+        (1 to 32).foreach { i =>
+          requestContext.copy(id = RequestContext.Id.fromString(s"id-$i")).headers.currentGroupId should be(None)
+        }
       }
       events.map(_.level) should be(List(Level.WARN))
     }
   }
 
   private def request(header: Header, headers: Header*) =
-    MockRequestContext.indices.withHeaders(header, headers*)
+    new RequestHeaders(UniqueList.from(header +: headers))
 
   private val userPass = Credentials(User.Id(nes("user")), PlainTextSecret(nes("pass")))
 

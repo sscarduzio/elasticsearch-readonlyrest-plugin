@@ -17,24 +17,14 @@
 package tech.beshu.ror.accesscontrol.request
 
 import cats.Eval
-import cats.implicits.*
-import eu.timepit.refined.types.string.NonEmptyString
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{
-  AmbiguousHeader,
-  InvalidValue,
-  MissingHeader
-}
-import tech.beshu.ror.accesscontrol.request.RequestContext.{HeaderValuesExtractors, Id}
+import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.es.{EsNodeSettings, EsServices}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -50,13 +40,18 @@ trait BaseEsContext {
   def esServices: EsServices
 }
 
-trait RequestContext extends HeaderValuesExtractors {
+trait RequestContext {
 
   type BLOCK_CONTEXT <: BlockContext
 
   def initialBlockContext(block: Block): BLOCK_CONTEXT
 
   def restRequest: RestRequest
+
+  def headers: RequestHeaders = restRequest.headers
+
+  /** The user metadata request overrides it, because that request ignores the current group header. */
+  def currentGroupId: Option[GroupId] = headers.currentGroupId
 
   def timestamp: Instant
 
@@ -79,19 +74,11 @@ trait RequestContext extends HeaderValuesExtractors {
   lazy val isReadOnlyRequest: Boolean =
     RequestContext.readActionPatternsMatcher.`match`(action)
 
-  lazy val basicAuth: Option[BasicAuth] = {
-    given RequestId = id.toRequestId
-    singleHeader(Header.Name.authorization).flatMap(h => BasicAuth.parse(h.value))
-  }
-
   def isCompositeRequest: Boolean
 
   def isAllowedForDLS: Boolean
 
   def generalAuditEvents: JSONObject = new JSONObject()
-
-  def currentGroupId: Option[GroupId] =
-    singleHeader(Header.Name.currentGroup).map(h => GroupId(h.value))
 
   /**
    * Does ROR ask this request for basic auth credentials?
@@ -102,7 +89,7 @@ trait RequestContext extends HeaderValuesExtractors {
    * static context.
    */
   def shouldAddBasicAuthPrompt(aclStaticContext: AccessControlStaticContext): Boolean = {
-    aclStaticContext.doesRequirePassword && this.rorKbnLicenseType.isEmpty
+    aclStaticContext.doesRequirePassword && this.headers.rorKbnLicenseType.isEmpty
   }
 
 }
@@ -217,74 +204,6 @@ object RequestContext extends RequestIdAwareLogging {
     case object MissingHeader extends AuthorizationTokenRetrievingError
     case object AmbiguousHeader extends AuthorizationTokenRetrievingError
     case object InvalidValue extends AuthorizationTokenRetrievingError
-  }
-
-  trait HeaderValuesExtractors {
-    this: RequestContext =>
-
-    lazy val impersonateAs: Option[User.Id] = {
-      singleHeader(Header.Name.impersonateAs)
-        .map { header => User.Id(header.value) }
-    }
-
-    /** Returns the first address of the forwarded chain, and `None` when that address does not parse.
-     * The client writes this address, so it is the client address only when a front proxy overwrites
-     * the header. Two values of the header are one chain, not an ambiguity.
-     */
-    lazy val xForwardedForHeaderValue: Option[Address] = {
-      this.restRequest.allHeaders.view
-        .find(_.name === Header.Name.xForwardedFor)
-        .flatMap(_.value.value.split(",").headOption)
-        .map(_.trim)
-        .flatMap(Address.from)
-    }
-
-    lazy val rawAuthHeader: Option[Header] =
-      singleHeader(Header.Name.authorization)
-
-    lazy val bearerToken: Either[AuthorizationTokenRetrievingError, AuthorizationToken] =
-      authorizationTokenBy(
-        AuthorizationTokenDef(headerName = Header.Name.authorization, allowedPrefix = StrictlyDefined(bearer))
-      )
-
-    lazy val rorKbnLicenseType: Option[RorKbnLicenseType] = {
-      singleHeader(Header.Name.rorKbnLicenseType)
-        .flatMap(h => RorKbnLicenseType.from(h.value.value).toOption)
-    }
-
-    lazy val kibanaRequestPath: Option[NonEmptyString] = {
-      singleHeader(Header.Name.kibanaRequestPath).map(_.value)
-    }
-
-    lazy val xApiKey: Option[NonEmptyString] = {
-      singleHeader(Header.Name.xApiKeyHeaderName).map(_.value)
-    }
-
-    def authorizationTokenBy(
-        config: AuthorizationTokenDef
-    ): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
-      for {
-        tokenHeader <- singleHeaderOrAmbiguity(config.headerName).left
-          .map(_ => AmbiguousHeader)
-          .flatMap(_.toRight(MissingHeader))
-        authorizationToken <- AuthorizationToken.from(tokenHeader.value).toRight(InvalidValue)
-        _ <- config.allowedPrefix match {
-          case AllowedPrefix.Any                                                             => Right(())
-          case AllowedPrefix.StrictlyDefined(prefix) if prefix === authorizationToken.prefix => Right(())
-          case AllowedPrefix.StrictlyDefined(_)                                              => Left(InvalidValue)
-        }
-      } yield authorizationToken
-
-    }
-
-    def singleHeader(name: Header.Name): Option[Header] =
-      singleHeaderOrAmbiguity(name).toOption.flatten
-
-    def singleHeaderOrAmbiguity(name: Header.Name): Either[Header.AmbiguousHeader, Option[Header]] = {
-      given RequestId = this.id.toRequestId
-      this.restRequest.singleHeaderOrAmbiguity(name)
-    }
-
   }
 
 }

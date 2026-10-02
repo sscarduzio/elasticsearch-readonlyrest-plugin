@@ -89,7 +89,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
       jwt: JWT_DEF,
       failedJwtCauseCreator: String => Cause
   ) = {
-    blockContext.requestContext
+    blockContext.requestContext.headers
       .authorizationTokenBy(jwt.authorizationTokenDef)
       .map(h => Jwt.Token(h.value))
       .left

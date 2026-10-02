@@ -68,7 +68,7 @@ final class ProxyAuthRule(
   }
 
   private def getLoggedUser(context: RequestContext): Either[AuthenticationFailed, DirectlyLoggedUser] = {
-    context.singleHeaderOrAmbiguity(settings.userHeaderName) match {
+    context.headers.singleOrAmbiguity(settings.userHeaderName) match {
       case Right(Some(header)) =>
         Right(DirectlyLoggedUser(Id(header.value)))
       case Right(None) =>

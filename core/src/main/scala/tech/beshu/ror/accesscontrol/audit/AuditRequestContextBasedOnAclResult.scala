@@ -110,10 +110,10 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](
         case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
       }
 
-  override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
-  override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
+  override val attemptedUserName: Option[String] = requestContext.headers.basicAuth.map(_.credentials.user.value.value)
+  override val rawAuthHeader: Option[String] = requestContext.headers.rawAuthHeader.map(_.value.value)
 
-  override val xForwardedFor: Option[String] = requestContext.xForwardedForHeaderValue.map {
+  override val xForwardedFor: Option[String] = requestContext.headers.xForwardedFor.map {
     case Address.Ip(value)   => value.toString
     case Address.Name(value) => value.toString
   }

@@ -30,7 +30,7 @@ class ApiKeysRule(val settings: Settings) extends RegularRule {
 
   def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     Decision.permit(`with` = blockContext)(
-      when = blockContext.requestContext.xApiKey.exists { apiKey => settings.apiKeys.contains(ApiKey(apiKey)) }
+      when = blockContext.requestContext.headers.xApiKey.exists { apiKey => settings.apiKeys.contains(ApiKey(apiKey)) }
     )
   }
 

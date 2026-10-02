@@ -18,12 +18,12 @@ package tech.beshu.ror.utils
 
 import org.apache.logging.log4j.core.appender.AbstractAppender
 import org.apache.logging.log4j.core.config.{Configurator, Property}
-import org.apache.logging.log4j.core.{LogEvent, LoggerContext}
+import org.apache.logging.log4j.core.{Appender, LogEvent, LoggerContext}
 import org.apache.logging.log4j.{Level, LogManager}
 
 import java.util.UUID
-import java.util.concurrent.ConcurrentLinkedQueue
-import scala.jdk.CollectionConverters.*
+import java.util.concurrent.atomic.AtomicReference
+import scala.util.Using
 
 object LogEventsCapture {
 
@@ -33,15 +33,12 @@ object LogEventsCapture {
     * level up. Test suites run in parallel, so the captures run one at a time and ignore other threads.
     */
   def captureLogEvents(loggerName: String)(code: => Unit): List[CapturedLogEvent] = synchronized {
-    val events = new ConcurrentLinkedQueue[CapturedLogEvent]()
-    val threadName = Thread.currentThread().getName
-    val appender = new AbstractAppender(s"capture-${UUID.randomUUID()}", null, null, true, Property.EMPTY_ARRAY) {
-      override def append(event: LogEvent): Unit = {
-        if (event.getLoggerName == loggerName && event.getThreadName == threadName) {
-          events.add(CapturedLogEvent(event.getLevel, event.getMessage.getFormattedMessage))
-        }
-      }
-    }
+    val appender = new CapturingAppender(loggerName, Thread.currentThread().getName)
+    Using.resource(attach(appender, loggerName))(_ => code)
+    appender.events
+  }
+
+  private def attach(appender: Appender, loggerName: String): AutoCloseable = {
     val context = LogManager.getContext(false).asInstanceOf[LoggerContext]
     val previousLevel = context.getLogger(loggerName).getLevel
     Configurator.setLevel(loggerName, Level.DEBUG)
@@ -49,13 +46,25 @@ object LogEventsCapture {
     appender.start()
     loggerConfig.addAppender(appender, Level.DEBUG, null)
     context.updateLoggers()
-    try code
-    finally {
+    () => {
       loggerConfig.removeAppender(appender.getName)
       Configurator.setLevel(loggerName, previousLevel)
       appender.stop()
     }
-    events.asScala.toList
+  }
+
+  private final class CapturingAppender(loggerName: String, threadName: String)
+      extends AbstractAppender(s"capture-${UUID.randomUUID()}", null, null, true, Property.EMPTY_ARRAY) {
+
+    private val captured = new AtomicReference(Vector.empty[CapturedLogEvent])
+
+    override def append(event: LogEvent): Unit = {
+      if (event.getLoggerName == loggerName && event.getThreadName == threadName) {
+        captured.updateAndGet(_ :+ CapturedLogEvent(event.getLevel, event.getMessage.getFormattedMessage))
+      }
+    }
+
+    def events: List[CapturedLogEvent] = captured.get.toList
   }
 
 }
