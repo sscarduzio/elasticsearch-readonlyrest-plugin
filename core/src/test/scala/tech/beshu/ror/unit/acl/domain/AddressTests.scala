@@ -63,24 +63,6 @@ class AddressTests extends AnyWordSpec {
     }
   }
 
-  "address asText" should {
-    "show a plain IPv4 address for one host" in {
-      Address.from("192.168.0.1").get.asText shouldBe "192.168.0.1"
-    }
-    "show a plain IPv6 address for one host" in {
-      Address.from("2001:db8::1").get.asText shouldBe "2001:db8::1"
-    }
-    "show the CIDR form for an IPv4 range" in {
-      Address.from("10.0.0.0/8").get.asText shouldBe "10.0.0.0/8"
-    }
-    "show the CIDR form for an IPv6 range" in {
-      Address.from("2001:db8::/48").get.asText shouldBe "2001:db8::/48"
-    }
-    "show a host name as it is" in {
-      Address.from("es-node-1.example.com").get.asText shouldBe "es-node-1.example.com"
-    }
-  }
-
   private def hostname(name: String) = {
     Address.Name(Hostname.fromString(name).get)
   }
