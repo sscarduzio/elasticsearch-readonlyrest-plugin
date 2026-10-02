@@ -56,6 +56,8 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
       .map {
         case AuthorizationTokenRetrievingError.MissingHeader =>
           AuthenticationFailed("'Authorization' header is missing")
+        case AuthorizationTokenRetrievingError.AmbiguousHeader =>
+          AuthenticationFailed("'Authorization' header holds more than one value")
         case AuthorizationTokenRetrievingError.InvalidValue =>
           AuthenticationFailed("'Authorization' header does not contain a valid Bearer token")
       }

@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit
 @Fork(2)
 class HeaderNameEqBenchmark {
 
-  private implicit val eqName: cats.Eq[Header.Name] = Header.Name.eqName
+  private implicit val orderName: cats.Order[Header.Name] = Header.Name.orderName
 
   private var headers: UniqueList[Header] = scala.compiletime.uninitialized
   private var target: Header.Name = scala.compiletime.uninitialized

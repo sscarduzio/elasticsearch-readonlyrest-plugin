@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{
+  AmbiguousHeader,
   InvalidValue,
   MissingHeader
 }
@@ -214,6 +215,7 @@ object RequestContext extends RequestIdAwareLogging {
 
   object AuthorizationTokenRetrievingError {
     case object MissingHeader extends AuthorizationTokenRetrievingError
+    case object AmbiguousHeader extends AuthorizationTokenRetrievingError
     case object InvalidValue extends AuthorizationTokenRetrievingError
   }
 
@@ -265,7 +267,9 @@ object RequestContext extends RequestIdAwareLogging {
         config: AuthorizationTokenDef
     ): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
       for {
-        tokenHeader <- singleHeader(config.headerName).toRight(MissingHeader)
+        tokenHeader <- singleHeaderOrAmbiguity(config.headerName).left
+          .map(_ => AmbiguousHeader)
+          .flatMap(_.toRight(MissingHeader))
         authorizationToken <- AuthorizationToken.from(tokenHeader.value).toRight(InvalidValue)
         _ <- config.allowedPrefix match {
           case AllowedPrefix.Any                                                             => Right(())
@@ -276,9 +280,12 @@ object RequestContext extends RequestIdAwareLogging {
 
     }
 
-    def singleHeader(name: Header.Name): Option[Header] = {
+    def singleHeader(name: Header.Name): Option[Header] =
+      singleHeaderOrAmbiguity(name).toOption.flatten
+
+    def singleHeaderOrAmbiguity(name: Header.Name): Either[Header.AmbiguousHeader, Option[Header]] = {
       given RequestId = this.id.toRequestId
-      Header.singleHeaderOrNone(name, in = this.restRequest.allHeaders)
+      Header.singleHeaderOrAmbiguity(name, in = this.restRequest.allHeaders)
     }
 
   }

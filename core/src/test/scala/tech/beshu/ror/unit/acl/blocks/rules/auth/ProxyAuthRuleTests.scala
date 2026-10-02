@@ -113,7 +113,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with BlockContextAssertion {
             headerFrom("custom-user-auth-header" -> "userA"),
             headerFrom("custom-user-auth-header" -> "userB")
           ),
-          denialCause = AuthenticationFailed("User header 'custom-user-auth-header' not found")
+          denialCause = AuthenticationFailed("User header 'custom-user-auth-header' holds more than one value")
         )
       }
       "the user header holds two different values, given in the other order" in {
@@ -126,7 +126,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with BlockContextAssertion {
             headerFrom("custom-user-auth-header" -> "userB"),
             headerFrom("custom-user-auth-header" -> "userA")
           ),
-          denialCause = AuthenticationFailed("User header 'custom-user-auth-header' not found")
+          denialCause = AuthenticationFailed("User header 'custom-user-auth-header' holds more than one value")
         )
       }
       "user id is passed in different header than the configured one" in {

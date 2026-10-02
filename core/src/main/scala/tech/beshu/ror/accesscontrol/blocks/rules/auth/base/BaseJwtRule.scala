@@ -96,6 +96,8 @@ trait BaseJwtRule extends RequestIdAwareLogging {
       .map {
         case AuthorizationTokenRetrievingError.MissingHeader =>
           failedJwtCauseCreator(s"JWT header '${jwt.authorizationTokenDef.headerName.show}' is missing")
+        case AuthorizationTokenRetrievingError.AmbiguousHeader =>
+          failedJwtCauseCreator(s"JWT header '${jwt.authorizationTokenDef.headerName.show}' holds more than one value")
         case AuthorizationTokenRetrievingError.InvalidValue =>
           failedJwtCauseCreator(
             s"JWT header '${jwt.authorizationTokenDef.headerName.show}' has an invalid or unrecognized token format"

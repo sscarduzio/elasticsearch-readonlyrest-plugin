@@ -47,7 +47,7 @@ object CorrelationId {
 
 final case class Header(name: Header.Name, value: NonEmptyString) extends EagerHashCode
 
-object Header {
+object Header extends RequestIdAwareLogging {
 
   /** Not a case class: `equals` is not structural. Two names which differ only in case are the same name,
     * but they do not hold the same `value`. `copy` and the structural `toString` would contradict that.
@@ -70,7 +70,7 @@ object Header {
     override def toString: String = value.value
   }
 
-  object Name extends RequestIdAwareLogging {
+  object Name {
     def apply(value: NonEmptyString): Name = new Name(value)
 
     val authorization = Name(nes("Authorization"))
@@ -89,7 +89,6 @@ object Header {
     val correlationId = Name(nes("x-ror-correlation-id"))
     val rorKbnLicenseType = Name(nes("x-ror-kbn-license-type"))
 
-    implicit val eqName: Eq[Name] = Eq.fromUniversalEquals
     implicit val orderName: Order[Name] = Order.by(_.lowerCased)
   }
 
@@ -104,11 +103,15 @@ object Header {
   def singleHeaderOrNone(name: Header.Name, in: UniqueList[Header])(
       implicit requestId: RequestId
   ): Option[Header] = {
-    findSingleHeader(name, in) match {
-      case Right(header)                     => header
-      case Left(AmbiguousHeader(headerName)) =>
-        logger.warn(ambiguousHeaderMessage(headerName))
-        None
+    singleHeaderOrAmbiguity(name, in).toOption.flatten
+  }
+
+  def singleHeaderOrAmbiguity(name: Header.Name, in: UniqueList[Header])(
+      implicit requestId: RequestId
+  ): Either[AmbiguousHeader, Option[Header]] = {
+    findSingleHeader(name, in).left.map { ambiguity =>
+      logger.warn(ambiguousHeaderMessage(ambiguity.name))
+      ambiguity
     }
   }
 

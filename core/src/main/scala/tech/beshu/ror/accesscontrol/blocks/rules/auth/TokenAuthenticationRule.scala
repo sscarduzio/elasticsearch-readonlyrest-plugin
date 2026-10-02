@@ -72,6 +72,8 @@ final class TokenAuthenticationRule(
         Denied(Cause.AuthenticationFailed(s"Token header '${tokenHeaderName.show}' is missing"))
       case TokenVerificationResult.Invalid =>
         Denied(Cause.AuthenticationFailed(s"Token header '${tokenHeaderName.show}' is invalid"))
+      case TokenVerificationResult.Ambiguous =>
+        Denied(Cause.AuthenticationFailed(s"Token header '${tokenHeaderName.show}' holds more than one value"))
     }
   }
 
@@ -116,11 +118,13 @@ final class TokenAuthenticationRule(
     case object Valid extends TokenVerificationResult
     case object Missing extends TokenVerificationResult
     case object Invalid extends TokenVerificationResult
+    case object Ambiguous extends TokenVerificationResult
 
     def from(error: AuthorizationTokenRetrievingError): TokenVerificationResult = {
       error match {
-        case AuthorizationTokenRetrievingError.MissingHeader => TokenVerificationResult.Missing
-        case AuthorizationTokenRetrievingError.InvalidValue  => TokenVerificationResult.Invalid
+        case AuthorizationTokenRetrievingError.MissingHeader   => TokenVerificationResult.Missing
+        case AuthorizationTokenRetrievingError.AmbiguousHeader => TokenVerificationResult.Ambiguous
+        case AuthorizationTokenRetrievingError.InvalidValue    => TokenVerificationResult.Invalid
       }
     }
 

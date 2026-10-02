@@ -207,7 +207,7 @@ class TokenAuthenticationRuleTests extends AnyWordSpec with BlockContextAssertio
             headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ"),
             headerFrom("custom-user-auth-header" -> "Bearer other")
           ),
-          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' is missing")
+          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' holds more than one value")
         )
       }
       "static token is passed in different header than the configured one" in {

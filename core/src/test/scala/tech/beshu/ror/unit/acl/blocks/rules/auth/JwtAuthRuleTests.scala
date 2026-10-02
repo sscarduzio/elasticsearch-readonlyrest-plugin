@@ -539,7 +539,7 @@ class JwtAuthRuleTests extends AnyWordSpec with MockFactory with BlockContextAss
           ),
           tokenHeader = bearerHeader(jwt),
           additionalHeaders = Seq(headerFrom("Authorization" -> "Bearer other")),
-          denialCause = AuthenticationFailed("JWT header 'Authorization' is missing")
+          denialCause = AuthenticationFailed("JWT header 'Authorization' holds more than one value")
         )
       }
       "user claim name is defined but userId isn't passed in JWT token claim" in {

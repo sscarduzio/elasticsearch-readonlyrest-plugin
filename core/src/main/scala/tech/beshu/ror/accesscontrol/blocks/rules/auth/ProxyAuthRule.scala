@@ -68,10 +68,14 @@ final class ProxyAuthRule(
   }
 
   private def getLoggedUser(context: RequestContext): Either[AuthenticationFailed, DirectlyLoggedUser] = {
-    context
-      .singleHeader(settings.userHeaderName)
-      .map(h => DirectlyLoggedUser(Id(h.value)))
-      .toRight(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' not found"))
+    context.singleHeaderOrAmbiguity(settings.userHeaderName) match {
+      case Right(Some(header)) =>
+        Right(DirectlyLoggedUser(Id(header.value)))
+      case Right(None) =>
+        Left(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' not found"))
+      case Left(_) =>
+        Left(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' holds more than one value"))
+    }
   }
 
   private def checkUserAllowed(userId: User.Id) = {
