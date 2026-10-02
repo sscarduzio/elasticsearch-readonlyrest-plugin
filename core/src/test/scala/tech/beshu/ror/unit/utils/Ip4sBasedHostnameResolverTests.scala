@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.unit.utils
 
-import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
+import cats.effect.Resource
+import com.comcast.ip4s.{Cidr, Dns, Hostname, IpAddress}
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -31,10 +33,10 @@ class Ip4sBasedHostnameResolverTests extends AnyWordSpec {
 
   "Ip4sBasedHostnameResolver" should {
     "resolve a host name to one-host IPs" when {
-      // "localhost" resolves to 127.0.0.1 and ::1 in the default hosts file on Linux and macOS.
       "the host name has an IPv4 and an IPv6 address" in {
-        val resolved = new Ip4sBasedHostnameResolver()
-          .resolve(Address.Name(Hostname.fromString("localhost").get))
+        val dns = dnsResolvingTo(IpAddress.fromString("127.0.0.1").get, IpAddress.fromString("::1").get)
+        val resolved = new Ip4sBasedHostnameResolver(Resource.pure[Task, Dns[Task]](dns))
+          .resolve(Address.Name(Hostname.fromString("example.com").get))
           .runSyncUnsafe(10 seconds)
           .map(_.toList)
           .getOrElse(List.empty)
@@ -43,6 +45,13 @@ class Ip4sBasedHostnameResolverTests extends AnyWordSpec {
         resolved should contain(Ip(Cidr(IpAddress.fromString("::1").get, 128)))
       }
     }
+  }
+
+  private def dnsResolvingTo(ips: IpAddress*): Dns[Task] = new Dns[Task] {
+    override def resolve(hostname: Hostname): Task[IpAddress] = Task.now(ips.head)
+    override def resolveOption(hostname: Hostname): Task[Option[IpAddress]] = Task.now(ips.headOption)
+    override def resolveAll(hostname: Hostname): Task[List[IpAddress]] = Task.now(ips.toList)
+    override def loopback: Task[IpAddress] = Task.now(IpAddress.fromString("127.0.0.1").get)
   }
 
 }
