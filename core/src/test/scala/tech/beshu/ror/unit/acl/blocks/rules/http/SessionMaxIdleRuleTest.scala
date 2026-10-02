@@ -116,6 +116,17 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
           isMatched = false
         )
       }
+      "ror cookie is expired and the Cookie name repeats" in {
+        implicit val _clock: Clock = Clock.fixed(someday.toInstant.plus(15 minutes), someday.getZone)
+        assertRule(
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
+          rawCookie = "cookie1=test",
+          otherRawCookies = List(rorSessionCookie.forUser1),
+          setRawCookie = "",
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+          isMatched = false
+        )
+      }
       "ror cookie of different user" in {
         implicit val _clock: Clock = fixedClock
         assertRule(
