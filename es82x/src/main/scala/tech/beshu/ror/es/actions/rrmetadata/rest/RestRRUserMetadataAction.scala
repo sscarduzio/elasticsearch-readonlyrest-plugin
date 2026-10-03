@@ -25,8 +25,8 @@ import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.constants
-import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
+import tech.beshu.ror.es.{RorRestChannel, RorRestRequest}
 
 import java.util
 import scala.jdk.CollectionConverters.*
@@ -47,13 +47,17 @@ class RestRRUserMetadataAction extends BaseRestHandler with RestHandler {
           client.execute(
             new RRUserMetadataActionType,
             new RRUserMetadataRequest(
-              rorRestChannel.restRequest.headers.singleOrAmbiguity(Header.Name.rorKbnLicenseType)
+              rorKbnLicenseTypeHeaderFrom(rorRestChannel.restRequest)
             ),
             new RestToXContentListener[RRUserMetadataResponse](rorRestChannel)
           )
         case other =>
           throw new IllegalStateException(s"$getName expects a RorRestChannel, but got ${other.getClass.getName}")
       }
+  }
+
+  private def rorKbnLicenseTypeHeaderFrom(request: RorRestRequest) = {
+    request.headers.singleOrAmbiguity(Header.Name.rorKbnLicenseType)
   }
 
 }

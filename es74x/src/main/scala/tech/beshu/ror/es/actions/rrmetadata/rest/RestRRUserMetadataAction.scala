@@ -23,8 +23,8 @@ import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestController, RestHandler, RestRequest}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.constants
-import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
+import tech.beshu.ror.es.{RorRestChannel, RorRestRequest}
 
 @Inject
 class RestRRUserMetadataAction(controller: RestController) extends BaseRestHandler with RestHandler {
@@ -40,7 +40,7 @@ class RestRRUserMetadataAction(controller: RestController) extends BaseRestHandl
           client.execute(
             new RRUserMetadataActionType,
             new RRUserMetadataRequest(
-              rorRestChannel.restRequest.headers.singleOrAmbiguity(Header.Name.rorKbnLicenseType)
+              rorKbnLicenseTypeHeaderFrom(rorRestChannel.restRequest)
             ),
             new RestToXContentListener[RRUserMetadataResponse](rorRestChannel)
           )
@@ -51,5 +51,9 @@ class RestRRUserMetadataAction(controller: RestController) extends BaseRestHandl
 
   private def register(method: String, path: String): Unit =
     controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
+
+  private def rorKbnLicenseTypeHeaderFrom(request: RorRestRequest) = {
+    request.headers.singleOrAmbiguity(Header.Name.rorKbnLicenseType)
+  }
 
 }
