@@ -212,14 +212,13 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.HttpMethod               => requestContext.httpMethod
       case AuditFieldValueDescriptor.HttpHeaderNames          => requestContext.requestHeaders.names.asJava
       case AuditFieldValueDescriptor.HttpPath                 => requestContext.uriPath
-      case AuditFieldValueDescriptor.XForwardedForHttpHeader  =>
-        requestContext.requestHeaders.getValue("X-Forwarded-For").flatMap(_.headOption).orNull
-      case AuditFieldValueDescriptor.RemoteAddress        => requestContext.remoteAddress
-      case AuditFieldValueDescriptor.LocalAddress         => requestContext.localAddress
-      case AuditFieldValueDescriptor.Content              => requestContext.content
-      case AuditFieldValueDescriptor.ContentLengthInBytes => requestContext.contentLength
-      case AuditFieldValueDescriptor.ContentLengthInKb    => requestContext.contentLength / 1024
-      case AuditFieldValueDescriptor.EsNodeName           => eventData.requestContext.auditEnvironmentContext.esNodeName
+      case AuditFieldValueDescriptor.XForwardedForHttpHeader  => requestContext.xForwardedFor.orNull
+      case AuditFieldValueDescriptor.RemoteAddress            => requestContext.remoteAddress
+      case AuditFieldValueDescriptor.LocalAddress             => requestContext.localAddress
+      case AuditFieldValueDescriptor.Content                  => requestContext.content
+      case AuditFieldValueDescriptor.ContentLengthInBytes     => requestContext.contentLength
+      case AuditFieldValueDescriptor.ContentLengthInKb        => requestContext.contentLength / 1024
+      case AuditFieldValueDescriptor.EsNodeName       => eventData.requestContext.auditEnvironmentContext.esNodeName
       case AuditFieldValueDescriptor.EsClusterName    => eventData.requestContext.auditEnvironmentContext.esClusterName
       case AuditFieldValueDescriptor.StaticText(text) => text
       case AuditFieldValueDescriptor.NumericValue(value) => value.bigDecimal

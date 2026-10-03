@@ -16,20 +16,26 @@
  */
 package tech.beshu.ror.accesscontrol.request
 
+import cats.Eval
 import squants.information.Information
-import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{Address, CorrelationId, Header, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
-import tech.beshu.ror.syntax.Set
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 trait RestRequest {
   def method: Method
   def path: UriPath
 
-  def allHeaders: Set[Header]
+  def allHeaders: UniqueList[Header]
 
   def localAddress: Address
   def remoteAddress: Option[Address]
 
   def content: String
   def contentLength: Information
+
+  lazy val headers: RequestHeaders = new RequestHeaders(allHeaders)
+
+  final def correlationId: Eval[CorrelationId] = headers.correlationId
+
 }

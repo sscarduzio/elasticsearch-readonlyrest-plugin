@@ -108,7 +108,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
     val rule = createRule(settings, caseSensitivity)
     val requestContext = MockRequestContext.metadata.copy(restRequest =
       MockRestRequest(
-        allHeaders = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
+        allHeaders = UniqueList.from(preferredGroupId.map(_.toCurrentGroupHeader)),
         path = UriPath.auditEventPath
       )
     )

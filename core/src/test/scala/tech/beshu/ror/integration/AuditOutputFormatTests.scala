@@ -179,6 +179,35 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         dataStream should be(fullDataStreamName(nes("readonlyrest_audit")))
         ujson.read(jsonStringFromDataStream) should be(expectedJson(jsonStringFromDataStream))
       }
+      "is passed as a chain on two lines (the first address of the first line is used)" in {
+        val indexAuditOutputService = new MockedIndexAuditOutputService()
+        val dataStreamAuditOutputService = new MockedDataStreamBasedAuditOutputService()
+        val acl = auditedAcl(indexAuditOutputService, dataStreamAuditOutputService)
+        val request = MockRequestContext.indices.withHeaders(
+          header("X-Forwarded-For", "192.168.0.1, 10.0.0.1"),
+          header("X-Forwarded-For", "10.0.0.2")
+        )
+
+        acl.handleRegularRequest(request).runSyncUnsafe()
+
+        val (_, jsonStringFromIndex) = Await.result(indexAuditOutputService.result, 5 seconds)
+        ujson.read(jsonStringFromIndex)("xff").str should be("192.168.0.1")
+      }
+    }
+    "not be present as XFF in audit" when {
+      "its first address does not parse" in {
+        val indexAuditOutputService = new MockedIndexAuditOutputService()
+        val dataStreamAuditOutputService = new MockedDataStreamBasedAuditOutputService()
+        val acl = auditedAcl(indexAuditOutputService, dataStreamAuditOutputService)
+        val request = MockRequestContext.indices.withHeaders(
+          header("X-Forwarded-For", "192.168.0.1:8080")
+        )
+
+        acl.handleRegularRequest(request).runSyncUnsafe()
+
+        val (_, jsonStringFromIndex) = Await.result(indexAuditOutputService.result, 5 seconds)
+        ujson.read(jsonStringFromIndex).obj.get("xff").filterNot(_ == ujson.Null) should be(None)
+      }
     }
   }
 

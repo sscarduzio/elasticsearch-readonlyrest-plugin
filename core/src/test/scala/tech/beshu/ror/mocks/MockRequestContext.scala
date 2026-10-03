@@ -41,6 +41,7 @@ import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.mocks.MockRequestContext.roAction
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.time.{Clock, Instant}
 
@@ -153,7 +154,7 @@ final case class MockGeneralIndexRequestContext(
   }
 
   def withHeaders(headers: Iterable[Header]): MockGeneralIndexRequestContext = {
-    this.copy(restRequest = this.restRequest.copy(allHeaders = headers.toCovariantSet))
+    this.copy(restRequest = this.restRequest.copy(allHeaders = UniqueList.from(headers)))
   }
 
   def withEsServices(esServices: EsServices): MockGeneralIndexRequestContext = {
@@ -256,7 +257,7 @@ final case class MockFilterableRequestBlockContext(
   }
 
   def withHeaders(headers: Iterable[Header]): MockFilterableRequestBlockContext = {
-    this.copy(restRequest = this.restRequest.copy(allHeaders = headers.toCovariantSet))
+    this.copy(restRequest = this.restRequest.copy(allHeaders = UniqueList.from(headers)))
   }
 
 }
@@ -385,7 +386,7 @@ final case class MockUserMetadataRequestContext(
   }
 
   def withHeaders(headers: Iterable[Header]): MockUserMetadataRequestContext = {
-    this.copy(restRequest = this.restRequest.copy(allHeaders = headers.toCovariantSet))
+    this.copy(restRequest = this.restRequest.copy(allHeaders = UniqueList.from(headers)))
   }
 
 }
@@ -424,7 +425,7 @@ final case class MockTemplateRequestContext(
 final case class MockRestRequest(
     override val method: Method = Method.GET,
     override val path: UriPath = UriPath.from("_search"),
-    override val allHeaders: Set[Header] = Set.empty,
+    override val allHeaders: UniqueList[Header] = UniqueList.empty,
     override val localAddress: Address = Address.from("localhost").get,
     override val remoteAddress: Option[Address] = Address.from("localhost"),
     override val content: String = "",
