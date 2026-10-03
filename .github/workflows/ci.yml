@@ -562,6 +562,8 @@ jobs:
         env:
           ROR_TASK: build_e2e_es_image
           E2E_ES_MODULE: ${{ matrix.ES_MODULE }}
+          # The platform of the e2e_tests runner (ubuntu-latest, X64), which runs the image.
+          ROR_DOCKER_PLATFORMS: linux/amd64
           E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
