@@ -54,6 +54,15 @@ class IntegrationTestSourceRulesTest {
       Pattern.compile(",\\s*(/\\*[^*]*\\*/\\s*)?false\\s*$");
   private static final Pattern REMOVE_IMAGE_CMD = Pattern.compile("removeImageCmd\\(.*");
 
+  private static final String TERMS_ENUM = "/_terms_enum\"";
+  private static final String ASYNC_SEARCH = "/_async_search\"";
+  // The start of a Scala def or of a Java method with an access modifier. The timeout rules check
+  // each method on its own, so one request with a timeout does not hide one without it.
+  private static final Pattern METHOD_START =
+      Pattern.compile(
+          "(?m)^[ \\t]*(?:(?:private|protected|public|override|final|implicit)[ \\t]+)*def[ \\t]"
+              + "|^[ \\t]*(?:public|private|protected)[ \\t][^=;\\n]*\\(");
+
   @Test
   void theSourceDirectoriesExist() {
     SOURCE_DIRS.forEach(dir -> assertTrue(Files.isDirectory(dir), "missing: " + dir));
@@ -91,12 +100,68 @@ class IntegrationTestSourceRulesTest {
   // ES applies a 1 s default to both. On a busy CI runner ES then returns 200 with an empty result.
   @Test
   void everyTermsEnumRequestSetsATimeout() {
-    assertEveryFileThatMentions("/_terms_enum\"", "\"timeout\":");
+    assertEveryRequestSets(TERMS_ENUM, "\"timeout\":");
   }
 
   @Test
   void everyAsyncSearchRequestSetsAWaitForCompletionTimeout() {
-    assertEveryFileThatMentions("/_async_search\"", "\"wait_for_completion_timeout\"");
+    assertEveryRequestSets(ASYNC_SEARCH, "\"wait_for_completion_timeout\"");
+  }
+
+  @Test
+  void theTimeoutRuleChecksEachRequestAndNotOnlyTheFile() {
+    String twoRequests =
+        String.join(
+            "\n",
+            "class Manager {",
+            "  def withTimeout(index: String) = {",
+            "    val request = new HttpPost(client.from(s\"/$index/_terms_enum\"))",
+            "    request.setEntity(new StringEntity(\"\"\"{ \"timeout\": \"30s\" }\"\"\"))",
+            "  }",
+            "  private def withoutTimeout(index: String) = {",
+            "    new HttpPost(client.from(s\"/$index/_terms_enum\"))",
+            "  }",
+            "}");
+    assertEquals(
+        List.of("Manager.scala:6: private def withoutTimeout(index: String) = {"),
+        requestsWithout("Manager.scala", twoRequests, TERMS_ENUM, "\"timeout\":"));
+  }
+
+  @Test
+  void theTimeoutRuleAcceptsOneTimeoutForTwoPathsOfOneRequest() {
+    // The shape of SearchManager.createAsyncSearchRequest.
+    String onePerBranch =
+        String.join(
+            "\n",
+            "  private def createRequest(names: List[String]) = new HttpPost(",
+            "    client.from(names match {",
+            "      case Nil => \"/_async_search\"",
+            "      case _   => s\"/${names.mkString(\",\")}/_async_search\"",
+            "    }, Map(\"wait_for_completion_timeout\" -> \"30s\")))",
+            "  def other() = new HttpGet(client.from(\"/_search\"))");
+    assertEquals(
+        List.of(),
+        requestsWithout(
+            "Search.scala", onePerBranch, ASYNC_SEARCH, "\"wait_for_completion_timeout\""));
+  }
+
+  @Test
+  void theTimeoutRuleSplitsJavaMethods() {
+    String javaSource =
+        String.join(
+            "\n",
+            "class Client {",
+            "  public HttpPost withTimeout() {",
+            "    return post(\"/_terms_enum\", \"\"\"",
+            "        {\"timeout\": \"30s\"}\"\"\");",
+            "  }",
+            "  private HttpPost withoutTimeout() {",
+            "    return post(\"/_terms_enum\", \"{}\");",
+            "  }",
+            "}");
+    assertEquals(
+        List.of("Client.java:6: private HttpPost withoutTimeout() {"),
+        requestsWithout("Client.java", javaSource, TERMS_ENUM, "\"timeout\":"));
   }
 
   @Test
@@ -104,8 +169,8 @@ class IntegrationTestSourceRulesTest {
     // Without this, a moved directory or a changed marker makes every rule above pass on nothing.
     assertTrue(constructorArguments().size() >= 2, "ImageFromDockerfile call sites");
     assertTrue(removeImageCalls().size() >= 1, "removeImageCmd call sites");
-    assertTrue(filesContaining("/_terms_enum\"").size() >= 1, "_terms_enum call sites");
-    assertTrue(filesContaining("/_async_search\"").size() >= 1, "_async_search call sites");
+    assertTrue(requestCount(TERMS_ENUM) >= 1, "_terms_enum call sites");
+    assertTrue(requestCount(ASYNC_SEARCH) >= 1, "_async_search call sites");
   }
 
   @Test
@@ -156,17 +221,51 @@ class IntegrationTestSourceRulesTest {
     return found;
   }
 
-  private static void assertEveryFileThatMentions(String marker, String required) {
-    List<String> violations =
-        filesContaining(marker).stream()
-            .filter(file -> !read(file).contains(required))
-            .map(file -> ROOT.relativize(file).toString())
-            .collect(Collectors.toList());
+  private static void assertEveryRequestSets(String marker, String required) {
+    List<String> violations = new ArrayList<>();
+    sourceFiles()
+        .forEach(
+            file ->
+                violations.addAll(
+                    requestsWithout(
+                        ROOT.relativize(file).toString(), read(file), marker, required)));
     assertEquals(List.of(), violations, "a request to " + marker + " must set " + required);
   }
 
-  private static List<Path> filesContaining(String marker) {
-    return sourceFiles().filter(file -> read(file).contains(marker)).collect(Collectors.toList());
+  // Each method of `source` that builds a request to `marker` and does not set `required`, as
+  // "name:line: first line of the method".
+  private static List<String> requestsWithout(
+      String name, String source, String marker, String required) {
+    return methods(source).stream()
+        .filter(method -> method.text.contains(marker) && !method.text.contains(required))
+        .map(
+            method ->
+                name + ":" + method.line + ": " + method.text.lines().findFirst().get().trim())
+        .collect(Collectors.toList());
+  }
+
+  private static long requestCount(String marker) {
+    return sourceFiles()
+        .flatMap(file -> methods(read(file)).stream())
+        .filter(method -> method.text.contains(marker))
+        .count();
+  }
+
+  // The source cut at each method start. The text before the first method is a method too.
+  private static List<Method> methods(String source) {
+    List<Integer> starts = new ArrayList<>(List.of(0));
+    Matcher matcher = METHOD_START.matcher(source);
+    while (matcher.find()) {
+      if (matcher.start() > 0) starts.add(matcher.start());
+    }
+    starts.add(source.length());
+    List<Method> found = new ArrayList<>();
+    for (int i = 0; i + 1 < starts.size(); i++) {
+      int start = starts.get(i);
+      int line = (int) source.substring(0, start).chars().filter(c -> c == '\n').count() + 1;
+      found.add(new Method(line, source.substring(start, starts.get(i + 1))));
+    }
+    return found;
   }
 
   private static Stream<Path> sourceFiles() {
@@ -188,6 +287,16 @@ class IntegrationTestSourceRulesTest {
       return Files.readString(file);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
+    }
+  }
+
+  private static final class Method {
+    final int line;
+    final String text;
+
+    Method(int line, String text) {
+      this.line = line;
+      this.text = text;
     }
   }
 
