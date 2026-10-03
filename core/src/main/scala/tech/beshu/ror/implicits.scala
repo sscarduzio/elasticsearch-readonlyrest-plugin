@@ -170,7 +170,10 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   implicit val typeShow: Show[Type] = Show.show(_.value)
   implicit val actionShow: Show[Action] = Show.show(_.value)
 
-  implicit val addressShow: Show[Address] = Show.show(_.asText)
+  implicit val addressShow: Show[Address] = Show.show {
+    case Address.Ip(value)   => value.toString
+    case Address.Name(value) => value.toString
+  }
 
   implicit val informationShow: Show[Information] = Show.show { i => i.toString }
   implicit val requestContextIdShow: Show[RequestContext.Id] = Show.show(_.value)
@@ -349,7 +352,7 @@ trait LogsShowInstances extends cats.instances.AllInstances {
        | USR:${stringifyUsers.show},
        | ACT:${r.action.show},
        | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
-       | XFF:${r.headers.xForwardedFor.map(_.show).getOrElse("null")},
+       | XFF:${r.headers.xForwardedFor.map(_.asText).getOrElse("null")},
        | DA:${r.restRequest.localAddress.show},
        | IDX:${stringifyIndices.show},
        | MET:${r.restRequest.method.show},
