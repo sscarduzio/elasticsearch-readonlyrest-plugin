@@ -23,7 +23,6 @@ import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestController, RestHandler, RestRequest}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.domain.Header.findSingleHeader
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
@@ -44,7 +43,7 @@ class RestRRUserMetadataAction(settings: Settings, controller: RestController)
           client.execute(
             new RRUserMetadataActionType,
             new RRUserMetadataRequest(
-              findSingleHeader(Header.Name.rorKbnLicenseType, in = rorRestChannel.restRequest.allHeaders)
+              rorRestChannel.restRequest.headers.singleOrAmbiguity(Header.Name.rorKbnLicenseType)
             ),
             new RestToXContentListener[RRUserMetadataResponse](rorRestChannel)
           )

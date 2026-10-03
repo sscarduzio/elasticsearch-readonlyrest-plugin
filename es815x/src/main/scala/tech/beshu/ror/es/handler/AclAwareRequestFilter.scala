@@ -310,7 +310,7 @@ object AclAwareRequestFilter {
     val timestamp: Instant = Instant.now()
 
     def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
-      Header.findSingleHeader(Header.Name.impersonateAs, in = restRequest.allHeaders) match {
+      restRequest.headers.singleOrAmbiguity(Header.Name.impersonateAs) match {
         case Left(_)        => Left(Error.AmbiguousImpersonationHeader)
         case Right(Some(_)) => engines.impersonatorsEngine.toRight(Error.ImpersonatorsEngineNotConfigured)
         case Right(None)    => Right(engines.mainEngine)
