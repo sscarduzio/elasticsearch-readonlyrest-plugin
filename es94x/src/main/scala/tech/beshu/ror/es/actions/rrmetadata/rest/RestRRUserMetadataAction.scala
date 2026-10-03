@@ -44,9 +44,7 @@ class RestRRUserMetadataAction extends BaseRestHandler with RestHandler {
         case rorRestChannel: RorRestChannel =>
           client.execute(
             new RRUserMetadataActionType,
-            new RRUserMetadataRequest(
-              rorKbnLicenseTypeHeaderFrom(rorRestChannel.restRequest)
-            ),
+            new RRUserMetadataRequest(rorKbnLicenseTypeHeaderFrom(rorRestChannel.restRequest)),
             new RestToXContentListener[RRUserMetadataResponse](rorRestChannel)
           )
         case other =>
