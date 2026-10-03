@@ -218,12 +218,7 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
     dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
     dockerCliDefaults(delegate)
     environment 'SOURCE_DATE_EPOCH', sourceDateEpoch
-    // -PonlyAdditionalImageTag is for a test build: it pushes only additionalImageTag, so a single-platform
-    // image never replaces the published pre-build tag.
-    if (project.hasProperty('onlyAdditionalImageTag') && !project.hasProperty('additionalImageTag')) {
-        throw new GradleException('-PonlyAdditionalImageTag needs -PadditionalImageTag')
-    }
-    args = buildxPushArgs(project.hasProperty('onlyAdditionalImageTag') ? [] : [preBuildDockerImageVersion])
+    args = buildxPushArgs([preBuildDockerImageVersion])
 }
 
 tasks.register('localRorDockerImage', Exec) {

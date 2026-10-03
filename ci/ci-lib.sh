@@ -268,12 +268,6 @@ retag_dev_image() {
 #   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
 #   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
 #   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
-#
-# ROR_NATIVE_ARCH_ONLY=true is for a test build. A test build makes the image only for the architecture of
-# the Docker daemon, so it pulls one ES base image and needs no emulation. It never writes the two published
-# tags above, because these must hold every platform. It freezes its image under
-# <esVersion>-ror-<gitShortSha>-<arch>, and it can reuse the multi-platform image of the commit.
-# The consumer of the image must run on the same architecture.
 publish_ror_es_prebuild_plugin() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     ci_log "Usage: publish_ror_es_prebuild_plugin <ES version> [image tag]"
@@ -301,52 +295,25 @@ publish_ror_es_prebuild_plugin() {
     return 1
   fi
 
+  local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
+
+  ci_log "Publishing the ROR pre-build image for ES $ES_VERSION (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG})."
+
   # Normalize workflow and shell inputs before comparing.
   local FORCE_REBUILD_NORM=${FORCE_REBUILD:-false}
   FORCE_REBUILD_NORM=${FORCE_REBUILD_NORM,,}
-  local NATIVE_ARCH_ONLY_NORM=${ROR_NATIVE_ARCH_ONLY:-false}
-  NATIVE_ARCH_ONLY_NORM=${NATIVE_ARCH_ONLY_NORM,,}
 
-  local NATIVE_ARCH=""
-  local -a TEST_BUILD_ARGS=()
-  if [ "$NATIVE_ARCH_ONLY_NORM" = "true" ]; then
-    if ! NATIVE_ARCH=$(docker version -f '{{.Server.Arch}}'); then
-      ci_log "Cannot read the architecture of the docker daemon."
-      return 3
-    fi
-    TEST_BUILD_ARGS=("-PdockerPlatforms=linux/$NATIVE_ARCH" "-PonlyAdditionalImageTag")
-  fi
-
-  # The tag under which this run freezes a new build.
-  local FROZEN_TAG="${ES_VERSION}-ror-${GIT_SHA}${NATIVE_ARCH:+-$NATIVE_ARCH}"
-
-  ci_log "Publishing the ROR pre-build image for ES $ES_VERSION (source ${ES_DEV_IMAGE_REPO}:${FROZEN_TAG})."
-
-  # The tag of this run's mode comes first. A test build can also use the multi-platform tag, because that
-  # image holds the native platform too.
-  local SOURCE_TAG="" tag
-  if [ "$FORCE_REBUILD_NORM" != "true" ]; then
-    for tag in $(printf '%s\n' "$FROZEN_TAG" "${ES_VERSION}-ror-${GIT_SHA}" | uniq); do
-      if docker_image_exists "${ES_DEV_IMAGE_REPO}:${tag}"; then
-        SOURCE_TAG=$tag
-        break
-      fi
-    done
-  fi
-
-  if [ -n "$SOURCE_TAG" ]; then
-    ci_log "The sources did not change. The image for this commit exists (${SOURCE_TAG}), so this run skips the build."
+  if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"; then
+    ci_log "The sources did not change. The image for this commit exists, so this run skips the build."
   else
     # A registry can answer 429 to the pull or the push. Only that failure is repeated.
-    # One buildx push writes all tags, so the commit tag always names this build's image.
+    # One buildx push writes both tags, so the commit tag always names this build's image.
     if ! retry_with_backoff --retry-if is_docker_registry_error \
          ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
-         "-PadditionalImageTag=${ES_DEV_IMAGE_REPO}:${FROZEN_TAG}" \
-         ${TEST_BUILD_ARGS[@]+"${TEST_BUILD_ARGS[@]}"} </dev/null; then
+         "-PadditionalImageTag=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
       ci_log "Cannot publish the ROR pre-build image for ES $ES_VERSION."
       return 4
     fi
-    SOURCE_TAG=$FROZEN_TAG
   fi
 
   # Apply the optional caller-supplied alias on BOTH paths (built or skipped). The caller fetches the image
