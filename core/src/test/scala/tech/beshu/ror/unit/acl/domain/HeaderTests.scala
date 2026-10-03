@@ -93,7 +93,7 @@ class HeaderTests extends AnyWordSpec with Matchers {
       }
       "keep the real values in wire order when a multi-value header arrives on both channels" in {
         val headers = headersFromMultiValued(
-          realHeaders = Map("X-Forwarded-For" -> List("10.0.0.1", "10.0.0.2")),
+          realHeaders = Map("X-Forwarded-For" -> List("10.0.0.1", "10.0.0.2")) ++ otherRealHeaders,
           rorMetadataHeaders = List("X-Forwarded-For:10.0.0.2", "X-Forwarded-For:10.0.0.1")
         )
 
@@ -101,7 +101,7 @@ class HeaderTests extends AnyWordSpec with Matchers {
       }
       "keep the real values in wire order when the wire order is reversed" in {
         val headers = headersFromMultiValued(
-          realHeaders = Map("X-Forwarded-For" -> List("10.0.0.2", "10.0.0.1")),
+          realHeaders = Map("X-Forwarded-For" -> List("10.0.0.2", "10.0.0.1")) ++ otherRealHeaders,
           rorMetadataHeaders = List("X-Forwarded-For:10.0.0.1", "X-Forwarded-For:10.0.0.2")
         )
 
@@ -205,14 +205,16 @@ class HeaderTests extends AnyWordSpec with Matchers {
     }
     "one name arrives with two values" should {
       "keep the values in the order they arrived" in {
-        valuesOf(headersOf(Map("X-Forwarded-For" -> List("10.0.0.1", "10.0.0.2"))), "x-forwarded-for") should be(
-          List("10.0.0.1", "10.0.0.2")
-        )
+        valuesOf(
+          headersOf(Map("X-Forwarded-For" -> List("10.0.0.1", "10.0.0.2")) ++ otherRealHeaders),
+          "x-forwarded-for"
+        ) should be(List("10.0.0.1", "10.0.0.2"))
       }
       "keep the reversed order when the values arrive reversed" in {
-        valuesOf(headersOf(Map("X-Forwarded-For" -> List("10.0.0.2", "10.0.0.1"))), "x-forwarded-for") should be(
-          List("10.0.0.2", "10.0.0.1")
-        )
+        valuesOf(
+          headersOf(Map("X-Forwarded-For" -> List("10.0.0.2", "10.0.0.1")) ++ otherRealHeaders),
+          "x-forwarded-for"
+        ) should be(List("10.0.0.2", "10.0.0.1"))
       }
     }
     "a header has no name or no value" should {
@@ -259,14 +261,14 @@ class HeaderTests extends AnyWordSpec with Matchers {
   "RequestHeaders.xForwardedFor" should {
     "return the first X-Forwarded-For entry in wire order when the header arrives twice" in {
       val requestContext = requestContextWith(
-        headersOf(Map("X-Forwarded-For" -> List("203.0.113.10", "10.0.0.1")))
+        headersOf(Map("X-Forwarded-For" -> List("203.0.113.10", "10.0.0.1")) ++ otherRealHeaders)
       )
 
       requestContext.headers.xForwardedFor should be(Address.from("203.0.113.10"))
     }
     "return the first X-Forwarded-For entry when the two values arrive in the other order" in {
       val requestContext = requestContextWith(
-        headersOf(Map("X-Forwarded-For" -> List("10.0.0.1", "203.0.113.10")))
+        headersOf(Map("X-Forwarded-For" -> List("10.0.0.1", "203.0.113.10")) ++ otherRealHeaders)
       )
 
       requestContext.headers.xForwardedFor should be(Address.from("10.0.0.1"))
@@ -333,6 +335,16 @@ class HeaderTests extends AnyWordSpec with Matchers {
   }
 
   private lazy val headerLoggerName = Header.getClass.getName
+
+  // Scala sets of up to 4 elements keep the insertion order. With more headers, a set loses the wire order.
+  private val otherRealHeaders = Map(
+    "Host" -> List("localhost:9200"),
+    "User-Agent" -> List("curl/8.5.0"),
+    "Accept" -> List("*/*"),
+    "Accept-Encoding" -> List("gzip"),
+    "Connection" -> List("keep-alive"),
+    "Content-Type" -> List("application/json")
+  )
 
   private def nameOf(name: String) = Header.Name(NonEmptyString.unsafeFrom(name))
 

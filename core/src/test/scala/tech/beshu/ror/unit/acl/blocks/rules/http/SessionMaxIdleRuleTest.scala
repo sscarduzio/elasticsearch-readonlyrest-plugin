@@ -73,16 +73,6 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
               isMatched = true
             )
           }
-          "the Cookie name repeats and one of its values holds the ROR cookie" in {
-            assertRule(
-              sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
-              rawCookie = "cookie1=test",
-              otherRawCookies = List(rorSessionCookie.forUser1),
-              setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              isMatched = true
-            )
-          }
           "there are another cookies" in {
             assertRule(
               sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
@@ -132,6 +122,17 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
         assertRule(
           sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
           rawCookie = rorSessionCookie.forUser1,
+          setRawCookie = "",
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+          isMatched = false
+        )
+      }
+      "ror cookie of different user and the Cookie name repeats" in {
+        implicit val _clock: Clock = fixedClock
+        assertRule(
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
+          rawCookie = "cookie1=test",
+          otherRawCookies = List(rorSessionCookie.forUser1),
           setRawCookie = "",
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
           isMatched = false
