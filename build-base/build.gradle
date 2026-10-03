@@ -40,4 +40,8 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    // IntegrationTestSourceRulesTest reads these sources. As inputs, a change in them runs it again
+    // and does not take its result from the build cache.
+    inputs.dir('../tests-utils/src/main').withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName('testsUtilsSources')
+    inputs.dir('../integration-tests/src/test').withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName('integrationTestSources')
 }

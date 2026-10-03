@@ -17,11 +17,17 @@
 package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
-import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
+import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.{Args, Status, Suite, SuiteMixin}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.providers.*
-import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClusterProvider, EsRemoteClustersContainer}
+import tech.beshu.ror.utils.containers.{
+  AllOrNothingContainers,
+  DependencyDef,
+  EsClusterContainer,
+  EsClusterProvider,
+  EsRemoteClustersContainer
+}
 import tech.beshu.ror.utils.misc.FileLockSemaphore
 
 import java.nio.file.Paths
@@ -108,10 +114,8 @@ object support {
       with HeavySuiteGated {
     this: Suite & EsClusterProvider & ESVersionSupport =>
 
-    import com.dimafeng.testcontainers.LazyContainer.*
-
-    override lazy val container: MultipleContainers =
-      MultipleContainers(clusterContainers.map(containerToLazyContainer(_)).toList*)
+    override lazy val container: AllOrNothingContainers =
+      new AllOrNothingContainers(clusterContainers.toList)
 
     def clusterContainers: NonEmptyList[EsClusterContainer]
   }

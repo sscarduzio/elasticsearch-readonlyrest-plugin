@@ -18,6 +18,8 @@
 package tech.beshu.ror.utils.containers;
 
 import com.google.common.collect.Lists;
+import com.google.common.hash.Hasher;
+import com.google.common.hash.Hashing;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,6 +30,10 @@ import org.testcontainers.images.builder.dockerfile.DockerfileBuilder;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -45,11 +51,15 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   }
 
   public static WireMockContainer create(String... mappings) {
-    ImageFromDockerfile dockerfile = new ImageFromDockerfile();
     List<File> mappingFiles =
         Lists.newArrayList(mappings).stream()
             .map(ContainerUtils::getResourceFile)
             .collect(Collectors.toList());
+    // deleteOnExit is false for the reason in DockerImageCreator. The tag comes from the content,
+    // so the same mappings reuse one image.
+    ImageFromDockerfile dockerfile =
+        new ImageFromDockerfile(
+            "ror-it-wiremock:" + contentHash(mappingFiles), /* deleteOnExit= */ false);
     mappingFiles.forEach(
         mappingFile -> dockerfile.withFileFromFile(mappingFile.getName(), mappingFile));
     logger.info("Creating WireMock container ...");
@@ -80,6 +90,20 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         s ->
             System.out.print(
                 "[WIREMOCK-ext-port:" + cont.getWireMockPort() + "] " + s.getUtf8String()));
+  }
+
+  private static String contentHash(List<File> mappingFiles) {
+    Hasher hasher = Hashing.sha256().newHasher();
+    hasher.putString(BASE_IMAGE, StandardCharsets.UTF_8);
+    for (File mappingFile : mappingFiles) {
+      hasher.putString(mappingFile.getName(), StandardCharsets.UTF_8);
+      try {
+        hasher.putBytes(Files.readAllBytes(mappingFile.toPath()));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+    return hasher.hash().toString().substring(0, 20);
   }
 
   public String getWireMockHost() {

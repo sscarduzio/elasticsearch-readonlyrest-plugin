@@ -57,6 +57,7 @@ trait SingletonPluginTestSupport
     ownership = Some(own)
     // ScalaTest skips afterAll if beforeAll throws, so any failure after acquire() must release the
     // token here too — else the singleton stays owned and every later suite fails at acquire().
+    // For the same reason, it must stop the dependencies that started.
     try {
       startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
       // Bound the blocking ES cleanup: if ES is wedged this used to hang the worker JVM at suite
@@ -67,8 +68,11 @@ trait SingletonPluginTestSupport
       super.beforeAll()
     } catch {
       case NonFatal(e) =>
-        own.release()
-        ownership = None
+        try stopStartedDependencies()
+        finally {
+          own.release()
+          ownership = None
+        }
         throw e
     }
   }
@@ -78,13 +82,18 @@ trait SingletonPluginTestSupport
     // latched and every later suite fails at acquire(). Steps are time-bounded (ScalaUtils.bestEffort).
     try {
       bestEffort("afterAll", 3 minutes)(super.afterAll())
-      startedDependencies.values.foreach { started =>
-        bestEffort(s"stop-dependency-${started.name}", 1 minute)(started.container.stop())
-      }
+      stopStartedDependencies()
     } finally {
       ownership.foreach(_.release())
       ownership = None
     }
+  }
+
+  private def stopStartedDependencies(): Unit = {
+    startedDependencies.values.foreach { started =>
+      bestEffort(s"stop-dependency-${started.name}", 1 minute)(started.container.stop())
+    }
+    startedDependencies = StartedClusterDependencies(Nil)
   }
 
   private def resolveSettings: Either[Throwable, File] = {
