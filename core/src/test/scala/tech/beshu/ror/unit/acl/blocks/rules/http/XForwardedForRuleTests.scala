@@ -59,6 +59,12 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
           xForwardedForHeaderValue = Some("1.1.1.1")
         )
       }
+      "configured IPv6 address is the same as the IPv6 address passed in X-Forwarded-For header" in {
+        assertMatchRule(
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("2001:db8::1"))),
+          xForwardedForHeaderValue = Some("2001:db8::1")
+        )
+      }
       "the X-Forwarded-For name repeats and each value is in the configured net address" in {
         assertMatchRule(
           settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.0/24"))),
@@ -89,6 +95,12 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
         assertNotMatchRule(
           settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.1"))),
           xForwardedForHeaderValue = Some("1.1.1.2")
+        )
+      }
+      "configured IPv6 address is different than the IPv6 address passed in X-Forwarded-For header" in {
+        assertNotMatchRule(
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("2001:db8::1"))),
+          xForwardedForHeaderValue = Some("2001:db8:ffff::99")
         )
       }
       "configured net address is different than the IP passed in X-Forwarded-For header" in {
