@@ -189,6 +189,12 @@ object Address {
     def contains(ip: Ip): Boolean = value.contains(ip.value.address)
   }
 
+  object Ip {
+
+    // One host. The prefix covers all bits of the address: 32 for IPv4 and 128 for IPv6.
+    def host(ip: IpAddress): Ip = Ip(Cidr(ip, allBitsOf(ip)))
+  }
+
   final case class Name(value: Hostname) extends Address
 
   def from(value: String): Option[Address] = {
@@ -215,7 +221,9 @@ object Address {
     (cutOffZoneIndex _ andThen IpAddress.fromString andThen (_.map(createAddressIp)))(value)
 
   private def createAddressIp(ip: IpAddress) =
-    Address.Ip(Cidr(ip, 32))
+    Address.Ip.host(ip)
+
+  private def allBitsOf(ip: IpAddress): Int = ip.fold(_ => 32, _ => 128)
 
   private val ipv6WithLiteralScope = raw"""(?i)^(fe80:[a-z0-9:]+)%.*$$""".r
 
