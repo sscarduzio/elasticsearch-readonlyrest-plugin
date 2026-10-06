@@ -42,7 +42,7 @@ import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
  *   - `type` — request type (string)
  *   - `origin` — client (remote) address (string)
  *   - `destination` — server (local) address (string)
- *   - `xff` — `X-Forwarded-For` HTTP header value (string)
+ *   - `xff` — the first address of the `X-Forwarded-For` HTTP header (string)
  *   - `task_id` — Elasticsearch task ID (number)
  *   - `req_method` — HTTP request method (string)
  *   - `headers` — HTTP header names (array of strings)

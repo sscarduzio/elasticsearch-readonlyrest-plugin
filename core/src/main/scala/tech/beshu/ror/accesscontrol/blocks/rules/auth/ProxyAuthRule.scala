@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.Known
-import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
@@ -69,9 +68,14 @@ final class ProxyAuthRule(
   }
 
   private def getLoggedUser(context: RequestContext): Either[AuthenticationFailed, DirectlyLoggedUser] = {
-    findHeader(settings.userHeaderName, in = context.restRequest.allHeaders)
-      .map(h => DirectlyLoggedUser(Id(h.value)))
-      .toRight(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' not found"))
+    context.headers.singleOrAmbiguity(settings.userHeaderName) match {
+      case Right(Some(header)) =>
+        Right(DirectlyLoggedUser(Id(header.value)))
+      case Right(None) =>
+        Left(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' not found"))
+      case Left(_) =>
+        Left(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' holds more than one value"))
+    }
   }
 
   private def checkUserAllowed(userId: User.Id) = {

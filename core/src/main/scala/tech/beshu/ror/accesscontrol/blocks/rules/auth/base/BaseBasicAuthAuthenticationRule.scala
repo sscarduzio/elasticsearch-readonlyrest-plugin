@@ -44,7 +44,7 @@ private[auth] abstract class BaseBasicAuthAuthenticationRule extends BaseAuthent
 
   private def basicAuthCredentialsFrom(requestContext: RequestContext) = {
     EitherT.fromEither[Task] {
-      requestContext.basicAuth
+      requestContext.headers.basicAuth
         .map(_.credentials)
         .toRight(AuthenticationFailed("No basic auth credentials provided"))
     }
