@@ -241,9 +241,6 @@ order_e2e_kbn_images() {
 # It goes through publish_ror_es_prebuild_plugin, as a plain pre-build publish does, so the
 # sha-frozen-image skip applies: if the image for this commit already exists, that helper only adds
 # the tag in the registry.
-#
-# The caller sets ROR_DOCKER_PLATFORMS to the platforms of the machines that run the e2e tests. The
-# default is every platform.
 # Args: <elk version> <build id>
 build_e2e_es_image() {
   if [ "$#" -ne 2 ]; then

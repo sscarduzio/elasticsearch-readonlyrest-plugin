@@ -286,17 +286,17 @@ retag_dev_image() {
 #
 # To avoid rebuilding when the sources have not changed, every build is frozen under an immutable,
 # source-identified tag <esVersion>-ror-<gitShortSha>. Before building we probe that tag in the registry:
-# if it already holds every platform of ROR_DOCKER_PLATFORMS, the Gradle build (the expensive build+push)
-# is skipped. Setting FORCE_REBUILD=true bypasses the skip.
+# if it already holds every platform of this build, the Gradle build (the expensive build+push) is
+# skipped. Setting FORCE_REBUILD=true bypasses the skip.
 #
 # Tags produced (all but the Gradle push are cheap registry-side manifest copies):
 #   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
 #   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
 #   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
 #
-# ROR_DOCKER_PLATFORMS sets the platforms, as a comma-separated list. The default is every platform.
-# A caller sets the platforms of the machines that run the image. A publish for every platform thus
-# builds again over an e2e build for one platform.
+# The build is for the standard platforms, linux/amd64 and linux/arm64. A comma-separated list in
+# ROR_CUSTOM_DOCKER_PLATFORMS replaces them. The modules for ES before 7.8 build linux/amd64 only, so
+# a publish for the standard platforms never skips their build.
 publish_ror_es_prebuild_plugin() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     ci_log "Usage: publish_ror_es_prebuild_plugin <ES version> [image tag]"
@@ -330,7 +330,7 @@ publish_ror_es_prebuild_plugin() {
   local FORCE_REBUILD_NORM=${FORCE_REBUILD:-false}
   FORCE_REBUILD_NORM=${FORCE_REBUILD_NORM,,}
   local PLATFORMS
-  PLATFORMS=$(printf '%s' "${ROR_DOCKER_PLATFORMS:-}" | tr -d '[:space:]')
+  PLATFORMS=$(printf '%s' "${ROR_CUSTOM_DOCKER_PLATFORMS:-}" | tr -d '[:space:]')
   PLATFORMS=${PLATFORMS:-linux/amd64,linux/arm64}
 
   ci_log "Publishing the ROR pre-build image for ES $ES_VERSION, platforms $PLATFORMS (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG})."
@@ -340,9 +340,6 @@ publish_ror_es_prebuild_plugin() {
   else
     # A registry can answer 429 to the pull or the push. Only that failure is repeated.
     # One buildx push writes both tags, so the commit tag always names this build's image.
-    # The modules for ES before 7.8 set ext.dockerPlatforms to linux/amd64 (Elastic has no arm64
-    # image), and that value wins over -PdockerPlatforms. For these, a publish for every platform
-    # never skips the build.
     if ! retry_with_backoff --retry-if is_docker_registry_error \
          ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
          "-PdockerPlatforms=$PLATFORMS" \

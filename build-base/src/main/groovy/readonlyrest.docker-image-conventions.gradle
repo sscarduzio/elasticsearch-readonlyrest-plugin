@@ -47,6 +47,8 @@ def dockerCliDefaults = { Exec t ->
 }
 def commonBuildArgs = ['--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', 'ES_VERSION=' + esVersion]
 def buildxPushArgs = { List<String> tags ->
+    // -PdockerPlatforms has no effect on a module that sets ext.dockerPlatforms. The modules for ES
+    // before 7.8 set linux/amd64, because Elastic has no arm64 image of those versions.
     def platforms = project.hasProperty('dockerPlatforms') ? project.property('dockerPlatforms') : 'linux/amd64,linux/arm64'
     def cmd = ['buildx', 'build', '--platform', platforms] + commonBuildArgs
     tags.each { cmd += ['-t', it] }

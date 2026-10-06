@@ -402,8 +402,8 @@ discover                       publish the e2e module matrix
 - `e2e_build_es_images` builds and pushes the ROR ES dev image from **this** commit, one job per
   module. It uses the same `publish_ror_es_prebuild_plugin` helper as the standalone pre-build task,
   so the sha-frozen-image skip still applies. It builds for `linux/amd64` only, the platform of the
-  `e2e_tests` runner (`ROR_DOCKER_PLATFORMS`). The skip reuses an image only when it holds every
-  platform that the build asks for.
+  `e2e_tests` runner (`ROR_CUSTOM_DOCKER_PLATFORMS`). The skip reuses an image only when it holds
+  every platform of the build.
 - `e2e_tests` runs once per version, in parallel. Both images exist when it starts. It clones the
   suite, starts the stack and runs Cypress.
 

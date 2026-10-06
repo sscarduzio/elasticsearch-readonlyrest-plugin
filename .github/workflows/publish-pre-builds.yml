@@ -30,8 +30,8 @@ on:
         type: boolean
         required: false
         default: false
-      platforms:
-        description: 'Comma-separated platforms of the image (e.g. "linux/amd64"). Empty means all platforms. Set the platforms of the machines that run the image.'
+      custom_platforms:
+        description: 'Build only these platforms, comma-separated (e.g. "linux/amd64"). Leave empty to build the standard platforms.'
         type: string
         required: false
         default: ''
@@ -94,7 +94,7 @@ jobs:
           BUILD_ROR_ES_VERSIONS: ${{ inputs.es_versions }}
           IMAGE_TAG: ${{ inputs.tag }}
           FORCE_REBUILD: ${{ inputs.force_rebuild }}
-          ROR_DOCKER_PLATFORMS: ${{ inputs.platforms }}
+          ROR_CUSTOM_DOCKER_PLATFORMS: ${{ inputs.custom_platforms }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
