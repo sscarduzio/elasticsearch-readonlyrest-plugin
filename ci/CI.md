@@ -248,7 +248,7 @@ A workflow must not work out a fact the build already knows. These Gradle tasks 
 |---|---|---|
 | `printEsMajors` | which ES majors get built, uploaded and released | `build/es-modules/es-majors.txt` |
 | `printEsModules` | which modules one ES major holds, newest first | `build/es-modules/es<major>x.txt` |
-| `printEsVersionsForModule` | the base version and every version of one module | `<module>/build/es-modules/versions.txt` |
+| `printEsVersionsForModule` | the base version of each group, and every version of one module | `<module>/build/es-modules/versions.txt` |
 | `printNewestEsVersionForModule` | the newest version of one module | `<module>/build/es-modules/newest-version.txt` |
 | `printAllSupportedEsVersions` | every ES version ROR supports | `build/es-modules/es-versions.txt` |
 | `printTestMatrices` | which ES modules each test matrix covers, per [policy](#test-matrix-policy) | `build/ci-matrices/<name>.json` |
