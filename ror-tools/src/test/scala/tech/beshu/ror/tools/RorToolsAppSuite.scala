@@ -37,6 +37,7 @@ import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path}
+import java.util.UUID
 import scala.language.postfixOps
 
 class RorToolsAppSuite
@@ -471,8 +472,9 @@ class RorToolsAppSuite
       )
     }
     "Patching keeps permissions of the files that it creates or replaces" in {
-      // Umask 022 removes group write, so a mode that is not kept fails the test
+      // A new file gets "rw-rw-rw-" minus the umask, so a mode that is not kept fails the test
       OsUtils.ignoreOnWindows {
+        assume(permissionsOfNewFile() != "rw-rw-rw-", "the umask must remove at least one write bit")
         val pluginDirectory = esDirectory / "plugins" / "readonlyrest"
         val policyFile = pluginDirectory / "plugin-security.policy"
         val sourceNetty4Jar = (esDirectory / "modules" / "transport-netty4").list
@@ -483,10 +485,10 @@ class RorToolsAppSuite
         val policyFileIsReplaced =
           executedOn(allEs7x, allEs8x) && !executedOn(allEs7xBelowEs711x, allES8xAboveEs818x)
 
-        setPermissions(pluginDirectory, "rwxrwxr-x")
-        setPermissions(pluginDirectory / "plugin-descriptor.properties", "rw-rw-r--")
-        if (netty4JarIsCopied) setPermissions(sourceNetty4Jar.get, "rw-rw-r--")
-        if (policyFileIsReplaced) setPermissions(policyFile, "rw-rw-r--")
+        setPermissions(pluginDirectory, "rwxrwxrwx")
+        setPermissions(pluginDirectory / "plugin-descriptor.properties", "rw-rw-rw-")
+        if (netty4JarIsCopied) setPermissions(sourceNetty4Jar.get, "rw-rw-rw-")
+        if (policyFileIsReplaced) setPermissions(policyFile, "rw-rw-rw-")
 
         val (patchResult, _) = captureResultAndOutput {
           RorToolsTestApp.run(
@@ -495,10 +497,10 @@ class RorToolsAppSuite
         }
         patchResult should equal(Result.Success)
 
-        permissionsOf(backupDirectory) should equal("rwxrwxr-x")
-        permissionsOf(patchMetadataFile) should equal("rw-rw-r--")
-        if (netty4JarIsCopied) permissionsOf(pluginDirectory / sourceNetty4Jar.get.name) should equal("rw-rw-r--")
-        if (policyFileIsReplaced) permissionsOf(policyFile) should equal("rw-rw-r--")
+        permissionsOf(backupDirectory) should equal("rwxrwxrwx")
+        permissionsOf(patchMetadataFile) should equal("rw-rw-rw-")
+        if (netty4JarIsCopied) permissionsOf(pluginDirectory / sourceNetty4Jar.get.name) should equal("rw-rw-rw-")
+        if (policyFileIsReplaced) permissionsOf(policyFile) should equal("rw-rw-rw-")
       }
     }
     List(
@@ -719,6 +721,14 @@ class RorToolsAppSuite
 
   private def permissionsOf(file: File): String = {
     PosixFilePermissions.toString(Files.getPosixFilePermissions(file.path))
+  }
+
+  // Files.createFile asks for "rw-rw-rw-", and the OS removes the umask bits
+  private def permissionsOfNewFile(): String = {
+    val probe = tempDirectory / s"umask-probe-${UUID.randomUUID()}"
+    Files.createFile(probe.path)
+    try permissionsOf(probe)
+    finally probe.delete()
   }
 
   private def modifyMetadataFile(f: EsPatchMetadata => EsPatchMetadata): Unit = {
