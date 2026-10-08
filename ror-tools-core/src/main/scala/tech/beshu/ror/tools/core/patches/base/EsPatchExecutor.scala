@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.tools.core.patches.base
 
-import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.PatchProblem.*
@@ -108,30 +107,26 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
 
   private def checkWithPatchedByFileAndEsPatch(): EsPatchStatus = {
     inOut.println("Checking if Elasticsearch is patched ...")
-    val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
-    val currentEsVersion = rorPluginDirectory.esDirectory.readEsVersion()
     if (rorPluginDirectory.isEsPatchMetadataInaccessible) {
       PatchProblemDetected(PatchMetadataInaccessible(rorPluginDirectory.patchMetadataFilePath))
     } else {
-      checkWithPatchMetadata(currentRorVersion, currentEsVersion)
-    }
-  }
-
-  private def checkWithPatchMetadata(currentRorVersion: String, currentEsVersion: SemVer): EsPatchStatus = {
-    rorPluginDirectory.readEsPatchMetadata() match {
-      case Some(metadata) if metadata.rorVersion == currentRorVersion && metadata.esVersion == currentEsVersion =>
-        validatePatchedFiles(metadata.patchedFilesMetadata) match {
-          case Right(()) =>
-            PatchedWithCurrentRorVersion(currentRorVersion)
-          case Left(invalidFiles) =>
-            PatchProblemDetected(CorruptedPatchWithIllegalFileModificationsDetected(invalidFiles))
-        }
-      case Some(metadata) if metadata.rorVersion == currentRorVersion && !(metadata.esVersion == currentEsVersion) =>
-        PatchProblemDetected(PatchPerformedOnOtherEsVersion(currentEsVersion.render, metadata.esVersion.render))
-      case Some(metadata) =>
-        PatchProblemDetected(PatchedWithOtherRorVersion(currentRorVersion, metadata.rorVersion))
-      case None =>
-        checkSuspectedCorruptedPatchState()
+      val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
+      val currentEsVersion = rorPluginDirectory.esDirectory.readEsVersion()
+      rorPluginDirectory.readEsPatchMetadata() match {
+        case Some(metadata) if metadata.rorVersion == currentRorVersion && metadata.esVersion == currentEsVersion =>
+          validatePatchedFiles(metadata.patchedFilesMetadata) match {
+            case Right(()) =>
+              PatchedWithCurrentRorVersion(currentRorVersion)
+            case Left(invalidFiles) =>
+              PatchProblemDetected(CorruptedPatchWithIllegalFileModificationsDetected(invalidFiles))
+          }
+        case Some(metadata) if metadata.rorVersion == currentRorVersion && !(metadata.esVersion == currentEsVersion) =>
+          PatchProblemDetected(PatchPerformedOnOtherEsVersion(currentEsVersion.render, metadata.esVersion.render))
+        case Some(metadata) =>
+          PatchProblemDetected(PatchedWithOtherRorVersion(currentRorVersion, metadata.rorVersion))
+        case None =>
+          checkSuspectedCorruptedPatchState()
+      }
     }
   }
 

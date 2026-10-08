@@ -70,6 +70,7 @@ object RorToolsError {
       extends RorToolsError(
         s"""Cannot read the ROR patch metadata file $metadataFile. Elasticsearch is possibly patched, but the current user has no permission to read this file.
            |Make sure that the user that runs Elasticsearch can read the ${metadataFile / os.up} folder and its content.
+           |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
            |This problem can occur when ES was patched with a restrictive umask (e.g. 077 with sudo).
            |For patching instructions see our docs: $patchingDocumentationUrl""".stripMargin
       )

@@ -534,6 +534,7 @@ class RorToolsAppSuite
             s"""Checking if Elasticsearch is patched ...
                |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
                |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content.
+               |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
                |""".stripMarginAndReplaceWindowsLineBreak
           )
         }
