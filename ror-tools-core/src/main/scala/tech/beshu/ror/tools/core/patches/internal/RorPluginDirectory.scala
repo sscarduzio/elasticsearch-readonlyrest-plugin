@@ -102,9 +102,9 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     patchMetadataFilePath.setFilePermissionsAndOwnerCopiedFrom(pluginPropertiesFilePath)
   }
 
-  // True when this process has no permission to read the patch metadata file or its folder
-  // (e.g. root patched ES, and ES runs as another user). Then the caller must report a permission
-  // problem, not a corrupted patch: without access to the folder, nobody can tell if the file exists.
+  // True when the metadata file can be present, but the current process cannot read it
+  // (e.g. the backup folder or the file is readable only by root, and ES runs as a different user).
+  // Other stat failures (no file, a file in place of the folder, a symlink loop) give false.
   def isEsPatchMetadataInaccessible: Boolean = {
     val path = patchMetadataFilePath.toNIO
     Try(Files.readAttributes(path, classOf[BasicFileAttributes])) match {
