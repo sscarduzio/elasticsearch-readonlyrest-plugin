@@ -35,10 +35,11 @@ import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
-import java.nio.file.attribute.PosixFilePermissions
+import java.nio.file.attribute.{PosixFileAttributeView, PosixFileAttributes, PosixFilePermissions}
 import java.nio.file.{Files, Path}
 import java.util.UUID
 import scala.language.postfixOps
+import scala.util.Try
 
 class RorToolsAppSuite
     extends AnyWordSpec
@@ -471,7 +472,7 @@ class RorToolsAppSuite
            |""".stripMarginAndReplaceWindowsLineBreak
       )
     }
-    "Patching keeps permissions of the files that it creates or replaces" in {
+    "Patching keeps permissions and group of the files that it creates or replaces" in {
       // A new file gets "rw-rw-rw-" minus the umask, so a mode that is not kept fails the test
       OsUtils.ignoreOnWindows {
         assume(permissionsOfNewFile() != "rw-rw-rw-", "the umask must remove at least one write bit")
@@ -485,10 +486,14 @@ class RorToolsAppSuite
         val policyFileIsReplaced =
           executedOn(allEs7x, allEs8x) && !executedOn(allEs7xBelowEs711x, allES8xAboveEs818x)
 
-        setPermissions(pluginDirectory, "rwxrwxrwx")
-        setPermissions(pluginDirectory / "plugin-descriptor.properties", "rw-rw-rw-")
-        if (netty4JarIsCopied) setPermissions(sourceNetty4Jar.get, "rw-rw-rw-")
-        if (policyFileIsReplaced) setPermissions(policyFile, "rw-rw-rw-")
+        // A group that a new file does not get by default, so a group that is not kept fails the test
+        val group = otherGroupThanOf(pluginDirectory)
+        assume(group.isDefined, "the current user must be able to set a second group")
+
+        setPermissionsAndGroup(pluginDirectory, "rwxrwxrwx", group.get)
+        setPermissionsAndGroup(pluginDirectory / "plugin-descriptor.properties", "rw-rw-rw-", group.get)
+        if (netty4JarIsCopied) setPermissionsAndGroup(sourceNetty4Jar.get, "rw-rw-rw-", group.get)
+        if (policyFileIsReplaced) setPermissionsAndGroup(policyFile, "rw-rw-rw-", group.get)
 
         val (patchResult, _) = captureResultAndOutput {
           RorToolsTestApp.run(
@@ -497,10 +502,11 @@ class RorToolsAppSuite
         }
         patchResult should equal(Result.Success)
 
-        permissionsOf(backupDirectory) should equal("rwxrwxrwx")
-        permissionsOf(patchMetadataFile) should equal("rw-rw-rw-")
-        if (netty4JarIsCopied) permissionsOf(pluginDirectory / sourceNetty4Jar.get.name) should equal("rw-rw-rw-")
-        if (policyFileIsReplaced) permissionsOf(policyFile) should equal("rw-rw-rw-")
+        permissionsAndGroupOf(backupDirectory) should equal(("rwxrwxrwx", group.get))
+        permissionsAndGroupOf(patchMetadataFile) should equal(("rw-rw-rw-", group.get))
+        if (netty4JarIsCopied)
+          permissionsAndGroupOf(pluginDirectory / sourceNetty4Jar.get.name) should equal(("rw-rw-rw-", group.get))
+        if (policyFileIsReplaced) permissionsAndGroupOf(policyFile) should equal(("rw-rw-rw-", group.get))
       }
     }
     List(
@@ -722,6 +728,30 @@ class RorToolsAppSuite
 
   private def permissionsOf(file: File): String = {
     PosixFilePermissions.toString(Files.getPosixFilePermissions(file.path))
+  }
+
+  private def setPermissionsAndGroup(file: File, permissions: String, group: String): Unit = {
+    setPermissions(file, permissions)
+    val groupPrincipal = file.path.getFileSystem.getUserPrincipalLookupService.lookupPrincipalByGroupName(group)
+    Files.getFileAttributeView(file.path, classOf[PosixFileAttributeView]).setGroup(groupPrincipal)
+  }
+
+  private def permissionsAndGroupOf(file: File): (String, String) = {
+    (permissionsOf(file), Files.readAttributes(file.path, classOf[PosixFileAttributes]).group().getName)
+  }
+
+  // A non-root user can set only its own groups. Root can set any group, so it uses a system group.
+  private def otherGroupThanOf(file: File): Option[String] = {
+    import scala.sys.process.*
+    val currentGroup = permissionsAndGroupOf(file)._2
+    val candidates =
+      if (System.getProperty("user.name") == "root") List("daemon", "bin", "sys")
+      else "id -Gn".!!.trim.split("\\s+").toList
+    candidates
+      .filterNot(_ == currentGroup)
+      .find { group =>
+        Try(file.path.getFileSystem.getUserPrincipalLookupService.lookupPrincipalByGroupName(group)).isSuccess
+      }
   }
 
   // Files.createFile asks for "rw-rw-rw-", and the OS removes the umask bits

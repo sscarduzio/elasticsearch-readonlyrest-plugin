@@ -18,7 +18,14 @@ package tech.beshu.ror.tools.core.utils
 
 import better.files.File
 
-import java.nio.file.attribute.{DosFileAttributeView, PosixFilePermission, UserPrincipal}
+import java.nio.file.attribute.{
+  DosFileAttributeView,
+  GroupPrincipal,
+  PosixFileAttributeView,
+  PosixFileAttributes,
+  PosixFilePermission,
+  UserPrincipal
+}
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
@@ -39,6 +46,7 @@ object FileUtils {
       filePermissionsAndOwner match {
         case metadata: OriginalFilePermissionsAndOwner =>
           Files.setOwner(file.path, metadata.owner)
+          metadata.group.foreach(setGroup(file.path, _))
           setOriginalPermissions(file.path, metadata.filePermissions)
           file
       }
@@ -52,6 +60,7 @@ object FileUtils {
       OriginalFilePermissionsAndOwner(
         getOriginalPermissions(file.path),
         Files.getOwner(file.path),
+        getGroup(file.path),
       )
     }
 
@@ -66,8 +75,20 @@ object FileUtils {
   sealed trait FilePermissionsAndOwner
 
   // The implementation details of FilePermissionsAndOwner should not leak outside of this file
-  private final case class OriginalFilePermissionsAndOwner(filePermissions: Any, owner: UserPrincipal)
-      extends FilePermissionsAndOwner
+  private final case class OriginalFilePermissionsAndOwner(
+      filePermissions: Any,
+      owner: UserPrincipal,
+      group: Option[GroupPrincipal]
+  ) extends FilePermissionsAndOwner
+
+  private def getGroup(path: Path): Option[GroupPrincipal] = {
+    if (isWindows) None
+    else Some(Files.readAttributes(path, classOf[PosixFileAttributes]).group())
+  }
+
+  private def setGroup(path: Path, group: GroupPrincipal): Unit = {
+    Files.getFileAttributeView(path, classOf[PosixFileAttributeView]).setGroup(group)
+  }
 
   private def getOriginalPermissions(jarPath: Path): Any = {
     if (isWindows) {
