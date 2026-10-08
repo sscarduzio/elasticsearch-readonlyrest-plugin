@@ -501,35 +501,40 @@ class RorToolsAppSuite
         if (policyFileIsReplaced) permissionsOf(policyFile) should equal("rw-rw-r--")
       }
     }
-    "The inaccessible metadata file is reported when `verify` command is executed" in {
-      // The root user can read all files, so this test is not possible for root
-      OsUtils.ignoreOnWindows {
-        assume(System.getProperty("user.name") != "root")
-        val (patchResult, _) = captureResultAndOutput {
-          RorToolsTestApp.run(
-            Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
-          )(_, _)
-        }
-        patchResult should equal(Result.Success)
-
-        val originalPermissions = Files.getPosixFilePermissions(backupDirectory.path)
-        Files.setPosixFilePermissions(backupDirectory.path, PosixFilePermissions.fromString("---------"))
-        val (verifyResult, verifyOutput) =
-          try {
-            captureResultAndOutput {
-              RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
-            }
-          } finally {
-            Files.setPosixFilePermissions(backupDirectory.path, originalPermissions)
+    List(
+      "the backup folder" -> backupDirectory,
+      "the metadata file" -> patchMetadataFile
+    ).foreach { case (name, fileWithoutPermissions) =>
+      s"The inaccessible metadata file is reported when `verify` command is executed ($name has no permissions)" in {
+        // The root user can read all files, so this test is not possible for root
+        OsUtils.ignoreOnWindows {
+          assume(System.getProperty("user.name") != "root")
+          val (patchResult, _) = captureResultAndOutput {
+            RorToolsTestApp.run(
+              Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+            )(_, _)
           }
+          patchResult should equal(Result.Success)
 
-        verifyResult should equal(Result.Failure)
-        verifyOutput should include(
-          s"""Checking if Elasticsearch is patched ...
-             |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
-             |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content.
-             |""".stripMarginAndReplaceWindowsLineBreak
-        )
+          val originalPermissions = permissionsOf(fileWithoutPermissions)
+          setPermissions(fileWithoutPermissions, "---------")
+          val (verifyResult, verifyOutput) =
+            try {
+              captureResultAndOutput {
+                RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+              }
+            } finally {
+              setPermissions(fileWithoutPermissions, originalPermissions)
+            }
+
+          verifyResult should equal(Result.Failure)
+          verifyOutput should include(
+            s"""Checking if Elasticsearch is patched ...
+               |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
+               |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content.
+               |""".stripMarginAndReplaceWindowsLineBreak
+          )
+        }
       }
     }
     "Successfully patch, verify and unpatch" in {

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.tools.core.patches.internal
 
-import better.files.File
 import just.semver.SemVer
 import os.Path
 import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
@@ -34,7 +33,7 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   private val rorPath: Path = readonlyrestPluginPath(esDirectory.path)
   private val backupFolderPath: Path = rorPath / "patch_backup"
-  private val patchMetadataFilePath: Path = backupFolderPath / "patch_metadata"
+  val patchMetadataFilePath: Path = backupFolderPath / "patch_metadata"
   private val pluginPropertiesFilePath = rorPath / "plugin-descriptor.properties"
 
   val securityPolicyPath: Path = rorPath / "plugin-security.policy"
@@ -108,8 +107,6 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     if (Files.exists(path)) !Files.isReadable(path)
     else !Files.notExists(path)
   }
-
-  def esPatchMetadataPath: Path = patchMetadataFilePath
 
   def readCurrentRorVersion(): String = {
     val versionPattern = """^version=(.+)$""".r

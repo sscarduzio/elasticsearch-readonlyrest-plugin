@@ -111,7 +111,7 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
     val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
     val currentEsVersion = rorPluginDirectory.esDirectory.readEsVersion()
     if (rorPluginDirectory.isEsPatchMetadataInaccessible) {
-      PatchProblemDetected(PatchMetadataInaccessible(rorPluginDirectory.esPatchMetadataPath))
+      PatchProblemDetected(PatchMetadataInaccessible(rorPluginDirectory.patchMetadataFilePath))
     } else {
       checkWithPatchMetadata(currentRorVersion, currentEsVersion)
     }
