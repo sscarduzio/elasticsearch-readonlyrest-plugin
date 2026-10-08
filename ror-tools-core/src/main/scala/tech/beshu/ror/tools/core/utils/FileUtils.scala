@@ -20,6 +20,7 @@ import better.files.File
 
 import java.nio.file.attribute.{
   DosFileAttributeView,
+  DosFileAttributes,
   GroupPrincipal,
   PosixFileAttributeView,
   PosixFileAttributes,
@@ -76,10 +77,19 @@ object FileUtils {
 
   // The implementation details of FilePermissionsAndOwner should not leak outside of this file
   private final case class OriginalFilePermissionsAndOwner(
-      filePermissions: Any,
+      filePermissions: FilePermissions,
       owner: UserPrincipal,
       group: Option[GroupPrincipal]
   ) extends FilePermissionsAndOwner
+
+  private sealed trait FilePermissions
+
+  private object FilePermissions {
+    final case class Posix(permissions: java.util.Set[PosixFilePermission]) extends FilePermissions
+
+    // Windows ACLs are not copied, only the DOS flags
+    final case class Dos(readOnly: Boolean, hidden: Boolean, archive: Boolean, system: Boolean) extends FilePermissions
+  }
 
   private def getGroup(path: Path): Option[GroupPrincipal] = {
     if (isWindows) None
@@ -90,23 +100,26 @@ object FileUtils {
     Files.getFileAttributeView(path, classOf[PosixFileAttributeView]).setGroup(group)
   }
 
-  private def getOriginalPermissions(jarPath: Path): Any = {
+  private def getOriginalPermissions(path: Path): FilePermissions = {
     if (isWindows) {
-      Files.getFileAttributeView(jarPath, classOf[DosFileAttributeView])
+      val attributes = Files.readAttributes(path, classOf[DosFileAttributes])
+      FilePermissions.Dos(attributes.isReadOnly, attributes.isHidden, attributes.isArchive, attributes.isSystem)
     } else {
-      Files.getPosixFilePermissions(jarPath)
+      FilePermissions.Posix(Files.getPosixFilePermissions(path))
     }
   }
 
-  private def setOriginalPermissions(jarPath: Path, permissions: Any): Unit = {
-    if (isWindows) {
-      val view = permissions.asInstanceOf[DosFileAttributeView]
-      view.setReadOnly(view.readAttributes().isReadOnly)
-      view.setHidden(view.readAttributes().isHidden)
-      view.setArchive(view.readAttributes().isArchive)
-      view.setSystem(view.readAttributes().isSystem)
-    } else {
-      Files.setPosixFilePermissions(jarPath, permissions.asInstanceOf[java.util.Set[PosixFilePermission]])
+  private def setOriginalPermissions(path: Path, permissions: FilePermissions): Unit = {
+    permissions match {
+      case FilePermissions.Posix(posixPermissions) =>
+        Files.setPosixFilePermissions(path, posixPermissions)
+      case FilePermissions.Dos(readOnly, hidden, archive, system) =>
+        val view = Files.getFileAttributeView(path, classOf[DosFileAttributeView])
+        view.setHidden(hidden)
+        view.setArchive(archive)
+        view.setSystem(system)
+        // The read-only flag goes last, because a read-only file can block the other changes
+        view.setReadOnly(readOnly)
     }
   }
 
