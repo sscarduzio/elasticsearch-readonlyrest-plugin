@@ -470,35 +470,23 @@ class RorToolsAppSuite
            |""".stripMarginAndReplaceWindowsLineBreak
       )
     }
-    "Patching sets permissions of the backup folder and the metadata file from the plugin files" in {
+    "Patching keeps permissions of the files that it creates or replaces" in {
+      // Umask 022 removes group write, so a mode that is not kept fails the test
       OsUtils.ignoreOnWindows {
         val pluginDirectory = esDirectory / "plugins" / "readonlyrest"
-        Files.setPosixFilePermissions(pluginDirectory.path, PosixFilePermissions.fromString("rwxr-x---"))
-        Files.setPosixFilePermissions(
-          (pluginDirectory / "plugin-descriptor.properties").path,
-          PosixFilePermissions.fromString("rw-r-----")
-        )
-
-        val (patchResult, _) = captureResultAndOutput {
-          RorToolsTestApp.run(
-            Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
-          )(_, _)
-        }
-        patchResult should equal(Result.Success)
-
-        PosixFilePermissions.toString(Files.getPosixFilePermissions(backupDirectory.path)) should equal("rwxr-x---")
-        PosixFilePermissions.toString(Files.getPosixFilePermissions(patchMetadataFile.path)) should equal("rw-r-----")
-      }
-    }
-    "Patching sets permissions of the copied transport netty4 jar from the source jar" excludeES (
-      allEs6x,
-      allEs7x
-    ) in {
-      OsUtils.ignoreOnWindows {
-        val sourceJar = (esDirectory / "modules" / "transport-netty4").list
+        val policyFile = pluginDirectory / "plugin-security.policy"
+        val sourceNetty4Jar = (esDirectory / "modules" / "transport-netty4").list
           .find(_.name.matches("""^transport-netty4-.+\.jar$"""))
-          .get
-        Files.setPosixFilePermissions(sourceJar.path, PosixFilePermissions.fromString("rw-r-----"))
+        // ES 8.x and 9.x patches copy the transport netty4 jar to the plugin folder
+        val netty4JarIsCopied = executedOn(allEs8x, allEs9x)
+        // ES 7.11 - 8.17 patches replace the ROR security policy file
+        val policyFileIsReplaced =
+          executedOn(allEs7x, allEs8x) && !executedOn(allEs7xBelowEs711x, allES8xAboveEs818x)
+
+        setPermissions(pluginDirectory, "rwxrwxr-x")
+        setPermissions(pluginDirectory / "plugin-descriptor.properties", "rw-rw-r--")
+        if (netty4JarIsCopied) setPermissions(sourceNetty4Jar.get, "rw-rw-r--")
+        if (policyFileIsReplaced) setPermissions(policyFile, "rw-rw-r--")
 
         val (patchResult, _) = captureResultAndOutput {
           RorToolsTestApp.run(
@@ -507,60 +495,41 @@ class RorToolsAppSuite
         }
         patchResult should equal(Result.Success)
 
-        val copiedJar = esDirectory / "plugins" / "readonlyrest" / sourceJar.name
-        PosixFilePermissions.toString(Files.getPosixFilePermissions(copiedJar.path)) should equal("rw-r-----")
-      }
-    }
-    "Patching keeps permissions of the ROR security policy file" excludeES (
-      allEs6x,
-      allEs7xBelowEs711x,
-      allES8xAboveEs818x,
-      allEs9x
-    ) in {
-      OsUtils.ignoreOnWindows {
-        val policyFile = esDirectory / "plugins" / "readonlyrest" / "plugin-security.policy"
-        Files.setPosixFilePermissions(policyFile.path, PosixFilePermissions.fromString("rw-r-----"))
-
-        val (patchResult, _) = captureResultAndOutput {
-          RorToolsTestApp.run(
-            Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
-          )(_, _)
-        }
-        patchResult should equal(Result.Success)
-
-        PosixFilePermissions.toString(Files.getPosixFilePermissions(policyFile.path)) should equal("rw-r-----")
+        permissionsOf(backupDirectory) should equal("rwxrwxr-x")
+        permissionsOf(patchMetadataFile) should equal("rw-rw-r--")
+        if (netty4JarIsCopied) permissionsOf(pluginDirectory / sourceNetty4Jar.get.name) should equal("rw-rw-r--")
+        if (policyFileIsReplaced) permissionsOf(policyFile) should equal("rw-rw-r--")
       }
     }
     "The inaccessible metadata file is reported when `verify` command is executed" in {
       // The root user can read all files, so this test is not possible for root
       OsUtils.ignoreOnWindows {
-        if (System.getProperty("user.name") != "root") {
-          val (patchResult, _) = captureResultAndOutput {
-            RorToolsTestApp.run(
-              Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
-            )(_, _)
-          }
-          patchResult should equal(Result.Success)
-
-          val originalPermissions = Files.getPosixFilePermissions(backupDirectory.path)
-          Files.setPosixFilePermissions(backupDirectory.path, PosixFilePermissions.fromString("---------"))
-          val (verifyResult, verifyOutput) =
-            try {
-              captureResultAndOutput {
-                RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
-              }
-            } finally {
-              Files.setPosixFilePermissions(backupDirectory.path, originalPermissions)
-            }
-
-          verifyResult should equal(Result.Failure)
-          verifyOutput should include(
-            s"""Checking if Elasticsearch is patched ...
-               |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
-               |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content.
-               |""".stripMarginAndReplaceWindowsLineBreak
-          )
+        assume(System.getProperty("user.name") != "root")
+        val (patchResult, _) = captureResultAndOutput {
+          RorToolsTestApp.run(
+            Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+          )(_, _)
         }
+        patchResult should equal(Result.Success)
+
+        val originalPermissions = Files.getPosixFilePermissions(backupDirectory.path)
+        Files.setPosixFilePermissions(backupDirectory.path, PosixFilePermissions.fromString("---------"))
+        val (verifyResult, verifyOutput) =
+          try {
+            captureResultAndOutput {
+              RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+            }
+          } finally {
+            Files.setPosixFilePermissions(backupDirectory.path, originalPermissions)
+          }
+
+        verifyResult should equal(Result.Failure)
+        verifyOutput should include(
+          s"""Checking if Elasticsearch is patched ...
+             |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
+             |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content.
+             |""".stripMarginAndReplaceWindowsLineBreak
+        )
       }
     }
     "Successfully patch, verify and unpatch" in {
@@ -737,6 +706,14 @@ class RorToolsAppSuite
         )
       )
     )
+  }
+
+  private def setPermissions(file: File, permissions: String): Unit = {
+    Files.setPosixFilePermissions(file.path, PosixFilePermissions.fromString(permissions))
+  }
+
+  private def permissionsOf(file: File): String = {
+    PosixFilePermissions.toString(Files.getPosixFilePermissions(file.path))
   }
 
   private def modifyMetadataFile(f: EsPatchMetadata => EsPatchMetadata): Unit = {
