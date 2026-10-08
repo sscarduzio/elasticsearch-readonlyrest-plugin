@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.tools.core.patches.base
 
+import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.PatchProblem.*
@@ -109,6 +110,14 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
     inOut.println("Checking if Elasticsearch is patched ...")
     val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
     val currentEsVersion = rorPluginDirectory.esDirectory.readEsVersion()
+    if (rorPluginDirectory.isEsPatchMetadataInaccessible) {
+      PatchProblemDetected(PatchMetadataInaccessible(rorPluginDirectory.esPatchMetadataPath))
+    } else {
+      checkWithPatchMetadata(currentRorVersion, currentEsVersion)
+    }
+  }
+
+  private def checkWithPatchMetadata(currentRorVersion: String, currentEsVersion: SemVer): EsPatchStatus = {
     rorPluginDirectory.readEsPatchMetadata() match {
       case Some(metadata) if metadata.rorVersion == currentRorVersion && metadata.esVersion == currentEsVersion =>
         validatePatchedFiles(metadata.patchedFilesMetadata) match {
@@ -194,6 +203,8 @@ object EsPatchExecutor {
     ) extends PatchProblem
 
     final case class CorruptedPatchWithIllegalFileModificationsDetected(files: List[os.Path]) extends PatchProblem
+
+    final case class PatchMetadataInaccessible(metadataFile: os.Path) extends PatchProblem
   }
 
   implicit class PatchProblemOps(val patchProblem: PatchProblem) extends AnyVal {
@@ -207,6 +218,8 @@ object EsPatchExecutor {
         CorruptedPatchWithIllegalFileModificationsDetectedError(files)
       case PatchProblem.CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
         CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles)
+      case PatchProblem.PatchMetadataInaccessible(metadataFile) =>
+        PatchMetadataInaccessibleError(metadataFile)
     }
 
   }

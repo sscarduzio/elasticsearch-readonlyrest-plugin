@@ -27,6 +27,7 @@ import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonl
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 import tech.beshu.ror.tools.core.utils.FileUtils.osPathToFile
 
+import java.nio.file.Files
 import scala.language.implicitConversions
 
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
@@ -44,6 +45,8 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   def createBackupFolder(): Unit = {
     os.makeDir.all(path = backupFolderPath)
+    // Permissions come from the plugin folder, not from the umask (umask 077 blocks the ES user)
+    backupFolderPath.setFilePermissionsAndOwnerCopiedFrom(rorPath)
   }
 
   def clearBackupFolder(): Unit = {
@@ -93,7 +96,18 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     )
     os.remove(patchMetadataFilePath, checkExists = false)
     os.write(patchMetadataFilePath, fileContent)
+    patchMetadataFilePath.setFilePermissionsAndOwnerCopiedFrom(pluginPropertiesFilePath)
   }
+
+  // True when the metadata file can be present, but the current process cannot read it
+  // (e.g. the backup folder or the file is readable only by root, and ES runs as a different user).
+  def isEsPatchMetadataInaccessible: Boolean = {
+    val path = patchMetadataFilePath.toNIO
+    if (Files.exists(path)) !Files.isReadable(path)
+    else !Files.notExists(path)
+  }
+
+  def esPatchMetadataPath: Path = patchMetadataFilePath
 
   def readCurrentRorVersion(): String = {
     val versionPattern = """^version=(.+)$""".r

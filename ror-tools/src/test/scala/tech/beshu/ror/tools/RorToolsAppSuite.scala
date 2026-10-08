@@ -35,7 +35,8 @@ import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
-import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
+import java.nio.file.{Files, Path}
 import scala.language.postfixOps
 
 class RorToolsAppSuite
@@ -468,6 +469,58 @@ class RorToolsAppSuite
            | - file x-pack-security-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
            |""".stripMarginAndReplaceWindowsLineBreak
       )
+    }
+    "Patching sets permissions of the backup folder and the metadata file from the plugin files" in {
+      OsUtils.ignoreOnWindows {
+        val pluginDirectory = esDirectory / "plugins" / "readonlyrest"
+        Files.setPosixFilePermissions(pluginDirectory.path, PosixFilePermissions.fromString("rwxr-x---"))
+        Files.setPosixFilePermissions(
+          (pluginDirectory / "plugin-descriptor.properties").path,
+          PosixFilePermissions.fromString("rw-r-----")
+        )
+
+        val (patchResult, _) = captureResultAndOutput {
+          RorToolsTestApp.run(
+            Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+          )(_, _)
+        }
+        patchResult should equal(Result.Success)
+
+        PosixFilePermissions.toString(Files.getPosixFilePermissions(backupDirectory.path)) should equal("rwxr-x---")
+        PosixFilePermissions.toString(Files.getPosixFilePermissions(patchMetadataFile.path)) should equal("rw-r-----")
+      }
+    }
+    "The inaccessible metadata file is reported when `verify` command is executed" in {
+      // The root user can read all files, so this test is not possible for root
+      OsUtils.ignoreOnWindows {
+        if (System.getProperty("user.name") != "root") {
+          val (patchResult, _) = captureResultAndOutput {
+            RorToolsTestApp.run(
+              Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+            )(_, _)
+          }
+          patchResult should equal(Result.Success)
+
+          val originalPermissions = Files.getPosixFilePermissions(backupDirectory.path)
+          Files.setPosixFilePermissions(backupDirectory.path, PosixFilePermissions.fromString("---------"))
+          val (verifyResult, verifyOutput) =
+            try {
+              captureResultAndOutput {
+                RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+              }
+            } finally {
+              Files.setPosixFilePermissions(backupDirectory.path, originalPermissions)
+            }
+
+          verifyResult should equal(Result.Failure)
+          verifyOutput should include(
+            s"""Checking if Elasticsearch is patched ...
+               |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
+               |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content.
+               |""".stripMarginAndReplaceWindowsLineBreak
+          )
+        }
+      }
     }
     "Successfully patch, verify and unpatch" in {
       // This file is created after patching on Windows for ES 8.x
