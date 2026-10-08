@@ -490,6 +490,47 @@ class RorToolsAppSuite
         PosixFilePermissions.toString(Files.getPosixFilePermissions(patchMetadataFile.path)) should equal("rw-r-----")
       }
     }
+    "Patching sets permissions of the copied transport netty4 jar from the source jar" excludeES (
+      allEs6x,
+      allEs7x
+    ) in {
+      OsUtils.ignoreOnWindows {
+        val sourceJar = (esDirectory / "modules" / "transport-netty4").list
+          .find(_.name.matches("""^transport-netty4-.+\.jar$"""))
+          .get
+        Files.setPosixFilePermissions(sourceJar.path, PosixFilePermissions.fromString("rw-r-----"))
+
+        val (patchResult, _) = captureResultAndOutput {
+          RorToolsTestApp.run(
+            Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+          )(_, _)
+        }
+        patchResult should equal(Result.Success)
+
+        val copiedJar = esDirectory / "plugins" / "readonlyrest" / sourceJar.name
+        PosixFilePermissions.toString(Files.getPosixFilePermissions(copiedJar.path)) should equal("rw-r-----")
+      }
+    }
+    "Patching keeps permissions of the ROR security policy file" excludeES (
+      allEs6x,
+      allEs7xBelowEs711x,
+      allES8xAboveEs818x,
+      allEs9x
+    ) in {
+      OsUtils.ignoreOnWindows {
+        val policyFile = esDirectory / "plugins" / "readonlyrest" / "plugin-security.policy"
+        Files.setPosixFilePermissions(policyFile.path, PosixFilePermissions.fromString("rw-r-----"))
+
+        val (patchResult, _) = captureResultAndOutput {
+          RorToolsTestApp.run(
+            Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+          )(_, _)
+        }
+        patchResult should equal(Result.Success)
+
+        PosixFilePermissions.toString(Files.getPosixFilePermissions(policyFile.path)) should equal("rw-r-----")
+      }
+    }
     "The inaccessible metadata file is reported when `verify` command is executed" in {
       // The root user can read all files, so this test is not possible for root
       OsUtils.ignoreOnWindows {

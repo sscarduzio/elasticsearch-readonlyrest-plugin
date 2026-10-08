@@ -66,7 +66,9 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
   }
 
   def copyToPluginPath(file: Path): Unit = {
-    os.copy(from = file, to = rorPath / file.last)
+    val copiedFile = rorPath / file.last
+    os.copy(from = file, to = copiedFile)
+    copiedFile.setFilePermissionsAndOwnerCopiedFrom(file)
   }
 
   def findTransportNetty4Jar: Option[Path] = {
