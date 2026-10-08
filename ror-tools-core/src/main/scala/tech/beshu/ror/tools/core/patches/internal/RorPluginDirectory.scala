@@ -26,8 +26,10 @@ import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonl
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 import tech.beshu.ror.tools.core.utils.FileUtils.osPathToFile
 
-import java.nio.file.Files
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{AccessDeniedException, Files}
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
@@ -102,10 +104,14 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   // True when the metadata file can be present, but the current process cannot read it
   // (e.g. the backup folder or the file is readable only by root, and ES runs as a different user).
+  // Other stat failures (no file, a file in place of the folder, a symlink loop) give false.
   def isEsPatchMetadataInaccessible: Boolean = {
     val path = patchMetadataFilePath.toNIO
-    if (Files.exists(path)) !Files.isReadable(path)
-    else !Files.notExists(path)
+    Try(Files.readAttributes(path, classOf[BasicFileAttributes])) match {
+      case Success(_)                        => !Files.isReadable(path)
+      case Failure(_: AccessDeniedException) => true
+      case Failure(_)                        => false
+    }
   }
 
   def readCurrentRorVersion(): String = {
