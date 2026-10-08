@@ -21,7 +21,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.tools.core.utils.FileUtils.{getFilePermissionsAndOwner, setFilePermissionsAndOwner}
 import tech.beshu.ror.utils.misc.OsUtils
-import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import java.nio.file.attribute.{DosFileAttributeView, DosFileAttributes}
 import java.nio.file.{Files, StandardCopyOption}
@@ -30,25 +29,27 @@ class FileUtilsSuite extends AnyWordSpec with Matchers {
 
   "FileUtils" should {
     "restore the DOS flags of a file that was replaced" in {
-      assume(OsUtils.currentOs == CurrentOs.Windows, "the DOS flags are used only on Windows")
-      File.usingTemporaryDirectory() { directory =>
-        val file = (directory / "file").createFile()
-        // Each flag is different from the flags of a new file
-        val originalFlags = DosFlags(readOnly = true, hidden = true, archive = false, system = true)
-        try {
-          setDosFlags(file, originalFlags)
-          val originalPermissionsAndOwner = file.getFilePermissionsAndOwner
+      // The DOS flags are used only on Windows
+      OsUtils.runOnlyOnWindows {
+        File.usingTemporaryDirectory() { directory =>
+          val file = (directory / "file").createFile()
+          // Each flag is different from the flags of a new file
+          val originalFlags = DosFlags(readOnly = true, hidden = true, archive = false, system = true)
+          try {
+            setDosFlags(file, originalFlags)
+            val originalPermissionsAndOwner = file.getFilePermissionsAndOwner
 
-          // Windows does not replace a read-only file
-          dosView(file).setReadOnly(false)
-          val newFile = (directory / "new-file").createFile()
-          Files.move(newFile.path, file.path, StandardCopyOption.REPLACE_EXISTING)
-          file.setFilePermissionsAndOwner(originalPermissionsAndOwner)
+            // Windows does not replace a read-only file
+            dosView(file).setReadOnly(false)
+            val newFile = (directory / "new-file").createFile()
+            Files.move(newFile.path, file.path, StandardCopyOption.REPLACE_EXISTING)
+            file.setFilePermissionsAndOwner(originalPermissionsAndOwner)
 
-          dosFlagsOf(file) should equal(originalFlags)
-        } finally {
-          // Windows does not delete a read-only file
-          dosView(file).setReadOnly(false)
+            dosFlagsOf(file) should equal(originalFlags)
+          } finally {
+            // Windows does not delete a read-only file
+            dosView(file).setReadOnly(false)
+          }
         }
       }
     }
