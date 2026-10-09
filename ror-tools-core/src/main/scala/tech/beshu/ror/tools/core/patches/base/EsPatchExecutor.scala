@@ -107,22 +107,26 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
 
   private def checkWithPatchedByFileAndEsPatch(): EsPatchStatus = {
     inOut.println("Checking if Elasticsearch is patched ...")
-    val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
-    val currentEsVersion = rorPluginDirectory.esDirectory.readEsVersion()
-    rorPluginDirectory.readEsPatchMetadata() match {
-      case Some(metadata) if metadata.rorVersion == currentRorVersion && metadata.esVersion == currentEsVersion =>
-        validatePatchedFiles(metadata.patchedFilesMetadata) match {
-          case Right(()) =>
-            PatchedWithCurrentRorVersion(currentRorVersion)
-          case Left(invalidFiles) =>
-            PatchProblemDetected(CorruptedPatchWithIllegalFileModificationsDetected(invalidFiles))
-        }
-      case Some(metadata) if metadata.rorVersion == currentRorVersion && !(metadata.esVersion == currentEsVersion) =>
-        PatchProblemDetected(PatchPerformedOnOtherEsVersion(currentEsVersion.render, metadata.esVersion.render))
-      case Some(metadata) =>
-        PatchProblemDetected(PatchedWithOtherRorVersion(currentRorVersion, metadata.rorVersion))
-      case None =>
-        checkSuspectedCorruptedPatchState()
+    if (rorPluginDirectory.isEsPatchMetadataInaccessible) {
+      PatchProblemDetected(PatchMetadataInaccessible(rorPluginDirectory.patchMetadataFilePath))
+    } else {
+      val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
+      val currentEsVersion = rorPluginDirectory.esDirectory.readEsVersion()
+      rorPluginDirectory.readEsPatchMetadata() match {
+        case Some(metadata) if metadata.rorVersion == currentRorVersion && metadata.esVersion == currentEsVersion =>
+          validatePatchedFiles(metadata.patchedFilesMetadata) match {
+            case Right(()) =>
+              PatchedWithCurrentRorVersion(currentRorVersion)
+            case Left(invalidFiles) =>
+              PatchProblemDetected(CorruptedPatchWithIllegalFileModificationsDetected(invalidFiles))
+          }
+        case Some(metadata) if metadata.rorVersion == currentRorVersion && !(metadata.esVersion == currentEsVersion) =>
+          PatchProblemDetected(PatchPerformedOnOtherEsVersion(currentEsVersion.render, metadata.esVersion.render))
+        case Some(metadata) =>
+          PatchProblemDetected(PatchedWithOtherRorVersion(currentRorVersion, metadata.rorVersion))
+        case None =>
+          checkSuspectedCorruptedPatchState()
+      }
     }
   }
 
@@ -194,6 +198,8 @@ object EsPatchExecutor {
     ) extends PatchProblem
 
     final case class CorruptedPatchWithIllegalFileModificationsDetected(files: List[os.Path]) extends PatchProblem
+
+    final case class PatchMetadataInaccessible(metadataFile: os.Path) extends PatchProblem
   }
 
   implicit class PatchProblemOps(val patchProblem: PatchProblem) extends AnyVal {
@@ -207,6 +213,8 @@ object EsPatchExecutor {
         CorruptedPatchWithIllegalFileModificationsDetectedError(files)
       case PatchProblem.CorruptedPatchWithoutValidMetadata(backupFolderPresent, patchedJarFiles) =>
         CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles)
+      case PatchProblem.PatchMetadataInaccessible(metadataFile) =>
+        PatchMetadataInaccessibleError(metadataFile)
     }
 
   }

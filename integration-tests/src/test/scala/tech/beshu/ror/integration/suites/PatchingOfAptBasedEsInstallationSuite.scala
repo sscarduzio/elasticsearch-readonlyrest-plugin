@@ -21,9 +21,11 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicInt
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.matchers.must.Matchers.include
+import org.scalatest.matchers.must.Matchers.{be, include}
 import org.scalatest.matchers.should.Matchers.{should, shouldNot}
 import org.scalatest.wordspec.AnyWordSpec
+import org.testcontainers.containers.Container.ExecResult
+import org.testcontainers.containers.ExecConfig
 import tech.beshu.ror.integration.suites.base.support.HeavySuiteGated
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.*
@@ -135,6 +137,25 @@ class PatchingOfAptBasedEsInstallationSuite
             dockerLogs shouldNot include("Cannot verify if the ES was patched")
             dockerLogs should include("ReadonlyREST was loaded")
           }
+          // CI runs the ror-tools tests as root, so this test checks the unreadable metadata file as the ES user
+          "report the unreadable patch metadata file, when the ES user cannot read the patch backup folder" in {
+            val esNode = linuxNodeOf(EsInstallationType.EsDockerImage)
+            val originalOwnerAndMode = esNode.execAsRoot(s"stat -c '%u:%g %a' $patchBackupFolder").trim
+            val (originalOwner, originalMode) = originalOwnerAndMode.split(' ') match {
+              case Array(owner, mode) => (owner, mode)
+              case _ => throw new IllegalStateException(s"Unexpected stat output: [$originalOwnerAndMode]")
+            }
+            esNode.execAsRoot(s"chown root:root $patchBackupFolder && chmod 700 $patchBackupFolder")
+            val verifyResult =
+              try esNode.execAsEsUser(rorToolsVerifyCommand)
+              finally
+                esNode.execAsRoot(s"chown $originalOwner $patchBackupFolder && chmod $originalMode $patchBackupFolder")
+
+            verifyResult.getExitCode shouldNot be(0)
+            (verifyResult.getStdout + verifyResult.getStderr) should include(
+              s"Cannot read the ROR patch metadata file $patchBackupFolder/patch_metadata"
+            )
+          }
         }
         "installed on Ubuntu using apt" should {
           "ES successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES esVersionsWithoutAptPackage in {
@@ -163,12 +184,14 @@ class PatchingOfAptBasedEsInstallationSuite
   }
 
   private def dockerLogsOf(esInstallationType: EsInstallationType): String = {
-    linuxNodes
-      .getOrElse(
-        esInstallationType,
-        throw new IllegalStateException(s"No ES node was started for [$esInstallationType]")
-      )
-      .dockerLogs
+    linuxNodeOf(esInstallationType).dockerLogs
+  }
+
+  private def linuxNodeOf(esInstallationType: EsInstallationType): EsNode = {
+    linuxNodes.getOrElse(
+      esInstallationType,
+      throw new IllegalStateException(s"No ES node was started for [$esInstallationType]")
+    )
   }
 
   private final class EsNode(esInstallationType: EsInstallationType) {
@@ -198,6 +221,22 @@ class PatchingOfAptBasedEsInstallationSuite
     def dockerLogs: String = startedNodeLogs.runSyncUnsafe(1 minute)
 
     def stop: Task[Unit] = manager.stop()
+
+    // Fails the test when the node did not start, so the commands run only on a started node
+    def execAsRoot(command: String): String = {
+      dockerLogs
+      val result = manager.execAsUser("root", command)
+      if (result.getExitCode != 0) {
+        throw new IllegalStateException(s"Command [$command] failed: ${result.getStdout}${result.getStderr}")
+      }
+      result.getStdout
+    }
+
+    def execAsEsUser(command: String): ExecResult = {
+      dockerLogs
+      manager.execAsUser("elasticsearch", command)
+    }
+
   }
 
   private def withTestEsContainerManager(
@@ -243,6 +282,14 @@ class PatchingOfAptBasedEsInstallationSuite
 private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
   final case class TestResponse(responseCode: Int, responseJson: JSON)
 
+  private val esHome = "/usr/share/elasticsearch"
+  private val patchBackupFolder = s"$esHome/plugins/readonlyrest/patch_backup"
+
+  // ES 6.x images have no bundled JDK, so the command falls back to JAVA_HOME
+  private val rorToolsVerifyCommand =
+    s"""if [ -x $esHome/jdk/bin/java ]; then java=$esHome/jdk/bin/java; else java="$$JAVA_HOME/bin/java"; fi; """ +
+      s""""$$java" -jar $esHome/plugins/readonlyrest/ror-tools.jar verify --es-path $esHome"""
+
   private val uniqueClusterId: AtomicInt = AtomicInt(1)
 
   final class TestEsContainerManager(rorConfigFile: String, esInstallationType: EsInstallationType)
@@ -260,6 +307,11 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
     } yield ()
 
     def getLogs: String = dockerLogsCollector.getLogs
+
+    def execAsUser(user: String, command: String): ExecResult =
+      esContainer.container.execInContainer(
+        ExecConfig.builder().user(user).command(Array("sh", "-c", command)).build()
+      )
 
     def createRestClient: Task[RestClient] = {
       Task.tailRecM(()) { _ =>
