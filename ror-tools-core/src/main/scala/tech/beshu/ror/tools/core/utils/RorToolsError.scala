@@ -69,7 +69,7 @@ object RorToolsError {
   final case class PatchMetadataInaccessibleError(metadataFile: os.Path)
       extends RorToolsError(
         s"""Cannot read the ROR patch metadata file $metadataFile. Elasticsearch is possibly patched, but the current user has no permission to read this file.
-           |Make sure that the user that runs Elasticsearch can read the ${metadataFile / os.up} folder and its content, and the files that ror-tools created in the ${metadataFile / os.up / os.up} folder.
+           |Make sure that the user that runs Elasticsearch can read the ${metadataFile / os.up} folder and its content, and the files that ror-tools created or replaced in the ${metadataFile / os.up / os.up} folder (transport-netty4-*.jar on ES 8.x and 9.x, plugin-security.policy on ES 7.11 - 8.17).
            |$permissionProblemAdvice""".stripMargin
       )
 

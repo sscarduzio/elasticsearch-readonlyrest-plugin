@@ -620,7 +620,7 @@ class RorToolsAppSuite
         verifyOutput should include(
           s"""Checking if Elasticsearch is patched ...
              |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
-             |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content, and the files that ror-tools created in the ${backupDirectory.parent.path} folder.
+             |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content, and the files that ror-tools created or replaced in the ${backupDirectory.parent.path} folder (transport-netty4-*.jar on ES 8.x and 9.x, plugin-security.policy on ES 7.11 - 8.17).
              |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
              |""".stripMarginAndReplaceWindowsLineBreak
         )
