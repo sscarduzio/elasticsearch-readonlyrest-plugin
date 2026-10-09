@@ -63,16 +63,17 @@ object JarManifestModifier {
   }
 
   // The patches change jars in the lib and modules folders
-  // Left: the folders that the current user cannot read. Then nobody can tell if a jar in them is patched.
+  // Left: the jars and folders that the current user cannot read. Then nobody can tell if a jar in them is patched.
   def findPatchedFiles(esDirectory: EsDirectory): Either[List[os.Path], List[PatchedJarFile]] = {
     val collector = new JarFilesCollector
     List(esDirectory.libPath, esDirectory.modulesPath).foreach { directory =>
       Files.walkFileTree(directory.toNIO, collector)
     }
-    if (collector.inaccessibleFolders.nonEmpty) Left(collector.inaccessibleFolders.toList.map(os.Path(_)))
+    if (collector.inaccessiblePaths.nonEmpty) Left(collector.inaccessiblePaths.toList.map(os.Path(_)))
     else Right(collector.jars.toList.flatMap(findPatchedJarFile))
   }
 
+  // A damaged jar is not a patched jar, so it gives no result
   private def findPatchedJarFile(jar: JPath): Option[PatchedJarFile] = {
     Using(new JarFile(jar.toFile)) { jarFile =>
       val rorVersion = Option(jarFile.getManifest.getMainAttributes.getValue(patchedByRorVersionPropertyName))
@@ -102,19 +103,22 @@ object JarManifestModifier {
 
   final case class PatchedJarFile(name: String, patchedByRorVersion: String)
 
-  // Collects the jar files, and the folders that the current user cannot read. Other I/O errors stop the walk.
+  // Collects the jar files, and the jars and folders that the current user cannot read. Other I/O errors stop the walk.
   private final class JarFilesCollector extends SimpleFileVisitor[JPath] {
     val jars: ListBuffer[JPath] = ListBuffer.empty
-    val inaccessibleFolders: ListBuffer[JPath] = ListBuffer.empty
+    val inaccessiblePaths: ListBuffer[JPath] = ListBuffer.empty
 
+    // JarFile reports an unreadable file as FileNotFoundException, so the check of the permission comes before it
     override def visitFile(file: JPath, attributes: BasicFileAttributes): FileVisitResult = {
-      if (file.getFileName.toString.endsWith(".jar")) jars += file
+      if (file.getFileName.toString.endsWith(".jar")) {
+        if (Files.isReadable(file)) jars += file else inaccessiblePaths += file
+      }
       FileVisitResult.CONTINUE
     }
 
     override def visitFileFailed(file: JPath, exception: IOException): FileVisitResult = exception match {
       case _: AccessDeniedException =>
-        inaccessibleFolders += file
+        inaccessiblePaths += file
         FileVisitResult.CONTINUE
       case other => throw other
     }

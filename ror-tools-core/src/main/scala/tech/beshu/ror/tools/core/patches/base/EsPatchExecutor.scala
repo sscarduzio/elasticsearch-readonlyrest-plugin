@@ -163,8 +163,8 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
     // - we search for any patched jar files
     val backupFolderExists = rorPluginDirectory.doesBackupFolderExist
     JarManifestModifier.findPatchedFiles(rorPluginDirectory.esDirectory) match {
-      case Left(inaccessibleFolders) =>
-        PatchProblemDetected(EsFoldersInaccessible(inaccessibleFolders))
+      case Left(inaccessiblePaths) =>
+        PatchProblemDetected(EsPathsInaccessible(inaccessiblePaths))
       case Right(patchedJarFiles) if backupFolderExists || patchedJarFiles.nonEmpty =>
         PatchProblemDetected(
           CorruptedPatchWithoutValidMetadata(
@@ -230,7 +230,7 @@ object EsPatchExecutor {
 
     final case class PatchedFilesInaccessible(files: List[os.Path]) extends PatchProblem
 
-    final case class EsFoldersInaccessible(folders: List[os.Path]) extends PatchProblem
+    final case class EsPathsInaccessible(paths: List[os.Path]) extends PatchProblem
   }
 
   implicit class PatchProblemOps(val patchProblem: PatchProblem) extends AnyVal {
@@ -248,8 +248,8 @@ object EsPatchExecutor {
         PatchMetadataInaccessibleError(metadataFile)
       case PatchProblem.PatchedFilesInaccessible(files) =>
         PatchedFilesInaccessibleError(files)
-      case PatchProblem.EsFoldersInaccessible(folders) =>
-        EsFoldersInaccessibleError(folders)
+      case PatchProblem.EsPathsInaccessible(paths) =>
+        EsPathsInaccessibleError(paths)
     }
 
   }

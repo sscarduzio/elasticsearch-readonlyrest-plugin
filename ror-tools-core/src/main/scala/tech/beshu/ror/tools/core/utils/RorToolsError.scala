@@ -81,11 +81,11 @@ object RorToolsError {
            |$permissionProblemAdvice""".stripMargin
       )
 
-  final case class EsFoldersInaccessibleError(folders: List[os.Path])
+  final case class EsPathsInaccessibleError(paths: List[os.Path])
       extends RorToolsError(
-        s"""Cannot read the Elasticsearch folders: ${folders.mkString(",")}.
-           |ror-tools cannot check if Elasticsearch is patched, because the current user has no permission to read these folders.
-           |Make sure that the user that runs Elasticsearch can read these folders.
+        s"""Cannot read these Elasticsearch files or folders: ${paths.mkString(",")}.
+           |ror-tools cannot check if Elasticsearch is patched, because the current user has no permission to read them.
+           |Make sure that the user that runs Elasticsearch can read them.
            |$permissionProblemAdvice""".stripMargin
       )
 
