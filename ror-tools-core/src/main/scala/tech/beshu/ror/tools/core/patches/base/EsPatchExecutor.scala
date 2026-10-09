@@ -116,6 +116,7 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
       case Success(()) =>
         Right(inOut.println("Elasticsearch is unpatched! ReadonlyREST can be removed now"))
       case Failure(exception) =>
+        inOut.printlnErr(restoreFailureMessage(exception))
         throw exception
     }
   }
