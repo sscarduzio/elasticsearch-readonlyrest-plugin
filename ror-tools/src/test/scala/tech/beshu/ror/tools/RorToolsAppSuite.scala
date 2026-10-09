@@ -543,6 +543,10 @@ class RorToolsAppSuite
       setPermissionsAndGroup(pluginDirectory / "plugin-descriptor.properties", "rw-rw-rw-", group.get)
       if (netty4JarIsCopied) setPermissionsAndGroup(sourceNetty4Jar.get, "rw-rw-rw-", group.get)
       if (policyFileIsReplaced) setPermissionsAndGroup(policyFile, "rw-rw-rw-", group.get)
+      // The patches replace jars in the lib and modules folders
+      List(esDirectory / "lib", esDirectory / "modules")
+        .flatMap(_.listRecursively.filter(_.name.endsWith(".jar")))
+        .foreach(setPermissionsAndGroup(_, "rw-rw-rw-", group.get))
 
       val (patchResult, _) = captureResultAndOutput {
         RorToolsTestApp.run(
@@ -556,6 +560,11 @@ class RorToolsAppSuite
       if (netty4JarIsCopied)
         permissionsAndGroupOf(pluginDirectory / sourceNetty4Jar.get.name) should equal(("rw-rw-rw-", group.get))
       if (policyFileIsReplaced) permissionsAndGroupOf(policyFile) should equal(("rw-rw-rw-", group.get))
+      readMetadataFile().patchedFilesMetadata.map(metadata => File(metadata.path.wrapped)).foreach { patchedFile =>
+        withClue(s"$patchedFile: ") {
+          permissionsAndGroupOf(patchedFile) should equal(("rw-rw-rw-", group.get))
+        }
+      }
     }
     List(
       "the backup folder" -> backupDirectory,
