@@ -329,7 +329,8 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
   private val patchBackupFolder = s"$esHome/plugins/readonlyrest/patch_backup"
 
   // A copy of the ES files that ror-tools reads or changes. The ES user owns the copy, and the copy has the group
-  // `daemon`, which the ES user is not a member of.
+  // `daemon`, which the ES user is not a member of. The ES 7.x+ images make the ES folders read-only (e.g. mode
+  // 0555), and only root can write to them. So the copy gives the owner write permission, as a non-root patching needs.
   private val esCopyHome = "/tmp/es-with-foreign-group"
 
   private val copyEsWithForeignGroupCommand =
@@ -337,7 +338,7 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
       s"cp -a $esHome/lib $esCopyHome/ && cp -a $esHome/plugins/readonlyrest $esCopyHome/plugins/ && " +
       s"for module in x-pack-core x-pack-ilm x-pack-security transport-netty4; do " +
       s"if [ -d $esHome/modules/$$module ]; then cp -a $esHome/modules/$$module $esCopyHome/modules/; fi; done && " +
-      s"chown -R elasticsearch:daemon $esCopyHome && " +
+      s"chmod -R u+w $esCopyHome && chown -R elasticsearch:daemon $esCopyHome && " +
       s"! id -nG elasticsearch | grep -qw daemon"
 
   // ES 6.x images have no bundled JDK, so the command falls back to JAVA_HOME. ror-tools writes temporary files
