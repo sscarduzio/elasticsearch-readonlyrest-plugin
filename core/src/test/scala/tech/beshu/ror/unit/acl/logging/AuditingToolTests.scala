@@ -59,6 +59,8 @@ import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.positiveInt
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import java.nio.file.attribute.PosixFilePermission
 import java.time.*
@@ -475,6 +477,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     "rolling file output is used" should {
       "return a creation error" when {
         "the parent directory does not exist" in {
+          assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
           // Log4j creates missing directories via Files.createDirectories, so to reliably
           // prevent creation we need the grandparent to be non-writable.
           val tempDir = File.newTemporaryDirectory("ror-audit-test-")
@@ -518,6 +521,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         }
 
         "the parent directory has no write permission" in {
+          assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
           val tempDir = File.newTemporaryDirectory("ror-audit-test-")
           try {
             tempDir.setPermissions(
@@ -558,6 +562,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         }
 
         "the log file exists but is not writable" in {
+          assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
           val tempDir = File.newTemporaryDirectory("ror-audit-test-")
           try {
             val logFile = tempDir / "audit.log"
