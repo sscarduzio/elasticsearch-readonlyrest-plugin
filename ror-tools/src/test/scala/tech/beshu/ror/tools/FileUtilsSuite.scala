@@ -19,7 +19,7 @@ package tech.beshu.ror.tools
 import better.files.File
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.tools.core.utils.FileUtils.{getFilePermissionsAndOwner, setFilePermissionsAndOwner}
+import tech.beshu.ror.tools.core.utils.FileUtils.replaceKeepingPermissionsAndOwner
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
@@ -41,15 +41,15 @@ class FileUtilsSuite extends AnyWordSpec with Matchers {
           val file = (directory / "file").createFile()
           try {
             setDosFlags(file, originalFlags)
-            val originalPermissionsAndOwner = file.getFilePermissionsAndOwner
 
-            // Windows does not replace a read-only file
-            dosView(file).setReadOnly(false)
-            val newFile = (directory / "new-file").createFile()
-            // The new content has the archive flag, so backup tools see the change
-            dosView(newFile).setArchive(true)
-            Files.move(newFile.path, file.path, StandardCopyOption.REPLACE_EXISTING)
-            file.setFilePermissionsAndOwner(originalPermissionsAndOwner)
+            file.replaceKeepingPermissionsAndOwner {
+              // Windows does not replace a read-only file
+              dosView(file).setReadOnly(false)
+              val newFile = (directory / "new-file").createFile()
+              // The new content has the archive flag, so backup tools see the change
+              dosView(newFile).setArchive(true)
+              Files.move(newFile.path, file.path, StandardCopyOption.REPLACE_EXISTING)
+            }
 
             // The new content is not read-only
             dosFlagsOf(file) should equal(originalFlags.copy(readOnly = false, archive = true))
