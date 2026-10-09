@@ -29,7 +29,7 @@ import java.nio.file.{Files, StandardCopyOption}
 class FileUtilsSuite extends AnyWordSpec with Matchers {
 
   "FileUtils" should {
-    "restore the DOS flags of a file that was replaced, but keep the archive flag of the new content" in {
+    "restore the hidden and system flags of a file that was replaced, and keep the read-only and archive flags of the new content" in {
       assume(OsUtils.currentOs == CurrentOs.Windows, "the DOS flags are used only on Windows")
       File.usingTemporaryDirectory() { directory =>
         val file = (directory / "file").createFile()
@@ -47,7 +47,8 @@ class FileUtilsSuite extends AnyWordSpec with Matchers {
           Files.move(newFile.path, file.path, StandardCopyOption.REPLACE_EXISTING)
           file.setFilePermissionsAndOwner(originalPermissionsAndOwner)
 
-          dosFlagsOf(file) should equal(originalFlags.copy(archive = true))
+          // The new content is not read-only
+          dosFlagsOf(file) should equal(originalFlags.copy(readOnly = false, archive = true))
         } finally {
           // Windows does not delete a read-only file
           dosView(file).setReadOnly(false)
