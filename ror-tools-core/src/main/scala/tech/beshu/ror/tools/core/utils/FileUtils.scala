@@ -73,7 +73,7 @@ object FileUtils {
   given javaFileToFile: Conversion[java.io.File, File] with
     def apply(jFile: java.io.File): File = File(jFile.toPath)
 
-  private sealed trait FilePermissionsAndOwner
+  sealed trait FilePermissionsAndOwner
 
   // The implementation details of FilePermissionsAndOwner should not leak outside of this file
   private final case class OriginalFilePermissionsAndOwner(
