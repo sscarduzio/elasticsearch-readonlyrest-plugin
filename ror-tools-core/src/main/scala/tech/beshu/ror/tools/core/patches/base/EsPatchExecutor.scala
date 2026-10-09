@@ -74,9 +74,9 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
   private def doPatch(): Either[RorToolsError, Unit] = {
     backup()
     inOut.println("Patching ...")
-    Try(esPatch.performPatching()) match {
-      case Success(filePatchMetadataList) =>
-        rorPluginDirectory.updateEsPatchMetadata(filePatchMetadataList)
+    // Without the metadata file, ror-tools cannot use the backup later, so a failed write is a failed patching
+    Try(rorPluginDirectory.updateEsPatchMetadata(esPatch.performPatching())) match {
+      case Success(()) =>
         inOut.println("Elasticsearch is patched! ReadonlyREST is ready to use")
         Right(())
       case Failure(ex) =>
@@ -90,12 +90,13 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
     inOut.println("Patching failed, restoring the original files ...")
     Try(esPatch.performRestore()) match {
       case Success(()) =>
-        // performRestore() removes the backup folder
+        // performRestore() removes the backup folder, together with the metadata file in it
         inOut.println("The original files are restored")
       case Failure(restoreFailure) =>
         patchingFailure.addSuppressed(restoreFailure)
         inOut.printlnErr(
-          s"ERROR: Cannot restore the original files. The ${rorPluginDirectory.backupFolderPath} folder keeps them. Do not remove this folder."
+          s"""ERROR: Cannot restore the original files. Elasticsearch is in a corrupted state and must be reinstalled.
+             |The ${rorPluginDirectory.backupFolderPath} folder keeps the original files that ror-tools patched.""".stripMargin
         )
     }
   }

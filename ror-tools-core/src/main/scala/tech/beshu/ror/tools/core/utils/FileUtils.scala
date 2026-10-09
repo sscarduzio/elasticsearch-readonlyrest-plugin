@@ -113,8 +113,8 @@ object FileUtils {
     val currentGroup = view.readAttributes().group()
     if (currentGroup != group) {
       Try(view.setGroup(group)) match {
-        case Success(())                                     => ()
-        case Failure(ex: FileSystemException) if isEPERM(ex) =>
+        case Success(())                                                        => ()
+        case Failure(ex: FileSystemException) if isPlainFileSystemException(ex) =>
           ConsoleInOut.printlnErr(
             s"WARNING: Cannot set the group of $path to ${group.getName} (${ex.getReason}). " +
               s"The file keeps the group ${currentGroup.getName}."
@@ -124,8 +124,9 @@ object FileUtils {
     }
   }
 
-  // The JDK reports EPERM as a plain FileSystemException. Its subclasses (e.g. AccessDeniedException) are other errors.
-  private def isEPERM(ex: FileSystemException) = ex.getClass == classOf[FileSystemException]
+  // The JDK reports EPERM as a plain FileSystemException, together with the other errors that have no subclass
+  // (e.g. EROFS). Errors with a subclass (e.g. AccessDeniedException for EACCES) are not tolerated.
+  private def isPlainFileSystemException(ex: FileSystemException) = ex.getClass == classOf[FileSystemException]
 
   private def getOriginalPermissions(path: Path): FilePermissions = {
     if (isWindows) {
