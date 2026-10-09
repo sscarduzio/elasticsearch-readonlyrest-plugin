@@ -34,7 +34,7 @@ import scala.util.{Failure, Success, Try}
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   private val rorPath: Path = readonlyrestPluginPath(esDirectory.path)
-  private val backupFolderPath: Path = rorPath / "patch_backup"
+  val backupFolderPath: Path = rorPath / "patch_backup"
   val patchMetadataFilePath: Path = backupFolderPath / "patch_metadata"
   private val pluginPropertiesFilePath = rorPath / "plugin-descriptor.properties"
 

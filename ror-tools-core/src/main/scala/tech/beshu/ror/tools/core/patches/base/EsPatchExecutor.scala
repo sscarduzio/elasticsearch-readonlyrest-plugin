@@ -80,8 +80,23 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
         inOut.println("Elasticsearch is patched! ReadonlyREST is ready to use")
         Right(())
       case Failure(ex) =>
-        rorPluginDirectory.clearBackupFolder()
+        restoreAfterFailedPatching(ex)
         throw ex
+    }
+  }
+
+  // backup() is complete before the patching starts, so each file that the patching changed has a copy in the backup folder
+  private def restoreAfterFailedPatching(patchingFailure: Throwable): Unit = {
+    inOut.println("Patching failed, restoring the original files ...")
+    Try(esPatch.performRestore()) match {
+      case Success(()) =>
+        // performRestore() removes the backup folder
+        inOut.println("The original files are restored")
+      case Failure(restoreFailure) =>
+        patchingFailure.addSuppressed(restoreFailure)
+        inOut.printlnErr(
+          s"ERROR: Cannot restore the original files. The ${rorPluginDirectory.backupFolderPath} folder keeps them. Do not remove this folder."
+        )
     }
   }
 
