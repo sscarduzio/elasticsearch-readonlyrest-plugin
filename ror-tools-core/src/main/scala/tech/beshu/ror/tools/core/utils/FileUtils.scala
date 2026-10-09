@@ -43,6 +43,11 @@ object FileUtils {
     digest.digest.map("%02x".format(_)).mkString
   }
 
+  def haveSameContent(first: Path, second: Path): Boolean = {
+    Files.size(first) == Files.size(second) &&
+    java.util.Arrays.equals(Files.readAllBytes(first), Files.readAllBytes(second))
+  }
+
   extension (file: File) {
 
     def setFilePermissionsAndOwner(filePermissionsAndOwner: FilePermissionsAndOwner): File = {

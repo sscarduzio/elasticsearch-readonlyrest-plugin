@@ -20,9 +20,9 @@ import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.PatchProblem.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.{EsPatchStatus, PatchProblem}
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
-import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.JarManifestModifier
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.JarManifestModifier.PatchedJarFile
+import tech.beshu.ror.tools.core.patches.internal.{FilesNotRestoredException, RorPluginDirectory}
 import tech.beshu.ror.tools.core.utils.RorToolsError.*
 import tech.beshu.ror.tools.core.utils.{EsDirectory, FileUtils, InOut, RorToolsError}
 
@@ -85,7 +85,8 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
     }
   }
 
-  // backup() is complete before the patching starts, so each file that the patching changed has a copy in the backup folder
+  // backup() is complete before the patching starts, so each file that the patching changed has a copy in the backup folder.
+  // The restore does not write a file that the patching did not change, so it fails only for a changed file.
   private def restoreAfterFailedPatching(patchingFailure: Throwable): Unit = {
     inOut.println("Patching failed, restoring the original files ...")
     Try(esPatch.performRestore()) match {
@@ -94,11 +95,19 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
         inOut.println("The original files are restored")
       case Failure(restoreFailure) =>
         patchingFailure.addSuppressed(restoreFailure)
-        inOut.printlnErr(
-          s"""ERROR: Cannot restore the original files. Elasticsearch is in a corrupted state and must be reinstalled.
-             |The ${rorPluginDirectory.backupFolderPath} folder keeps the original files that ror-tools patched.""".stripMargin
-        )
+        inOut.printlnErr(restoreFailureMessage(restoreFailure))
     }
+  }
+
+  private def restoreFailureMessage(restoreFailure: Throwable) = restoreFailure match {
+    case filesNotRestored: FilesNotRestoredException =>
+      s"""ERROR: Cannot restore these files: ${filesNotRestored.getMessage}
+         |Elasticsearch is in a corrupted state and must be reinstalled.
+         |The ${rorPluginDirectory.backupFolderPath} folder keeps the original files that ror-tools patched.""".stripMargin
+    // performRestore() removes the backup folder after it restores all files
+    case other =>
+      s"""ERROR: The original files are restored, but ror-tools cannot remove the ${rorPluginDirectory.backupFolderPath} folder (${other.getMessage}).
+         |Remove this folder, and then run ror-tools again.""".stripMargin
   }
 
   private def doRestore() = {

@@ -35,7 +35,7 @@ import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
-import java.nio.file.attribute.{PosixFileAttributeView, PosixFileAttributes, PosixFilePermissions}
+import java.nio.file.attribute.{BasicFileAttributes, PosixFileAttributeView, PosixFileAttributes, PosixFilePermissions}
 import java.nio.file.{Files, Path}
 import java.util.UUID
 import java.util.jar.JarFile
@@ -651,13 +651,46 @@ class RorToolsAppSuite
       backupDirectory.exists() should be(false)
       FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation) should equal(hashBeforePatching)
     }
-    "Patching replaces the transport netty4 jar that stays in the plugin folder from an incomplete patching" in {
+    "Failed patching does not write the files that the patching did not change" in {
+      // Each ES version patches the ES jar in the lib folder first. A damaged ES jar makes the patching fail before it
+      // changes a file. Then the restore must not write any file, because it can have no write permission for them
+      // (e.g. a read-only module folder of a non-root user).
+      val esJar = esDirectory / "lib" / s"elasticsearch-$esVersionUsed.jar"
+      esJar.overwrite("not a jar file")
+      val xPackSecurityJar = esDirectory / "modules" / "x-pack-security" / s"x-pack-security-$esVersionUsed.jar"
+      val unchangedFiles = List(esJar, xPackSecurityJar).filter(_.exists())
+      // A replaced file gets a new file key, so the same key shows that the restore did not replace the file
+      val fileKeysBeforePatching = unchangedFiles.map(fileKeyOf)
+      val filesExcludedFromHashCalculation = List("plugin-security.policy.tmp")
+      val hashBeforePatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
+
+      val (patchResult, patchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+
+      patchResult should equal(Result.Failure)
+      patchOutput should include(
+        """Patching ...
+          |Patching failed, restoring the original files ...
+          |The original files are restored
+          |UNEXPECTED ERROR:""".stripMarginAndReplaceWindowsLineBreak
+      )
+      backupDirectory.exists() should be(false)
+      FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation) should equal(hashBeforePatching)
+      unchangedFiles.map(fileKeyOf) should equal(fileKeysBeforePatching)
+    }
+    "Patching replaces the transport netty4 jars that stay in the plugin folder from an incomplete patching" in {
       // ES 8.x and 9.x patches copy the transport netty4 jar to the plugin folder
       assume(executedOn(allEs8x, allEs9x), "only these ES versions copy the transport netty4 jar")
       val sourceNetty4Jar = (esDirectory / "modules" / "transport-netty4").list
         .find(_.name.matches("""^transport-netty4-.+\.jar$"""))
         .get
-      val leftoverNetty4Jar = (esDirectory / "plugins" / "readonlyrest" / sourceNetty4Jar.name).write("not a jar file")
+      val pluginDirectory = esDirectory / "plugins" / "readonlyrest"
+      val leftoverNetty4Jar = (pluginDirectory / sourceNetty4Jar.name).write("not a jar file")
+      // A jar from the patching of another ES version
+      val leftoverNetty4JarOfOtherEsVersion = (pluginDirectory / "transport-netty4-1.0.0.jar").write("not a jar file")
 
       val (patchResult, patchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(
@@ -667,6 +700,7 @@ class RorToolsAppSuite
 
       patchResult should equal(Result.Success)
       patchOutput should include("Elasticsearch is patched! ReadonlyREST is ready to use")
+      leftoverNetty4JarOfOtherEsVersion.exists() should be(false)
       // The leftover file is not a jar file. After the patching, the file is the copy of the ES jar.
       Try(new JarFile(leftoverNetty4Jar.toJava).close()).isSuccess should be(true)
     }
@@ -848,6 +882,11 @@ class RorToolsAppSuite
 
   private def setPermissions(file: File, permissions: String): Unit = {
     Files.setPosixFilePermissions(file.path, PosixFilePermissions.fromString(permissions))
+  }
+
+  // Windows gives no file key, so there the comparison of file keys checks nothing
+  private def fileKeyOf(file: File): Option[AnyRef] = {
+    Option(Files.readAttributes(file.path, classOf[BasicFileAttributes]).fileKey())
   }
 
   private def permissionsOf(file: File): String = {

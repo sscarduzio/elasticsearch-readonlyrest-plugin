@@ -26,6 +26,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
 import tech.beshu.ror.tools.core.utils.FileUtils
 
 import scala.language.postfixOps
+import scala.util.Try
 
 private[patches] abstract class FilePatch {
   def backup(): Unit
@@ -93,10 +94,21 @@ private[patches] class MultiFilePatch(filePatches: FilePatch*) {
     filePatches.flatMap(_.patch()).toList
   }
 
+  // A failed file does not stop the restore of the other files, so the error names each file that is not restored
   def restore(): Unit = {
-    filePatches.foreach(_.restore())
+    filePatches.toList.flatMap(filePatch => Try(filePatch.restore()).failed.toOption) match {
+      case Nil      => ()
+      case failures => throw new FilesNotRestoredException(failures)
+    }
   }
 
+}
+
+private[patches] final class FilesNotRestoredException(failures: List[Throwable])
+    extends IllegalStateException(
+      failures.map(failure => Option(failure.getMessage).getOrElse(failure.toString)).mkString(", ")
+    ) {
+  failures.foreach(addSuppressed)
 }
 
 private[patches] class OptionalFilePatchDecorator[FP <: FilePatch](underlying: FP, fileToPatchPath: Path)
