@@ -58,9 +58,10 @@ object JarManifestModifier {
     file.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
   }
 
+  // The patches change jars in the lib and modules folders
   def findPatchedFiles(esDirectory: EsDirectory): List[PatchedJarFile] = {
-    val directory = File(esDirectory.modulesPath.wrapped)
-    directory.walk().filter(_.name.endsWith(".jar")).toList.flatMap { file =>
+    val directories = List(esDirectory.libPath, esDirectory.modulesPath).map(path => File(path.wrapped))
+    directories.flatMap(_.walk().filter(_.name.endsWith(".jar"))).flatMap { file =>
       Using(new JarFile(file.toJava)) { jarFile =>
         val rorVersion = Option(jarFile.getManifest.getMainAttributes.getValue(patchedByRorVersionPropertyName))
         rorVersion.map(PatchedJarFile(file.name, _))

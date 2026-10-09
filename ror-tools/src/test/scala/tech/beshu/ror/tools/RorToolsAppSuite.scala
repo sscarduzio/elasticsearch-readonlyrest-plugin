@@ -466,10 +466,38 @@ class RorToolsAppSuite
            | - otherwise the ES installation is corrupted and ES must be reinstalled
            |Problems:
            | - backup catalog is present, but there is no metadata file
+           | - file elasticsearch-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
+           | - file elasticsearch-entitlement-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
            | - file x-pack-core-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
            | - file x-pack-ilm-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
            | - file x-pack-security-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
            |""".stripMarginAndReplaceWindowsLineBreak
+      )
+    }
+    "The corrupted patch is detected when the metadata file and the backup folder are missing and `verify` command is executed" in {
+      val (patchResult, _) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+      patchResult should equal(Result.Success)
+      val metadata = readMetadataFile()
+
+      backupDirectory.delete()
+      backupDirectory.exists() should be(false)
+
+      val (verifyResult, verifyOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+      }
+      verifyResult should equal(Result.Failure)
+      verifyOutput.replace("\r\n", "\n") should include(
+        s"""ERROR: Elasticsearch is either patched by an older version of ROR or corrupted.
+           | - if ES has been patched using some older ROR version, then try unpatching using that older ROR version
+           | - otherwise the ES installation is corrupted and ES must be reinstalled
+           |Problems:
+           | - there is no backup catalog
+           | - file elasticsearch-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
+           |""".stripMargin
       )
     }
     "Patching keeps permissions and group of the files that it creates or replaces" in {
