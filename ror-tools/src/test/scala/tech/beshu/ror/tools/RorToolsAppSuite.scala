@@ -498,7 +498,7 @@ class RorToolsAppSuite
            |Problems:
            | - there is no backup catalog
            | - file elasticsearch-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
-           |""".stripMargin
+           |""".stripMarginAndReplaceWindowsLineBreak
       )
     }
     "The removed patched file is reported when `verify` command is executed" in {
