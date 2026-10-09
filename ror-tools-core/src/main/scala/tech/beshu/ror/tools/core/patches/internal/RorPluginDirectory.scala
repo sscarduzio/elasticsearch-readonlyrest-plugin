@@ -21,10 +21,14 @@ import os.Path
 import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
-import tech.beshu.ror.tools.core.utils.EsDirectory
-import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
+import tech.beshu.ror.tools.core.utils.EsUtil.{
+  findTransportNetty4JarIn,
+  findTransportNetty4JarsIn,
+  readonlyrestPluginPath
+}
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 import tech.beshu.ror.tools.core.utils.FileUtils.osPathToFile
+import tech.beshu.ror.tools.core.utils.{EsDirectory, FileUtils}
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{AccessDeniedException, Files}
@@ -34,7 +38,7 @@ import scala.util.{Failure, Success, Try}
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   private val rorPath: Path = readonlyrestPluginPath(esDirectory.path)
-  private val backupFolderPath: Path = rorPath / "patch_backup"
+  val backupFolderPath: Path = rorPath / "patch_backup"
   val patchMetadataFilePath: Path = backupFolderPath / "patch_metadata"
   private val pluginPropertiesFilePath = rorPath / "plugin-descriptor.properties"
 
@@ -60,10 +64,14 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     backedUpFile.setFilePermissionsAndOwnerCopiedFrom(originalFile)
   }
 
+  // A file with the content of its backup stays as it is. So the restore after a patching that failed before it
+  // changed a file needs no write permission for that file (e.g. a read-only module folder of a non-root user).
   def restore(file: Path): Unit = {
     val backedUpFile = backupFolderPath / file.last
-    os.copy(from = backedUpFile, to = file, replaceExisting = true, copyAttributes = true)
-    file.setFilePermissionsAndOwnerCopiedFrom(backedUpFile)
+    if (!(os.exists(file) && FileUtils.haveSameContent(file.toNIO, backedUpFile.toNIO))) {
+      os.copy(from = backedUpFile, to = file, replaceExisting = true, copyAttributes = true)
+      file.setFilePermissionsAndOwnerCopiedFrom(backedUpFile)
+    }
   }
 
   def copyToPluginPath(file: Path): Unit = {
@@ -74,6 +82,10 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   def findTransportNetty4Jar: Option[Path] = {
     findTransportNetty4JarIn(rorPath)
+  }
+
+  def removeTransportNetty4Jars(): Unit = {
+    findTransportNetty4JarsIn(rorPath).foreach(os.remove)
   }
 
   def readEsPatchMetadata(): Option[EsPatchMetadata] = {

@@ -147,7 +147,7 @@ class PatchingOfAptBasedEsInstallationSuite
             }
             esNode.execAsRoot(s"chown root:root $patchBackupFolder && chmod 700 $patchBackupFolder")
             val verifyResult =
-              try esNode.execAsEsUser(rorToolsVerifyCommand)
+              try esNode.execAsEsUser(rorToolsCommand("verify", esHome))
               finally
                 esNode.execAsRoot(s"chown $originalOwner $patchBackupFolder && chmod $originalMode $patchBackupFolder")
 
@@ -155,6 +155,49 @@ class PatchingOfAptBasedEsInstallationSuite
             (verifyResult.getStdout + verifyResult.getStderr) should include(
               s"Cannot read the ROR patch metadata file $patchBackupFolder/patch_metadata"
             )
+          }
+          // CI runs the ror-tools tests as root, so this test checks the unreadable patched file as the ES user
+          "report the unreadable patched file, when the ES user cannot read a jar that ROR patched" in {
+            val esNode = linuxNodeOf(EsInstallationType.EsDockerImage)
+            val patchedJar = s"$esHome/lib/elasticsearch-$esVersionUsed.jar"
+            val originalMode = esNode.execAsRoot(s"stat -c '%a' $patchedJar").trim
+            esNode.execAsRoot(s"chmod 000 $patchedJar")
+            val verifyResult =
+              try esNode.execAsEsUser(rorToolsCommand("verify", esHome))
+              finally esNode.execAsRoot(s"chmod $originalMode $patchedJar")
+
+            verifyResult.getExitCode shouldNot be(0)
+            (verifyResult.getStdout + verifyResult.getStderr) should include(
+              s"Cannot read the files that ROR patched: $patchedJar."
+            )
+          }
+          // CI runs the ror-tools tests as root. Here the ES user owns the files, but it is not a member of their
+          // group, so Linux does not let it set that group. The test uses a copy of ES, so the node stays patched.
+          "unpatch and patch, when the user that owns the ES files is not a member of their group" in {
+            val esNode = linuxNodeOf(EsInstallationType.EsDockerImage)
+            esNode.execAsRoot(copyEsWithForeignGroupCommand)
+            val (unpatchResult, patchResult, verifyResult) =
+              try {
+                (
+                  esNode.execAsEsUser(rorToolsCommand("unpatch", esCopyHome)),
+                  esNode.execAsEsUser(rorToolsCommand("patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes", esCopyHome)),
+                  esNode.execAsEsUser(rorToolsCommand("verify", esCopyHome))
+                )
+              } finally esNode.execAsRoot(s"rm -rf $esCopyHome")
+
+            withClue(unpatchResult.getStdout + unpatchResult.getStderr) {
+              unpatchResult.getExitCode should be(0)
+              unpatchResult.getStdout should include("Elasticsearch is unpatched! ReadonlyREST can be removed now")
+              unpatchResult.getStderr should include("WARNING: Cannot set the group of")
+            }
+            withClue(patchResult.getStdout + patchResult.getStderr) {
+              patchResult.getExitCode should be(0)
+              patchResult.getStdout should include("Elasticsearch is patched! ReadonlyREST is ready to use")
+              patchResult.getStderr should include("WARNING: Cannot set the group of")
+            }
+            withClue(verifyResult.getStdout + verifyResult.getStderr) {
+              verifyResult.getExitCode should be(0)
+            }
           }
         }
         "installed on Ubuntu using apt" should {
@@ -285,10 +328,24 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
   private val esHome = "/usr/share/elasticsearch"
   private val patchBackupFolder = s"$esHome/plugins/readonlyrest/patch_backup"
 
-  // ES 6.x images have no bundled JDK, so the command falls back to JAVA_HOME
-  private val rorToolsVerifyCommand =
+  // A copy of the ES files that ror-tools reads or changes. The ES user owns the copy, and the copy has the group
+  // `daemon`, which the ES user is not a member of. The ES 7.x+ images make the ES folders read-only (e.g. mode
+  // 0555), and only root can write to them. So the copy gives the owner write permission, as a non-root patching needs.
+  private val esCopyHome = "/tmp/es-with-foreign-group"
+
+  private val copyEsWithForeignGroupCommand =
+    s"rm -rf $esCopyHome && mkdir -p $esCopyHome/bin $esCopyHome/modules $esCopyHome/plugins && " +
+      s"cp -a $esHome/lib $esCopyHome/ && cp -a $esHome/plugins/readonlyrest $esCopyHome/plugins/ && " +
+      s"for module in x-pack-core x-pack-ilm x-pack-security transport-netty4; do " +
+      s"if [ -d $esHome/modules/$$module ]; then cp -a $esHome/modules/$$module $esCopyHome/modules/; fi; done && " +
+      s"chmod -R u+w $esCopyHome && chown -R elasticsearch:daemon $esCopyHome && " +
+      s"! id -nG elasticsearch | grep -qw daemon"
+
+  // ES 6.x images have no bundled JDK, so the command falls back to JAVA_HOME. ror-tools writes temporary files
+  // to the working folder, so the command runs in the ES folder.
+  private def rorToolsCommand(command: String, esPath: String) =
     s"""if [ -x $esHome/jdk/bin/java ]; then java=$esHome/jdk/bin/java; else java="$$JAVA_HOME/bin/java"; fi; """ +
-      s""""$$java" -jar $esHome/plugins/readonlyrest/ror-tools.jar verify --es-path $esHome"""
+      s"""cd $esPath && "$$java" -jar $esHome/plugins/readonlyrest/ror-tools.jar $command --es-path $esPath"""
 
   private val uniqueClusterId: AtomicInt = AtomicInt(1)
 

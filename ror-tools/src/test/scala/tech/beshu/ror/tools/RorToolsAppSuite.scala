@@ -35,9 +35,10 @@ import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
-import java.nio.file.attribute.{PosixFileAttributeView, PosixFileAttributes, PosixFilePermissions}
+import java.nio.file.attribute.{BasicFileAttributes, PosixFileAttributeView, PosixFileAttributes, PosixFilePermissions}
 import java.nio.file.{Files, Path}
 import java.util.UUID
+import java.util.jar.JarFile
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -466,47 +467,132 @@ class RorToolsAppSuite
            | - otherwise the ES installation is corrupted and ES must be reinstalled
            |Problems:
            | - backup catalog is present, but there is no metadata file
+           | - file elasticsearch-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
+           | - file elasticsearch-entitlement-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
            | - file x-pack-core-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
            | - file x-pack-ilm-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
            | - file x-pack-security-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
            |""".stripMarginAndReplaceWindowsLineBreak
       )
     }
+    "The corrupted patch is detected when the metadata file and the backup folder are missing and `verify` command is executed" in {
+      val (patchResult, _) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+      patchResult should equal(Result.Success)
+      val metadata = readMetadataFile()
+
+      backupDirectory.delete()
+      backupDirectory.exists() should be(false)
+
+      val (verifyResult, verifyOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+      }
+      verifyResult should equal(Result.Failure)
+      verifyOutput.replace("\r\n", "\n") should include(
+        s"""ERROR: Elasticsearch is either patched by an older version of ROR or corrupted.
+           | - if ES has been patched using some older ROR version, then try unpatching using that older ROR version
+           | - otherwise the ES installation is corrupted and ES must be reinstalled
+           |Problems:
+           | - there is no backup catalog
+           | - file elasticsearch-$esVersionUsed.jar was patched by ROR ${metadata.rorVersion}
+           |""".stripMarginAndReplaceWindowsLineBreak
+      )
+    }
+    List(
+      "folder" -> (() => (esDirectory / "lib" / "folder-without-permissions").createDirectory()),
+      "jar" -> (() => (esDirectory / "lib" / "jar-without-permissions.jar").createFile())
+    ).foreach { case (name, createPathWithoutPermissions) =>
+      s"The inaccessible ES $name is reported when `verify` command is executed" in {
+        assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
+        // The root user can read all files and folders, so this test is not possible for root
+        assume(System.getProperty("user.name") != "root")
+        // Without the patch metadata file, ror-tools reads each jar in the lib and modules folders
+        val pathWithoutPermissions = createPathWithoutPermissions()
+        setPermissions(pathWithoutPermissions, "---------")
+        val (verifyResult, verifyOutput) =
+          try {
+            captureResultAndOutput {
+              RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+            }
+          } finally {
+            setPermissions(pathWithoutPermissions, "rwx------")
+          }
+
+        verifyResult should equal(Result.Failure)
+        verifyOutput should include(
+          s"""Checking if Elasticsearch is patched ...
+             |ERROR: Cannot read these Elasticsearch files or folders: ${pathWithoutPermissions.path}.
+             |ror-tools cannot check if Elasticsearch is patched, because the current user has no permission to read them.
+             |""".stripMarginAndReplaceWindowsLineBreak
+        )
+      }
+    }
+    "The removed patched file is reported when `verify` command is executed" in {
+      val (patchResult, _) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+      patchResult should equal(Result.Success)
+
+      val patchedFile = File(readMetadataFile().patchedFilesMetadata.last.path.wrapped)
+      patchedFile.delete()
+
+      val (verifyResult, verifyOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+      }
+      verifyResult should equal(Result.Failure)
+      verifyOutput should include(
+        s"""Checking if Elasticsearch is patched ...
+           |ERROR: Elasticsearch was patched, but files ${patchedFile.path} were modified after patching""".stripMarginAndReplaceWindowsLineBreak
+      )
+    }
     "Patching keeps permissions and group of the files that it creates or replaces" in {
+      assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
       // A new file gets "rw-rw-rw-" minus the umask, so a mode that is not kept fails the test
-      OsUtils.ignoreOnWindows {
-        assume(permissionsOfNewFile() != "rw-rw-rw-", "the umask must remove at least one write bit")
-        val pluginDirectory = esDirectory / "plugins" / "readonlyrest"
-        val policyFile = pluginDirectory / "plugin-security.policy"
-        val sourceNetty4Jar = (esDirectory / "modules" / "transport-netty4").list
-          .find(_.name.matches("""^transport-netty4-.+\.jar$"""))
-        // ES 8.x and 9.x patches copy the transport netty4 jar to the plugin folder
-        val netty4JarIsCopied = executedOn(allEs8x, allEs9x)
-        // ES 7.11 - 8.17 patches replace the ROR security policy file
-        val policyFileIsReplaced =
-          executedOn(allEs7x, allEs8x) && !executedOn(allEs7xBelowEs711x, allES8xAboveEs818x)
+      assume(permissionsOfNewFile() != "rw-rw-rw-", "the umask must remove at least one write bit")
+      val pluginDirectory = esDirectory / "plugins" / "readonlyrest"
+      val policyFile = pluginDirectory / "plugin-security.policy"
+      val sourceNetty4Jar = (esDirectory / "modules" / "transport-netty4").list
+        .find(_.name.matches("""^transport-netty4-.+\.jar$"""))
+      // ES 8.x and 9.x patches copy the transport netty4 jar to the plugin folder
+      val netty4JarIsCopied = executedOn(allEs8x, allEs9x)
+      // ES 7.11 - 8.17 patches replace the ROR security policy file
+      val policyFileIsReplaced =
+        executedOn(allEs7x, allEs8x) && !executedOn(allEs7xBelowEs711x, allES8xAboveEs818x)
 
-        // A group that a new file does not get by default, so a group that is not kept fails the test
-        val group = otherGroupThanOf(pluginDirectory)
-        assume(group.isDefined, "the current user must be able to set a second group")
+      // A group that a new file does not get by default, so a group that is not kept fails the test
+      val group = otherGroupThanOf(pluginDirectory)
+      assume(group.isDefined, "the current user must be able to set a second group")
 
-        setPermissionsAndGroup(pluginDirectory, "rwxrwxrwx", group.get)
-        setPermissionsAndGroup(pluginDirectory / "plugin-descriptor.properties", "rw-rw-rw-", group.get)
-        if (netty4JarIsCopied) setPermissionsAndGroup(sourceNetty4Jar.get, "rw-rw-rw-", group.get)
-        if (policyFileIsReplaced) setPermissionsAndGroup(policyFile, "rw-rw-rw-", group.get)
+      setPermissionsAndGroup(pluginDirectory, "rwxrwxrwx", group.get)
+      setPermissionsAndGroup(pluginDirectory / "plugin-descriptor.properties", "rw-rw-rw-", group.get)
+      if (netty4JarIsCopied) setPermissionsAndGroup(sourceNetty4Jar.get, "rw-rw-rw-", group.get)
+      if (policyFileIsReplaced) setPermissionsAndGroup(policyFile, "rw-rw-rw-", group.get)
+      // The patches replace jars in the lib and modules folders
+      List(esDirectory / "lib", esDirectory / "modules")
+        .flatMap(_.listRecursively.filter(_.name.endsWith(".jar")))
+        .foreach(setPermissionsAndGroup(_, "rw-rw-rw-", group.get))
 
-        val (patchResult, _) = captureResultAndOutput {
-          RorToolsTestApp.run(
-            Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
-          )(_, _)
+      val (patchResult, _) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+      patchResult should equal(Result.Success)
+
+      permissionsAndGroupOf(backupDirectory) should equal(("rwxrwxrwx", group.get))
+      permissionsAndGroupOf(patchMetadataFile) should equal(("rw-rw-rw-", group.get))
+      if (netty4JarIsCopied)
+        permissionsAndGroupOf(pluginDirectory / sourceNetty4Jar.get.name) should equal(("rw-rw-rw-", group.get))
+      if (policyFileIsReplaced) permissionsAndGroupOf(policyFile) should equal(("rw-rw-rw-", group.get))
+      readMetadataFile().patchedFilesMetadata.map(metadata => File(metadata.path.wrapped)).foreach { patchedFile =>
+        withClue(s"$patchedFile: ") {
+          permissionsAndGroupOf(patchedFile) should equal(("rw-rw-rw-", group.get))
         }
-        patchResult should equal(Result.Success)
-
-        permissionsAndGroupOf(backupDirectory) should equal(("rwxrwxrwx", group.get))
-        permissionsAndGroupOf(patchMetadataFile) should equal(("rw-rw-rw-", group.get))
-        if (netty4JarIsCopied)
-          permissionsAndGroupOf(pluginDirectory / sourceNetty4Jar.get.name) should equal(("rw-rw-rw-", group.get))
-        if (policyFileIsReplaced) permissionsAndGroupOf(policyFile) should equal(("rw-rw-rw-", group.get))
       }
     }
     List(
@@ -514,37 +600,147 @@ class RorToolsAppSuite
       "the metadata file" -> patchMetadataFile
     ).foreach { case (name, fileWithoutPermissions) =>
       s"The inaccessible metadata file is reported when `verify` command is executed ($name has no permissions)" in {
+        assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
         // The root user can read all files, so this test is not possible for root
-        OsUtils.ignoreOnWindows {
-          assume(System.getProperty("user.name") != "root")
-          val (patchResult, _) = captureResultAndOutput {
-            RorToolsTestApp.run(
-              Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
-            )(_, _)
-          }
-          patchResult should equal(Result.Success)
-
-          val originalPermissions = permissionsOf(fileWithoutPermissions)
-          setPermissions(fileWithoutPermissions, "---------")
-          val (verifyResult, verifyOutput) =
-            try {
-              captureResultAndOutput {
-                RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
-              }
-            } finally {
-              setPermissions(fileWithoutPermissions, originalPermissions)
-            }
-
-          verifyResult should equal(Result.Failure)
-          verifyOutput should include(
-            s"""Checking if Elasticsearch is patched ...
-               |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
-               |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content.
-               |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
-               |""".stripMarginAndReplaceWindowsLineBreak
-          )
+        assume(System.getProperty("user.name") != "root")
+        val (patchResult, _) = captureResultAndOutput {
+          RorToolsTestApp.run(
+            Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+          )(_, _)
         }
+        patchResult should equal(Result.Success)
+
+        val originalPermissions = permissionsOf(fileWithoutPermissions)
+        setPermissions(fileWithoutPermissions, "---------")
+        val (verifyResult, verifyOutput) =
+          try {
+            captureResultAndOutput {
+              RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+            }
+          } finally {
+            setPermissions(fileWithoutPermissions, originalPermissions)
+          }
+
+        verifyResult should equal(Result.Failure)
+        verifyOutput should include(
+          s"""Checking if Elasticsearch is patched ...
+             |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
+             |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content, and the files that ror-tools created or replaced in the ${backupDirectory.parent.path} folder (transport-netty4-*.jar on ES 8.x and 9.x, plugin-security.policy on ES 7.11 - 8.17).
+             |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
+             |""".stripMarginAndReplaceWindowsLineBreak
+        )
       }
+    }
+    "The inaccessible patched file is reported when `verify` command is executed" in {
+      assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
+      // The root user can read all files, so this test is not possible for root
+      assume(System.getProperty("user.name") != "root")
+      val (patchResult, _) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+      patchResult should equal(Result.Success)
+
+      val patchedFile = File(readMetadataFile().patchedFilesMetadata.last.path.wrapped)
+      val originalPermissions = permissionsOf(patchedFile)
+      setPermissions(patchedFile, "---------")
+      val (verifyResult, verifyOutput) =
+        try {
+          captureResultAndOutput {
+            RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+          }
+        } finally {
+          setPermissions(patchedFile, originalPermissions)
+        }
+
+      verifyResult should equal(Result.Failure)
+      verifyOutput should include(
+        s"""Checking if Elasticsearch is patched ...
+           |ERROR: Cannot read the files that ROR patched: ${patchedFile.path}.
+           |Elasticsearch is patched, but the current user has no permission to read these files.
+           |Make sure that the user that runs Elasticsearch can read these files.
+           |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
+           |""".stripMarginAndReplaceWindowsLineBreak
+      )
+    }
+    "Failed patching restores the original files and removes the backup" in {
+      // Each ES version patches the x-pack-security jar after the ES jar in the lib folder. A damaged x-pack-security
+      // jar makes the patching fail after the ES jar is patched.
+      val xPackSecurityJar = esDirectory / "modules" / "x-pack-security" / s"x-pack-security-$esVersionUsed.jar"
+      assume(xPackSecurityJar.exists(), "the ES distribution has no x-pack-security module")
+      xPackSecurityJar.overwrite("not a jar file")
+      val filesExcludedFromHashCalculation = List("plugin-security.policy.tmp")
+      val hashBeforePatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
+
+      val (patchResult, patchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+
+      patchResult should equal(Result.Failure)
+      patchOutput should include(
+        """Patching ...
+          |Patching failed, restoring the original files ...
+          |The original files are restored
+          |UNEXPECTED ERROR:""".stripMarginAndReplaceWindowsLineBreak
+      )
+      backupDirectory.exists() should be(false)
+      FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation) should equal(hashBeforePatching)
+    }
+    "Failed patching does not write the files that the patching did not change" in {
+      // Each ES version patches the ES jar in the lib folder first. A damaged ES jar makes the patching fail before it
+      // changes a file. Then the restore must not write any file, because it can have no write permission for them
+      // (e.g. a read-only module folder of a non-root user).
+      val esJar = esDirectory / "lib" / s"elasticsearch-$esVersionUsed.jar"
+      esJar.overwrite("not a jar file")
+      val xPackSecurityJar = esDirectory / "modules" / "x-pack-security" / s"x-pack-security-$esVersionUsed.jar"
+      val unchangedFiles = List(esJar, xPackSecurityJar).filter(_.exists())
+      // A replaced file gets a new file key, so the same key shows that the restore did not replace the file
+      val fileKeysBeforePatching = unchangedFiles.map(fileKeyOf)
+      val filesExcludedFromHashCalculation = List("plugin-security.policy.tmp")
+      val hashBeforePatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
+
+      val (patchResult, patchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+
+      patchResult should equal(Result.Failure)
+      patchOutput should include(
+        """Patching ...
+          |Patching failed, restoring the original files ...
+          |The original files are restored
+          |UNEXPECTED ERROR:""".stripMarginAndReplaceWindowsLineBreak
+      )
+      backupDirectory.exists() should be(false)
+      FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation) should equal(hashBeforePatching)
+      unchangedFiles.map(fileKeyOf) should equal(fileKeysBeforePatching)
+    }
+    "Patching replaces the transport netty4 jars that stay in the plugin folder from an incomplete patching" in {
+      // ES 8.x and 9.x patches copy the transport netty4 jar to the plugin folder
+      assume(executedOn(allEs8x, allEs9x), "only these ES versions copy the transport netty4 jar")
+      val sourceNetty4Jar = (esDirectory / "modules" / "transport-netty4").list
+        .find(_.name.matches("""^transport-netty4-.+\.jar$"""))
+        .get
+      val pluginDirectory = esDirectory / "plugins" / "readonlyrest"
+      val leftoverNetty4Jar = (pluginDirectory / sourceNetty4Jar.name).write("not a jar file")
+      // A jar from the patching of another ES version
+      val leftoverNetty4JarOfOtherEsVersion = (pluginDirectory / "transport-netty4-1.0.0.jar").write("not a jar file")
+
+      val (patchResult, patchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+
+      patchResult should equal(Result.Success)
+      patchOutput should include("Elasticsearch is patched! ReadonlyREST is ready to use")
+      leftoverNetty4JarOfOtherEsVersion.exists() should be(false)
+      // The leftover file is not a jar file. After the patching, the file is the copy of the ES jar.
+      Try(new JarFile(leftoverNetty4Jar.toJava).close()).isSuccess should be(true)
     }
     "Successfully patch, verify and unpatch" in {
       // This file is created after patching on Windows for ES 8.x
@@ -726,6 +922,11 @@ class RorToolsAppSuite
     Files.setPosixFilePermissions(file.path, PosixFilePermissions.fromString(permissions))
   }
 
+  // Windows gives no file key, so there the comparison of file keys checks nothing
+  private def fileKeyOf(file: File): Option[AnyRef] = {
+    Option(Files.readAttributes(file.path, classOf[BasicFileAttributes]).fileKey())
+  }
+
   private def permissionsOf(file: File): String = {
     PosixFilePermissions.toString(Files.getPosixFilePermissions(file.path))
   }
@@ -762,9 +963,12 @@ class RorToolsAppSuite
     finally probe.delete()
   }
 
+  private def readMetadataFile(): EsPatchMetadata = {
+    EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString).toOption.get
+  }
+
   private def modifyMetadataFile(f: EsPatchMetadata => EsPatchMetadata): Unit = {
-    val metadata = EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString).toOption.get
-    patchMetadataFile.overwrite(EsPatchMetadataCodec.encode(f(metadata)))
+    patchMetadataFile.overwrite(EsPatchMetadataCodec.encode(f(readMetadataFile())))
   }
 
   private def captureResultAndOutput(

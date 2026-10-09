@@ -17,19 +17,22 @@
 package tech.beshu.ror.tools.core.utils
 
 import better.files.File
+import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 
 import java.nio.file.attribute.{
   DosFileAttributeView,
+  DosFileAttributes,
   GroupPrincipal,
   PosixFileAttributeView,
   PosixFileAttributes,
   PosixFilePermission,
   UserPrincipal
 }
-import java.nio.file.{Files, Path}
+import java.nio.file.{FileSystemException, Files, Path}
 import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 
 object FileUtils {
 
@@ -38,6 +41,11 @@ object FileUtils {
     digest.update(filePath.toString.getBytes) // Include file path in hash
     digest.update(Files.readAllBytes(filePath)) // Include file contents in hash
     digest.digest.map("%02x".format(_)).mkString
+  }
+
+  def haveSameContent(first: Path, second: Path): Boolean = {
+    Files.size(first) == Files.size(second) &&
+    java.util.Arrays.equals(Files.readAllBytes(first), Files.readAllBytes(second))
   }
 
   extension (file: File) {
@@ -54,6 +62,12 @@ object FileUtils {
 
     def setFilePermissionsAndOwnerCopiedFrom(originalFile: File): File = {
       file.setFilePermissionsAndOwner(originalFile.getFilePermissionsAndOwner)
+    }
+
+    def replaceKeepingPermissionsAndOwner(replace: => Unit): Unit = {
+      val originalFilePermissionsAndOwner = file.getFilePermissionsAndOwner
+      replace
+      file.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
     }
 
     def getFilePermissionsAndOwner: FilePermissionsAndOwner = {
@@ -76,37 +90,66 @@ object FileUtils {
 
   // The implementation details of FilePermissionsAndOwner should not leak outside of this file
   private final case class OriginalFilePermissionsAndOwner(
-      filePermissions: Any,
+      filePermissions: FilePermissions,
       owner: UserPrincipal,
       group: Option[GroupPrincipal]
   ) extends FilePermissionsAndOwner
+
+  private sealed trait FilePermissions
+
+  private object FilePermissions {
+    final case class Posix(permissions: java.util.Set[PosixFilePermission]) extends FilePermissions
+
+    // Only the hidden and system flags are copied. The read-only flag is not copied, because ror-tools
+    // must be able to delete the files that it creates. The archive flag is not copied, because changed
+    // content must keep it: backup tools use it to find changed files. Windows ACLs are not copied.
+    final case class Dos(hidden: Boolean, system: Boolean) extends FilePermissions
+  }
 
   private def getGroup(path: Path): Option[GroupPrincipal] = {
     if (isWindows) None
     else Some(Files.readAttributes(path, classOf[PosixFileAttributes]).group())
   }
 
+  // Only root or a member of the target group can set the group of a file. When the user cannot set it,
+  // the file keeps its current group, as with Files.copy(COPY_ATTRIBUTES), and ror-tools prints a warning.
   private def setGroup(path: Path, group: GroupPrincipal): Unit = {
-    Files.getFileAttributeView(path, classOf[PosixFileAttributeView]).setGroup(group)
-  }
-
-  private def getOriginalPermissions(jarPath: Path): Any = {
-    if (isWindows) {
-      Files.getFileAttributeView(jarPath, classOf[DosFileAttributeView])
-    } else {
-      Files.getPosixFilePermissions(jarPath)
+    val view = Files.getFileAttributeView(path, classOf[PosixFileAttributeView])
+    val currentGroup = view.readAttributes().group()
+    if (currentGroup != group) {
+      Try(view.setGroup(group)) match {
+        case Success(())                                                        => ()
+        case Failure(ex: FileSystemException) if isPlainFileSystemException(ex) =>
+          ConsoleInOut.printlnErr(
+            s"WARNING: Cannot set the group of $path to ${group.getName} (${ex.getReason}). " +
+              s"The file keeps the group ${currentGroup.getName}."
+          )
+        case Failure(ex) => throw ex
+      }
     }
   }
 
-  private def setOriginalPermissions(jarPath: Path, permissions: Any): Unit = {
+  // The JDK reports EPERM as a plain FileSystemException, together with the other errors that have no subclass
+  // (e.g. EROFS). Errors with a subclass (e.g. AccessDeniedException for EACCES) are not tolerated.
+  private def isPlainFileSystemException(ex: FileSystemException) = ex.getClass == classOf[FileSystemException]
+
+  private def getOriginalPermissions(path: Path): FilePermissions = {
     if (isWindows) {
-      val view = permissions.asInstanceOf[DosFileAttributeView]
-      view.setReadOnly(view.readAttributes().isReadOnly)
-      view.setHidden(view.readAttributes().isHidden)
-      view.setArchive(view.readAttributes().isArchive)
-      view.setSystem(view.readAttributes().isSystem)
+      val attributes = Files.readAttributes(path, classOf[DosFileAttributes])
+      FilePermissions.Dos(attributes.isHidden, attributes.isSystem)
     } else {
-      Files.setPosixFilePermissions(jarPath, permissions.asInstanceOf[java.util.Set[PosixFilePermission]])
+      FilePermissions.Posix(Files.getPosixFilePermissions(path))
+    }
+  }
+
+  private def setOriginalPermissions(path: Path, permissions: FilePermissions): Unit = {
+    permissions match {
+      case FilePermissions.Posix(posixPermissions) =>
+        Files.setPosixFilePermissions(path, posixPermissions)
+      case FilePermissions.Dos(hidden, system) =>
+        val view = Files.getFileAttributeView(path, classOf[DosFileAttributeView])
+        view.setHidden(hidden)
+        view.setSystem(system)
     }
   }
 
