@@ -59,6 +59,12 @@ object FileUtils {
       file.setFilePermissionsAndOwner(originalFile.getFilePermissionsAndOwner)
     }
 
+    def replaceKeepingPermissionsAndOwner(replace: => Unit): Unit = {
+      val originalFilePermissionsAndOwner = file.getFilePermissionsAndOwner
+      replace
+      file.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
+    }
+
     def getFilePermissionsAndOwner: FilePermissionsAndOwner = {
       OriginalFilePermissionsAndOwner(
         getOriginalPermissions(file.path),

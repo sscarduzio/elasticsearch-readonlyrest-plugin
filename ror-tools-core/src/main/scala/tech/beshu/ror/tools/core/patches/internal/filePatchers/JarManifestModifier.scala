@@ -18,7 +18,7 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import better.files.*
 import tech.beshu.ror.tools.core.utils.EsDirectory
-import tech.beshu.ror.tools.core.utils.FileUtils.{getFilePermissionsAndOwner, setFilePermissionsAndOwner}
+import tech.beshu.ror.tools.core.utils.FileUtils.replaceKeepingPermissionsAndOwner
 
 import java.util.UUID
 import java.util.jar.{JarEntry, JarFile, JarOutputStream}
@@ -30,32 +30,32 @@ object JarManifestModifier {
   private val patchedByRorVersionPropertyName = "Patched-By-Ror-Version"
 
   def addPatchedByRorVersionProperty(file: File, rorVersion: String): Unit = {
-    val originalFilePermissionsAndOwner = file.getFilePermissionsAndOwner
-    val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
-    Using(new JarFile(file.toJava)) { jarFile =>
-      // Using the better-files temporary files causes problems, probably because of permission issues when copying the file at the end of this method.
-      val manifest = jarFile.getManifest
-      manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
-      Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
-        copyJarContentExceptManifestFile(jarFile, jarOutput)
+    file.replaceKeepingPermissionsAndOwner {
+      val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
+      Using(new JarFile(file.toJava)) { jarFile =>
+        // Using the better-files temporary files causes problems, probably because of permission issues when copying the file at the end of this method.
+        val manifest = jarFile.getManifest
+        manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
+        Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
+          copyJarContentExceptManifestFile(jarFile, jarOutput)
+        }.fold(
+          ex =>
+            throw IllegalStateException(
+              s"Could not copy content of jar file ${file.name} because of [${ex.getMessage}]",
+              ex
+            ),
+          (_: Unit) => ()
+        )
       }.fold(
         ex =>
           throw IllegalStateException(
-            s"Could not copy content of jar file ${file.name} because of [${ex.getMessage}]",
+            s"Could not add ROR version to jar file ${file.name} because of [${ex.getMessage}]",
             ex
           ),
         (_: Unit) => ()
       )
-    }.fold(
-      ex =>
-        throw IllegalStateException(
-          s"Could not add ROR version to jar file ${file.name} because of [${ex.getMessage}]",
-          ex
-        ),
-      (_: Unit) => ()
-    )
-    tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
-    file.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
+      tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
+    }
   }
 
   // The patches change jars in the lib and modules folders

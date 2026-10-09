@@ -28,24 +28,24 @@ private[patches] abstract class SecurityPolicyFileModifier extends FileModifier 
 
   protected def addPermission(policyFile: File, permission: String): Unit = {
     val policyJFile = policyFile.toJava
-    val originalFilePermissionsAndOwner = policyFile.getFilePermissionsAndOwner
-    val tmp = new JFile(policyJFile.getPath + ".tmp") // Temporary File
-    Using(new PrintWriter(tmp)) { writer =>
-      Using(Source.fromFile(policyJFile)) { source =>
-        source
-          .getLines()
-          .zipWithIndex
-          .flatMap {
-            case (line, 1) => List(permission, line)
-            case (line, _) => List(line)
-          }
-          .foreach(line => writer.println(line))
+    policyFile.replaceKeepingPermissionsAndOwner {
+      val tmp = new JFile(policyJFile.getPath + ".tmp") // Temporary File
+      Using(new PrintWriter(tmp)) { writer =>
+        Using(Source.fromFile(policyJFile)) { source =>
+          source
+            .getLines()
+            .zipWithIndex
+            .flatMap {
+              case (line, 1) => List(permission, line)
+              case (line, _) => List(line)
+            }
+            .foreach(line => writer.println(line))
+        }
       }
+      // NOT File.renameTo: on Windows it fails when the destination exists, and it reports that by
+      // returning false, so the permission would be dropped without a trace. Files.move throws instead.
+      Files.move(tmp.toPath, policyJFile.toPath, StandardCopyOption.REPLACE_EXISTING)
     }
-    // NOT File.renameTo: on Windows it fails when the destination exists, and it reports that by
-    // returning false, so the permission would be dropped without a trace. Files.move throws instead.
-    Files.move(tmp.toPath, policyJFile.toPath, StandardCopyOption.REPLACE_EXISTING)
-    policyFile.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
   }
 
 }
