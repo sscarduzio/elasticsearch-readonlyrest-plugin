@@ -538,11 +538,44 @@ class RorToolsAppSuite
         verifyOutput should include(
           s"""Checking if Elasticsearch is patched ...
              |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
-             |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content.
+             |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content, and the files that ror-tools created in the ${backupDirectory.parent.path} folder.
              |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
              |""".stripMarginAndReplaceWindowsLineBreak
         )
       }
+    }
+    "The inaccessible patched file is reported when `verify` command is executed" in {
+      assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
+      // The root user can read all files, so this test is not possible for root
+      assume(System.getProperty("user.name") != "root")
+      val (patchResult, _) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+      patchResult should equal(Result.Success)
+
+      val patchedFile = File(readMetadataFile().patchedFilesMetadata.last.path.wrapped)
+      val originalPermissions = permissionsOf(patchedFile)
+      setPermissions(patchedFile, "---------")
+      val (verifyResult, verifyOutput) =
+        try {
+          captureResultAndOutput {
+            RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+          }
+        } finally {
+          setPermissions(patchedFile, originalPermissions)
+        }
+
+      verifyResult should equal(Result.Failure)
+      verifyOutput should include(
+        s"""Checking if Elasticsearch is patched ...
+           |ERROR: Cannot read the files that ROR patched: ${patchedFile.path}.
+           |Elasticsearch is patched, but the current user has no permission to read these files.
+           |Make sure that the user that runs Elasticsearch can read these files.
+           |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
+           |""".stripMarginAndReplaceWindowsLineBreak
+      )
     }
     "Successfully patch, verify and unpatch" in {
       // This file is created after patching on Windows for ES 8.x
@@ -760,9 +793,12 @@ class RorToolsAppSuite
     finally probe.delete()
   }
 
+  private def readMetadataFile(): EsPatchMetadata = {
+    EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString).toOption.get
+  }
+
   private def modifyMetadataFile(f: EsPatchMetadata => EsPatchMetadata): Unit = {
-    val metadata = EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString).toOption.get
-    patchMetadataFile.overwrite(EsPatchMetadataCodec.encode(f(metadata)))
+    patchMetadataFile.overwrite(EsPatchMetadataCodec.encode(f(readMetadataFile())))
   }
 
   private def captureResultAndOutput(

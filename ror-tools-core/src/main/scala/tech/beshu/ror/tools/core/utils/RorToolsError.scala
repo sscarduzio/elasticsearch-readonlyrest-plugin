@@ -69,11 +69,22 @@ object RorToolsError {
   final case class PatchMetadataInaccessibleError(metadataFile: os.Path)
       extends RorToolsError(
         s"""Cannot read the ROR patch metadata file $metadataFile. Elasticsearch is possibly patched, but the current user has no permission to read this file.
-           |Make sure that the user that runs Elasticsearch can read the ${metadataFile / os.up} folder and its content.
-           |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
-           |This problem can occur when ES was patched with a restrictive umask (e.g. 077 with sudo).
-           |For patching instructions see our docs: $patchingDocumentationUrl""".stripMargin
+           |Make sure that the user that runs Elasticsearch can read the ${metadataFile / os.up} folder and its content, and the files that ror-tools created in the ${metadataFile / os.up / os.up} folder.
+           |$permissionProblemAdvice""".stripMargin
       )
+
+  final case class PatchedFilesInaccessibleError(files: List[os.Path])
+      extends RorToolsError(
+        s"""Cannot read the files that ROR patched: ${files.mkString(",")}.
+           |Elasticsearch is patched, but the current user has no permission to read these files.
+           |Make sure that the user that runs Elasticsearch can read these files.
+           |$permissionProblemAdvice""".stripMargin
+      )
+
+  private def permissionProblemAdvice =
+    s"""If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
+       |This problem can occur when ES was patched with a restrictive umask (e.g. 077 with sudo).
+       |For patching instructions see our docs: $patchingDocumentationUrl""".stripMargin
 
   final case class CorruptedPatchWithIllegalFileModificationsDetectedError(files: List[os.Path])
       extends RorToolsError(

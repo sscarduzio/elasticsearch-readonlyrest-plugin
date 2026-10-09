@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.tools.core.patches.base
 
-import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.EsPatchStatus.*
 import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.PatchProblem.*
+import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor.{EsPatchStatus, PatchProblem}
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.JarManifestModifier
@@ -26,6 +26,7 @@ import tech.beshu.ror.tools.core.patches.internal.filePatchers.JarManifestModifi
 import tech.beshu.ror.tools.core.utils.RorToolsError.*
 import tech.beshu.ror.tools.core.utils.{EsDirectory, FileUtils, InOut, RorToolsError}
 
+import java.nio.file.AccessDeniedException
 import scala.util.{Failure, Success, Try}
 
 final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsPatch)(
@@ -117,8 +118,8 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
           validatePatchedFiles(metadata.patchedFilesMetadata) match {
             case Right(()) =>
               PatchedWithCurrentRorVersion(currentRorVersion)
-            case Left(invalidFiles) =>
-              PatchProblemDetected(CorruptedPatchWithIllegalFileModificationsDetected(invalidFiles))
+            case Left(patchProblem) =>
+              PatchProblemDetected(patchProblem)
           }
         case Some(metadata) if metadata.rorVersion == currentRorVersion && !(metadata.esVersion == currentEsVersion) =>
           PatchProblemDetected(PatchPerformedOnOtherEsVersion(currentEsVersion.render, metadata.esVersion.render))
@@ -150,16 +151,21 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
     } else NotPatched
   }
 
-  private def validatePatchedFiles(patchedFilesMetadata: List[FilePatchMetadata]): Either[List[os.Path], Unit] = {
-    patchedFilesMetadata
-      .map { filePatchMetadata =>
-        val currentHash = FileUtils.calculateFileHash(filePatchMetadata.path.wrapped)
-        if (filePatchMetadata.hash == currentHash) Right(()) else Left(filePatchMetadata.path)
+  private def validatePatchedFiles(patchedFilesMetadata: List[FilePatchMetadata]): Either[PatchProblem, Unit] = {
+    val (inaccessibleFiles, filesWithCurrentHash) = patchedFilesMetadata.partitionMap { filePatchMetadata =>
+      Try(FileUtils.calculateFileHash(filePatchMetadata.path.wrapped)) match {
+        case Success(currentHash)              => Right((filePatchMetadata, currentHash))
+        case Failure(_: AccessDeniedException) => Left(filePatchMetadata.path)
+        case Failure(ex)                       => throw ex
       }
-      .partitionMap(identity) match {
-      case (paths, _) if paths.nonEmpty => Left(paths)
-      case _                            => Right(())
     }
+    val modifiedFiles = filesWithCurrentHash.collect {
+      case (filePatchMetadata, currentHash) if filePatchMetadata.hash != currentHash => filePatchMetadata.path
+    }
+    // Without read access to a file, nobody can tell if the file was modified
+    if (inaccessibleFiles.nonEmpty) Left(PatchedFilesInaccessible(inaccessibleFiles))
+    else if (modifiedFiles.nonEmpty) Left(CorruptedPatchWithIllegalFileModificationsDetected(modifiedFiles))
+    else Right(())
   }
 
   private def searchForPatchedJarFiles(): Either[List[PatchedJarFile], Unit] = {
@@ -200,6 +206,8 @@ object EsPatchExecutor {
     final case class CorruptedPatchWithIllegalFileModificationsDetected(files: List[os.Path]) extends PatchProblem
 
     final case class PatchMetadataInaccessible(metadataFile: os.Path) extends PatchProblem
+
+    final case class PatchedFilesInaccessible(files: List[os.Path]) extends PatchProblem
   }
 
   implicit class PatchProblemOps(val patchProblem: PatchProblem) extends AnyVal {
@@ -215,6 +223,8 @@ object EsPatchExecutor {
         CorruptedPatchWithoutValidMetadataError(backupFolderPresent, patchedJarFiles)
       case PatchProblem.PatchMetadataInaccessible(metadataFile) =>
         PatchMetadataInaccessibleError(metadataFile)
+      case PatchProblem.PatchedFilesInaccessible(files) =>
+        PatchedFilesInaccessibleError(files)
     }
 
   }
