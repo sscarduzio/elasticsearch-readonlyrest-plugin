@@ -473,28 +473,49 @@ class RorToolsAppSuite
       )
     }
     "Patching keeps permissions and group of the files that it creates or replaces" in {
+      assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
       // A new file gets "rw-rw-rw-" minus the umask, so a mode that is not kept fails the test
-      OsUtils.ignoreOnWindows {
-        assume(permissionsOfNewFile() != "rw-rw-rw-", "the umask must remove at least one write bit")
-        val pluginDirectory = esDirectory / "plugins" / "readonlyrest"
-        val policyFile = pluginDirectory / "plugin-security.policy"
-        val sourceNetty4Jar = (esDirectory / "modules" / "transport-netty4").list
-          .find(_.name.matches("""^transport-netty4-.+\.jar$"""))
-        // ES 8.x and 9.x patches copy the transport netty4 jar to the plugin folder
-        val netty4JarIsCopied = executedOn(allEs8x, allEs9x)
-        // ES 7.11 - 8.17 patches replace the ROR security policy file
-        val policyFileIsReplaced =
-          executedOn(allEs7x, allEs8x) && !executedOn(allEs7xBelowEs711x, allES8xAboveEs818x)
+      assume(permissionsOfNewFile() != "rw-rw-rw-", "the umask must remove at least one write bit")
+      val pluginDirectory = esDirectory / "plugins" / "readonlyrest"
+      val policyFile = pluginDirectory / "plugin-security.policy"
+      val sourceNetty4Jar = (esDirectory / "modules" / "transport-netty4").list
+        .find(_.name.matches("""^transport-netty4-.+\.jar$"""))
+      // ES 8.x and 9.x patches copy the transport netty4 jar to the plugin folder
+      val netty4JarIsCopied = executedOn(allEs8x, allEs9x)
+      // ES 7.11 - 8.17 patches replace the ROR security policy file
+      val policyFileIsReplaced =
+        executedOn(allEs7x, allEs8x) && !executedOn(allEs7xBelowEs711x, allES8xAboveEs818x)
 
-        // A group that a new file does not get by default, so a group that is not kept fails the test
-        val group = otherGroupThanOf(pluginDirectory)
-        assume(group.isDefined, "the current user must be able to set a second group")
+      // A group that a new file does not get by default, so a group that is not kept fails the test
+      val group = otherGroupThanOf(pluginDirectory)
+      assume(group.isDefined, "the current user must be able to set a second group")
 
-        setPermissionsAndGroup(pluginDirectory, "rwxrwxrwx", group.get)
-        setPermissionsAndGroup(pluginDirectory / "plugin-descriptor.properties", "rw-rw-rw-", group.get)
-        if (netty4JarIsCopied) setPermissionsAndGroup(sourceNetty4Jar.get, "rw-rw-rw-", group.get)
-        if (policyFileIsReplaced) setPermissionsAndGroup(policyFile, "rw-rw-rw-", group.get)
+      setPermissionsAndGroup(pluginDirectory, "rwxrwxrwx", group.get)
+      setPermissionsAndGroup(pluginDirectory / "plugin-descriptor.properties", "rw-rw-rw-", group.get)
+      if (netty4JarIsCopied) setPermissionsAndGroup(sourceNetty4Jar.get, "rw-rw-rw-", group.get)
+      if (policyFileIsReplaced) setPermissionsAndGroup(policyFile, "rw-rw-rw-", group.get)
 
+      val (patchResult, _) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+      patchResult should equal(Result.Success)
+
+      permissionsAndGroupOf(backupDirectory) should equal(("rwxrwxrwx", group.get))
+      permissionsAndGroupOf(patchMetadataFile) should equal(("rw-rw-rw-", group.get))
+      if (netty4JarIsCopied)
+        permissionsAndGroupOf(pluginDirectory / sourceNetty4Jar.get.name) should equal(("rw-rw-rw-", group.get))
+      if (policyFileIsReplaced) permissionsAndGroupOf(policyFile) should equal(("rw-rw-rw-", group.get))
+    }
+    List(
+      "the backup folder" -> backupDirectory,
+      "the metadata file" -> patchMetadataFile
+    ).foreach { case (name, fileWithoutPermissions) =>
+      s"The inaccessible metadata file is reported when `verify` command is executed ($name has no permissions)" in {
+        assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
+        // The root user can read all files, so this test is not possible for root
+        assume(System.getProperty("user.name") != "root")
         val (patchResult, _) = captureResultAndOutput {
           RorToolsTestApp.run(
             Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
@@ -502,48 +523,25 @@ class RorToolsAppSuite
         }
         patchResult should equal(Result.Success)
 
-        permissionsAndGroupOf(backupDirectory) should equal(("rwxrwxrwx", group.get))
-        permissionsAndGroupOf(patchMetadataFile) should equal(("rw-rw-rw-", group.get))
-        if (netty4JarIsCopied)
-          permissionsAndGroupOf(pluginDirectory / sourceNetty4Jar.get.name) should equal(("rw-rw-rw-", group.get))
-        if (policyFileIsReplaced) permissionsAndGroupOf(policyFile) should equal(("rw-rw-rw-", group.get))
-      }
-    }
-    List(
-      "the backup folder" -> backupDirectory,
-      "the metadata file" -> patchMetadataFile
-    ).foreach { case (name, fileWithoutPermissions) =>
-      s"The inaccessible metadata file is reported when `verify` command is executed ($name has no permissions)" in {
-        // The root user can read all files, so this test is not possible for root
-        OsUtils.ignoreOnWindows {
-          assume(System.getProperty("user.name") != "root")
-          val (patchResult, _) = captureResultAndOutput {
-            RorToolsTestApp.run(
-              Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
-            )(_, _)
-          }
-          patchResult should equal(Result.Success)
-
-          val originalPermissions = permissionsOf(fileWithoutPermissions)
-          setPermissions(fileWithoutPermissions, "---------")
-          val (verifyResult, verifyOutput) =
-            try {
-              captureResultAndOutput {
-                RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
-              }
-            } finally {
-              setPermissions(fileWithoutPermissions, originalPermissions)
+        val originalPermissions = permissionsOf(fileWithoutPermissions)
+        setPermissions(fileWithoutPermissions, "---------")
+        val (verifyResult, verifyOutput) =
+          try {
+            captureResultAndOutput {
+              RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
             }
+          } finally {
+            setPermissions(fileWithoutPermissions, originalPermissions)
+          }
 
-          verifyResult should equal(Result.Failure)
-          verifyOutput should include(
-            s"""Checking if Elasticsearch is patched ...
-               |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
-               |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content.
-               |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
-               |""".stripMarginAndReplaceWindowsLineBreak
-          )
-        }
+        verifyResult should equal(Result.Failure)
+        verifyOutput should include(
+          s"""Checking if Elasticsearch is patched ...
+             |ERROR: Cannot read the ROR patch metadata file ${patchMetadataFile.path}. Elasticsearch is possibly patched, but the current user has no permission to read this file.
+             |Make sure that the user that runs Elasticsearch can read the ${backupDirectory.path} folder and its content.
+             |If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
+             |""".stripMarginAndReplaceWindowsLineBreak
+        )
       }
     }
     "Successfully patch, verify and unpatch" in {

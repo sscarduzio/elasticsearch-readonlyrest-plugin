@@ -33,10 +33,6 @@ object OsUtils extends LazyLogging {
     if (!isWindows) f
   }
 
-  def runOnlyOnWindows[T](f: => T): Any = {
-    if (isWindows) f
-  }
-
   def doNotCreateOnWindows(creator: => Container): Container = {
     if (!isWindows) creator else NoOpContainer
   }

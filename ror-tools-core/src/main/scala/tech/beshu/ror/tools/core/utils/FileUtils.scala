@@ -118,7 +118,6 @@ object FileUtils {
         val view = Files.getFileAttributeView(path, classOf[DosFileAttributeView])
         view.setHidden(hidden)
         view.setSystem(system)
-        // The read-only flag goes last, because a read-only file can block the other changes
         view.setReadOnly(readOnly)
     }
   }
