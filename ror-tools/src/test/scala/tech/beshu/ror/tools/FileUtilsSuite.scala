@@ -29,29 +29,34 @@ import java.nio.file.{Files, StandardCopyOption}
 class FileUtilsSuite extends AnyWordSpec with Matchers {
 
   "FileUtils" should {
-    "restore the hidden and system flags of a file that was replaced, and keep the read-only and archive flags of the new content" in {
-      assume(OsUtils.currentOs == CurrentOs.Windows, "the DOS flags are used only on Windows")
-      File.usingTemporaryDirectory() { directory =>
-        val file = (directory / "file").createFile()
-        // Each flag is different from the flags of a new file
-        val originalFlags = DosFlags(readOnly = true, hidden = true, archive = false, system = true)
-        try {
-          setDosFlags(file, originalFlags)
-          val originalPermissionsAndOwner = file.getFilePermissionsAndOwner
+    // The read-only and archive flags are different from the flags of a new file. Each case sets only one of the
+    // hidden and system flags, so the test finds a flag that is not restored, and a restore that swaps the two flags.
+    List(
+      "hidden" -> DosFlags(readOnly = true, hidden = true, archive = false, system = false),
+      "system" -> DosFlags(readOnly = true, hidden = false, archive = false, system = true)
+    ).foreach { case (flagName, originalFlags) =>
+      s"restore the $flagName flag of a file that was replaced, and keep the read-only and archive flags of the new content" in {
+        assume(OsUtils.currentOs == CurrentOs.Windows, "the DOS flags are used only on Windows")
+        File.usingTemporaryDirectory() { directory =>
+          val file = (directory / "file").createFile()
+          try {
+            setDosFlags(file, originalFlags)
+            val originalPermissionsAndOwner = file.getFilePermissionsAndOwner
 
-          // Windows does not replace a read-only file
-          dosView(file).setReadOnly(false)
-          val newFile = (directory / "new-file").createFile()
-          // The new content has the archive flag, so backup tools see the change
-          dosView(newFile).setArchive(true)
-          Files.move(newFile.path, file.path, StandardCopyOption.REPLACE_EXISTING)
-          file.setFilePermissionsAndOwner(originalPermissionsAndOwner)
+            // Windows does not replace a read-only file
+            dosView(file).setReadOnly(false)
+            val newFile = (directory / "new-file").createFile()
+            // The new content has the archive flag, so backup tools see the change
+            dosView(newFile).setArchive(true)
+            Files.move(newFile.path, file.path, StandardCopyOption.REPLACE_EXISTING)
+            file.setFilePermissionsAndOwner(originalPermissionsAndOwner)
 
-          // The new content is not read-only
-          dosFlagsOf(file) should equal(originalFlags.copy(readOnly = false, archive = true))
-        } finally {
-          // Windows does not delete a read-only file
-          dosView(file).setReadOnly(false)
+            // The new content is not read-only
+            dosFlagsOf(file) should equal(originalFlags.copy(readOnly = false, archive = true))
+          } finally {
+            // Windows does not delete a read-only file
+            dosView(file).setReadOnly(false)
+          }
         }
       }
     }

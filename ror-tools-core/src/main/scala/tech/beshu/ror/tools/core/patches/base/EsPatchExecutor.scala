@@ -26,7 +26,7 @@ import tech.beshu.ror.tools.core.patches.internal.filePatchers.JarManifestModifi
 import tech.beshu.ror.tools.core.utils.RorToolsError.*
 import tech.beshu.ror.tools.core.utils.{EsDirectory, FileUtils, InOut, RorToolsError}
 
-import java.nio.file.AccessDeniedException
+import java.nio.file.{AccessDeniedException, NoSuchFileException}
 import scala.util.{Failure, Success, Try}
 
 final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsPatch)(
@@ -170,13 +170,15 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
   private def validatePatchedFiles(patchedFilesMetadata: List[FilePatchMetadata]): Either[PatchProblem, Unit] = {
     val (inaccessibleFiles, filesWithCurrentHash) = patchedFilesMetadata.partitionMap { filePatchMetadata =>
       Try(FileUtils.calculateFileHash(filePatchMetadata.path.wrapped)) match {
-        case Success(currentHash)              => Right((filePatchMetadata, currentHash))
+        case Success(currentHash) => Right((filePatchMetadata, Some(currentHash)))
+        // A removed file has no hash, so it is reported as a modified file
+        case Failure(_: NoSuchFileException)   => Right((filePatchMetadata, None))
         case Failure(_: AccessDeniedException) => Left(filePatchMetadata.path)
         case Failure(ex)                       => throw ex
       }
     }
     val modifiedFiles = filesWithCurrentHash.collect {
-      case (filePatchMetadata, currentHash) if filePatchMetadata.hash != currentHash => filePatchMetadata.path
+      case (filePatchMetadata, currentHash) if !currentHash.contains(filePatchMetadata.hash) => filePatchMetadata.path
     }
     // Without read access to a file, nobody can tell if the file was modified
     if (inaccessibleFiles.nonEmpty) Left(PatchedFilesInaccessible(inaccessibleFiles))

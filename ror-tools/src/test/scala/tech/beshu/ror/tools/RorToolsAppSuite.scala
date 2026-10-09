@@ -501,6 +501,26 @@ class RorToolsAppSuite
            |""".stripMargin
       )
     }
+    "The removed patched file is reported when `verify` command is executed" in {
+      val (patchResult, _) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+      patchResult should equal(Result.Success)
+
+      val patchedFile = File(readMetadataFile().patchedFilesMetadata.last.path.wrapped)
+      patchedFile.delete()
+
+      val (verifyResult, verifyOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+      }
+      verifyResult should equal(Result.Failure)
+      verifyOutput should include(
+        s"""Checking if Elasticsearch is patched ...
+           |ERROR: Elasticsearch was patched, but files ${patchedFile.path} were modified after patching""".stripMarginAndReplaceWindowsLineBreak
+      )
+    }
     "Patching keeps permissions and group of the files that it creates or replaces" in {
       assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
       // A new file gets "rw-rw-rw-" minus the umask, so a mode that is not kept fails the test
