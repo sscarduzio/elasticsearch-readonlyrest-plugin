@@ -81,6 +81,14 @@ object RorToolsError {
            |$permissionProblemAdvice""".stripMargin
       )
 
+  final case class EsFoldersInaccessibleError(folders: List[os.Path])
+      extends RorToolsError(
+        s"""Cannot read the Elasticsearch folders: ${folders.mkString(",")}.
+           |ror-tools cannot check if Elasticsearch is patched, because the current user has no permission to read these folders.
+           |Make sure that the user that runs Elasticsearch can read these folders.
+           |$permissionProblemAdvice""".stripMargin
+      )
+
   private def permissionProblemAdvice =
     s"""If you run ror-tools (patch, unpatch or verify), run it as the user that patched Elasticsearch (e.g. root).
        |This problem can occur when ES was patched with a restrictive umask (e.g. 077 with sudo).

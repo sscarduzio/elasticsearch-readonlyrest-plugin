@@ -501,6 +501,30 @@ class RorToolsAppSuite
            |""".stripMarginAndReplaceWindowsLineBreak
       )
     }
+    "The inaccessible ES folder is reported when `verify` command is executed" in {
+      assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
+      // The root user can read all folders, so this test is not possible for root
+      assume(System.getProperty("user.name") != "root")
+      // Without the patch metadata file, ror-tools reads each jar in the lib and modules folders
+      val folderWithoutPermissions = (esDirectory / "lib" / "folder-without-permissions").createDirectory()
+      setPermissions(folderWithoutPermissions, "---------")
+      val (verifyResult, verifyOutput) =
+        try {
+          captureResultAndOutput {
+            RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _)
+          }
+        } finally {
+          setPermissions(folderWithoutPermissions, "rwx------")
+        }
+
+      verifyResult should equal(Result.Failure)
+      verifyOutput should include(
+        s"""Checking if Elasticsearch is patched ...
+           |ERROR: Cannot read the Elasticsearch folders: ${folderWithoutPermissions.path}.
+           |ror-tools cannot check if Elasticsearch is patched, because the current user has no permission to read these folders.
+           |""".stripMarginAndReplaceWindowsLineBreak
+      )
+    }
     "The removed patched file is reported when `verify` command is executed" in {
       val (patchResult, _) = captureResultAndOutput {
         RorToolsTestApp.run(

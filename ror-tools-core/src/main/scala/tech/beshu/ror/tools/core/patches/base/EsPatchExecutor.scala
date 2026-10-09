@@ -162,18 +162,19 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
     // - we check whether the backup folder exists
     // - we search for any patched jar files
     val backupFolderExists = rorPluginDirectory.doesBackupFolderExist
-    val patchedJarFiles = searchForPatchedJarFiles() match {
-      case Left(files) => Some(files)
-      case Right(())   => None
-    }
-    if (backupFolderExists || patchedJarFiles.nonEmpty) {
-      PatchProblemDetected(
-        CorruptedPatchWithoutValidMetadata(
-          backupFolderIsPresent = backupFolderExists,
-          patchedJarFiles = patchedJarFiles.getOrElse(List.empty)
+    JarManifestModifier.findPatchedFiles(rorPluginDirectory.esDirectory) match {
+      case Left(inaccessibleFolders) =>
+        PatchProblemDetected(EsFoldersInaccessible(inaccessibleFolders))
+      case Right(patchedJarFiles) if backupFolderExists || patchedJarFiles.nonEmpty =>
+        PatchProblemDetected(
+          CorruptedPatchWithoutValidMetadata(
+            backupFolderIsPresent = backupFolderExists,
+            patchedJarFiles = patchedJarFiles
+          )
         )
-      )
-    } else NotPatched
+      case Right(_) =>
+        NotPatched
+    }
   }
 
   private def validatePatchedFiles(patchedFilesMetadata: List[FilePatchMetadata]): Either[PatchProblem, Unit] = {
@@ -193,13 +194,6 @@ final class EsPatchExecutor(rorPluginDirectory: RorPluginDirectory, esPatch: EsP
     if (inaccessibleFiles.nonEmpty) Left(PatchedFilesInaccessible(inaccessibleFiles))
     else if (modifiedFiles.nonEmpty) Left(CorruptedPatchWithIllegalFileModificationsDetected(modifiedFiles))
     else Right(())
-  }
-
-  private def searchForPatchedJarFiles(): Either[List[PatchedJarFile], Unit] = {
-    JarManifestModifier.findPatchedFiles(rorPluginDirectory.esDirectory) match {
-      case Nil => Right(())
-      case nel => Left(nel)
-    }
   }
 
 }
@@ -235,6 +229,8 @@ object EsPatchExecutor {
     final case class PatchMetadataInaccessible(metadataFile: os.Path) extends PatchProblem
 
     final case class PatchedFilesInaccessible(files: List[os.Path]) extends PatchProblem
+
+    final case class EsFoldersInaccessible(folders: List[os.Path]) extends PatchProblem
   }
 
   implicit class PatchProblemOps(val patchProblem: PatchProblem) extends AnyVal {
@@ -252,6 +248,8 @@ object EsPatchExecutor {
         PatchMetadataInaccessibleError(metadataFile)
       case PatchProblem.PatchedFilesInaccessible(files) =>
         PatchedFilesInaccessibleError(files)
+      case PatchProblem.EsFoldersInaccessible(folders) =>
+        EsFoldersInaccessibleError(folders)
     }
 
   }
