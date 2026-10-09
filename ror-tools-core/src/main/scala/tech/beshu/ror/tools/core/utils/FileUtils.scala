@@ -87,8 +87,9 @@ object FileUtils {
   private object FilePermissions {
     final case class Posix(permissions: java.util.Set[PosixFilePermission]) extends FilePermissions
 
-    // Windows ACLs are not copied, only the DOS flags
-    final case class Dos(readOnly: Boolean, hidden: Boolean, archive: Boolean, system: Boolean) extends FilePermissions
+    // Windows ACLs are not copied. The archive flag is not copied either: Windows sets it when the
+    // content changes, and backup tools use it to find changed files.
+    final case class Dos(readOnly: Boolean, hidden: Boolean, system: Boolean) extends FilePermissions
   }
 
   private def getGroup(path: Path): Option[GroupPrincipal] = {
@@ -103,7 +104,7 @@ object FileUtils {
   private def getOriginalPermissions(path: Path): FilePermissions = {
     if (isWindows) {
       val attributes = Files.readAttributes(path, classOf[DosFileAttributes])
-      FilePermissions.Dos(attributes.isReadOnly, attributes.isHidden, attributes.isArchive, attributes.isSystem)
+      FilePermissions.Dos(attributes.isReadOnly, attributes.isHidden, attributes.isSystem)
     } else {
       FilePermissions.Posix(Files.getPosixFilePermissions(path))
     }
@@ -113,10 +114,9 @@ object FileUtils {
     permissions match {
       case FilePermissions.Posix(posixPermissions) =>
         Files.setPosixFilePermissions(path, posixPermissions)
-      case FilePermissions.Dos(readOnly, hidden, archive, system) =>
+      case FilePermissions.Dos(readOnly, hidden, system) =>
         val view = Files.getFileAttributeView(path, classOf[DosFileAttributeView])
         view.setHidden(hidden)
-        view.setArchive(archive)
         view.setSystem(system)
         // The read-only flag goes last, because a read-only file can block the other changes
         view.setReadOnly(readOnly)
