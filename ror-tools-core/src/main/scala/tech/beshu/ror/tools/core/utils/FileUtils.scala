@@ -17,6 +17,7 @@
 package tech.beshu.ror.tools.core.utils
 
 import better.files.File
+import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 
 import java.nio.file.attribute.{
   DosFileAttributeView,
@@ -27,10 +28,11 @@ import java.nio.file.attribute.{
   PosixFilePermission,
   UserPrincipal
 }
-import java.nio.file.{Files, Path}
+import java.nio.file.{FileSystemException, Files, Path}
 import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 
 object FileUtils {
 
@@ -98,9 +100,26 @@ object FileUtils {
     else Some(Files.readAttributes(path, classOf[PosixFileAttributes]).group())
   }
 
+  // Only root or a member of the target group can set the group of a file. When the user cannot set it,
+  // the file keeps its current group, as with Files.copy(COPY_ATTRIBUTES), and ror-tools prints a warning.
   private def setGroup(path: Path, group: GroupPrincipal): Unit = {
-    Files.getFileAttributeView(path, classOf[PosixFileAttributeView]).setGroup(group)
+    val view = Files.getFileAttributeView(path, classOf[PosixFileAttributeView])
+    val currentGroup = view.readAttributes().group()
+    if (currentGroup != group) {
+      Try(view.setGroup(group)) match {
+        case Success(())                                     => ()
+        case Failure(ex: FileSystemException) if isEPERM(ex) =>
+          ConsoleInOut.printlnErr(
+            s"WARNING: Cannot set the group of $path to ${group.getName} (${ex.getReason}). " +
+              s"The file keeps the group ${currentGroup.getName}."
+          )
+        case Failure(ex) => throw ex
+      }
+    }
   }
+
+  // The JDK reports EPERM as a plain FileSystemException. Its subclasses (e.g. AccessDeniedException) are other errors.
+  private def isEPERM(ex: FileSystemException) = ex.getClass == classOf[FileSystemException]
 
   private def getOriginalPermissions(path: Path): FilePermissions = {
     if (isWindows) {
