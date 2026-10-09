@@ -136,9 +136,11 @@ abstract class EsContainer(
       case EsContainerImplementation.Windows(_) =>
         ()
       case EsContainerImplementation.Linux(esImage, _) =>
-        // Best-effort: an image still referenced by a sibling container can't be removed (Docker 409)
-        // — swallow it; this node's own uniquely-tagged image is what we reclaim.
-        try dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
+        // Removes the tag only. Other builds use the untagged parent layers as their build cache, also
+        // in other shard JVMs on the same Docker daemon. If Docker removes a parent during such a build,
+        // that build fails with "No such image". So no force and no prune of the parents. Docker
+        // refuses (409) when a container still uses the image; that is not an error here.
+        try dockerClient.removeImageCmd(esImage.get()).withForce(false).withNoPrune(true).exec()
         catch {
           case scala.util.control.NonFatal(_) => ()
         }

@@ -366,13 +366,17 @@ class XpackApiManager(client: RestClient, esVersion: String)
     request
   }
 
+  // The ES default `timeout` is 1 s, and ES counts the time from the arrival of the request, so the
+  // time ROR takes counts too. On a busy CI runner ES then returns 200 with no terms and
+  // "complete": false. GetTermsResponse fails on such a response. ES accepts at most 1 minute.
   private def createGetTermsRequest(index: String, field: String) = {
     val request = new HttpPost(client.from(s"/$index/_terms_enum"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(
       new StringEntity(
         s"""{
-           |  "field": "$field"
+           |  "field": "$field",
+           |  "timeout": "30s"
            |}""".stripMargin
       )
     )
@@ -392,7 +396,16 @@ class XpackApiManager(client: RestClient, esVersion: String)
   }
 
   class GetTermsResponse(response: HttpResponse) extends JsonResponse(response) {
-    lazy val terms: Set[String] = responseJson.obj("terms").arr.map(_.str).toSet
+
+    lazy val terms: Set[String] = {
+      if (responseJson.obj.get("complete").exists(_.boolOpt.contains(false))) {
+        throw new IllegalStateException(
+          s"ES returned an incomplete _terms_enum result (\"complete\": false). Response: $body"
+        )
+      }
+      responseJson.obj("terms").arr.map(_.str).toSet
+    }
+
   }
 
 }

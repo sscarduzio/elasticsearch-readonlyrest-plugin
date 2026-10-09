@@ -20,8 +20,6 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{Container, SingleContainer}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.images.{
@@ -51,38 +49,26 @@ class EsClusterContainer private[containers] (
     case None => throw new IllegalStateException("Nodes of cluster have not started yet. Cannot determine ES version.")
   }
 
+  // When a node does not start, this stops the nodes and dependencies that did start, then throws.
+  // The callers cannot do it: ForAllTestContainer calls stop() only after start() returns. A node
+  // left running stays on the per-JVM network, and the next cluster with the same cluster name
+  // discovers it.
   override def start(): Unit = {
-    aStartedDependencies = DependencyRunner.startDependencies(dependencies)
-    clusterNodes = startClusterNodes(aStartedDependencies)
+    ContainersCleanup.stopAllWhenStartFails(stop()) {
+      aStartedDependencies = DependencyRunner.startDependencies(dependencies)
+      clusterNodes = nodeCreators.toList.map(creator => creator(aStartedDependencies))
+      ContainersCleanup.startAllInParallel(clusterNodes)
+    }
   }
 
   override def stop(): Unit = {
-    clusterNodes.foreach(_.stop())
-    // Reclaim each node's image right after the node stops. A leg builds many distinct
-    // ror-it-es:<contenthash> images (one per node config); deleteOnExit only reaps them at JVM exit,
-    // so on a low-disk CI runner they accumulate mid-leg and exhaust disk ("No space left on device" —
-    // the ES 8.x legs). Removing a STOPPED cluster's own images is safe: each image is uniquely tagged
-    // by content (different node.name -> different tag), so this never touches a sibling suite's live
-    // image, and removeImage swallows the "image in use" case for any shared base layers.
-    clusterNodes.foreach { node =>
-      try node.removeImage()
-      catch { case scala.util.control.NonFatal(_) => () } // best-effort; never fail teardown on cleanup
-    }
-    aStartedDependencies.values.foreach(_.container.stop())
-  }
-
-  private def startClusterNodes(dependencies: StartedClusterDependencies) = {
-    val nodes = nodeCreators.toList.map(creator => creator(dependencies))
-    startContainersAsynchronously(nodes)
-    nodes
-  }
-
-  private def startContainersAsynchronously(containers: Iterable[SingleContainer[_]]): Unit = {
-    Task
-      .parSequenceUnordered {
-        containers.map(c => Task(c.start()))
-      }
-      .runSyncUnsafe()
+    ContainersCleanup.stopAll(
+      clusterNodes.map(node => () => node.stop()) ++
+        // Removes the tag of each node image after the node stops. EsContainer.removeImage says why
+        // it keeps the image layers.
+        clusterNodes.map(node => () => node.removeImage()) ++
+        aStartedDependencies.values.map(dependency => () => dependency.container.stop())
+    )
   }
 
   def resolvedRorSettings(config: String): String = {
@@ -98,17 +84,18 @@ class EsRemoteClustersContainer private[containers] (
 ) extends Container {
 
   override def start(): Unit = {
-    remoteClusters.toList.foreach(_.start())
-    localCluster.start()
-    remoteClustersInitializer(
-      localCluster,
-      remoteClusterSetup.remoteClustersConfiguration(remoteClusters)
-    )
+    ContainersCleanup.stopAllWhenStartFails(stop()) {
+      remoteClusters.toList.foreach(_.start())
+      localCluster.start()
+      remoteClustersInitializer(
+        localCluster,
+        remoteClusterSetup.remoteClustersConfiguration(remoteClusters)
+      )
+    }
   }
 
   override def stop(): Unit = {
-    localCluster.stop()
-    remoteClusters.toList.foreach(_.stop())
+    ContainersCleanup.stopAll((localCluster :: remoteClusters.toList).map(cluster => () => cluster.stop()))
   }
 
   private def remoteClustersInitializer(
