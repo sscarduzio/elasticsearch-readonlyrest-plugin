@@ -68,7 +68,7 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   def copyToPluginPath(file: Path): Unit = {
     val copiedFile = rorPath / file.last
-    os.copy(from = file, to = copiedFile)
+    os.copy(from = file, to = copiedFile, replaceExisting = true)
     copiedFile.setFilePermissionsAndOwnerCopiedFrom(file)
   }
 

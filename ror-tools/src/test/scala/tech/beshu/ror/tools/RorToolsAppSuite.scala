@@ -38,6 +38,7 @@ import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 import java.nio.file.attribute.{PosixFileAttributeView, PosixFileAttributes, PosixFilePermissions}
 import java.nio.file.{Files, Path}
 import java.util.UUID
+import java.util.jar.JarFile
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -606,15 +607,13 @@ class RorToolsAppSuite
       )
     }
     "Failed patching restores the original files and removes the backup" in {
-      // ES 8.x and 9.x patches copy the transport netty4 jar to the plugin folder as the last step
-      assume(executedOn(allEs8x, allEs9x), "only these ES versions copy the transport netty4 jar")
+      // Each ES version patches the x-pack-security jar after the ES jar in the lib folder. A damaged x-pack-security
+      // jar makes the patching fail after the ES jar is patched.
+      val xPackSecurityJar = esDirectory / "modules" / "x-pack-security" / s"x-pack-security-$esVersionUsed.jar"
+      assume(xPackSecurityJar.exists(), "the ES distribution has no x-pack-security module")
+      xPackSecurityJar.overwrite("not a jar file")
       val filesExcludedFromHashCalculation = List("plugin-security.policy.tmp")
       val hashBeforePatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
-      // A jar with the same name in the plugin folder makes the copy fail, after the other files are patched
-      val sourceNetty4Jar = (esDirectory / "modules" / "transport-netty4").list
-        .find(_.name.matches("""^transport-netty4-.+\.jar$"""))
-        .get
-      val strayNetty4Jar = (esDirectory / "plugins" / "readonlyrest" / sourceNetty4Jar.name).createFile()
 
       val (patchResult, patchOutput) = captureResultAndOutput {
         RorToolsTestApp.run(
@@ -629,10 +628,27 @@ class RorToolsAppSuite
           |The original files are restored
           |UNEXPECTED ERROR:""".stripMarginAndReplaceWindowsLineBreak
       )
-      // The restore removes the transport netty4 jar from the plugin folder
-      strayNetty4Jar.exists() should be(false)
       backupDirectory.exists() should be(false)
       FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation) should equal(hashBeforePatching)
+    }
+    "Patching replaces the transport netty4 jar that stays in the plugin folder from an incomplete patching" in {
+      // ES 8.x and 9.x patches copy the transport netty4 jar to the plugin folder
+      assume(executedOn(allEs8x, allEs9x), "only these ES versions copy the transport netty4 jar")
+      val sourceNetty4Jar = (esDirectory / "modules" / "transport-netty4").list
+        .find(_.name.matches("""^transport-netty4-.+\.jar$"""))
+        .get
+      val leftoverNetty4Jar = (esDirectory / "plugins" / "readonlyrest" / sourceNetty4Jar.name).write("not a jar file")
+
+      val (patchResult, patchOutput) = captureResultAndOutput {
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
+      }
+
+      patchResult should equal(Result.Success)
+      patchOutput should include("Elasticsearch is patched! ReadonlyREST is ready to use")
+      // The leftover file is not a jar file. After the patching, the file is the copy of the ES jar.
+      Try(new JarFile(leftoverNetty4Jar.toJava).close()).isSuccess should be(true)
     }
     "Successfully patch, verify and unpatch" in {
       // This file is created after patching on Windows for ES 8.x
