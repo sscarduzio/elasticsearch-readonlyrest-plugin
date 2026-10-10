@@ -70,10 +70,10 @@ object RorSessionCookie extends RequestIdAwareLogging {
     )
 
   private def extractRorHttpCookie(context: RequestContext) = {
-    context.restRequest.allHeaders
-      .find(_.name === Header.Name.cookie)
-      .flatMap(h => parseCookie(h.value.value))
-      .flatMap(_.find(_.getName === rorCookieName))
+    context.restRequest.allHeaders.view
+      .filter(_.name === Header.Name.cookie)
+      .flatMap(h => parseCookie(h.value.value).toList.flatten)
+      .find(_.getName === rorCookieName)
   }
 
   private def parseRorSessionCookieAndSignature(httpCookie: HttpCookie) = {

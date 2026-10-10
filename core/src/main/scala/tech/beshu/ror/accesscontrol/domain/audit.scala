@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.domain
 
 import cats.Show
 import cats.data.Validated
-import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.{Uri, Url}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
@@ -171,7 +170,8 @@ object AuditCluster {
   final case class RemoteAuditCluster(
       nodes: UniqueNonEmptyList[AuditClusterNode],
       mode: ClusterMode,
-      credentials: Option[NodeCredentials]
+      credentials: Option[NodeCredentials],
+      connectivityCheckMode: ConnectivityCheckMode
   ) extends AuditCluster {
     def requestTimeout: FiniteDuration = 30.seconds
     def connectionTimeout: FiniteDuration = 1.seconds
@@ -203,6 +203,15 @@ object AuditCluster {
 
   object ClusterMode {
     case object RoundRobin extends ClusterMode
+    case object Failover extends ClusterMode
+  }
+
+  sealed trait ConnectivityCheckMode
+
+  object ConnectivityCheckMode {
+    case object Required extends ConnectivityCheckMode
+    case object BestEffort extends ConnectivityCheckMode
+    case object Disabled extends ConnectivityCheckMode
   }
 
 }
@@ -211,6 +220,18 @@ final case class RorAuditLoggerName(value: NonEmptyString)
 
 object RorAuditLoggerName {
   val default: RorAuditLoggerName = RorAuditLoggerName(nes("readonlyrest_audit"))
+}
+
+final case class AuditIngestPipeline private (id: NonEmptyString)
+
+object AuditIngestPipeline {
+
+  val esNoPipelineId: String = "_none"
+
+  def from(id: String): Option[AuditIngestPipeline] =
+    NonEmptyString.unapply(id.trim).map(new AuditIngestPipeline(_))
+
+  given Show[AuditIngestPipeline] = Show.show(_.id.value)
 }
 
 final case class AuditOutputName(value: String) extends AnyVal

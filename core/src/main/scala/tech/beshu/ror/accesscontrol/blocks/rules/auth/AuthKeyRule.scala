@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.Known
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, LocalUsers, RequestId, User}
-import tech.beshu.ror.syntax.*
 
 final class AuthKeyRule(
     override val settings: BasicAuthenticationRule.Settings[Credentials],

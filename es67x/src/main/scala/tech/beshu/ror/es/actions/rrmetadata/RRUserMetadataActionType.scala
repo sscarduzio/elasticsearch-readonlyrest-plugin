@@ -28,7 +28,7 @@ class RRUserMetadataActionType
   override def newResponse(): RRUserMetadataResponse = new RRUserMetadataResponse()
 
   override def newRequestBuilder(client: ElasticsearchClient): RRUserMetadataActionType.RequestBuilder =
-    new RRUserMetadataActionType.RequestBuilder(client, this, new RRUserMetadataRequest(None))
+    new RRUserMetadataActionType.RequestBuilder(client, this, new RRUserMetadataRequest(Right(None)))
 }
 
 object RRUserMetadataActionType {

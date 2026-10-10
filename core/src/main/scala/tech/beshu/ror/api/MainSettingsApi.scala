@@ -18,7 +18,6 @@ package tech.beshu.ror.api
 
 import cats.Show
 import cats.data.EitherT
-import cats.implicits.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import monix.eval.Task

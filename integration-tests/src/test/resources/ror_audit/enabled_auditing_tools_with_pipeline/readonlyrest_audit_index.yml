@@ -1,0 +1,44 @@
+readonlyrest:
+
+  audit:
+    enabled: true
+    outputs:
+      - type: index
+        index_template: "'audit_index_pipeline_a'"
+        pipeline: "audit_pipeline_a"
+        serializer:
+          type: "static"
+          class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
+          verbosity_level_serialization_mode: [INFO]
+      - type: index
+        index_template: "'audit_index_pipeline_b'"
+        pipeline: "audit_pipeline_b"
+        serializer:
+          type: "static"
+          class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
+          verbosity_level_serialization_mode: [INFO]
+      - type: index
+        index_template: "'audit_index_without_pipeline'"
+        serializer:
+          type: "static"
+          class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
+          verbosity_level_serialization_mode: [INFO]
+      - type: index
+        index_template: "'audit_index_missing_pipeline'"
+        pipeline: "missing_pipeline"
+        serializer:
+          type: "static"
+          class_name: "tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1"
+          verbosity_level_serialization_mode: [INFO]
+
+  access_control_rules:
+
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
+      auth_key: admin:container
+
+    - name: "Rule 1"
+      methods: GET
+      auth_key: username:dev
+      indices: ["twitter"]

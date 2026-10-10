@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
-import tech.beshu.ror.accesscontrol.response.RorKbnPluginNotSupported
 import tech.beshu.ror.accesscontrol.{AccessControlList, History}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -92,9 +91,6 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList, audit
               log(Forbidden(requestContext, history))
             case UserMetadataRequestResult.PassedThrough =>
             // ignore
-            case UserMetadataRequestResult.RorKbnPluginNotSupported =>
-              logger.warn(RorKbnPluginNotSupported.message)
-              log(Forbidden(requestContext, History.empty))
           }
         case Failure(ex) =>
           logger.error(s"Request handling unexpected failure", ex)

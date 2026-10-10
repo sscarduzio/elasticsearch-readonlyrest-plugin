@@ -32,10 +32,10 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, DataStreamService, IndexBasedAuditOutputService}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.TestsUtils.{defaultTestEsNodeSettings, fullDataStreamName, header, nes}
+import tech.beshu.ror.utils.TestsUtils.{defaultTestEsNodeSettings, fullDataStreamName, header, nes, testRequestId}
 
 import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration.*
@@ -179,6 +179,35 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         dataStream should be(fullDataStreamName(nes("readonlyrest_audit")))
         ujson.read(jsonStringFromDataStream) should be(expectedJson(jsonStringFromDataStream))
       }
+      "is passed as a chain on two lines (the first address of the first line is used)" in {
+        val indexAuditOutputService = new MockedIndexAuditOutputService()
+        val dataStreamAuditOutputService = new MockedDataStreamBasedAuditOutputService()
+        val acl = auditedAcl(indexAuditOutputService, dataStreamAuditOutputService)
+        val request = MockRequestContext.indices.withHeaders(
+          header("X-Forwarded-For", "192.168.0.1, 10.0.0.1"),
+          header("X-Forwarded-For", "10.0.0.2")
+        )
+
+        acl.handleRegularRequest(request).runSyncUnsafe()
+
+        val (_, jsonStringFromIndex) = Await.result(indexAuditOutputService.result, 5 seconds)
+        ujson.read(jsonStringFromIndex)("xff").str should be("192.168.0.1")
+      }
+    }
+    "not be present as XFF in audit" when {
+      "its first address does not parse" in {
+        val indexAuditOutputService = new MockedIndexAuditOutputService()
+        val dataStreamAuditOutputService = new MockedDataStreamBasedAuditOutputService()
+        val acl = auditedAcl(indexAuditOutputService, dataStreamAuditOutputService)
+        val request = MockRequestContext.indices.withHeaders(
+          header("X-Forwarded-For", "192.168.0.1:8080")
+        )
+
+        acl.handleRegularRequest(request).runSyncUnsafe()
+
+        val (_, jsonStringFromIndex) = Await.result(indexAuditOutputService.result, 5 seconds)
+        ujson.read(jsonStringFromIndex).obj.get("xff").filterNot(_ == ujson.Null) should be(None)
+      }
     }
   }
 
@@ -209,13 +238,14 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     )
     val auditingTool = AuditingTool
       .create(
-        new AuditSetup.AnyOutput(
+        setup = new AuditSetup.AnyOutput(
           capability = new EsAuditCapabilities.IndexOrDataStream(
             indexCreator = (_: AuditCluster) => indexBasedAuditOutputService,
             dataStreamCreator = (_: AuditCluster) => dataStreamBasedAuditOutputService,
           ),
           config = AuditingConfig(settings, defaultAclLog = true, defaultTestEsNodeSettings),
-        )
+        ),
+        httpClientsFactory = MockHttpClientsFactory,
       )
       .runSyncUnsafe()
       .toOption
@@ -241,7 +271,12 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private class MockedIndexAuditOutputService extends IndexBasedAuditOutputService {
     private val submittedIndexAndJson: Promise[(IndexName.Full, String)] = Promise()
 
-    override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+    override def submit(
+        indexName: IndexName.Full,
+        documentId: String,
+        jsonRecord: String,
+        pipeline: Option[AuditIngestPipeline]
+    )(
         implicit requestId: RequestId
     ): Unit = {
       submittedIndexAndJson.trySuccess(indexName, jsonRecord)
@@ -255,7 +290,12 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private class MockedDataStreamBasedAuditOutputService extends DataStreamBasedAuditOutputService {
     private val submittedDataStreamAndJson: Promise[(DataStreamName.Full, String)] = Promise()
 
-    override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
+    override def submit(
+        dataStreamName: DataStreamName.Full,
+        documentId: String,
+        jsonRecord: String,
+        pipeline: Option[AuditIngestPipeline]
+    )(
         implicit requestId: RequestId
     ): Unit = {
       submittedDataStreamAndJson.trySuccess(dataStreamName, jsonRecord)

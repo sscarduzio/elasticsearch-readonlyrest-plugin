@@ -1,5 +1,23 @@
 # ROR INTERNAL API CHANGELOG
 
+## 4.2.0
+
+Changes:
+
+* header `X-ROR-KBN-License-Type`:
+
+    ES ROR now reads the header on each request, not on GET `/_readonlyrest/metadata/user` alone.
+
+    The header overrides the
+    [`prompt_for_basic_auth`](https://docs.readonlyrest.com/elasticsearch#prompt_for_basic_auth)
+    setting. ES ROR answers a request which carries a valid license type in the header exactly as it
+    answers each request when the setting is `false`.
+
+    GET `/_readonlyrest/metadata/user` no longer answers 403 `OPERATION_NOT_ALLOWED` when
+    `prompt_for_basic_auth` is on. It follows the access control list, as when the setting is
+    `false`. A request with no header, or with a license type which ES ROR cannot read, is still a
+    bad request.
+
 ## 4.1.0
 
 Changes:

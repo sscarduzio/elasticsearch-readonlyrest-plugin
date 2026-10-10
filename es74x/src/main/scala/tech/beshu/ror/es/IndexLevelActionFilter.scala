@@ -29,13 +29,15 @@ import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities
 import tech.beshu.ror.accesscontrol.audit.output.IndexBasedAuditOutputServiceCreator
-import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
+import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster, Header}
 import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.{
+  createImpersonationNotAllowedResponse,
+  createTestSettingsNotConfiguredResponse
+}
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.*
 import tech.beshu.ror.es.utils.ThreadContextOps.*
@@ -108,7 +110,9 @@ class IndexLevelActionFilter(
         case AuditCluster.LocalAuditCluster =>
           new NodeClientBasedAuditOutputService(client)
         case remote: AuditCluster.RemoteAuditCluster =>
-          RestClientAuditOutputService.create(remote)
+          RestClientAuditOutputService.create(remote)(
+            using systemContext.clock
+          )
       }
     }
     new EsAuditCapabilities.IndexOnly(creator)
@@ -158,13 +162,12 @@ class IndexLevelActionFilter(
         threadPool.getThreadContext.addSystemAuthenticationHeader(esEnv.esNodeSettings.nodeName)
         chain.continue(task, action, request, listener)
       case Some(channel) =>
-        val correlationId = channel.correlationId
+        val correlationId = channel.restRequest.correlationId
         val rorActionListener = new HidingInternalErrorDetailsRorActionListener(listener, correlationId)
         Try {
           proceedByRorEngine(
             new EsContext(
               channel,
-              correlationId,
               esEnv.esNodeSettings,
               task,
               action,
@@ -205,6 +208,8 @@ class IndexLevelActionFilter(
         case Right(Right(()))                                                          =>
         case Right(Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured)) =>
           handleImpersonatorsEngineNotConfigured(esContext)
+        case Right(Left(AclAwareRequestFilter.Error.AmbiguousImpersonationHeader)) =>
+          handleAmbiguousImpersonationHeader(esContext)
         case Left(ex) =>
           esContext.listener.onFailure(new Exception(ex))
       }
@@ -215,6 +220,13 @@ class IndexLevelActionFilter(
       s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.request().path().show} (impersonated) request because no Test Settings are configured"
     )
     esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
+  }
+
+  private def handleAmbiguousImpersonationHeader(esContext: EsContext): Unit = {
+    noRequestIdLogger.warn(
+      s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because the '${Header.Name.impersonateAs.show}' header holds more than one value"
+    )
+    esContext.listener.onFailure(createImpersonationNotAllowedResponse())
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {

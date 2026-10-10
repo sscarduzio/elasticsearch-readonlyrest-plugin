@@ -44,7 +44,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.{Address, PlainTextSecret}
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
-import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler
 
-import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
 import org.elasticsearch.action.*
@@ -73,7 +72,7 @@ import org.elasticsearch.tasks.Task as EsTask
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
+import tech.beshu.ror.accesscontrol.domain.{Action, Header}
 import tech.beshu.ror.accesscontrol.request.{BaseEsContext, RequestContext, RestRequest}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
@@ -88,7 +87,6 @@ import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Instant
@@ -296,7 +294,6 @@ object AclAwareRequestFilter {
 
   final class EsContext(
       val channel: RorRestChannel,
-      val correlationId: Eval[CorrelationId],
       val esNodeSettings: EsNodeSettings,
       val task: EsTask,
       val action: Action,
@@ -313,33 +310,12 @@ object AclAwareRequestFilter {
 
     val timestamp: Instant = Instant.now()
 
-    private lazy val isImpersonationHeader =
-      channel.restRequest.allHeaders
-        .exists { case Header(name, _) => name === Header.Name.impersonateAs }
-
     def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
-      val impersonationHeaderPresent = isImpersonationHeader
-      engines.impersonatorsEngine match {
-        case Some(impersonatorsEngine) if impersonationHeaderPresent => Right(impersonatorsEngine)
-        case None if impersonationHeaderPresent                      => Left(Error.ImpersonatorsEngineNotConfigured)
-        case Some(_) | None                                          => Right(engines.mainEngine)
+      restRequest.headers.singleOrAmbiguity(Header.Name.impersonateAs) match {
+        case Left(_)        => Left(Error.AmbiguousImpersonationHeader)
+        case Right(Some(_)) => engines.impersonatorsEngine.toRight(Error.ImpersonatorsEngineNotConfigured)
+        case Right(None)    => Right(engines.mainEngine)
       }
-    }
-
-  }
-
-  object EsContext {
-
-    implicit class CorrelationIdFrom(val channel: RorRestChannel) extends AnyVal {
-
-      def correlationId: Eval[CorrelationId] = Eval.later {
-        channel.restRequest.allHeaders
-          .find(_.name === Header.Name.correlationId)
-          .map(_.value)
-          .map(CorrelationId.apply)
-          .getOrElse(CorrelationId.random)
-      }
-
     }
 
   }
@@ -369,6 +345,7 @@ object AclAwareRequestFilter {
 
   object Error {
     case object ImpersonatorsEngineNotConfigured extends Error
+    case object AmbiguousImpersonationHeader extends Error
   }
 
 }

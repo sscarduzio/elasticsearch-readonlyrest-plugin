@@ -17,11 +17,8 @@
 package tech.beshu.ror.unit.acl.domain
 
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
-import org.scalatest.matchers.must.Matchers.*
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Address
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AddressTests extends AnyWordSpec {
 
@@ -30,7 +27,7 @@ class AddressTests extends AnyWordSpec {
   "address" when {
     "passed expected ipv4" should {
       "be parsed" in {
-        Address.from("127.0.0.1").get shouldBe ip("127.0.0.1")
+        Address.from("127.0.0.1").get shouldBe ip("127.0.0.1", prefixBits = 32)
       }
     }
     "passed expected hostname" should {
@@ -40,19 +37,28 @@ class AddressTests extends AnyWordSpec {
     }
     "passed expected ipv6" should {
       "be parsed" in {
-        Address.from("fe80:0:0:0:90ac:ed6b:2b4e:7e5b").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b")
+        Address.from("fe80:0:0:0:90ac:ed6b:2b4e:7e5b").get shouldBe ip(
+          "fe80:0:0:0:90ac:ed6b:2b4e:7e5b",
+          prefixBits = 128
+        )
       }
       "condensed be parsed" in {
-        Address.from("fe80::90ac:ed6b:2b4e:7e5b").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b")
+        Address.from("fe80::90ac:ed6b:2b4e:7e5b").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b", prefixBits = 128)
       }
       "with scoped literal in windows be parsed" in {
-        Address.from("fe80::90ac:ed6b:2b4e:7e5b%12").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b")
+        Address.from("fe80::90ac:ed6b:2b4e:7e5b%12").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b", prefixBits = 128)
       }
       "with scoped literal in unix be parsed" in {
-        Address.from("fe80::90ac:ed6b:2b4e:7e5b%eth0").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b")
+        Address.from("fe80::90ac:ed6b:2b4e:7e5b%eth0").get shouldBe ip(
+          "fe80:0:0:0:90ac:ed6b:2b4e:7e5b",
+          prefixBits = 128
+        )
       }
       "with scoped literal upper cased" in {
-        Address.from("FE80::90AC:ED6B:2B4E:7E5B%eth0").get shouldBe ip("fe80:0:0:0:90ac:ed6b:2b4e:7e5b")
+        Address.from("FE80::90AC:ED6B:2B4E:7E5B%eth0").get shouldBe ip(
+          "fe80:0:0:0:90ac:ed6b:2b4e:7e5b",
+          prefixBits = 128
+        )
       }
     }
   }
@@ -61,7 +67,7 @@ class AddressTests extends AnyWordSpec {
     Address.Name(Hostname.fromString(name).get)
   }
 
-  private def ip(ip: String) =
-    IpAddress.fromString(ip).map(Cidr(_, 32)).map(Address.Ip.apply).get
+  private def ip(ip: String, prefixBits: Int) =
+    IpAddress.fromString(ip).map(Cidr(_, prefixBits)).map(Address.Ip.apply).get
 
 }

@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.domain
 
 import cats.data.NonEmptyList
-import cats.{Eq, Show}
+import cats.{Eq, Order, Show}
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
@@ -28,7 +28,9 @@ import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.net.InetSocketAddress
 import java.util.{Locale, UUID}
@@ -45,14 +47,32 @@ object CorrelationId {
 
 final case class Header(name: Header.Name, value: NonEmptyString) extends EagerHashCode
 
-object Header {
+object Header extends RequestIdAwareLogging {
 
-  final case class Name(value: NonEmptyString) extends EagerHashCode {
-    // Precomputed so the case-insensitive `Eq` below does not lowercase both sides on every comparison.
-    lazy val lowerCased: String = value.value.toLowerCase(Locale.US)
+  /** Not a case class: `equals` is not structural. Two names which differ only in case are the same name,
+    * but they do not hold the same `value`. `copy` and the structural `toString` would contradict that.
+    */
+  final class Name private (val value: NonEmptyString) {
+
+    /** HTTP header names are case-insensitive, so the lower-cased name is the identity of a `Name`.
+      * `equals`, `hashCode`, `Eq` and `Order` all rest on it. `value` keeps the spelling which came from
+      * the wire, because audit records and logs report it.
+      */
+    private val lowerCased: String = value.value.toLowerCase(Locale.US)
+
+    override val hashCode: Int = lowerCased.hashCode
+
+    override def equals(other: Any): Boolean = other match {
+      case that: Name => lowerCased == that.lowerCased
+      case _          => false
+    }
+
+    override def toString: String = value.value
   }
 
   object Name {
+    def apply(value: NonEmptyString): Name = new Name(value)
+
     val authorization = Name(nes("Authorization"))
     val xApiKeyHeaderName = Header.Name(nes("X-Api-Key"))
     val xForwardedFor = Name(nes("X-Forwarded-For"))
@@ -60,7 +80,6 @@ object Header {
     val cookie = Name(nes("Cookie"))
     val setCookie = Name(nes("Set-Cookie"))
     val transientFields = Name(nes("_fields"))
-    val userAgent = Name(nes("User-Agent"))
 
     val xUserOrigin = Name(nes("x-ror-origin"))
     val kibanaRequestPath = Name(nes("x-ror-kibana-request-path"))
@@ -69,7 +88,7 @@ object Header {
     val correlationId = Name(nes("x-ror-correlation-id"))
     val rorKbnLicenseType = Name(nes("x-ror-kbn-license-type"))
 
-    implicit val eqName: Eq[Name] = Eq.by(_.lowerCased)
+    implicit val orderName: Order[Name] = Order.by(_.lowerCased)
   }
 
   def apply(name: Name, value: NonEmptyString): Header = new Header(name, value)
@@ -80,41 +99,95 @@ object Header {
 
   def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
+  def singleHeaderOrAmbiguity(name: Header.Name, in: UniqueList[Header])(
+      implicit requestId: RequestId
+  ): Either[AmbiguousHeader, Option[Header]] = {
+    findSingleHeader(name, in).left.map { ambiguity =>
+      logger.warn(ambiguousHeaderMessage(ambiguity.name))
+      ambiguity
+    }
+  }
+
+  def findSingleHeader(name: Header.Name, in: UniqueList[Header]): Either[AmbiguousHeader, Option[Header]] = {
+    in.filter(_.name === name).toList match {
+      case Nil           => Right(None)
+      case header :: Nil => Right(Some(header))
+      case _             => Left(AmbiguousHeader(name))
+    }
+  }
+
+  private def ambiguousHeaderMessage(name: Header.Name) =
+    s"Header '${name.show}' holds more than one value. ROR reads no value from it"
+
+  final case class AmbiguousHeader(name: Header.Name)
+
   def fromRawHeaders(
       headers: java.util.Map[String, java.util.List[String]]
-  ): Either[AuthorizationValueError, Set[Header]] = {
+  ): Either[AuthorizationValueError, UniqueList[Header]] = {
     fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
   }
 
-  def findHeader(header: Header.Name, in: java.util.Map[String, java.util.List[String]]): Option[Header] = {
-    for {
-      headers <- fromRawHeaders(in).toOption
-      header <- headers.find(_.name == header)
-    } yield header
-  }
-
+  /** The values under one name keep the order they arrive, so the first value a reader finds is the
+    * first value the client sent. The order across names is not defined.
+    */
   def fromRawHeaders(
       headers: collection.Map[String, Iterable[String]]
-  ): Either[AuthorizationValueError, Set[Header]] = {
+  ): Either[AuthorizationValueError, UniqueList[Header]] = {
     val (authorizationHeaders, nonAuthorizationHeaders) =
-      headers
-        .map { case (name, values) => (name, values.toCovariantSet) }
-        .flatMap { case (name, values) => createHeadersFrom(name, values) }
+      headers.toList
+        .flatMap { case (name, values) => createHeadersFrom(name, values.toList.distinct) }
         .partition(h => h.name === Header.Name.authorization)
-    val headersFromAuthorizationHeaderValues =
-      authorizationHeaders.toList
+    for {
+      extractedHeaders <- authorizationHeaders
         .map(header => fromAuthorizationValue(header.value))
         .sequence
-        .map(_.flatMap(_.toList))
-
-    headersFromAuthorizationHeaderValues
-      .map { authHeaderBasedExtractedHeaders =>
-        val restOfHeadersNames = nonAuthorizationHeaders.map(_.name).toCovariantSet
-        val filteredAuthHeaderBasedExtractedHeaders = authHeaderBasedExtractedHeaders
-          .filter { header => !restOfHeadersNames.contains(header.name) }
-        (nonAuthorizationHeaders ++ filteredAuthHeaderBasedExtractedHeaders).toCovariantSet
-      }
+      httpHeaders = UniqueList.from(nonAuthorizationHeaders ++ extractedHeaders.map(_.head))
+      rorMetadataHeaders = UniqueList.from(extractedHeaders.flatMap(_.tail))
+    } yield mergeChannels(httpHeaders, rorMetadataHeaders)
   }
+
+  /** A name which the HTTP channel carries takes its values only from the HTTP channel. The ror_metadata
+    * channel gives the values of the other names. The log names the header but not its values, because
+    * the values can hold credentials.
+    */
+  private def mergeChannels(
+      httpHeaders: UniqueList[Header],
+      rorMetadataHeaders: UniqueList[Header]
+  ): UniqueList[Header] = {
+    val httpHeadersByName = httpHeaders.groupBy(_.name)
+    val rorMetadataHeadersByName = rorMetadataHeaders.groupBy(_.name)
+    val (headerGroups, conflictingNames) = (httpHeaders ++ rorMetadataHeaders)
+      .map(_.name)
+      .toList
+      .map { name =>
+        val fromHttp = httpHeadersByName.getOrElse(name, UniqueList.empty)
+        val fromRorMetadata = rorMetadataHeadersByName.getOrElse(name, UniqueList.empty)
+        if (fromHttp.isEmpty) (fromRorMetadata, None)
+        else {
+          val conflict = fromRorMetadata.nonEmpty && fromHttp.toCovariantSet != fromRorMetadata.toCovariantSet
+          (fromHttp, Option.when(conflict)(name))
+        }
+      }
+      .unzip
+    logHeaderValuesConflicts(conflictingNames.flatten)
+    UniqueList.from(headerGroups.flatten)
+  }
+
+  /** One line for each request. It is a DEBUG line, because a normal Kibana setup sends some headers in both
+    * channels. The client controls the names, so the line holds a limited number of them.
+    */
+  private def logHeaderValuesConflicts(names: List[Header.Name]): Unit = {
+    if (names.nonEmpty) {
+      val shownNames = names.take(maxLoggedConflictingNames).map(_.show).mkString("'", "', '", "'")
+      val notShownNamesCount = names.size - maxLoggedConflictingNames
+      val notShownNames = if (notShownNamesCount > 0) s" and $notShownNamesCount more" else ""
+      noRequestIdLogger.debug(
+        s"Headers $shownNames$notShownNames have different values in the request and in ror_metadata. ROR uses the values from the request"
+      )
+    }
+  }
+
+  private val maxLoggedConflictingNames = 10
 
   private def createHeadersFrom(name: String, values: Iterable[String]) = {
     val value = for {
@@ -175,7 +248,7 @@ object Header {
     final case class RorMetadataInvalidFormat(value: String, message: String) extends AuthorizationValueError
   }
 
-  implicit val eqHeader: Eq[Header] = Eq.by[Header, (String, String)](header => (header.name.value, header.value.value))
+  implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
 }
 
 sealed trait Address
@@ -184,6 +257,12 @@ object Address {
 
   final case class Ip(value: Cidr[IpAddress]) extends Address {
     def contains(ip: Ip): Boolean = value.contains(ip.value.address)
+  }
+
+  object Ip {
+
+    // One host. The prefix covers all bits of the address: 32 for IPv4 and 128 for IPv6.
+    def host(ip: IpAddress): Ip = Ip(Cidr(ip, allBitsOf(ip)))
   }
 
   final case class Name(value: Hostname) extends Address
@@ -202,6 +281,16 @@ object Address {
     } yield address
   }
 
+  extension (address: Address) {
+
+    def asText: String = address match {
+      case Address.Ip(cidr) if cidr.prefixBits == allBitsOf(cidr.address) => cidr.address.toString
+      case Address.Ip(cidr)                                               => cidr.toString
+      case Address.Name(hostname)                                         => hostname.toString
+    }
+
+  }
+
   private def parseCidr(value: String) =
     Cidr.fromString(value).map(Address.Ip.apply)
 
@@ -212,7 +301,9 @@ object Address {
     (cutOffZoneIndex _ andThen IpAddress.fromString andThen (_.map(createAddressIp)))(value)
 
   private def createAddressIp(ip: IpAddress) =
-    Address.Ip(Cidr(ip, 32))
+    Address.Ip.host(ip)
+
+  private def allBitsOf(ip: IpAddress): Int = ip.fold(_ => 32, _ => 128)
 
   private val ipv6WithLiteralScope = raw"""(?i)^(fe80:[a-z0-9:]+)%.*$$""".r
 

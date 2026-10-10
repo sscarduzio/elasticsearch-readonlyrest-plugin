@@ -1,0 +1,11 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/c1n2"
+  },
+  "response": {
+    "status": 200,
+    "body": "{\n  \"name\": \"AUDIT_2\",\n  \"cluster_name\": \"AUDIT\",\n  \"cluster_uuid\": \"FsCx9_26TnGqsw7Qp_ClrA\",\n  \"version\": {\n    \"number\": \"8.14.3\",\n    \"build_flavor\": \"default\",\n    \"build_type\": \"docker\",\n    \"build_hash\": \"d55f984299e0e88dee72ebd8255f7ff130859ad0\",\n    \"build_date\": \"2024-07-07T22:04:49.882652950Z\",\n    \"build_snapshot\": false,\n    \"lucene_version\": \"9.10.0\",\n    \"minimum_wire_compatibility_version\": \"7.17.0\",\n    \"minimum_index_compatibility_version\": \"7.0.0\"\n  },\n  \"tagline\": \"You Know, for Search\"\n}"
+  }
+}

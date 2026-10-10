@@ -128,13 +128,6 @@ task_audit_build_check() {
   ./gradlew --no-daemon --stacktrace audit:crossBuildAssemble
 }
 
-# The unit suites. ror-tools:test belongs to THIS task and to no other: it starts an ES container
-# and builds the ROR binaries, so one run per ES module would cost minutes for one answer. With no
-# -PesModule its test task takes the newest module by itself.
-#
-# Windows leaves out audit and build-base: audit is cross-compiled Scala with no platform of its
-# own, and `audit_build_check` already builds it. Windows adds ror-tools on a native ES install,
-# the platform the patcher has its own paths for.
 run_core_tests() {
   local args=()
   mapfile -t args < <(windows_gradle_args)

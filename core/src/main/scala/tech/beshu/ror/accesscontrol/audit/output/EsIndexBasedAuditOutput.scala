@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.audit.output
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.JsonAuditSerializer
-import tech.beshu.ror.accesscontrol.domain.{AuditOutputName, RequestId, RorAuditIndexTemplate}
+import tech.beshu.ror.accesscontrol.domain.{AuditIngestPipeline, AuditOutputName, RequestId, RorAuditIndexTemplate}
 import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.es.services.IndexBasedAuditOutputService
 
@@ -29,7 +29,8 @@ private[audit] final class EsIndexBasedAuditOutput private (
     outputName: AuditOutputName,
     serializer: JsonAuditSerializer,
     rorAuditIndexTemplate: RorAuditIndexTemplate,
-    auditOutputService: IndexBasedAuditOutputService
+    auditOutputService: IndexBasedAuditOutputService,
+    pipeline: Option[AuditIngestPipeline]
 )(
     implicit clock: Clock
 ) extends JsonBasedAuditOutput(outputName, serializer) {
@@ -40,7 +41,8 @@ private[audit] final class EsIndexBasedAuditOutput private (
     auditOutputService.submit(
       indexName = rorAuditIndexTemplate.indexName(clock.instant()),
       documentId = event.requestContext.id,
-      jsonRecord = serializedEvent.toString
+      jsonRecord = serializedEvent.toString,
+      pipeline = pipeline
     )
   }
 
@@ -53,11 +55,12 @@ object EsIndexBasedAuditOutput {
       outputName: AuditOutputName,
       serializer: JsonAuditSerializer,
       indexTemplate: RorAuditIndexTemplate,
-      auditOutputService: IndexBasedAuditOutputService
+      auditOutputService: IndexBasedAuditOutputService,
+      pipeline: Option[AuditIngestPipeline]
   )(
       implicit clock: Clock
   ): EsIndexBasedAuditOutput = {
-    new EsIndexBasedAuditOutput(outputName, serializer, indexTemplate, auditOutputService)
+    new EsIndexBasedAuditOutput(outputName, serializer, indexTemplate, auditOutputService, pipeline)
   }
 
 }

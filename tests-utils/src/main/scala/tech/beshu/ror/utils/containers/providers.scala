@@ -39,6 +39,9 @@ object providers {
       client(Credentials.Token(basicAuthWithRorMetadata))
     }
 
+    def basicAuthClientWithHeaders(user: String, pass: String, headers: (String, String)*): RestClient =
+      client(Credentials.BasicAuthWithHeaders(user, pass, headers))
+
     def tokenAuthClient(token: String): RestClient = client(Credentials.Token(token))
 
     def authHeader(header: String, value: String): RestClient = client(Credentials.Header(header, value))

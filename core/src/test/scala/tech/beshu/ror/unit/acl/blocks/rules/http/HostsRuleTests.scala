@@ -42,6 +42,7 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -62,6 +63,18 @@ class HostsRuleTests extends AnyWordSpec with MockFactory {
           remoteHost = Address.from("1.1.1.2").get
         )
       }
+      "configured host IPv6 address is the same as remote host IPv6 address in request" in {
+        assertMatchRule(
+          configuredHosts = NonEmptySet.of(addressValueFrom("2001:db8::1")),
+          remoteHost = Address.from("2001:db8::1").get
+        )
+      }
+      "configured host IPv6 net address contains remote host IPv6 address in request" in {
+        assertMatchRule(
+          configuredHosts = NonEmptySet.of(addressValueFrom("2001:db8::/32")),
+          remoteHost = Address.from("2001:db8:ffff::99").get
+        )
+      }
       "configured host domain address is the same as remote host domain address in request" in {
         assertMatchRule(
           configuredHosts = NonEmptySet.of(addressValueFrom("google.com")),
@@ -80,6 +93,18 @@ class HostsRuleTests extends AnyWordSpec with MockFactory {
         assertNotMatchRule(
           configuredHosts = NonEmptySet.of(addressValueFrom("1.1.1.1/24")),
           remoteHost = Address.from("2.2.2.2")
+        )
+      }
+      "configured host IPv6 address is different than remote host IPv6 address in the same /32 net" in {
+        assertNotMatchRule(
+          configuredHosts = NonEmptySet.of(addressValueFrom("2001:db8::1")),
+          remoteHost = Address.from("2001:db8:ffff::99")
+        )
+      }
+      "configured host IPv6 address differs only in the last bit from remote host IPv6 address" in {
+        assertNotMatchRule(
+          configuredHosts = NonEmptySet.of(addressValueFrom("2001:db8::1")),
+          remoteHost = Address.from("2001:db8::2")
         )
       }
       "configured host domain address is different than the one from request" in {
@@ -119,7 +144,7 @@ class HostsRuleTests extends AnyWordSpec with MockFactory {
       new Ip4sBasedHostnameResolver
     )
     val requestContext = MockRequestContext.metadata.copy(
-      restRequest = MockRestRequest(allHeaders = Set.empty, remoteAddress = address)
+      restRequest = MockRestRequest(allHeaders = UniqueList.empty, remoteAddress = address)
     )
     val blockContext =
       GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)

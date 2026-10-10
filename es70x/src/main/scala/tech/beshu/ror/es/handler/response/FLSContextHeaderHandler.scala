@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler.response
 
-import cats.implicits.*
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.Header

@@ -8,11 +8,13 @@ readonlyrest:
         cluster:
           nodes: [ "http://{AUDIT_1_HOST}:{AUDIT_1_PORT}", "http://{AUDIT_2_HOST}:{AUDIT_2_PORT}" ]
           mode: round-robin
+          connectivity_check: required
       - type: data_stream
         data_stream: "audit_data_stream"
         cluster:
           nodes: [ "http://{AUDIT_1_HOST}:{AUDIT_1_PORT}", "http://{AUDIT_2_HOST}:{AUDIT_2_PORT}" ]
           mode: round-robin
+          connectivity_check: required
 
   access_control_rules:
 

@@ -22,7 +22,7 @@ object TestUjson {
 
   object ujson {
     // Re-export core types so callers don't need to import from `_root_.ujson` separately.
-    export originalUjson.{Null, Num, Obj, Str, Value}
+    export originalUjson.{Arr, Null, Num, Obj, Str, Value}
 
     def read(s: String, trace: Boolean = false): Value = originalUjson.read(s.replaceAll("\r\n", "\n"), trace)
 

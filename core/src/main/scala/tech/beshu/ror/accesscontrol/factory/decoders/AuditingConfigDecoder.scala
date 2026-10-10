@@ -30,12 +30,14 @@ import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, JsonAu
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
   AuditClusterNode,
   ClusterMode,
+  ConnectivityCheckMode,
   NodeCredentials,
   RemoteAuditCluster
 }
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{
   AuditCluster,
+  AuditIngestPipeline,
   AuditOutputName,
   RorAuditDataStream,
   RorAuditIndexTemplate,
@@ -339,6 +341,7 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
 
     Decoder.instance { c =>
       for {
+        _ <- rejectPipelineInLogOutput(c)
         logSerializer <- c.as[Option[AuditSerializer]]
         loggerName <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
         fileAppender <- c.downField("file_appender").as[Option[RollingFileBased.FileAppender]]
@@ -358,10 +361,12 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
       auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
       logSerializer <- c.as[Option[JsonAuditSerializer]]
       remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
+      pipeline <- c.downField("pipeline").as[Option[AuditIngestPipeline]]
     } yield EsIndexBased.Config(
       logSerializer.getOrElse(EsIndexBased.Config.default.serializer),
       auditIndexTemplate.getOrElse(EsIndexBased.Config.default.rorAuditIndexTemplate),
       remoteAuditCluster.getOrElse(EsIndexBased.Config.default.auditCluster),
+      pipeline,
     )
   }
 
@@ -370,12 +375,53 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
       rorAuditDataStream <- c.downFieldAs[Option[RorAuditDataStream]]("data_stream")
       logSerializer <- c.as[Option[JsonAuditSerializer]]
       remoteAuditCluster <- c.downFieldAs[Option[AuditCluster.RemoteAuditCluster]]("cluster")
+      pipeline <- c.downField("pipeline").as[Option[AuditIngestPipeline]]
     } yield EsDataStreamBased.Config(
       logSerializer.getOrElse(EsDataStreamBased.Config.default.serializer),
       rorAuditDataStream.getOrElse(EsDataStreamBased.Config.default.rorAuditDataStream),
       remoteAuditCluster.getOrElse(EsDataStreamBased.Config.default.auditCluster),
+      pipeline,
     )
   }
+
+  private def rejectPipelineInLogOutput(c: HCursor): Decoder.Result[Unit] =
+    c.downField("pipeline").focus match {
+      case Some(_) =>
+        Left(
+          DecodingFailure(
+            AclCreationErrorCoders.stringify(
+              auditSettingsError(
+                "The audit 'pipeline' setting is supported only by the 'index' and 'data_stream' outputs, not by the 'log' output"
+              )
+            ),
+            Nil
+          )
+        )
+      case None =>
+        Right(())
+    }
+
+  private given Decoder[AuditIngestPipeline] = Decoder.instance { c =>
+    c.value.asString.flatMap(AuditIngestPipeline.from) match {
+      case Some(pipeline) if pipeline.id.value == AuditIngestPipeline.esNoPipelineId =>
+        Left(
+          pipelineDecodingFailure(
+            s"The audit 'pipeline' setting cannot be '${AuditIngestPipeline.esNoPipelineId}', because ES would then skip the default ingest pipeline of the target index"
+          )
+        )
+      case Some(pipeline) =>
+        Right(pipeline)
+      case None =>
+        Left(
+          pipelineDecodingFailure(
+            s"The audit 'pipeline' setting must be a non-blank ID of an ES ingest pipeline, got: ${c.value.noSpaces}"
+          )
+        )
+    }
+  }
+
+  private def pipelineDecodingFailure(message: String) =
+    DecodingFailure(AclCreationErrorCoders.stringify(auditSettingsError(message)), Nil)
 
   private given Decoder[AuditOutputName] = Decoder.decodeString.map(AuditOutputName.apply)
 
@@ -719,12 +765,30 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
         .decoder
     }
 
+    given Decoder[ConnectivityCheckMode] =
+      SyncDecoderCreator
+        .from(Decoder.decodeString)
+        .emapE[ConnectivityCheckMode] {
+          case "required"    => Right(ConnectivityCheckMode.Required)
+          case "best_effort" => Right(ConnectivityCheckMode.BestEffort)
+          case "disabled"    => Right(ConnectivityCheckMode.Disabled)
+          case other         =>
+            Left(
+              auditSettingsError(
+                s"Unknown connectivity check [$other], allowed values are: [required,best_effort,disabled]"
+              )
+            )
+        }
+        .decoder
+
     given Decoder[ClusterMode] =
       SyncDecoderCreator
         .from(Decoder.decodeString)
         .emapE[ClusterMode] {
           case "round-robin" => Right(ClusterMode.RoundRobin)
-          case other => Left(auditSettingsError(s"Unknown cluster mode [$other], allowed values are: [round-robin]"))
+          case "failover"    => Right(ClusterMode.Failover)
+          case other         =>
+            Left(auditSettingsError(s"Unknown cluster mode [$other], allowed values are: [round-robin,failover]"))
         }
         .decoder
 
@@ -773,7 +837,12 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
           clusterNodes <- c.as[UniqueNonEmptyList[AuditClusterNode]]
           maybeCredentials <- clusterCredentialsFromNodesUris(clusterNodes)
             .leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
-        } yield AuditCluster.RemoteAuditCluster(clusterNodes, ClusterMode.RoundRobin, maybeCredentials)
+        } yield AuditCluster.RemoteAuditCluster(
+          nodes = clusterNodes,
+          mode = ClusterMode.RoundRobin,
+          credentials = maybeCredentials,
+          connectivityCheckMode = ConnectivityCheckMode.Disabled
+        )
       case c =>
         // extended syntax
         val usernameKey = "username"
@@ -795,7 +864,13 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
                 Left(auditSettingsError(s"Audit output configuration is missing the '$usernameKey' field."))
             }
           }.leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
-        } yield AuditCluster.RemoteAuditCluster(clusterNodes, mode, maybeCredentials)
+          maybeConnectivityCheckMode <- c.downFieldAs[Option[ConnectivityCheckMode]]("connectivity_check")
+        } yield AuditCluster.RemoteAuditCluster(
+          nodes = clusterNodes,
+          mode = mode,
+          credentials = maybeCredentials,
+          connectivityCheckMode = maybeConnectivityCheckMode.getOrElse(ConnectivityCheckMode.Disabled)
+        )
     }
   }
 

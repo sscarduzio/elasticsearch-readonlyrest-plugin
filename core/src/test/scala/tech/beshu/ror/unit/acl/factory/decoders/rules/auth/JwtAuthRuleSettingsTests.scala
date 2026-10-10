@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Sig
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{Exact, bearer}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId

@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
 import org.elasticsearch.cluster.metadata.ProjectMetadata
 import org.elasticsearch.cluster.{ClusterName, ClusterState}

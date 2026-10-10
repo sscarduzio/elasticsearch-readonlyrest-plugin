@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol
 
 import cats.data.{NonEmptyList, WriterT}
-import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.AccessControlList.*
@@ -97,25 +96,21 @@ class EnabledAccessControlList(
       context: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]
   ): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] =
     doPrivileged {
-      if (staticContext.doesRequirePassword) {
-        Task.delay((UserMetadataRequestResult.RorKbnPluginNotSupported, History.empty))
-      } else {
-        Task
-          .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
-          .map(_.flatten)
-          .map { blockResults =>
-            val (executionResults, blocksHistory) = blockResults.unzip
-            val history = History(blocksHistory.toVector)
-            val matchedResults = executionResults.view.onlyMatched()
-            val handlingResult = context.details.licenseType match {
-              case Free | Pro | Enterprise(false) =>
-                determineUserMetadataWithoutTenancyHandling(matchedResults, history)
-              case Enterprise(true) =>
-                determineUserMetadataWithTenancyHandling(matchedResults, history)
-            }
-            handlingResult -> history
+      Task
+        .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
+        .map(_.flatten)
+        .map { blockResults =>
+          val (executionResults, blocksHistory) = blockResults.unzip
+          val history = History(blocksHistory.toVector)
+          val matchedResults = executionResults.view.onlyMatched()
+          val handlingResult = context.details.licenseType match {
+            case Free | Pro | Enterprise(false) =>
+              determineUserMetadataWithoutTenancyHandling(matchedResults, history)
+            case Enterprise(true) =>
+              determineUserMetadataWithTenancyHandling(matchedResults, history)
           }
-      }
+          handlingResult -> history
+        }
     }
 
   def withBlockTransformation(f: Block => Block): AccessControlList =

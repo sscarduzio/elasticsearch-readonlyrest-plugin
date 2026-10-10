@@ -138,9 +138,9 @@ object Json {
  * their `hashCode` is computed once instead of being recomputed on every lookup/insertion.
  *
  * The cached value is identical to the compiler-generated case class `hashCode`
- * (`MurmurHash3.productHash`), so it stays consistent with structural `equals` and changes no
+ * (`MurmurHash3.caseClassHash`), so it stays consistent with structural `equals` and changes no
  * equality semantics — only when the hash is computed.
  */
 private[domain] trait EagerHashCode { this: Product =>
-  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.caseClassHash(this)
 }

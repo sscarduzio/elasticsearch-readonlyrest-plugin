@@ -55,10 +55,12 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.services.{DataStreamBasedAuditOutputService, DataStreamService, IndexBasedAuditOutputService}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.positiveInt
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.misc.OsUtils
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import java.nio.file.attribute.PosixFilePermission
 import java.time.*
@@ -67,7 +69,7 @@ import scala.annotation.nowarn
 
 class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfterAll {
 
-  import tech.beshu.ror.utils.TestsUtils.loggingContext
+  import tech.beshu.ror.utils.TestsUtils.{loggingContext, testRequestId}
 
   private val auditLogFile = File("/tmp/ror/audit_logs/test_audit.log")
 
@@ -87,7 +89,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                   dataStreamCreator = (_: AuditCluster) => mockedDataStreamBasedAuditOutputService
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -107,7 +110,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                   dataStreamCreator = (_: AuditCluster) => mockedDataStreamBasedAuditOutputService
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -122,13 +126,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestId = RequestId("mock-1")
             val indexAuditOutput = mock[IndexBasedAuditOutputService]
             (indexAuditOutput
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
             (dataStreamAuditOutput
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, RequestId("mock-1"))
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, RequestId("mock-1"))
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -141,7 +145,51 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => indexAuditOutput,
                   dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
+              )
+              .runSyncUnsafe()
+              .toOption
+              .get
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.outputs)).runSyncUnsafe()
+          }
+          "a pipeline is configured for the output" in {
+            val requestId = RequestId("mock-1")
+            val indexAuditOutput = mock[IndexBasedAuditOutputService]
+            (indexAuditOutput
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(
+                fullIndexName("test_2018-12-31"),
+                "mock-1",
+                *,
+                Some(auditIngestPipeline("index_pipeline")),
+                requestId
+              )
+              .returning(())
+            val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
+            (dataStreamAuditOutput
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(
+                fullDataStreamName("test_ds"),
+                "mock-1",
+                *,
+                Some(auditIngestPipeline("data_stream_pipeline")),
+                requestId
+              )
+              .returning(())
+            @nowarn("cat=deprecation")
+            val auditingTool = AuditingTool
+              .create(
+                auditSetupForAnyOutput(
+                  config = AuditingConfig(
+                    configuredAuditOutputsWithPipeline(new DefaultAuditLogSerializer),
+                    defaultAclLog = true,
+                    defaultTestEsNodeSettings
+                  ),
+                  indexCreator = (_: AuditCluster) => indexAuditOutput,
+                  dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -152,13 +200,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestId = RequestId("mock-1")
             val indexAuditOutput = mock[IndexBasedAuditOutputService]
             (indexAuditOutput
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
             (dataStreamAuditOutput
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, requestId)
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -171,7 +219,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => indexAuditOutput,
                   dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -207,13 +256,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestId = RequestId("mock-1")
             val indexAuditOutput = mock[IndexBasedAuditOutputService]
             (indexAuditOutput
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
             (dataStreamAuditOutput
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, requestId)
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -226,7 +275,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => indexAuditOutput,
                   dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -244,13 +294,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestId = RequestId("mock-1")
             val indexAuditOutput = mock[IndexBasedAuditOutputService]
             (indexAuditOutput
-              .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+              .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
               .returning(())
             val dataStreamAuditOutput = mockedDataStreamBasedAuditOutputService
             (dataStreamAuditOutput
-              .submit(_: DataStreamName.Full, _: String, _: String)(_: RequestId))
-              .expects(fullDataStreamName("test_ds"), "mock-1", *, requestId)
+              .submit(_: DataStreamName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+              .expects(fullDataStreamName("test_ds"), "mock-1", *, None, requestId)
               .returning(())
             @nowarn("cat=deprecation")
             val auditingTool = AuditingTool
@@ -263,7 +313,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => indexAuditOutput,
                   dataStreamCreator = (_: AuditCluster) => dataStreamAuditOutput
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -302,7 +353,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 ),
                 indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                 dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-              )
+              ),
+              httpClientsFactory = MockHttpClientsFactory
             )
             .runSyncUnsafe()
             .toOption
@@ -353,7 +405,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 ),
                 indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                 dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-              )
+              ),
+              httpClientsFactory = MockHttpClientsFactory
             )
             .runSyncUnsafe()
             .toOption
@@ -403,7 +456,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 ),
                 indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                 dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-              )
+              ),
+              httpClientsFactory = MockHttpClientsFactory
             )
             .runSyncUnsafe()
             .toOption
@@ -423,6 +477,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     "rolling file output is used" should {
       "return a creation error" when {
         "the parent directory does not exist" in {
+          assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
           // Log4j creates missing directories via Files.createDirectories, so to reliably
           // prevent creation we need the grandparent to be non-writable.
           val tempDir = File.newTemporaryDirectory("ror-audit-test-")
@@ -444,7 +499,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                   dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
 
@@ -465,6 +521,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         }
 
         "the parent directory has no write permission" in {
+          assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
           val tempDir = File.newTemporaryDirectory("ror-audit-test-")
           try {
             tempDir.setPermissions(
@@ -483,7 +540,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                   dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
 
@@ -504,6 +562,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         }
 
         "the log file exists but is not writable" in {
+          assume(OsUtils.currentOs == CurrentOs.OtherThanWindows, "the POSIX permissions are not used on Windows")
           val tempDir = File.newTemporaryDirectory("ror-audit-test-")
           try {
             val logFile = tempDir / "audit.log"
@@ -522,7 +581,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   ),
                   indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
                   dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-                )
+                ),
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
 
@@ -548,8 +608,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val requestId = RequestId("mock-withgroups-dedup")
         val indexAuditOutput = mock[IndexBasedAuditOutputService]
         (indexAuditOutput
-          .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-          .expects(fullIndexName("test_2018-12-31"), "mock-withgroups-dedup", *, requestId)
+          .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+          .expects(fullIndexName("test_2018-12-31"), "mock-withgroups-dedup", *, None, requestId)
           .returning(())
           .once()
 
@@ -575,7 +635,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               ),
               indexCreator = (_: AuditCluster) => indexAuditOutput,
               dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-            )
+            ),
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
           .toOption
@@ -627,8 +688,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         val requestId = RequestId("mock-1")
         val indexAuditOutput = mock[IndexBasedAuditOutputService]
         (indexAuditOutput
-          .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
-          .expects(fullIndexName("test_2018-12-31"), "mock-1", *, requestId)
+          .submit(_: IndexName.Full, _: String, _: String, _: Option[AuditIngestPipeline])(_: RequestId))
+          .expects(fullIndexName("test_2018-12-31"), "mock-1", *, None, requestId)
           .returning(())
         @nowarn("cat=deprecation")
         val auditingTool = AuditingTool
@@ -636,7 +697,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             auditSetupForAllEsVersions(
               config = auditingConfigSupportedByAllEsVersions(new DefaultAuditLogSerializer),
               creator = (_: AuditCluster) => indexAuditOutput
-            )
+            ),
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
           .toOption
@@ -655,7 +717,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 defaultTestEsNodeSettings
               ),
               creator = (_: AuditCluster) => mock[IndexBasedAuditOutputService]
-            )
+            ),
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
 
@@ -671,7 +734,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 defaultTestEsNodeSettings
               ),
               creator = (_: AuditCluster) => mock[IndexBasedAuditOutputService]
-            )
+            ),
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
 
@@ -690,7 +754,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               ),
               indexCreator = (_: AuditCluster) => mock[IndexBasedAuditOutputService],
               dataStreamCreator = (_: AuditCluster) => mock[DataStreamBasedAuditOutputService]
-            )
+            ),
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
         creationResult.isRight should be(true)
@@ -749,6 +814,29 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           AuditSerializer.Delegating(serializer),
           RorAuditDataStream.from("test_ds").toOption.get,
           AuditCluster.LocalAuditCluster
+        )
+      )
+    )
+  )
+
+  private def configuredAuditOutputsWithPipeline(serializer: AuditLogSerializer) = AuditOutputs.Configured(
+    outputs = NonEmptyList.of(
+      EsIndexBased(
+        AuditOutputName.random(),
+        EsIndexBased.Config(
+          AuditSerializer.Delegating(serializer),
+          RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
+          AuditCluster.LocalAuditCluster,
+          pipeline = Some(auditIngestPipeline("index_pipeline"))
+        )
+      ),
+      EsDataStreamBased(
+        AuditOutputName.random(),
+        EsDataStreamBased.Config(
+          AuditSerializer.Delegating(serializer),
+          RorAuditDataStream.from("test_ds").toOption.get,
+          AuditCluster.LocalAuditCluster,
+          pipeline = Some(auditIngestPipeline("data_stream_pipeline"))
         )
       )
     )

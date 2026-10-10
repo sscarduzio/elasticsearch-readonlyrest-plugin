@@ -30,11 +30,12 @@ import org.elasticsearch.client.*
 import org.elasticsearch.client.RestClient.FailureListener
 import tech.beshu.ror.accesscontrol.audit.output.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexName, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, AuditIngestPipeline, DataStreamName, IndexName, RequestId}
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.security.cert.X509Certificate
+import java.time.Clock
 import java.util.concurrent.Semaphore
 
 final class RestClientAuditOutputService private (
@@ -45,28 +46,38 @@ final class RestClientAuditOutputService private (
     with DataStreamBasedAuditOutputService
     with RequestIdAwareLogging {
 
-  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+  override def submit(
+      indexName: IndexName.Full,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[AuditIngestPipeline]
+  )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(indexName.name.value, documentId, jsonRecord)
+    submitDocument(indexName.name.value, documentId, jsonRecord, pipeline.map(_.id.value))
   }
 
-  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
+  override def submit(
+      dataStreamName: DataStreamName.Full,
+      documentId: String,
+      jsonRecord: String,
+      pipeline: Option[AuditIngestPipeline]
+  )(
       implicit requestId: RequestId
   ): Unit = {
-    submitDocument(dataStreamName.value.value, documentId, jsonRecord)
+    submitDocument(dataStreamName.value.value, documentId, jsonRecord, pipeline.map(_.id.value))
   }
 
   override def close(): Unit = {
     client.close()
   }
 
-  private def submitDocument(indexName: String, documentId: String, jsonRecord: String)(
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String, pipeline: Option[String])(
       implicit requestId: RequestId
   ): Unit = {
     if (inFlightRequestSemaphore.tryAcquire()) {
       client
-        .perform(createRequest(indexName, documentId, jsonRecord))
+        .perform(createRequest(indexName, documentId, jsonRecord, pipeline))
         .flatMap(response => Task.delay(handleResponse(indexName, documentId, response)))
         .onErrorHandleWith(ex =>
           Task.delay(logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex))
@@ -78,9 +89,10 @@ final class RestClientAuditOutputService private (
     }
   }
 
-  private def createRequest(indexName: String, documentId: String, jsonBody: String) = {
+  private def createRequest(indexName: String, documentId: String, jsonBody: String, pipeline: Option[String]) = {
     val request = new Request("PUT", s"/$indexName/_doc/$documentId")
     request.addParameter("op_type", "create")
+    pipeline.foreach(request.addParameter("pipeline", _))
     request.setJsonEntity(jsonBody)
     request
   }
@@ -102,35 +114,55 @@ final class RestClientAuditOutputService private (
 
 object RestClientAuditOutputService extends RequestIdAwareLogging {
 
-  def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditOutputService = {
+  def create(remoteCluster: AuditCluster.RemoteAuditCluster)(
+      implicit clock: Clock
+  ): RestClientAuditOutputService = {
     val hosts = remoteCluster.nodes.toNonEmptyList.map(toHttpHost)
-    val restClient = createRestClient(remoteCluster, hosts)
-    createService(remoteCluster, restClient)
-  }
-
-  private def createClusterAwareClient(
-      remoteCluster: AuditCluster.RemoteAuditCluster,
-      restClient: RestClient
-  ): MultiNodeRestClient[Request, Response] = {
     remoteCluster.mode match {
       case ClusterMode.RoundRobin =>
-        RestClientRequestExecutor.roundRobinClient(restClient)
+        val restClient = createRestClient(remoteCluster, hosts)
+        createService(
+          remoteCluster,
+          client = RestClientRequestExecutor.roundRobinClient(restClient),
+          dataStreamCreator = sharedClientAuditOutputCreator(restClient)
+        )
+      case ClusterMode.Failover =>
+        createService(
+          remoteCluster,
+          client = RestClientRequestExecutor.failoverClient(
+            hosts.map(host => createRestClient(remoteCluster, NonEmptyList.one(host)))
+          ),
+          dataStreamCreator = ownClientAuditOutputCreator(remoteCluster, hosts)
+        )
     }
   }
 
-  // the same client submits the audit events, so the resource must not close it. The service closes it.
-  private def createAuditOutputCreator(restClient: RestClient) = {
+  // The round robin client knows every node, so the data stream setup shares the client that submits the audit
+  // events. The resource must not close it - the service closes it.
+  private def sharedClientAuditOutputCreator(restClient: RestClient) = {
     Resource.eval(Task.delay(AuditDataStreamCreator(new RestClientDataStreamService(restClient))))
+  }
+
+  // Each failover client knows one node only, so the data stream setup gets its own client that knows every node.
+  // Nothing else uses that client, so the resource closes it.
+  private def ownClientAuditOutputCreator(
+      remoteCluster: AuditCluster.RemoteAuditCluster,
+      hosts: NonEmptyList[HttpHost]
+  ) = {
+    Resource
+      .make(Task.delay(createRestClient(remoteCluster, hosts)))(client => Task.delay(client.close()))
+      .map(client => AuditDataStreamCreator(new RestClientDataStreamService(client)))
   }
 
   private def createService(
       remoteCluster: AuditCluster.RemoteAuditCluster,
-      restClient: RestClient
+      client: MultiNodeRestClient[Request, Response],
+      dataStreamCreator: Resource[Task, AuditDataStreamCreator]
   ) = {
     new RestClientAuditOutputService(
-      client = createClusterAwareClient(remoteCluster, restClient),
+      client = client,
       inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
-      dataStreamCreator = createAuditOutputCreator(restClient)
+      dataStreamCreator = dataStreamCreator
     )
   }
 

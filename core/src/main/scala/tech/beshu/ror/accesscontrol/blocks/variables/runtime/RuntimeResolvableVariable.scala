@@ -118,14 +118,19 @@ object SingleExtractable {
       extends SingleExtractable
       with VariableType.Header {
 
+    // RFC 9110 §5.3: two field lines with one name mean the same as one line with the values joined by a
+    // comma. So the variable joins all values of the header, in the order they arrive.
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] =
       withTransformation(transformation) {
-        blockContext.requestContext.restRequest.allHeaders
-          .find(_.name === header)
-          .map(_.value.value) match {
-          case Some(value) => Right(value)
-          case None        => Left(ExtractError(s"Cannot extract user header '${header.show}' from request context"))
-        }
+        NonEmptyList
+          .fromList(
+            blockContext.requestContext.restRequest.allHeaders
+              .filter(_.name === header)
+              .toList
+              .map(_.value.value)
+          )
+          .map(_.toList.mkString(","))
+          .toRight(ExtractError(s"Cannot extract header '${header.show}' from request context"))
       }
 
   }

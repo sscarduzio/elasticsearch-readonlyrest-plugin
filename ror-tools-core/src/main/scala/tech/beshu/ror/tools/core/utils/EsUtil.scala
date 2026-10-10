@@ -57,11 +57,15 @@ object EsUtil {
   val es700: SemVer = SemVer.unsafeParse("7.0.0")
   val es670: SemVer = SemVer.unsafeParse("6.7.0")
 
-  def findTransportNetty4JarIn(path: os.Path): Option[Path] = {
+  def findTransportNetty4JarsIn(path: os.Path): List[Path] = {
     os
       .list(path)
       .filter { file => file.last.matches(transportNetty4JarNameRegex.pattern.pattern()) }
-      .toList match {
+      .toList
+  }
+
+  def findTransportNetty4JarIn(path: os.Path): Option[Path] = {
+    findTransportNetty4JarsIn(path) match {
       case Nil =>
         None
       case foundFile :: Nil =>

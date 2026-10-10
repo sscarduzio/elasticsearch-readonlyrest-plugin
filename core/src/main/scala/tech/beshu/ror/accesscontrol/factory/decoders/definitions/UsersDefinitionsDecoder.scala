@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import cats.data.NonEmptyList
-import cats.implicits.*
 import io.circe.{ACursor, Decoder, HCursor, Json}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth

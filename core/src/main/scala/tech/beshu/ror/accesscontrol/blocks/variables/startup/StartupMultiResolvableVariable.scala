@@ -17,9 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.startup
 
 import cats.data.NonEmptyList
-import cats.instances.either.*
-import cats.syntax.show.*
-import cats.syntax.traverse.*
 import com.github.tototoshi.csv.*
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariable.ResolvingError
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function

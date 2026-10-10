@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
@@ -27,14 +26,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRul
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.Known
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, LocalUsers, RequestId, User}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class ProxyAuthRule(
@@ -70,10 +68,14 @@ final class ProxyAuthRule(
   }
 
   private def getLoggedUser(context: RequestContext): Either[AuthenticationFailed, DirectlyLoggedUser] = {
-    context.restRequest.allHeaders
-      .find(_.name === settings.userHeaderName)
-      .map(h => DirectlyLoggedUser(Id(h.value)))
-      .toRight(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' not found"))
+    context.headers.singleOrAmbiguity(settings.userHeaderName) match {
+      case Right(Some(header)) =>
+        Right(DirectlyLoggedUser(Id(header.value)))
+      case Right(None) =>
+        Left(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' not found"))
+      case Left(_) =>
+        Left(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' holds more than one value"))
+    }
   }
 
   private def checkUserAllowed(userId: User.Id) = {

@@ -101,12 +101,12 @@ object Elasticsearch {
         WindowsEsDirectoryManager.configPath(config.clusterName, config.nodeName)
     }
 
-    // Only the official-image build runs `enableSlimModules`; the apt/Ubuntu image and the native
-    // Windows process keep every module, so their config must still disable those subsystems.
+    // Both docker builds run `enableSlimModules`; the native Windows process keeps every module, so
+    // its config must still disable those subsystems.
     def modulesAreStripped: Boolean =
       Elasticsearch.slimModulesEnabled && (config.esInstallationType match {
         case EsInstallationType.EsDockerImage                  => true
-        case EsInstallationType.UbuntuDockerImageWithEsFromApt => false
+        case EsInstallationType.UbuntuDockerImageWithEsFromApt => true
         case EsInstallationType.NativeWindowsProcess           => false
       })
 
@@ -282,6 +282,8 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
         s"""apt update && apt install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion"""
       )
       .run("apt clean && rm -rf /var/lib/apt/lists/*")
+      // Merges into the apt RUN above, so the stripped modules never land in a layer
+      .enableSlimModules(config.esDir, when = config.modulesAreStripped)
       .when(hasBuggyBundledJdk, replaceBundledJdk)
       .user("elasticsearch")
       .setCommand("/usr/share/elasticsearch/bin/elasticsearch")

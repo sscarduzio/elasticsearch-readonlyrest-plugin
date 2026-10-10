@@ -147,20 +147,21 @@ class ReadonlyRestPlugin(esVersion: String, config: Config, performPatching: Boo
         )
     }
 
+    // With umask 077, ES (run as elasticsearch) starts only if the patch keeps file permissions
     def patchES(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
       pluginInstallationSteps
         .user("root")
         .runWhen(
           Version.greaterOrEqualThan(esVersion, 7, 0, 0),
           linuxCommand =
-            s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+            s"(umask 077 && ${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes)",
           windowsCommand =
             s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
         )
         .runWhen(
           Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
           linuxCommand =
-            s"$$JAVA_HOME/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+            s"(umask 077 && $$JAVA_HOME/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes)",
           windowsCommand =
             s"""%JAVA_HOME%\\bin\\java -jar "${esConfig.esDir}\\plugins\\readonlyrest\\ror-tools.jar" patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes""",
         )

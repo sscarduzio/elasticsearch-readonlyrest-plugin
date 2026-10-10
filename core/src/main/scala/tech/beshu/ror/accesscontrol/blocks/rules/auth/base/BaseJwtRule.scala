@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import cats.data.EitherT
-import cats.implicits.toShow
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
@@ -90,13 +89,15 @@ trait BaseJwtRule extends RequestIdAwareLogging {
       jwt: JWT_DEF,
       failedJwtCauseCreator: String => Cause
   ) = {
-    blockContext.requestContext
+    blockContext.requestContext.headers
       .authorizationTokenBy(jwt.authorizationTokenDef)
       .map(h => Jwt.Token(h.value))
       .left
       .map {
         case AuthorizationTokenRetrievingError.MissingHeader =>
           failedJwtCauseCreator(s"JWT header '${jwt.authorizationTokenDef.headerName.show}' is missing")
+        case AuthorizationTokenRetrievingError.AmbiguousHeader =>
+          failedJwtCauseCreator(s"JWT header '${jwt.authorizationTokenDef.headerName.show}' holds more than one value")
         case AuthorizationTokenRetrievingError.InvalidValue =>
           failedJwtCauseCreator(
             s"JWT header '${jwt.authorizationTokenDef.headerName.show}' has an invalid or unrecognized token format"

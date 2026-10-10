@@ -19,7 +19,6 @@ package tech.beshu.ror.utils.containers.windows
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.lifecycle.Startable
-import org.testcontainers.shaded.org.bouncycastle.cert.*
 import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
 import tech.beshu.ror.utils.containers.windows.WindowsPseudoLdapContainer.WindowsPseudoGenericContainerLdap

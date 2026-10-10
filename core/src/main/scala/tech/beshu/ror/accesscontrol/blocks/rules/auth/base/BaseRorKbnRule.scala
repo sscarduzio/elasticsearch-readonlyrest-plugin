@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
-import cats.implicits.toShow
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
@@ -51,12 +50,14 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
   }
 
   private def extractJwtTokenFromHeader(blockContext: BlockContext) = {
-    blockContext.requestContext.bearerToken
+    blockContext.requestContext.headers.bearerToken
       .map(t => Jwt.Token(t.value))
       .left
       .map {
         case AuthorizationTokenRetrievingError.MissingHeader =>
           AuthenticationFailed("'Authorization' header is missing")
+        case AuthorizationTokenRetrievingError.AmbiguousHeader =>
+          AuthenticationFailed("'Authorization' header holds more than one value")
         case AuthorizationTokenRetrievingError.InvalidValue =>
           AuthenticationFailed("'Authorization' header does not contain a valid Bearer token")
       }

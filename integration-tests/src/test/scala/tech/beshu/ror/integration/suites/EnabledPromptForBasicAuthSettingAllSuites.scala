@@ -21,4 +21,4 @@ import tech.beshu.ror.integration.suites.base.EnabledPromptForBasicAuthSettingSu
 class EnabledPromptForBasicAuthSettingAllSuites
     extends EnabledPromptForBasicAuthSettingSuite
     with IndexApiWithFreeKibanaSupportSuite
-    with UserMetadataEndpointWithFreeKibanaSupportSuite
+    with RorKbnPluginRequestWithFreeKibanaSupportSuite

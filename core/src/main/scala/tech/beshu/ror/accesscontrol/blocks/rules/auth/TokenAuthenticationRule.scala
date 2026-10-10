@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
@@ -34,7 +33,6 @@ import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.Known
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.syntax.*
 
 final class TokenAuthenticationRule(
     val settings: Settings,
@@ -74,12 +72,14 @@ final class TokenAuthenticationRule(
         Denied(Cause.AuthenticationFailed(s"Token header '${tokenHeaderName.show}' is missing"))
       case TokenVerificationResult.Invalid =>
         Denied(Cause.AuthenticationFailed(s"Token header '${tokenHeaderName.show}' is invalid"))
+      case TokenVerificationResult.Ambiguous =>
+        Denied(Cause.AuthenticationFailed(s"Token header '${tokenHeaderName.show}' holds more than one value"))
     }
   }
 
   private def authenticateWithStaticToken(blockContext: BlockContext, tokenType: TokenType.StaticToken) =
     Task.delay {
-      blockContext.requestContext.authorizationTokenBy(tokenType.tokenDef) match {
+      blockContext.requestContext.headers.authorizationTokenBy(tokenType.tokenDef) match {
         case Right(token) if token == tokenType.token => TokenVerificationResult.Valid
         case Right(token)                             => TokenVerificationResult.Invalid
         case Left(error)                              => TokenVerificationResult.from(error)
@@ -89,7 +89,7 @@ final class TokenAuthenticationRule(
   private def authenticateWithServiceToken(blockContext: BlockContext, tokenType: TokenType.ServiceToken)(
       implicit requestId: RequestId
   ) = {
-    blockContext.requestContext.authorizationTokenBy(tokenType.tokenDef) match {
+    blockContext.requestContext.headers.authorizationTokenBy(tokenType.tokenDef) match {
       case Right(token) =>
         blockContext.requestContext.esServices.serviceAccountTokenService
           .validateToken(token)
@@ -102,7 +102,7 @@ final class TokenAuthenticationRule(
   private def authenticateWithApiKey(blockContext: BlockContext, tokenType: TokenType.ApiKey)(
       implicit requestId: RequestId
   ) = {
-    blockContext.requestContext.authorizationTokenBy(tokenType.tokenDef) match {
+    blockContext.requestContext.headers.authorizationTokenBy(tokenType.tokenDef) match {
       case Right(token) =>
         blockContext.requestContext.esServices.apiKeyService
           .validateToken(token)
@@ -118,11 +118,13 @@ final class TokenAuthenticationRule(
     case object Valid extends TokenVerificationResult
     case object Missing extends TokenVerificationResult
     case object Invalid extends TokenVerificationResult
+    case object Ambiguous extends TokenVerificationResult
 
     def from(error: AuthorizationTokenRetrievingError): TokenVerificationResult = {
       error match {
-        case AuthorizationTokenRetrievingError.MissingHeader => TokenVerificationResult.Missing
-        case AuthorizationTokenRetrievingError.InvalidValue  => TokenVerificationResult.Invalid
+        case AuthorizationTokenRetrievingError.MissingHeader   => TokenVerificationResult.Missing
+        case AuthorizationTokenRetrievingError.AmbiguousHeader => TokenVerificationResult.Ambiguous
+        case AuthorizationTokenRetrievingError.InvalidValue    => TokenVerificationResult.Invalid
       }
     }
 

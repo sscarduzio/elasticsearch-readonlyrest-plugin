@@ -23,16 +23,15 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.RequestIdAwareLogging.RorLogger
+import tech.beshu.ror.utils.RequestIdAwareLogging.{RorLoggerWithRequiredRequestId, RorLoggerWithoutRequiredRequestId}
 import tech.beshu.ror.utils.slf4j.Logger
 
 trait RequestIdAwareLogging {
 
   private lazy val underlyingLogger: Logger = Logger(getClass)
 
-  val logger: RorLogger = new RorLogger(underlyingLogger)
-
-  val noRequestIdLogger: Logger = underlyingLogger
+  val logger: RorLoggerWithRequiredRequestId = new RorLoggerWithRequiredRequestId(underlyingLogger)
+  val noRequestIdLogger: RorLoggerWithoutRequiredRequestId = new RorLoggerWithoutRequiredRequestId(underlyingLogger)
 
   given [B <: BlockContext](
       using value: ResponseContext[B]
@@ -58,7 +57,7 @@ trait RequestIdAwareLogging {
 
 object RequestIdAwareLogging {
 
-  final class RorLogger(private val log: Logger) {
+  final class RorLoggerWithRequiredRequestId(private val log: Logger) {
 
     lazy val delegate: ExtendedLogger = log.delegate
 
@@ -168,6 +167,80 @@ object RequestIdAwareLogging {
       val sb = new java.lang.StringBuilder(ridStr.length + msg.length + 4)
       sb.append('[').append(ridStr).append("] ").append(msg)
       sb.toString
+    }
+
+  }
+
+  final class RorLoggerWithoutRequiredRequestId(private val log: Logger) {
+
+    lazy val delegate: ExtendedLogger = log.delegate
+
+    def trace(msg: => String): Unit =
+      if (log.delegate.isTraceEnabled)
+        log.trace(msg)
+
+    def trace(msg: => String, t: Throwable): Unit =
+      if (log.delegate.isTraceEnabled)
+        log.trace(msg, t)
+
+    def debug(msg: => String): Unit =
+      if (log.delegate.isDebugEnabled)
+        log.debug(msg)
+
+    def debug(msg: => String, t: Throwable): Unit =
+      if (log.delegate.isDebugEnabled)
+        log.debug(msg, t)
+
+    def info(msg: => String): Unit =
+      if (log.delegate.isInfoEnabled)
+        log.info(msg)
+
+    def info(msg: => String, t: Throwable): Unit =
+      if (log.delegate.isInfoEnabled)
+        log.info(msg, t)
+
+    def warn(msg: => String): Unit =
+      if (log.delegate.isWarnEnabled)
+        log.warn(msg)
+
+    def warn(msg: => String, t: Throwable): Unit =
+      if (log.delegate.isWarnEnabled)
+        log.warn(msg, t)
+
+    def error(msg: => String): Unit =
+      if (log.delegate.isErrorEnabled)
+        log.error(msg)
+
+    def error(msg: => String, t: Throwable): Unit =
+      if (log.delegate.isErrorEnabled)
+        log.error(msg, t)
+
+    def errorEx(msg: => String, t: Throwable): Unit =
+      if (log.delegate.isDebugEnabled)
+        log.error(msg, t)
+      else
+        log.error(s"$msg; ${t.getMessage}")
+
+    def warnEx(msg: => String, t: Throwable): Unit =
+      if (log.delegate.isDebugEnabled)
+        log.warn(msg, t)
+      else
+        log.warn(s"$msg; ${t.getMessage}")
+
+    def dInfo(msg: String): Task[Unit] = {
+      Task.delay(info(msg))
+    }
+
+    def dWarn(msg: String): Task[Unit] = {
+      Task.delay(warn(msg))
+    }
+
+    def dDebug(msg: String): Task[Unit] = {
+      Task.delay(debug(msg))
+    }
+
+    def dError(msg: String): Task[Unit] = {
+      Task.delay(error(msg))
     }
 
   }

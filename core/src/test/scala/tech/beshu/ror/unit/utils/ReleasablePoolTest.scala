@@ -25,7 +25,6 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.unit.utils.ReleasablePoolTest.Counter
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 import scala.annotation.nowarn
 import scala.concurrent.Await

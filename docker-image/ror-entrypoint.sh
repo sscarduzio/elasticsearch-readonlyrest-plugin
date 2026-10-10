@@ -34,4 +34,6 @@ else
   echo "Elasticsearch is already patched. We can continue ..."
 fi
 
-gosu elasticsearch /usr/local/bin/docker-entrypoint.sh "$@"
+# exec: Elasticsearch must replace this shell. Without it, on docker stop the shell gets SIGTERM
+# and dies (or ignores it as PID 1), and Elasticsearch is killed without a graceful stop.
+exec gosu elasticsearch /usr/local/bin/docker-entrypoint.sh "$@"

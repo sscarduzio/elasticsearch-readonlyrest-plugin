@@ -41,6 +41,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.http.SessionMaxIdleRuleTest.{
 }
 import tech.beshu.ror.utils.RefinedUtils.{PositiveFiniteDuration, positiveFiniteDuration}
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.time.*
 import java.util.UUID
@@ -105,11 +106,33 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
           isMatched = false
         )
       }
+      "ror cookie is expired and the Cookie name repeats" in {
+        implicit val _clock: Clock = Clock.fixed(someday.toInstant.plus(15 minutes), someday.getZone)
+        assertRule(
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
+          rawCookie = "cookie1=test",
+          otherRawCookies = List(rorSessionCookie.forUser1),
+          setRawCookie = "",
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+          isMatched = false
+        )
+      }
       "ror cookie of different user" in {
         implicit val _clock: Clock = fixedClock
         assertRule(
           sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
           rawCookie = rorSessionCookie.forUser1,
+          setRawCookie = "",
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+          isMatched = false
+        )
+      }
+      "ror cookie of different user and the Cookie name repeats" in {
+        implicit val _clock: Clock = fixedClock
+        assertRule(
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
+          rawCookie = "cookie1=test",
+          otherRawCookies = List(rorSessionCookie.forUser1),
           setRawCookie = "",
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
           isMatched = false
@@ -141,6 +164,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
   private def assertRule(
       sessionMaxIdle: PositiveFiniteDuration,
       rawCookie: String = "",
+      otherRawCookies: List[String] = List.empty,
       setRawCookie: String,
       loggedUser: Option[DirectlyLoggedUser],
       isMatched: Boolean
@@ -149,10 +173,11 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
   ) = {
     val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle), CaseSensitivity.Enabled)
     val restRequest = mock[RestRequest]
-    val headers = NonEmptyString.unapply(rawCookie) match {
-      case Some(cookieHeader) => Set(headerFrom("Cookie" -> cookieHeader.value))
-      case None               => Set.empty[Header]
-    }
+    val headers = UniqueList.from(
+      (rawCookie :: otherRawCookies)
+        .flatMap(NonEmptyString.unapply)
+        .map(cookieHeader => headerFrom("Cookie" -> cookieHeader.value))
+    )
     (() => restRequest.allHeaders).expects().returning(headers)
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest)

@@ -92,6 +92,13 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2026-78605</cve>
         <cve>CVE-2026-56143</cve>
         <cve>CVE-2026-72656</cve>
+        <cve>CVE-2026-82294</cve>
+        <cve>CVE-2026-82300</cve>
+        <cve>CVE-2026-94397</cve>
+        <cve>CVE-2026-94399</cve>
+        <cve>CVE-2026-94398</cve>
+        <cve>CVE-2026-94396</cve>
+        <cve>CVE-2026-94408</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
@@ -155,6 +162,11 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2026-78605</cve>
         <cve>CVE-2026-56143</cve>
         <cve>CVE-2026-72656</cve>
+        <cve>CVE-2026-82294</cve>
+        <cve>CVE-2026-82300</cve>
+        <cve>CVE-2026-94397</cve>
+        <cve>CVE-2026-94399</cve>
+        <cve>CVE-2026-94398</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
@@ -187,6 +199,24 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <packageUrl regex="true">^pkg:maven/io\.netty/(netty-buffer|netty-codec|netty-codec-http|netty-codec-http2|netty-common|netty-handler|netty-resolver|netty-transport|netty-transport-native-unix-common)@.*$</packageUrl>
         <cve>CVE-2026-42582</cve>
         <cve>CVE-2026-56816</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   False positive on netty 4.1.138.Final. Netty fixed these three CVEs in that release:
+    - CVE-2026-93562 (GHSA-hcvj-94mj-jp5c): the HTTP/1.1 decoder validates a malformed
+      Transfer-Encoding header incompletely (request smuggling).
+    - CVE-2026-93574 (GHSA-j4mg-hqgv-34qc): the HTTP/1.1 chunk-size token accepts post-digit
+      whitespace (request smuggling).
+    - CVE-2026-93492 (GHSA-8352-h356-c9qh): HpackEncoder honours a very large HTTP/2
+      MAX_HEADER_TABLE_SIZE setting (DoS).
+   OSS Index still reports these against netty-codec-http and netty-codec-http2 at 4.1.138.Final,
+   because NVD has not analysed the records and they carry no version range.
+   Remove this suppression at the next netty upgrade, or when OSS Index drops the fixed version.
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/(netty-codec-http|netty-codec-http2)@4\.1\.138\.Final$</packageUrl>
+        <cve>CVE-2026-93562</cve>
+        <cve>CVE-2026-93574</cve>
+        <cve>CVE-2026-93492</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[

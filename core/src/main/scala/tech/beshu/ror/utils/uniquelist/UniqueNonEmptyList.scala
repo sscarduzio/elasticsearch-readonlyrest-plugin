@@ -17,7 +17,6 @@
 package tech.beshu.ror.utils.uniquelist
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import cats.kernel.Semigroup
 import tech.beshu.ror.utils.set.CovariantSet
 

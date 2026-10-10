@@ -87,7 +87,6 @@ object AccessControlList {
     }
 
     case object PassedThrough extends UserMetadataRequestResult
-    case object RorKbnPluginNotSupported extends UserMetadataRequestResult
   }
 
   sealed trait ForbiddenCause

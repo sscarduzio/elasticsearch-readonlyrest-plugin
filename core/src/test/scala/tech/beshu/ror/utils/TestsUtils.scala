@@ -90,6 +90,8 @@ import scala.util.{Failure, Success, Try}
 object TestsUtils {
 
   given loggingContext: LoggingContext = LoggingContext(Set.empty)
+  given testRequestId: RequestId = RequestId("test-request-id")
+
   val rorYamlParser = new YamlParser(Some(Megabytes(3)))
 
   val defaultEsVersionForTests: EsVersion = EsVersion(8, 17, 0)
@@ -203,6 +205,8 @@ object TestsUtils {
   def fullIndexName(str: NonEmptyString): IndexName.Full = IndexName.Full.fromString(str.value).get
 
   def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromNes(str.value)
+
+  def auditIngestPipeline(id: String): AuditIngestPipeline = AuditIngestPipeline.from(id).get
 
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 

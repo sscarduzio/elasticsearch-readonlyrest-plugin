@@ -17,20 +17,13 @@
 package tech.beshu.ror.accesscontrol.request
 
 import cats.Eval
-import cats.implicits.*
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{
-  InvalidValue,
-  MissingHeader
-}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.es.{EsNodeSettings, EsServices}
 import tech.beshu.ror.syntax.*
@@ -40,9 +33,9 @@ import java.time.Instant
 import scala.language.implicitConversions
 
 trait BaseEsContext {
-  def correlationId: Eval[CorrelationId]
   def esTaskId: Long
   def restRequest: RestRequest
+  final def correlationId: Eval[CorrelationId] = restRequest.correlationId
   def esNodeSettings: EsNodeSettings
   def esServices: EsServices
 }
@@ -54,6 +47,11 @@ trait RequestContext {
   def initialBlockContext(block: Block): BLOCK_CONTEXT
 
   def restRequest: RestRequest
+
+  def headers: RequestHeaders = restRequest.headers
+
+  /** The user metadata request overrides it, because that request ignores the current group header. */
+  def currentGroupId: Option[GroupId] = headers.currentGroupId
 
   def timestamp: Instant
 
@@ -76,26 +74,22 @@ trait RequestContext {
   lazy val isReadOnlyRequest: Boolean =
     RequestContext.readActionPatternsMatcher.`match`(action)
 
-  // Computed once per request: Base64-decoding the credentials per block would be redundant.
-  lazy val basicAuth: Option[BasicAuth] = {
-    implicit val requestId: RequestId = id.toRequestId
-    restRequest.allHeaders
-      .to(LazyList)
-      .map(BasicAuth.fromHeader)
-      .find(_.isDefined)
-      .flatten
-  }
-
   def isCompositeRequest: Boolean
 
   def isAllowedForDLS: Boolean
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
-  def currentGroupId: Option[GroupId] = {
-    restRequest.allHeaders
-      .find(_.name === Header.Name.currentGroup)
-      .map(h => GroupId(h.value))
+  /**
+   * Does ROR ask this request for basic auth credentials?
+   *
+   * ROR asks no client which sends a license type it can parse. The ROR Kibana plugin sends one on
+   * each request, because it runs its own login that the prompt of the browser breaks. The client
+   * sends that header, so the value is a hint, not proof. Each other client follows the given
+   * static context.
+   */
+  def shouldAddBasicAuthPrompt(aclStaticContext: AccessControlStaticContext): Boolean = {
+    aclStaticContext.doesRequirePassword && this.headers.rorKbnLicenseType.isEmpty
   }
 
 }
@@ -204,51 +198,11 @@ object RequestContext extends RequestIdAwareLogging {
     ).map(Action.apply)
   }
 
-  extension (requestContext: RequestContext) {
-
-    def impersonateAs: Option[User.Id] = {
-      findHeader(Header.Name.impersonateAs)
-        .map { header => User.Id(header.value) }
-    }
-
-    def xForwardedForHeaderValue: Option[Address] = {
-      findHeader(Header.Name.xForwardedFor)
-        .flatMap { header =>
-          Option(header.value.value)
-            .flatMap(_.split(",").headOption)
-            .flatMap(Address.from)
-        }
-    }
-
-    def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
-
-    def bearerToken: Either[AuthorizationTokenRetrievingError, AuthorizationToken] = authorizationTokenBy(
-      AuthorizationTokenDef(headerName = Header.Name.authorization, allowedPrefix = StrictlyDefined(bearer))
-    )
-
-    def authorizationTokenBy(
-        config: AuthorizationTokenDef
-    ): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
-      for {
-        tokenHeader <- findHeader(config.headerName).toRight(MissingHeader)
-        authorizationToken <- AuthorizationToken.from(tokenHeader.value).toRight(InvalidValue)
-        _ <- config.allowedPrefix match {
-          case AllowedPrefix.Any                                                             => Right(())
-          case AllowedPrefix.StrictlyDefined(prefix) if prefix === authorizationToken.prefix => Right(())
-          case AllowedPrefix.StrictlyDefined(_)                                              => Left(InvalidValue)
-        }
-      } yield authorizationToken
-
-    }
-
-    private def findHeader(name: Header.Name) =
-      requestContext.restRequest.allHeaders.find(_.name === name)
-  }
-
   sealed trait AuthorizationTokenRetrievingError
 
   object AuthorizationTokenRetrievingError {
     case object MissingHeader extends AuthorizationTokenRetrievingError
+    case object AmbiguousHeader extends AuthorizationTokenRetrievingError
     case object InvalidValue extends AuthorizationTokenRetrievingError
   }
 
