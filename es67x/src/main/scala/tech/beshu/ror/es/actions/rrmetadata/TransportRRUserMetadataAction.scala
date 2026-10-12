@@ -40,7 +40,7 @@ class TransportRRUserMetadataAction(
       transportService,
       actionFilters,
       indexNameExpressionResolver,
-      () => new RRUserMetadataRequest(None)
+      () => new RRUserMetadataRequest(Right(None))
     ) {
 
   @Inject

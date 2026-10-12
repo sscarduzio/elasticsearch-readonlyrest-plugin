@@ -41,7 +41,8 @@ list_es_modules() {
   cat "$modules_file"
 }
 
-# Emits two lines: the base ES version on line 1, all supported versions space-separated on line 2.
+# Emits two lines: the base ES versions on line 1 (one per group of the module), all supported
+# versions on line 2. Both are space-separated.
 list_es_module_versions() {
   local module=$1
   local versions_file="${module}/build/es-modules/versions.txt"
@@ -75,9 +76,20 @@ pending_versions() {
   done
 }
 
-# Verifies bytecode reuse, builds the base version once, then repackages and publishes every ES
-# version from that base zip. Release mode leaves out a version origin already tagged. It builds the
-# base zip all the same, because a repackage starts from it. upload_pre publishes every version.
+# True when $1 is one of the base versions $2..
+is_base_version() {
+  local version=$1 base
+  shift
+  for base in "$@"; do
+    [ "$base" = "$version" ] && return 0
+  done
+  return 1
+}
+
+# Verifies bytecode reuse, builds the zip of each base version, then repackages and publishes every
+# ES version from the base zip of its group. Release mode leaves out a version origin already tagged.
+# It builds the base zips all the same, because a repackage starts from them. upload_pre publishes
+# every version.
 #   $1 mode (upload_pre|release)  $2 ror_version  $3 module
 publish_module() {
   local mode=$1 ror_version=$2 module=$3
@@ -89,14 +101,14 @@ publish_module() {
 
   trap 'if [ -n "${module_tmp_dir:-}" ]; then rm -rf "$module_tmp_dir"; fi' RETURN
 
-  local base_version versions
-  { read -r base_version; read -r -a versions; } < <(list_es_module_versions "$module")
-  if [ -z "$base_version" ]; then
+  local base_versions versions
+  { read -r -a base_versions; read -r -a versions; } < <(list_es_module_versions "$module")
+  if [ "${#base_versions[@]}" -eq 0 ] || [ "${#versions[@]}" -eq 0 ]; then
     ci_log "Module $module has no ES version."
     return 1
   fi
 
-  ci_log "Module $module owns ${#versions[@]} versions, and builds from base ES $base_version: ${versions[*]}."
+  ci_log "Module $module owns ${#versions[@]} versions, and builds from base ES ${base_versions[*]}: ${versions[*]}."
 
   # Publish newest-to-oldest so the most recent version is available first.
   mapfile -t versions < <(printf '%s\n' "${versions[@]}" | tac)
@@ -127,16 +139,22 @@ publish_module() {
     return 1
   fi
 
-  if ! ./gradlew ":${module}:buildRorPluginZip" "-PesVersion=${base_version}" </dev/null; then
-    ci_log "The base build of $module failed at ES $base_version."
-    return 1
-  fi
+  # One compile per group. Each ES version compiles into its own class dirs, so a base never picks up
+  # classes compiled against another ES version (see readonlyrest.plugin-common-conventions).
+  local base_version
+  for base_version in "${base_versions[@]}"; do
+    if ! ./gradlew ":${module}:buildRorPluginZip" "-PesVersion=${base_version}" </dev/null; then
+      ci_log "The base build of $module failed at ES $base_version."
+      return 1
+    fi
+  done
 
   local version
   for version in "${pending[@]}"; do
-    if [ "$version" != "$base_version" ]; then
+    # The repackage takes the base of the target's group.
+    if ! is_base_version "$version" "${base_versions[@]}"; then
       if ! ./gradlew ":${module}:repackageRorPluginForVersion" \
-            "-PesVersion=${base_version}" "-PtargetVersion=${version}" "-PesJarsDir=${module_tmp_dir}" </dev/null; then
+            "-PtargetVersion=${version}" "-PesJarsDir=${module_tmp_dir}" </dev/null; then
         ci_log "The repackage of $module failed at ES $version."
         return 1
       fi
@@ -154,14 +172,17 @@ publish_module() {
       return 1
     fi
 
-    # Skip deleting the base zip — later iterations need it for repackaging.
-    if [ "$version" != "$base_version" ]; then
+    # Skip deleting a base zip — later iterations need it for repackaging.
+    if ! is_base_version "$version" "${base_versions[@]}"; then
       rm -f "$zip" "${zip}.sha512"
     fi
   done
-  # Safe to delete the base zip now that all repackaging is done.
-  local base_zip="${dist_dir}/readonlyrest-${ror_version}_es${base_version}.zip"
-  rm -f "$base_zip" "${base_zip}.sha512"
+  # Safe to delete the base zips now that all repackaging is done.
+  local base_zip
+  for base_version in "${base_versions[@]}"; do
+    base_zip="${dist_dir}/readonlyrest-${ror_version}_es${base_version}.zip"
+    rm -f "$base_zip" "${base_zip}.sha512"
+  done
 
   if [ "$mode" = "release" ]; then
     find "$module" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true

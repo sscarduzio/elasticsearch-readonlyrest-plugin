@@ -44,7 +44,21 @@ trait AuditRequestContext {
   def involvesIndices: Boolean
   def attemptedUserName: Option[String]
   def rawAuthHeader: Option[String]
+  def xForwardedFor: Option[String] = AuditRequestContext.entriesOf("X-Forwarded-For", requestHeaders).headOption
   def generalAuditEvents: JSONObject
   def auditEnvironmentContext: AuditEnvironmentContext
   def matchedBlockNames: Option[List[String]]
+}
+
+object AuditRequestContext {
+
+  private def entriesOf(headerName: String, requestHeaders: Headers): List[String] =
+    requestHeaders
+      .getValue(headerName)
+      .flatMap(_.headOption)
+      .toList
+      .flatMap(_.split(",").toList)
+      .map(_.trim)
+      .filter(_.nonEmpty)
+
 }

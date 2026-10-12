@@ -32,6 +32,7 @@ import tech.beshu.ror.es.EsServices
 import tech.beshu.ror.es.services.EsClusterService
 import tech.beshu.ror.es.services.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.time.Instant
 
@@ -59,12 +60,14 @@ object BenchmarkSupport {
   val noBlock: Block = null
 
   // Realistic request header shape: 18 filler headers + one custom header + basic-auth credentials.
-  def realisticHeaders(credentials: Credentials): Set[Header] =
-    (1 to 18).map(i => Header(Header.Name(nes(s"X-Filler-$i")), nes(s"value-$i"))).toCovariantSet +
-      Header(Header.Name(nes("X-Custom-1")), nes("value-1")) +
-      BasicAuth.fromCredentials(credentials).header
+  def realisticHeaders(credentials: Credentials): UniqueList[Header] =
+    UniqueList.from(
+      (1 to 18).map(i => Header(Header.Name(nes(s"X-Filler-$i")), nes(s"value-$i"))) :+
+        Header(Header.Name(nes("X-Custom-1")), nes("value-1")) :+
+        BasicAuth.fromCredentials(credentials).header
+    )
 
-  final class BenchRestRequest(override val allHeaders: Set[Header]) extends RestRequest {
+  final class BenchRestRequest(override val allHeaders: UniqueList[Header]) extends RestRequest {
     override val method: Method = Method.GET
     override val path: UriPath = UriPath.from("/idx/_search").get
     override val localAddress: Address = Address.from("127.0.0.1").get
@@ -73,7 +76,7 @@ object BenchmarkSupport {
     override val contentLength: squants.information.Information = Bytes(0)
   }
 
-  sealed abstract class BaseBenchRequestContext(headers: Set[Header],
+  sealed abstract class BaseBenchRequestContext(headers: UniqueList[Header],
                                                 override val action: Action) extends RequestContext {
     override val restRequest: RestRequest = new BenchRestRequest(headers)
     // Fixed sentinels, not Instant.now()/CorrelationId.random: neither is read on the ACL hot
@@ -92,7 +95,7 @@ object BenchmarkSupport {
     override val isAllowedForDLS: Boolean = true
   }
 
-  final class NonIndexRequestContext(headers: Set[Header],
+  final class NonIndexRequestContext(headers: UniqueList[Header],
                                      action: Action = searchAction)
     extends BaseBenchRequestContext(headers, action) {
     override type BLOCK_CONTEXT = GeneralNonIndexRequestBlockContext
@@ -101,7 +104,7 @@ object BenchmarkSupport {
       GeneralNonIndexRequestBlockContext(block, this, BlockMetadata.from(this), Set.empty, List.empty)
   }
 
-  final class IndexRequestContext(headers: Set[Header],
+  final class IndexRequestContext(headers: UniqueList[Header],
                                   requested: Set[RequestedIndex[ClusterIndexName]],
                                   services: EsServices = emptyEsServices)
     extends BaseBenchRequestContext(headers, searchAction) {

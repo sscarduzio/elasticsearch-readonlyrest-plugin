@@ -18,12 +18,15 @@ package tech.beshu.ror.es.actions.rrmetadata
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.Header.AmbiguousHeader
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.DetailsCreationError
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.implicits.*
 
-class RRUserMetadataRequest(licenseTypeHeader: Option[Header]) extends ActionRequest with RorActionRequest {
+class RRUserMetadataRequest(licenseTypeHeader: Either[AmbiguousHeader, Option[Header]])
+    extends ActionRequest
+    with RorActionRequest {
 
   lazy val details: UserMetadataRequestContext.Details = {
     UserMetadataRequestContext.Details
@@ -35,6 +38,8 @@ class RRUserMetadataRequest(licenseTypeHeader: Option[Header]) extends ActionReq
     UserMetadataRequestContext.Details.from(licenseTypeHeader) match {
       case Left(DetailsCreationError.NoRequestedHeaderValue) =>
         wrongRorLicenseHeaderValidationException(cause = "missing")
+      case Left(DetailsCreationError.AmbiguousRequestedHeaderValue) =>
+        wrongRorLicenseHeaderValidationException(cause = "ambiguous")
       case Left(DetailsCreationError.RorKbnLicenseTypeInvalidValue) =>
         wrongRorLicenseHeaderValidationException(cause = "invalid")
       case Right(_) =>

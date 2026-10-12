@@ -248,7 +248,7 @@ A workflow must not work out a fact the build already knows. These Gradle tasks 
 |---|---|---|
 | `printEsMajors` | which ES majors get built, uploaded and released | `build/es-modules/es-majors.txt` |
 | `printEsModules` | which modules one ES major holds, newest first | `build/es-modules/es<major>x.txt` |
-| `printEsVersionsForModule` | the base version and every version of one module | `<module>/build/es-modules/versions.txt` |
+| `printEsVersionsForModule` | the base version of each group, and every version of one module | `<module>/build/es-modules/versions.txt` |
 | `printNewestEsVersionForModule` | the newest version of one module | `<module>/build/es-modules/newest-version.txt` |
 | `printAllSupportedEsVersions` | every ES version ROR supports | `build/es-modules/es-versions.txt` |
 | `printTestMatrices` | which ES modules each test matrix covers, per [policy](#test-matrix-policy) | `build/ci-matrices/<name>.json` |
@@ -407,7 +407,9 @@ discover                       publish the e2e module matrix
   same shell. At the end it checks the registry for every image.
 - `e2e_build_es_images` builds and pushes the ROR ES dev image from **this** commit, one job per
   module. It uses the same `publish_ror_es_prebuild_plugin` helper as the standalone pre-build task,
-  so the sha-frozen-image skip still applies.
+  so the sha-frozen-image skip still applies. It builds for `linux/amd64` only, the platform of the
+  `e2e_tests` runner (`ROR_CUSTOM_DOCKER_PLATFORMS`). The skip reuses an image only when it holds
+  every platform of the build.
 - `e2e_tests` runs once per version, in parallel. Both images exist when it starts. It clones the
   suite, starts the stack and runs Cypress.
 

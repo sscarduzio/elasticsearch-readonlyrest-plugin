@@ -126,6 +126,31 @@ docker_image_exists() {
   [ "$(docker_image_state "$1")" = present ]
 }
 
+# True only when the registry holds the image $1 with every platform in the comma-separated list $2.
+# False also when it cannot answer, or when the image is not a manifest list. The platforms come
+# from the manifest list of the image, so nothing is pulled. A wanted linux/arm64 matches an entry
+# linux/arm64/v8.
+docker_image_has_platforms() {
+  local image=$1 present wanted platform line found
+  if ! present=$(retry_with_backoff --retry-if is_docker_registry_error \
+       docker buildx imagetools inspect "$image" \
+       --format '{{range .Manifest.Manifests}}{{.Platform.OS}}/{{.Platform.Architecture}}{{with .Platform.Variant}}/{{.}}{{end}}{{"\n"}}{{end}}' \
+       2>/dev/null); then
+    return 1
+  fi
+  IFS=',' read -r -a wanted <<< "$2"
+  for platform in "${wanted[@]}"; do
+    [ -n "$platform" ] || continue
+    found=false
+    while IFS= read -r line; do
+      case $line in
+        "$platform" | "$platform"/*) found=true ;;
+      esac
+    done <<< "$present"
+    [ "$found" = true ] || return 1
+  done
+}
+
 # Runs a command again after a failure. The delay doubles each time.
 #
 #   retry_with_backoff [--retry-if <function>] <command> [arg ...]
@@ -261,13 +286,17 @@ retag_dev_image() {
 #
 # To avoid rebuilding when the sources have not changed, every build is frozen under an immutable,
 # source-identified tag <esVersion>-ror-<gitShortSha>. Before building we probe that tag in the registry:
-# if it already exists the Gradle build (the expensive build+push) is skipped. Setting FORCE_REBUILD=true
-# bypasses the skip.
+# if it already holds every platform of this build, the Gradle build (the expensive build+push) is
+# skipped. Setting FORCE_REBUILD=true bypasses the skip.
 #
 # Tags produced (all but the Gradle push are cheap registry-side manifest copies):
 #   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
 #   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
 #   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
+#
+# The build is for the standard platforms, linux/amd64 and linux/arm64. A comma-separated list in
+# ROR_CUSTOM_DOCKER_PLATFORMS replaces them. The modules for ES before 7.8 build linux/amd64 only, so
+# a publish for the standard platforms never skips their build.
 publish_ror_es_prebuild_plugin() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     ci_log "Usage: publish_ror_es_prebuild_plugin <ES version> [image tag]"
@@ -297,19 +326,23 @@ publish_ror_es_prebuild_plugin() {
 
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 
-  ci_log "Publishing the ROR pre-build image for ES $ES_VERSION (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG})."
-
   # Normalize workflow and shell inputs before comparing.
   local FORCE_REBUILD_NORM=${FORCE_REBUILD:-false}
   FORCE_REBUILD_NORM=${FORCE_REBUILD_NORM,,}
+  local PLATFORMS
+  PLATFORMS=$(printf '%s' "${ROR_CUSTOM_DOCKER_PLATFORMS:-}" | tr -d '[:space:]')
+  PLATFORMS=${PLATFORMS:-linux/amd64,linux/arm64}
 
-  if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_exists "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}"; then
-    ci_log "The sources did not change. The image for this commit exists, so this run skips the build."
+  ci_log "Publishing the ROR pre-build image for ES $ES_VERSION, platforms $PLATFORMS (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG})."
+
+  if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_has_platforms "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" "$PLATFORMS"; then
+    ci_log "The sources did not change. The image for this commit holds $PLATFORMS, so this run skips the build."
   else
     # A registry can answer 429 to the pull or the push. Only that failure is repeated.
     # One buildx push writes both tags, so the commit tag always names this build's image.
     if ! retry_with_backoff --retry-if is_docker_registry_error \
          ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
+         "-PdockerPlatforms=$PLATFORMS" \
          "-PadditionalImageTag=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
       ci_log "Cannot publish the ROR pre-build image for ES $ES_VERSION."
       return 4

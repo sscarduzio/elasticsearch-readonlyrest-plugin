@@ -56,18 +56,9 @@ object BasicAuth extends RequestIdAwareLogging {
     BasicAuth(credentials)
   }
 
-  def fromHeader(header: Header)(
+  def parse(headerValue: NonEmptyString)(
       implicit requestId: RequestId
   ): Option[BasicAuth] = {
-    header.name match {
-      case name if name === Header.Name.authorization => parse(header.value)
-      case _                                          => None
-    }
-  }
-
-  private def parse(headerValue: NonEmptyString)(
-      implicit requestId: RequestId
-  ) = {
     val authMethodName = "Basic "
     val rawValue = headerValue.value
     if (rawValue.startsWith(authMethodName) && rawValue.length > authMethodName.length) {

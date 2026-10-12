@@ -31,11 +31,29 @@ project.ext {
     pluginVersion = PluginArtifact.version(project)
     // esVersion = which version we DELIVER (and which module the RorTaskFinder selects). Default: newest.
     esVersion = EsVersions.delivered(project)
-    // baselineEsVersion = which version we COMPILE against (the base). Always the oldest supported in normal
-    // builds, so the deliverable reuses one set of base bytecode. The -P override exists ONLY for the CI
-    // bytecode guard: it forces a recompile at a boundary version to prove that version's bytecode matches
-    // the base before trusting the repackage.
+    // baselineEsVersion = which version we COMPILE against: the base of the group esVersion falls into
+    // (EsVersions.baseFor), so every version of a group reuses one set of base bytecode. The -P override
+    // exists ONLY for the CI bytecode guard: it forces a recompile at a boundary version to prove that
+    // version's bytecode matches the base before trusting the repackage.
     baselineEsVersion = EsVersions.baseline(project)
+}
+
+// Zinc, the incremental Scala compiler, keeps a .class whose source did not change even when the ES classes
+// it calls changed shape. BytesReference is a class in ES 7.5 and an interface from 7.6 on: the 1.71.0
+// release compiled es74x against 7.6, then against 7.4 in the same build dir, and shipped the 7.6 call
+// sites in every 7.4.x and 7.5.x zip, which fail at boot. So each ES version compiles into its own class
+// dirs with its own Zinc analysis, and classes compiled against one ES version never reach a build for another.
+def compiledEs = "es${project.ext.baselineEsVersion}"
+sourceSets.configureEach { sourceSet ->
+    sourceSet.scala.destinationDirectory = layout.buildDirectory.dir("classes/scala/${sourceSet.name}-${compiledEs}")
+}
+tasks.withType(ScalaCompile).configureEach { task ->
+    task.scalaCompileOptions.incrementalOptions.analysisFile =
+            layout.buildDirectory.file("tmp/scala/compilerAnalysis/${task.name}-${compiledEs}.analysis")
+    task.analysisMappingFile = layout.buildDirectory.file("tmp/scala/compilerAnalysis/${task.name}-${compiledEs}.mapping")
+    // The build cache can hold such stale classes under the correct ES version's key (a stale compile
+    // stores its output like any other). A new input gives every compile a new key, so no build reads them.
+    task.inputs.property('classesPerEsVersion', 1)
 }
 
 group = 'org.elasticsearch.plugin'
@@ -217,12 +235,17 @@ tasks.register('repackageRorPluginForVersion') {
         def esJarsDirProp = resolveEsJarsDir()
         def outputDirProp = project.findProperty('outputDir')
 
-        def baseEs = project.ext.baselineEsVersion
-        def baseZip = distributionsDir.get().file("${baselineFullName}.zip").asFile
-        if (!baseZip.exists()) {
-            throw new GradleException("base zip not found (build the module first): ${baseZip}")
+        if (!EsVersions.of(project).all.contains(target)) {
+            throw new GradleException("ES ${target} is not a supported version of ${project.name}")
         }
-        def fatJarBaseName = "${baselineFullName}.jar"
+        // The base comes from the TARGET, not from -PesVersion: a module with baseEsVersions holds one base
+        // per group, and a zip repackaged from another group's base carries bytecode for other ES classes.
+        def baseEs = EsVersions.baseFor(project, target)
+        def baseZip = distributionsDir.get().file("${pluginFullNameFor(baseEs)}.zip").asFile
+        if (!baseZip.exists()) {
+            throw new GradleException("base zip not found (build the module at ES ${baseEs} first): ${baseZip}")
+        }
+        def fatJarBaseName = "${pluginFullNameFor(baseEs)}.jar"
 
         def outputDir = outputDirProp != null ? file(outputDirProp) : distributionsDir.get().asFile
         outputDir.mkdirs()
@@ -360,17 +383,17 @@ tasks.register('packageRorPlugin') {
     }
 }
 
-// Prints the base ES version on line 1, and every supported version on line 2, space-separated.
-// Writes the same two lines to build/es-modules/versions.txt. A script reads that file: build-script
-// logging can pollute stdout even under --quiet.
+// Prints the base ES versions on line 1 (one per group, see baseEsVersions), and every supported version on
+// line 2, both space-separated and oldest first. Writes the same two lines to build/es-modules/versions.txt.
+// A script reads that file: build-script logging can pollute stdout even under --quiet.
 // Usage: ./gradlew :es818x:printEsVersionsForModule --quiet
 tasks.register('printEsVersionsForModule') {
     group = 'help'
-    description = "Prints base version and all supported versions for ${project.name}, and writes build/es-modules/versions.txt"
+    description = "Prints the base versions and all supported versions for ${project.name}, and writes build/es-modules/versions.txt"
     outputs.upToDateWhen { false }
     doLast {
         def esVersions = EsVersions.of(project)
-        def lines = [esVersions.oldest.toString(), esVersions.all.join(' ')]
+        def lines = [EsVersions.baseVersions(project).join(' '), esVersions.all.join(' ')]
         lines.each { println it }
         def versionsFile = project.layout.buildDirectory.file("es-modules/versions.txt").get().asFile
         versionsFile.parentFile.mkdirs()

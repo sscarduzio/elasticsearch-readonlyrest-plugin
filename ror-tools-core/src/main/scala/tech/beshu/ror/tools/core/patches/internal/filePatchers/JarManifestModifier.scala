@@ -18,10 +18,14 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import better.files.*
 import tech.beshu.ror.tools.core.utils.EsDirectory
-import tech.beshu.ror.tools.core.utils.FileUtils.{getFilePermissionsAndOwner, setFilePermissionsAndOwner}
+import tech.beshu.ror.tools.core.utils.FileUtils.replaceKeepingPermissionsAndOwner
 
+import java.io.IOException
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{AccessDeniedException, FileVisitResult, Files, Path as JPath, SimpleFileVisitor}
 import java.util.UUID
 import java.util.jar.{JarEntry, JarFile, JarOutputStream}
+import scala.collection.mutable.ListBuffer
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.util.Using
 
@@ -30,45 +34,52 @@ object JarManifestModifier {
   private val patchedByRorVersionPropertyName = "Patched-By-Ror-Version"
 
   def addPatchedByRorVersionProperty(file: File, rorVersion: String): Unit = {
-    val originalFilePermissionsAndOwner = file.getFilePermissionsAndOwner
-    val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
-    Using(new JarFile(file.toJava)) { jarFile =>
-      // Using the better-files temporary files causes problems, probably because of permission issues when copying the file at the end of this method.
-      val manifest = jarFile.getManifest
-      manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
-      Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
-        copyJarContentExceptManifestFile(jarFile, jarOutput)
+    file.replaceKeepingPermissionsAndOwner {
+      val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
+      Using(new JarFile(file.toJava)) { jarFile =>
+        // Using the better-files temporary files causes problems, probably because of permission issues when copying the file at the end of this method.
+        val manifest = jarFile.getManifest
+        manifest.getMainAttributes.putValue(patchedByRorVersionPropertyName, rorVersion)
+        Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
+          copyJarContentExceptManifestFile(jarFile, jarOutput)
+        }.fold(
+          ex =>
+            throw IllegalStateException(
+              s"Could not copy content of jar file ${file.name} because of [${ex.getMessage}]",
+              ex
+            ),
+          (_: Unit) => ()
+        )
       }.fold(
         ex =>
           throw IllegalStateException(
-            s"Could not copy content of jar file ${file.name} because of [${ex.getMessage}]",
+            s"Could not add ROR version to jar file ${file.name} because of [${ex.getMessage}]",
             ex
           ),
         (_: Unit) => ()
       )
-    }.fold(
-      ex =>
-        throw IllegalStateException(
-          s"Could not add ROR version to jar file ${file.name} because of [${ex.getMessage}]",
-          ex
-        ),
-      (_: Unit) => ()
-    )
-    tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
-    file.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
-  }
-
-  def findPatchedFiles(esDirectory: EsDirectory): List[PatchedJarFile] = {
-    val directory = File(esDirectory.modulesPath.wrapped)
-    directory.walk().filter(_.name.endsWith(".jar")).toList.flatMap { file =>
-      Using(new JarFile(file.toJava)) { jarFile =>
-        val rorVersion = Option(jarFile.getManifest.getMainAttributes.getValue(patchedByRorVersionPropertyName))
-        rorVersion.map(PatchedJarFile(file.name, _))
-      }.toOption.flatten
+      tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
     }
   }
 
-  final case class PatchedJarFile(name: String, patchedByRorVersion: String)
+  // The patches change jars in the lib and modules folders
+  // Left: the jars and folders that the current user cannot read. Then nobody can tell if a jar in them is patched.
+  def findPatchedFiles(esDirectory: EsDirectory): Either[List[os.Path], List[PatchedJarFile]] = {
+    val collector = new JarFilesCollector
+    List(esDirectory.libPath, esDirectory.modulesPath).foreach { directory =>
+      Files.walkFileTree(directory.toNIO, collector)
+    }
+    if (collector.inaccessiblePaths.nonEmpty) Left(collector.inaccessiblePaths.toList.map(os.Path(_)))
+    else Right(collector.jars.toList.flatMap(findPatchedJarFile))
+  }
+
+  // A damaged jar is not a patched jar, so it gives no result
+  private def findPatchedJarFile(jar: JPath): Option[PatchedJarFile] = {
+    Using(new JarFile(jar.toFile)) { jarFile =>
+      val rorVersion = Option(jarFile.getManifest.getMainAttributes.getValue(patchedByRorVersionPropertyName))
+      rorVersion.map(PatchedJarFile(jar.getFileName.toString, _))
+    }.toOption.flatten
+  }
 
   private def copyJarContentExceptManifestFile(originalJarFile: JarFile, jarOutput: JarOutputStream): Unit = {
     originalJarFile.entries().asIterator().asScala.foreach { entry =>
@@ -88,6 +99,30 @@ object JarManifestModifier {
         jarOutput.closeEntry()
       }
     }
+  }
+
+  final case class PatchedJarFile(name: String, patchedByRorVersion: String)
+
+  // Collects the jar files, and the jars and folders that the current user cannot read. Other I/O errors stop the walk.
+  private final class JarFilesCollector extends SimpleFileVisitor[JPath] {
+    val jars: ListBuffer[JPath] = ListBuffer.empty
+    val inaccessiblePaths: ListBuffer[JPath] = ListBuffer.empty
+
+    // JarFile reports an unreadable file as FileNotFoundException, so the check of the permission comes before it
+    override def visitFile(file: JPath, attributes: BasicFileAttributes): FileVisitResult = {
+      if (file.getFileName.toString.endsWith(".jar")) {
+        if (Files.isReadable(file)) jars += file else inaccessiblePaths += file
+      }
+      FileVisitResult.CONTINUE
+    }
+
+    override def visitFileFailed(file: JPath, exception: IOException): FileVisitResult = exception match {
+      case _: AccessDeniedException =>
+        inaccessiblePaths += file
+        FileVisitResult.CONTINUE
+      case other => throw other
+    }
+
   }
 
 }

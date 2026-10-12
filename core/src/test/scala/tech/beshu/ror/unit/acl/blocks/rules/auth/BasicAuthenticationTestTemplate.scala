@@ -34,9 +34,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impers
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.{Id, UserIdPattern}
-import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
+import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, basicAuthHeader, impersonationHeader, unsafeNes}
+import tech.beshu.ror.utils.uniquelist.UniqueList
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean, isUsernameMaskedByRule: Boolean)
@@ -74,11 +75,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
     "impersonation is not configured" should {
       "match" when {
         "basic auth header contains configured in rule's settings value" in {
-          val restRequest = mock[RestRequest]
-          (() => restRequest.allHeaders).expects().returning(Set(basicAuthHeader("logstash:logstash")))
-          val requestContext = mock[RequestContext]
-          (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
-          (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
+          val requestContext = requestContextWith(basicAuthHeader("logstash:logstash"))
           val blockContext =
             GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
@@ -93,11 +90,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
       }
       "not match" when {
         "basic auth header contains not configured in rule's settings value" in {
-          val restRequest = mock[RestRequest]
-          (() => restRequest.allHeaders).expects().returning(Set(basicAuthHeader("logstash:nologstash")))
-          val requestContext = mock[RequestContext]
-          (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
-          (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
+          val requestContext = requestContextWith(basicAuthHeader("logstash:nologstash"))
           val blockContext =
             GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
           ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(Denied {
@@ -106,11 +99,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
           })
         }
         "basic auth header is absent" in {
-          val restRequest = mock[RestRequest]
-          (() => restRequest.allHeaders).expects().returning(Set.empty)
-          val requestContext = mock[RequestContext]
-          (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
-          (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
+          val requestContext = requestContextWith()
           val blockContext =
             GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
           ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(
@@ -124,14 +113,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
         "impersonation header is passed" should {
           "match" when {
             "impersonator can be authenticated" in {
-              val restRequest = mock[RestRequest]
-              (() => restRequest.allHeaders)
-                .expects()
-                .returns(Set(basicAuthHeader("admin:admin"), impersonationHeader("logstash")))
-                .anyNumberOfTimes()
-              val requestContext = mock[RequestContext]
-              (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
-              (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
+              val requestContext = requestContextWith(basicAuthHeader("admin:admin"), impersonationHeader("logstash"))
               val blockContext = GeneralNonIndexRequestBlockContext(
                 mock[Block],
                 requestContext,
@@ -151,14 +133,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
           }
           "not match" when {
             "impersonator cannot be authenticated because of wrong password" in {
-              val restRequest = mock[RestRequest]
-              (() => restRequest.allHeaders)
-                .expects()
-                .returns(Set(basicAuthHeader("admin:pass"), impersonationHeader("logstash")))
-                .anyNumberOfTimes()
-              val requestContext = mock[RequestContext]
-              (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
-              (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
+              val requestContext = requestContextWith(basicAuthHeader("admin:pass"), impersonationHeader("logstash"))
               val blockContext = GeneralNonIndexRequestBlockContext(
                 mock[Block],
                 requestContext,
@@ -171,14 +146,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
               )
             }
             "there is no such impersonator" in {
-              val restRequest = mock[RestRequest]
-              (() => restRequest.allHeaders)
-                .expects()
-                .returns(Set(basicAuthHeader("unknown:admin"), impersonationHeader("logstash")))
-                .anyNumberOfTimes()
-              val requestContext = mock[RequestContext]
-              (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
-              (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
+              val requestContext = requestContextWith(basicAuthHeader("unknown:admin"), impersonationHeader("logstash"))
               val blockContext = GeneralNonIndexRequestBlockContext(
                 mock[Block],
                 requestContext,
@@ -191,14 +159,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
               )
             }
             "impersonator cannot impersonate the given user" in {
-              val restRequest = mock[RestRequest]
-              (() => restRequest.allHeaders)
-                .expects()
-                .returns(Set(basicAuthHeader("admin2:admin2"), impersonationHeader("logstash")))
-                .anyNumberOfTimes()
-              val requestContext = mock[RequestContext]
-              (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
-              (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
+              val requestContext = requestContextWith(basicAuthHeader("admin2:admin2"), impersonationHeader("logstash"))
               val blockContext = GeneralNonIndexRequestBlockContext(
                 mock[Block],
                 requestContext,
@@ -215,14 +176,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
       }
     } else {
       "impersonation is configured but not supported by the rule" in {
-        val restRequest = mock[RestRequest]
-        (() => restRequest.allHeaders)
-          .expects()
-          .returns(Set(basicAuthHeader("admin:admin"), impersonationHeader("logstash")))
-          .anyNumberOfTimes()
-        val requestContext = mock[RequestContext]
-        (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
-        (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
+        val requestContext = requestContextWith(basicAuthHeader("admin:admin"), impersonationHeader("logstash"))
         val blockContext =
           GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
@@ -232,6 +186,9 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
       }
     }
   }
+
+  private def requestContextWith(headers: Header*) =
+    MockRequestContext.nonIndices.copy(restRequest = MockRestRequest(allHeaders = UniqueList.from(headers)))
 
   private def adminAuthenticationRule(credentials: Credentials) = new AuthKeyRule(
     BasicAuthenticationRule.Settings(credentials),

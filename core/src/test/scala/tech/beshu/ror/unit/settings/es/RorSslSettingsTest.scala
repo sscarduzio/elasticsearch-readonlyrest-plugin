@@ -149,14 +149,16 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
         }
         ssl.internodeSsl should be(None)
       }
+      // The paths are in single quotes. A Windows path has backslashes, and a double-quoted YAML string reads them
+      // as escape characters.
       "server uses different formats of private key" when {
         "PKCS#8 EC private key" in {
           val ssl = forceLoad(
             s"""
                |xpack.security.enabled: false
                |readonlyrest.ssl.enable: true
-               |readonlyrest.ssl.server_certificate_file: "${(certsDir / "pkcs8-ec-cert.pem").pathAsString}"
-               |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "pkcs8-ec-key.pem").pathAsString}"
+               |readonlyrest.ssl.server_certificate_file: '${(certsDir / "pkcs8-ec-cert.pem").pathAsString}'
+               |readonlyrest.ssl.server_certificate_key_file: '${(certsDir / "pkcs8-ec-key.pem").pathAsString}'
                |""".stripMargin
           )
           inside(ssl.externalSsl) {
@@ -180,8 +182,8 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             s"""
                |xpack.security.enabled: false
                |readonlyrest.ssl.enable: true
-               |readonlyrest.ssl.server_certificate_file: "${(certsDir / "traditional-ec-cert.pem").pathAsString}"
-               |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "traditional-ec-key.pem").pathAsString}"
+               |readonlyrest.ssl.server_certificate_file: '${(certsDir / "traditional-ec-cert.pem").pathAsString}'
+               |readonlyrest.ssl.server_certificate_key_file: '${(certsDir / "traditional-ec-key.pem").pathAsString}'
                |""".stripMargin
           )
           inside(ssl.externalSsl) {
@@ -205,8 +207,8 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
             s"""
                |xpack.security.enabled: false
                |readonlyrest.ssl.enable: true
-               |readonlyrest.ssl.server_certificate_file: "${(certsDir / "traditional-rsa-cert.pem").pathAsString}"
-               |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "traditional-rsa-key.pem").pathAsString}"
+               |readonlyrest.ssl.server_certificate_file: '${(certsDir / "traditional-rsa-cert.pem").pathAsString}'
+               |readonlyrest.ssl.server_certificate_key_file: '${(certsDir / "traditional-rsa-key.pem").pathAsString}'
                |""".stripMargin
           )
           inside(ssl.externalSsl) {

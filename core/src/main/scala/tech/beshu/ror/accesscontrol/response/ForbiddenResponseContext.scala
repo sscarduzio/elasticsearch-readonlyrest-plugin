@@ -134,6 +134,15 @@ object ForbiddenResponseContext {
         )
       )
 
+    final def createImpersonationNotAllowedResponse(): RESPONSE =
+      create(
+        new ForbiddenResponseContext(
+          None,
+          NonEmptyList.one(ImpersonationNotAllowed),
+          shouldAddBasicAuthPrompt = false
+        )
+      )
+
     final def createOperationNotAllowedResponse(): RESPONSE =
       create(
         new ForbiddenResponseContext(None, NonEmptyList.one(OperationNotAllowed), shouldAddBasicAuthPrompt = false)

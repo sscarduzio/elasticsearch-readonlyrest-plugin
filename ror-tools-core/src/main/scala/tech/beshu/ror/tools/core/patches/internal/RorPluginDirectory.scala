@@ -16,24 +16,30 @@
  */
 package tech.beshu.ror.tools.core.patches.internal
 
-import better.files.File
 import just.semver.SemVer
 import os.Path
 import tech.beshu.ror.tools.core.patches.base.EsPatchMetadataCodec
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory.EsPatchMetadata
-import tech.beshu.ror.tools.core.utils.EsDirectory
-import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
+import tech.beshu.ror.tools.core.utils.EsUtil.{
+  findTransportNetty4JarIn,
+  findTransportNetty4JarsIn,
+  readonlyrestPluginPath
+}
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 import tech.beshu.ror.tools.core.utils.FileUtils.osPathToFile
+import tech.beshu.ror.tools.core.utils.{EsDirectory, FileUtils}
 
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{AccessDeniedException, Files}
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 
 private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   private val rorPath: Path = readonlyrestPluginPath(esDirectory.path)
-  private val backupFolderPath: Path = rorPath / "patch_backup"
-  private val patchMetadataFilePath: Path = backupFolderPath / "patch_metadata"
+  val backupFolderPath: Path = rorPath / "patch_backup"
+  val patchMetadataFilePath: Path = backupFolderPath / "patch_metadata"
   private val pluginPropertiesFilePath = rorPath / "plugin-descriptor.properties"
 
   val securityPolicyPath: Path = rorPath / "plugin-security.policy"
@@ -44,6 +50,8 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   def createBackupFolder(): Unit = {
     os.makeDir.all(path = backupFolderPath)
+    // Permissions come from the plugin folder, not from the umask (umask 077 blocks the ES user)
+    backupFolderPath.setFilePermissionsAndOwnerCopiedFrom(rorPath)
   }
 
   def clearBackupFolder(): Unit = {
@@ -56,18 +64,28 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     backedUpFile.setFilePermissionsAndOwnerCopiedFrom(originalFile)
   }
 
+  // A file with the content of its backup stays as it is. So the restore after a patching that failed before it
+  // changed a file needs no write permission for that file (e.g. a read-only module folder of a non-root user).
   def restore(file: Path): Unit = {
     val backedUpFile = backupFolderPath / file.last
-    os.copy(from = backedUpFile, to = file, replaceExisting = true, copyAttributes = true)
-    file.setFilePermissionsAndOwnerCopiedFrom(backedUpFile)
+    if (!(os.exists(file) && FileUtils.haveSameContent(file.toNIO, backedUpFile.toNIO))) {
+      os.copy(from = backedUpFile, to = file, replaceExisting = true, copyAttributes = true)
+      file.setFilePermissionsAndOwnerCopiedFrom(backedUpFile)
+    }
   }
 
   def copyToPluginPath(file: Path): Unit = {
-    os.copy(from = file, to = rorPath / file.last)
+    val copiedFile = rorPath / file.last
+    os.copy(from = file, to = copiedFile)
+    copiedFile.setFilePermissionsAndOwnerCopiedFrom(file)
   }
 
   def findTransportNetty4Jar: Option[Path] = {
     findTransportNetty4JarIn(rorPath)
+  }
+
+  def removeTransportNetty4Jars(): Unit = {
+    findTransportNetty4JarsIn(rorPath).foreach(os.remove)
   }
 
   def readEsPatchMetadata(): Option[EsPatchMetadata] = {
@@ -93,6 +111,19 @@ private[patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
     )
     os.remove(patchMetadataFilePath, checkExists = false)
     os.write(patchMetadataFilePath, fileContent)
+    patchMetadataFilePath.setFilePermissionsAndOwnerCopiedFrom(pluginPropertiesFilePath)
+  }
+
+  // True when this process has no permission to read the patch metadata file or its folder
+  // (e.g. root patched ES, and ES runs as another user). Then the caller must report a permission
+  // problem, not a corrupted patch: without access to the folder, nobody can tell if the file exists.
+  def isEsPatchMetadataInaccessible: Boolean = {
+    val path = patchMetadataFilePath.toNIO
+    Try(Files.readAttributes(path, classOf[BasicFileAttributes])) match {
+      case Success(_)                        => !Files.isReadable(path)
+      case Failure(_: AccessDeniedException) => true
+      case Failure(_)                        => false
+    }
   }
 
   def readCurrentRorVersion(): String = {

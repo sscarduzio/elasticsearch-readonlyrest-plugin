@@ -110,6 +110,56 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
           )
         variable should be(Right("h_x_ok"))
       }
+      "the corresponding header holds two different values" in {
+        val variable = forceCreateSingleVariable("@{header:key1}")
+          .resolve(
+            currentUserMetadataRequestBlockContextFrom(
+              requestContext = MockRequestContext.metadata
+                .withHeaders(headerFrom("key1" -> "x"), headerFrom("key1" -> "y"))
+            )
+          )
+        variable should be(Right("x,y"))
+      }
+      "the corresponding header of a multivariable holds two different values" in {
+        val variable = forceCreateMultiVariable("test_@explode{header:key1}")
+          .resolve(
+            currentUserMetadataRequestBlockContextFrom(
+              requestContext = MockRequestContext.metadata
+                .withHeaders(headerFrom("key1" -> "x"), headerFrom("key1" -> "y,z"))
+            )
+          )
+        variable should be(Right(NonEmptyList.of("test_x", "test_y", "test_z")))
+      }
+      "the corresponding header holds two different values under names which differ only in case" in {
+        val variable = forceCreateSingleVariable("@{header:key1}")
+          .resolve(
+            currentUserMetadataRequestBlockContextFrom(
+              requestContext = MockRequestContext.metadata
+                .withHeaders(headerFrom("KEY1" -> "x"), headerFrom("key1" -> "y"))
+            )
+          )
+        variable should be(Right("x,y"))
+      }
+      "the corresponding header holds the same value twice" in {
+        val variable = forceCreateSingleVariable("@{header:key1}")
+          .resolve(
+            currentUserMetadataRequestBlockContextFrom(
+              requestContext = MockRequestContext.metadata
+                .withHeaders(headerFrom("key1" -> "x"), headerFrom("KEY1" -> "x"))
+            )
+          )
+        variable should be(Right("x"))
+      }
+      "the corresponding header of a multivariable holds the same value twice" in {
+        val variable = forceCreateMultiVariable("test_@explode{header:key1}")
+          .resolve(
+            currentUserMetadataRequestBlockContextFrom(
+              requestContext = MockRequestContext.metadata
+                .withHeaders(headerFrom("key1" -> "x"), headerFrom("KEY1" -> "x"))
+            )
+          )
+        variable should be(Right(NonEmptyList.of("test_x")))
+      }
     }
     "have not been resolved" when {
       "given variable doesn't have corresponding header in request context" in {
@@ -119,7 +169,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext.metadata.withHeaders(headerFrom("key2" -> "x"))
             )
           )
-        variable should be(Left(CannotExtractValue("Cannot extract user header 'key1' from request context")))
+        variable should be(Left(CannotExtractValue("Cannot extract header 'key1' from request context")))
       }
     }
     "have not been able to be created" when {

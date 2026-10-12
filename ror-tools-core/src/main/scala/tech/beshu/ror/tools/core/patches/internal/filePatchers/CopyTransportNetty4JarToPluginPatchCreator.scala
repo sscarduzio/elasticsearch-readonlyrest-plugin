@@ -34,6 +34,7 @@ private[patches] class CopyTransportNetty4JarToPluginPatch(rorPluginDirectory: R
   override def patch(): List[FilePatch.FilePatchMetadata] = {
     rorPluginDirectory.esDirectory.findTransportNetty4Jar match {
       case Some(transportNetty4Jar) =>
+        rorPluginDirectory.removeTransportNetty4Jars()
         rorPluginDirectory.copyToPluginPath(transportNetty4Jar)
         rorPluginDirectory.findTransportNetty4Jar match {
           case Some(copiedJarFile) =>
@@ -50,9 +51,7 @@ private[patches] class CopyTransportNetty4JarToPluginPatch(rorPluginDirectory: R
   }
 
   override def restore(): Unit = {
-    rorPluginDirectory.findTransportNetty4Jar.foreach {
-      os.remove
-    }
+    rorPluginDirectory.removeTransportNetty4Jars()
   }
 
 }

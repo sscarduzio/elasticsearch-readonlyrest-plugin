@@ -17,8 +17,10 @@
 package tech.beshu.ror.accesscontrol.request
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.domain.Header.AmbiguousHeader
 import tech.beshu.ror.accesscontrol.domain.{Header, RorKbnLicenseType}
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.DetailsCreationError.{
+  AmbiguousRequestedHeaderValue,
   NoRequestedHeaderValue,
   RorKbnLicenseTypeInvalidValue
 }
@@ -43,9 +45,10 @@ object UserMetadataRequestContext {
 
   object Details {
 
-    def from(licenseTypeHeader: Option[Header]): Either[DetailsCreationError, Details] = {
+    def from(licenseTypeHeader: Either[AmbiguousHeader, Option[Header]]): Either[DetailsCreationError, Details] = {
       for {
-        header <- licenseTypeHeader.toRight(left = NoRequestedHeaderValue)
+        singleHeader <- licenseTypeHeader.left.map(_ => AmbiguousRequestedHeaderValue)
+        header <- singleHeader.toRight(left = NoRequestedHeaderValue)
         licenseType <- RorKbnLicenseType.from(header.value.value).left.map { case () => RorKbnLicenseTypeInvalidValue }
       } yield Details(licenseType)
     }
@@ -56,6 +59,7 @@ object UserMetadataRequestContext {
 
   object DetailsCreationError {
     case object NoRequestedHeaderValue extends DetailsCreationError
+    case object AmbiguousRequestedHeaderValue extends DetailsCreationError
     case object RorKbnLicenseTypeInvalidValue extends DetailsCreationError
   }
 

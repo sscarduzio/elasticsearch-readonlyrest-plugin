@@ -59,6 +59,18 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
           xForwardedForHeaderValue = Some("1.1.1.1")
         )
       }
+      "configured IPv6 address is the same as the IPv6 address passed in X-Forwarded-For header" in {
+        assertMatchRule(
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("2001:db8::1"))),
+          xForwardedForHeaderValue = Some("2001:db8::1")
+        )
+      }
+      "the X-Forwarded-For name repeats and each value is in the configured net address" in {
+        assertMatchRule(
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.0/24"))),
+          xForwardedForHeaderValues = List("1.1.1.1", "1.1.1.2")
+        )
+      }
       "configured net address is the same as the IP passed in X-Forwarded-For header" in {
         assertMatchRule(
           settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.1/16"))),
@@ -83,6 +95,12 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
         assertNotMatchRule(
           settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.1"))),
           xForwardedForHeaderValue = Some("1.1.1.2")
+        )
+      }
+      "configured IPv6 address is different than the IPv6 address passed in X-Forwarded-For header" in {
+        assertNotMatchRule(
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("2001:db8::1"))),
+          xForwardedForHeaderValue = Some("2001:db8:ffff::99")
         )
       }
       "configured net address is different than the IP passed in X-Forwarded-For header" in {
@@ -122,6 +140,24 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
             xForwardedForHeaderValue = Some("google.com")
           )
         }
+        "the first entry of the chain does not parse, and a later entry is in the configured net" in {
+          assertNotMatchRule(
+            settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.0/24"))),
+            xForwardedForHeaderValue = Some("1.1.1.1:8080, 1.1.1.2")
+          )
+        }
+        "the first entry of the chain is not in the configured net, and a later entry is" in {
+          assertNotMatchRule(
+            settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.0/24"))),
+            xForwardedForHeaderValue = Some("2.2.2.2, 1.1.1.2")
+          )
+        }
+        "the first X-Forwarded-For header is not in the configured net, and a later header is" in {
+          assertNotMatchRule(
+            settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.0/24"))),
+            xForwardedForHeaderValues = List("2.2.2.2", "1.1.1.2")
+          )
+        }
         "0.0.0.0/0 is configured and X-Forwarded-For is not present" in {
           assertNotMatchRule(
             settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("0.0.0.0/0"))),
@@ -147,28 +183,40 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
 
   private def assertMatchRule(
       settings: XForwardedForRule.Settings,
-      xForwardedForHeaderValue: Option[String],
+      xForwardedForHeaderValue: Option[String] = None,
+      xForwardedForHeaderValues: List[String] = List.empty,
       hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver
   ) =
-    assertRule(settings, xForwardedForHeaderValue, hostnameResolver, isMatched = true)
+    assertRule(
+      settings,
+      xForwardedForHeaderValue.toList ++ xForwardedForHeaderValues,
+      hostnameResolver,
+      isMatched = true
+    )
 
   private def assertNotMatchRule(
       settings: XForwardedForRule.Settings,
-      xForwardedForHeaderValue: Option[String],
+      xForwardedForHeaderValue: Option[String] = None,
+      xForwardedForHeaderValues: List[String] = List.empty,
       hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver
   ) =
-    assertRule(settings, xForwardedForHeaderValue, hostnameResolver, isMatched = false)
+    assertRule(
+      settings,
+      xForwardedForHeaderValue.toList ++ xForwardedForHeaderValues,
+      hostnameResolver,
+      isMatched = false
+    )
 
   private def assertRule(
       settings: XForwardedForRule.Settings,
-      xForwardedForHeaderValue: Option[String],
+      xForwardedForHeaderValues: List[String],
       hostnameResolver: HostnameResolver,
       isMatched: Boolean
   ) = {
     val rule = new XForwardedForRule(settings, hostnameResolver)
-    val requestContext = xForwardedForHeaderValue match {
-      case Some(value) => MockRequestContext.indices.withHeaders(headerFrom("X-Forwarded-For" -> value))
-      case None        => MockRequestContext.indices
+    val requestContext = xForwardedForHeaderValues match {
+      case Nil    => MockRequestContext.indices
+      case values => MockRequestContext.indices.withHeaders(values.map(v => headerFrom("X-Forwarded-For" -> v)))
     }
     val blockContext = UserMetadataRequestBlockContext(
       block = mock[Block],

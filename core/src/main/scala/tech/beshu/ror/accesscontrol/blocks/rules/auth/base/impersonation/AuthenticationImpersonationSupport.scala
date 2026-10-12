@@ -66,7 +66,7 @@ private[rules] trait SimpleAuthenticationImpersonationSupport extends Authentica
     val requestContext = blockContext.requestContext
     impersonation match {
       case Enabled(settings) =>
-        requestContext.impersonateAs match {
+        requestContext.headers.impersonateAs match {
           case Some(theImpersonatedUserId) =>
             tryToImpersonateUser(theImpersonatedUserId, settings, blockContext)
           case None =>
@@ -102,7 +102,7 @@ private[rules] trait SimpleAuthenticationImpersonationSupport extends Authentica
       requestContext: RequestContext
   ) = {
     EitherT.fromOption[Task](
-      requestContext.basicAuth
+      requestContext.headers.basicAuth
         .flatMap { basicAuthCredentials =>
           enhancedImpersonatorDefs.find { case (_, impersonatorMatcher, _) =>
             impersonatorMatcher.`match`(basicAuthCredentials.credentials.user)

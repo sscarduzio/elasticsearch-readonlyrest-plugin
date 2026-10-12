@@ -32,7 +32,7 @@ class XForwardedForRule(val settings: Settings, resolver: HostnameResolver) exte
   override val name: Rule.Name = XForwardedForRule.Name.name
 
   override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    blockContext.requestContext.xForwardedForHeaderValue match {
+    blockContext.requestContext.headers.xForwardedFor match {
       case Some(xForwardedForAddress) =>
         checkAllowedAddresses(blockContext)(
           allowedAddresses = settings.allowedAddresses,

@@ -50,12 +50,14 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
   }
 
   private def extractJwtTokenFromHeader(blockContext: BlockContext) = {
-    blockContext.requestContext.bearerToken
+    blockContext.requestContext.headers.bearerToken
       .map(t => Jwt.Token(t.value))
       .left
       .map {
         case AuthorizationTokenRetrievingError.MissingHeader =>
           AuthenticationFailed("'Authorization' header is missing")
+        case AuthorizationTokenRetrievingError.AmbiguousHeader =>
+          AuthenticationFailed("'Authorization' header holds more than one value")
         case AuthorizationTokenRetrievingError.InvalidValue =>
           AuthenticationFailed("'Authorization' header does not contain a valid Bearer token")
       }

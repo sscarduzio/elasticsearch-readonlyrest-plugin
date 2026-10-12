@@ -22,9 +22,9 @@ import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestController, RestHandler, RestRequest}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.domain.Header.findHeader
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
+import tech.beshu.ror.es.{RorRestChannel, RorRestRequest}
 
 @Inject
 class RestRRUserMetadataAction(controller: RestController) extends BaseRestHandler with RestHandler {
@@ -33,20 +33,25 @@ class RestRRUserMetadataAction(controller: RestController) extends BaseRestHandl
 
   override val getName: String = "ror-user-metadata-handler"
 
-  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) =>
-    {
-      client.execute(
-        new RRUserMetadataActionType,
-        new RRUserMetadataRequest(rorKbnLicenseTypeHeaderFrom(request)),
-        new RestToXContentListener[RRUserMetadataResponse](channel)
-      )
-    }
+  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = {
+    (channel: RestChannel) =>
+      channel match {
+        case rorRestChannel: RorRestChannel =>
+          client.execute(
+            new RRUserMetadataActionType,
+            new RRUserMetadataRequest(rorKbnLicenseTypeHeaderFrom(rorRestChannel.restRequest)),
+            new RestToXContentListener[RRUserMetadataResponse](rorRestChannel)
+          )
+        case other =>
+          throw new IllegalStateException(s"$getName expects a RorRestChannel, but got ${other.getClass.getName}")
+      }
+  }
 
   private def register(method: String, path: String): Unit =
     controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
 
-  private def rorKbnLicenseTypeHeaderFrom(request: RestRequest) = {
-    findHeader(Header.Name.rorKbnLicenseType, in = request.getHeaders)
+  private def rorKbnLicenseTypeHeaderFrom(request: RorRestRequest) = {
+    request.headers.singleOrAmbiguity(Header.Name.rorKbnLicenseType)
   }
 
 }

@@ -648,6 +648,23 @@ class ImpersonationSuite
         result2.responseJson should be(testSettingsNotConfiguredResponse)
       }
     }
+    "the impersonation header holds two different users" in {
+      loadTestSettings()
+      configureSomeMocksForAllExternalServices()
+
+      val twoImpersonatedUsers = Map("x-ror-impersonating" -> "dev1", "X-ROR-IMPERSONATING" -> "dev2")
+      impersonatingManagerWithHeaders(
+        "admin1",
+        "pass",
+        twoImpersonatedUsers,
+        (client, _, additionalHeaders) => new SearchManager(client, esVersionUsed, additionalHeaders)
+      ).foreach { searchManager =>
+        val result = searchManager.search("test1_index")
+
+        result should have statusCode 403
+        result.responseJson("error")("due_to").str should be("IMPERSONATION_NOT_ALLOWED")
+      }
+    }
   }
 
   "Current user metadata request should support impersonation and" - {
@@ -726,16 +743,25 @@ class ImpersonationSuite
       impersonatedUser: String,
       managerCreator: (RestClient, String, Map[String, String]) => T
   ) = {
+    impersonatingManagerWithHeaders(user, pass, Map("x-ror-impersonating" -> impersonatedUser), managerCreator)
+  }
+
+  private def impersonatingManagerWithHeaders[T](
+      user: String,
+      pass: String,
+      impersonationHeaders: Map[String, String],
+      managerCreator: (RestClient, String, Map[String, String]) => T
+  ) = {
     List(
       managerCreator(
         basicAuthClient(user, pass),
         esVersionUsed,
-        Map("x-ror-impersonating" -> impersonatedUser)
+        impersonationHeaders
       ),
       managerCreator(
         noBasicAuthClient,
         esVersionUsed,
-        Map(authorizationHeaderWithRorMetadata((user, pass), Map("x-ror-impersonating" -> impersonatedUser)))
+        Map(authorizationHeaderWithRorMetadata((user, pass), impersonationHeaders))
       )
     )
   }

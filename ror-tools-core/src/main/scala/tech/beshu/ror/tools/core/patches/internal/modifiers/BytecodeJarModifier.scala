@@ -30,17 +30,17 @@ import scala.util.Using
 private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = false) extends FileModifier with AsmDebug {
 
   protected def addNewFileToJar(jar: File, filePathString: String, content: Array[Byte]): Unit = {
-    val originalPermsAndOwner = jar.getFilePermissionsAndOwner
     if (debugEnabled) debug(content)
     val env = Map("create" -> "true").asJava
     val uri = URI.create("jar:" + jar.toJava.toURI)
 
-    Using.resource(FileSystems.newFileSystem(uri, env)) { zipfs =>
-      val path = zipfs.getPath(filePathString)
-      Option(path.getParent).foreach(p => Files.createDirectories(p))
-      Files.write(path, content, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
+    jar.replaceKeepingPermissionsAndOwner {
+      Using.resource(FileSystems.newFileSystem(uri, env)) { zipfs =>
+        val path = zipfs.getPath(filePathString)
+        Option(path.getParent).foreach(p => Files.createDirectories(p))
+        Files.write(path, content, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
+      }
     }
-    jar.setFilePermissionsAndOwner(originalPermsAndOwner)
   }
 
   protected def modifyFileInJar(
@@ -48,18 +48,18 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
       filePathString: String,
       processFileContent: InputStream => Array[Byte]
   ): Unit = {
-    val originalFilePermissionsAndOwner = jar.getFilePermissionsAndOwner
-    val modifiedFileContent = loadAndProcessFileFromJar(
-      jar = jar,
-      filePathString = filePathString,
-      processFileContent = processFileContent
-    )
-    updateFileInJar(
-      jar = jar,
-      destinationPathSting = filePathString,
-      newContent = modifiedFileContent
-    )
-    jar.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
+    jar.replaceKeepingPermissionsAndOwner {
+      val modifiedFileContent = loadAndProcessFileFromJar(
+        jar = jar,
+        filePathString = filePathString,
+        processFileContent = processFileContent
+      )
+      updateFileInJar(
+        jar = jar,
+        destinationPathSting = filePathString,
+        newContent = modifiedFileContent
+      )
+    }
   }
 
   private def loadAndProcessFileFromJar(
