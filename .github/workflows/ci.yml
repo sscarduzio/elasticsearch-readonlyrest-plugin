@@ -651,6 +651,9 @@ jobs:
           ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
           ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
           ROR_S3_PATH_E2E_REPORTS: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
+          # The stack of run_e2e_tests boots with this key, and its logs can print it. One secret
+          # per line; the uploader redacts each one, and skips a file it cannot clean.
+          SECRETS_TO_REDACT: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
         run: |
           set -e
           # Path layout: <PATH_PREFIX>/YYYY-MM-DD/build_<run id>/<module>_<elk>/<videos|screenshots>
