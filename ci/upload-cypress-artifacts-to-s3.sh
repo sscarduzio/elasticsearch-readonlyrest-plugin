@@ -106,10 +106,15 @@ holds_secret() {
   done
   return 1
 }
+# A file with no NUL byte is text. grep -I is not enough: with -q, grep can stop at the first match
+# before it reads a NUL byte that comes later in the file.
+is_text() {
+  [ "$(LC_ALL=C tr -dc '\000' < "$1" | head -c 1 | wc -c)" -eq 0 ]
+}
 redact() {
   local FILE=$1 SECRET
   holds_secret "$FILE" || return 0
-  if LC_ALL=C grep -qI -- '' "$FILE"; then
+  if is_text "$FILE"; then
     for SECRET in "${SECRETS[@]}"; do
       SECRET="$SECRET" perl -i -pe 's/\Q$ENV{SECRET}\E/<redacted>/g' "$FILE"
     done
