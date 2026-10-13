@@ -99,6 +99,12 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2026-94398</cve>
         <cve>CVE-2026-94396</cve>
         <cve>CVE-2026-94408</cve>
+        <cve>CVE-2026-102411</cve>
+        <cve>CVE-2026-103005</cve>
+        <cve>CVE-2026-103006</cve>
+        <cve>CVE-2026-103007</cve>
+        <cve>CVE-2026-103008</cve>
+        <cve>CVE-2026-103009</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
