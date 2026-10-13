@@ -92,18 +92,25 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
                 "[WIREMOCK-ext-port:" + cont.getWireMockPort() + "] " + s.getUtf8String()));
   }
 
+  // Each field goes in with its length first, so two different mapping sets never hash the same
+  // bytes ("a" + "bc" and "ab" + "c" would without it).
   private static String contentHash(List<File> mappingFiles) {
     Hasher hasher = Hashing.sha256().newHasher();
-    hasher.putString(BASE_IMAGE, StandardCharsets.UTF_8);
+    putFramed(hasher, BASE_IMAGE.getBytes(StandardCharsets.UTF_8));
     for (File mappingFile : mappingFiles) {
-      hasher.putString(mappingFile.getName(), StandardCharsets.UTF_8);
+      putFramed(hasher, mappingFile.getName().getBytes(StandardCharsets.UTF_8));
       try {
-        hasher.putBytes(Files.readAllBytes(mappingFile.toPath()));
+        putFramed(hasher, Files.readAllBytes(mappingFile.toPath()));
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
     }
     return hasher.hash().toString().substring(0, 20);
+  }
+
+  private static void putFramed(Hasher hasher, byte[] bytes) {
+    hasher.putInt(bytes.length);
+    hasher.putBytes(bytes);
   }
 
   public String getWireMockHost() {
