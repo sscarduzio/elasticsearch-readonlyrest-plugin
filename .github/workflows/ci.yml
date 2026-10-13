@@ -651,6 +651,7 @@ jobs:
           ROR_S3_ACCESS_KEY_ID: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
           ROR_S3_SECRET_ACCESS_KEY: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
           ROR_S3_PATH_E2E_REPORTS: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
+          SECRETS_TO_REDACT: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
         run: |
           set -e
           # Path layout: <PATH_PREFIX>/YYYY-MM-DD/build_<run id>/<module>_<elk>/<videos|screenshots>

@@ -52,6 +52,12 @@ Optional environment variables:
                    the wait before the second attempt, doubled for each one
                    after it (default 5). A `Retry-After` header of the server
                    wins over it, up to 60s.
+  S3_UPLOADER_MAX_TIME
+                   maximum seconds for one attempt (curl --max-time). No limit
+                   when unset.
+  S3_UPLOADER_INSECURE
+                   1 stops curl from verifying the certificate of the endpoint.
+                   For a caller whose container holds no CA bundle.
   S3_UPLOADER_DEBUG
                    1 adds the curl trace, including the TLS handshake.
 
@@ -193,6 +199,14 @@ else
     CURL_FLAGS=""
 fi
 
+# -k, only when the caller asks for it. A container with no CA bundle cannot verify the endpoint,
+# and its uploads fail without this. Every other caller verifies.
+if [ -n "${S3_UPLOADER_INSECURE:-}" ]; then
+    CURL_INSECURE="-k"
+else
+    CURL_INSECURE=""
+fi
+
 attempts=${S3_UPLOAD_ATTEMPTS:-4}
 delay=${S3_UPLOAD_RETRY_DELAY_SECONDS:-5}
 attempt=1
@@ -218,8 +232,12 @@ while true; do
     # Unquoted, the shell splits it and curl sends a truncated key, which the server rejects.
     # The file name goes in curl's own quotes too: in -F, an unquoted @path ends at a ',' or ';'.
     # $key_and_sig_args stays unquoted on purpose — it is several arguments, and must split.
+    # --connect-timeout bounds a connection that never opens. S3_UPLOADER_MAX_TIME bounds one
+    # attempt, and no caller that uploads a release zip sets it: such an upload runs for minutes.
     http_code=$(curl                \
-        -# -k $CURL_FLAGS           \
+        -# $CURL_INSECURE $CURL_FLAGS \
+        --connect-timeout 30        \
+        ${S3_UPLOADER_MAX_TIME:+--max-time "$S3_UPLOADER_MAX_TIME"} \
         -F key="$targfile"          \
         $key_and_sig_args           \
         -F "Content-Type=$mime"     \
