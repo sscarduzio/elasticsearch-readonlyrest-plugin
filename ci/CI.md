@@ -486,6 +486,15 @@ An earlier revision claimed each store had its own credentials "because the gate
 each prefix separately". That was never true: the artifacts key writes `builds/`, `libs/` and
 `e2e_reports/` alike.
 
+### A failed upload
+
+`ci/s3-uploader.sh` fails on any answer but 200, 201 and 204, prints the error body, and retries a
+429, a 5xx or no answer at all. Its own header documents the attempt knobs. Nothing wraps it in a
+second retry, because that would repeat a whole set of files to reach the one that failed.
+
+The same file lives in ROR KBN and in the e2e repo, identical below its shared header. Port every
+change to all three.
+
 | Store | Holds | Written by |
 |---|---|---|
 | `ARTIFACTS` | the plugin zips customers download (`builds/`) | `upload_pre_ror` / `release_ror` |

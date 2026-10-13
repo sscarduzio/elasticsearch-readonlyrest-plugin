@@ -1,17 +1,31 @@
 #!/bin/bash -e
 
-# shellcheck source=ci/log.sh
-source "$(dirname "${BASH_SOURCE[0]}")/log.sh"
+# THE SAME FILE LIVES IN THREE REPOSITORIES. PORT EVERY CHANGE TO ALL THREE.
+#
+#   elasticsearch-readonlyrest-plugin   ci/s3-uploader.sh
+#   readonlyrest_kbn                    scripts/utils/s3Uploader.sh
+#   readonlyrest-e2e-tests              .github/scripts/s3-uploader.sh
+#
+# Below this header the three copies are identical, byte for byte, and `diff` proves it. Nothing
+# here names a repository, and the file sources no other file: one of the three has no logger.
+#
+# The tests live in readonlyrest_kbn, scripts/tests/s3Uploader.test.sh. Run them there.
+
+# Writes one message to standard error. Standard output stays empty, so a caller can capture a
+# value from it.
+s3_log() {
+    echo "[s3-uploader] $*" >&2
+}
 
 usage()
 {
     cat >&2 <<USAGE
 ##########################################################################
-Originally adapted from https://www.aws.ps/how-to-upload-file-to-s3-using-curl
-(since modified for ROR: custom S3_ENDPOINT_URL, SigV4 date-scope fix, no ACL/MD5).
+Script taken from https://www.aws.ps/how-to-upload-file-to-s3-using-curl
 
-Simple script uploading a file to S3 (or any S3-compatible endpoint). Supports AWS
-signature version 4, custom region, a custom endpoint, and mime-types.
+Simple script uploading a file to S3. Supports AWS signature version 4, custom
+region, permissions and mime-types. Uses Content-MD5 header to guarantee
+uncorrupted file transfer.
 
 Usage:
   `basename $0` aws_ak aws_sk bucket srcfile targfile [mime_type]
@@ -24,9 +38,22 @@ Where <arg> is one of:
   targfile   path to target (dir if it ends with '/', relative to bucket root)
   mime_type  optional mime-type (tries to guess if omitted)
 
+Exits 0 only when the server confirms the upload with 200, 201 or 204. Every
+other answer is printed with the error body of the server. A transient one
+(429, 5xx, or no answer at all) is attempted again.
+
 Optional environment variables:
   S3_ENDPOINT_URL  custom S3-compatible endpoint (uses path-style addressing).
                    Defaults to https://<bucket>.s3.amazonaws.com/ when unset.
+  S3_UPLOAD_ATTEMPTS
+                   how many attempts a transient failure gets (default 4).
+                   Set it to 1 to switch the retry off.
+  S3_UPLOAD_RETRY_DELAY_SECONDS
+                   the wait before the second attempt, doubled for each one
+                   after it (default 5). A `Retry-After` header of the server
+                   wins over it, up to 60s.
+  S3_UPLOADER_DEBUG
+                   1 adds the curl trace, including the TLS handshake.
 
 Dependencies:
   To run, this shell script depends on command-line curl and openssl, as well
@@ -44,8 +71,8 @@ Examples:
     `basename $0` '' '' storage ~/blog/image.png x/y.png
 
 USAGE
-    # Non-zero: the only caller of this function is the argument check, and a caller that reads 0
-    # counts a file as uploaded that nothing sent.
+    # Non-zero: the argument check is the only caller, and a 0 here counts a file as uploaded
+    # that nothing sent.
     exit 2
 }
 
@@ -78,17 +105,26 @@ aws_sk="$2"                                     # secret key
 bucket=`printf $3 | awk 'BEGIN{FS="@"}{print $1}'`                       # bucket name
 region=`printf $3 | awk 'BEGIN{FS="@"}{print ($2==""?"us-east-1":$2)}'`  # region name
 srcfile="$4"                                                             # source file
-targfile=`echo -n "$5" | sed "s/\/$/\/$(basename "$srcfile")/"`            # target file
+targfile=`echo -n "$5" | sed "s/\/$/\/$(basename "$srcfile")/"`          # target file
 mime=${6:-"`guessmime "$srcfile"`"}                                      # mime type
 
 
-# Create signature if not public upload.
-key_and_sig_args=''
-if [ "$aws_ak" != "" ] && [ "$aws_sk" != "" ]; then
+# Signs one upload. Sets `p` (the base64 policy) and `key_and_sig_args` (credential, algorithm,
+# signature, date, policy). Empty keys sign nothing, which is how an anonymous upload to a
+# public-writable bucket works. Every attempt signs again, because the credential scope carries
+# today's date and a retry can cross midnight.
+sign_request()
+{
+    key_and_sig_args=''
+    p=''
+    if [ "$aws_ak" = "" ] || [ "$aws_sk" = "" ]; then
+        return 0
+    fi
 
     # SigV4 requires the credential scope date to match the request date.
     # `today_s` is used for both signing and the X-Amz-Credential field.
     # `expdate` is the policy expiration (tomorrow), unrelated to the credential date.
+    local date today_s expdate service s
     date=`date -u +%Y%m%dT%H%M%SZ`
     today_s=`date -u +%Y%m%d`
     expdate=`if ! date -v+1d +%Y-%m-%d 2>/dev/null; then date -d tomorrow +%Y-%m-%d; fi`
@@ -120,10 +156,25 @@ POLICY
     s=`printf "aws4_request" | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
     s=`printf "$p"           | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
 
-    # Policy goes here (not the curl line) so it's only sent when we actually signed — an
-    # anonymous upload (empty keys) leaves $p unset and must not send an empty Policy= field.
+    # Policy goes here, not on the curl line: an anonymous upload must send no Policy field.
     key_and_sig_args="-F X-Amz-Credential=$aws_ak/$today_s/$region/$service/aws4_request -F X-Amz-Algorithm=AWS4-HMAC-SHA256 -F X-Amz-Signature=$s -F X-Amz-Date=${date} -F Policy=$p"
-fi
+}
+
+# True when a retry can give a different answer. $1 is the HTTP status, $2 the exit code of curl.
+# A 429 or a 5xx is transient, and a 403 is not. Wrong credentials, a rejected policy condition and
+# an empty file give the same answer every time, so the release must stop on them.
+is_retryable()
+{
+    case "$1" in
+        429|500|502|503|504) return 0;;
+    esac
+    # curl got no complete answer: a DNS failure, a refused connection, a timeout, a broken TLS
+    # handshake. `--write-out` prints 000 for these, so the status cannot classify them.
+    case "$2" in
+        6|7|16|18|28|35|52|55|56|92) return 0;;
+    esac
+    return 1
+}
 
 # Determine upload URL.
 # - If S3_ENDPOINT_URL is set (e.g. for the DGP proxy) use path-style addressing: ${endpoint}/${bucket}/
@@ -134,44 +185,88 @@ else
     upload_url="https://${bucket}.s3.amazonaws.com/"
 fi
 
-# Upload. Supports anonymous upload if bucket is public-writable, and keys are set to ''.
-ci_log "Uploading: $srcfile ($mime) to $upload_url$targfile"
-# Set S3_UPLOADER_DEBUG=1 to debug: adds `-v` (verbose, incl. the full TLS handshake trace —
-# very noisy on curl 8.x/OpenSSL). `-v` is deliberately OFF by default, otherwise every upload
-# floods the CI log with TLS traces.
+# Off by default: a release uploads about 600 files, and the trace of each one makes the job log
+# unreadable. The error body printed below attributes a failure without it.
 if [ -n "${S3_UPLOADER_DEBUG:-}" ]; then
     CURL_FLAGS="-v -S"
 else
     CURL_FLAGS=""
 fi
-# The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';', so a spec
-# name that holds either would send a truncated file. $key_and_sig_args stays unquoted on purpose —
-# it is several arguments, and must split.
-response_body=$(mktemp)
-curl_status=0
-http_code=$(curl                \
-    -# $CURL_FLAGS              \
-    -F "key=$targfile"          \
-    $key_and_sig_args           \
-    -F "Content-Type=$mime"     \
-    -F "file=@\"$srcfile\""         \
-    --write-out '%{http_code}'  \
-    --output "$response_body"   \
-    "$upload_url") || curl_status=$?
 
-# S3 answers 204 to a form upload, and 200 or 201 when the policy asks for it. Read the status, not
-# the exit code of curl: a redirect leaves the file unwritten and exits 0. S3 redirects a bucket in
-# another region with 301 and a young bucket with 307, so a wrong region uploads nothing and reports
-# success.
-case "$http_code" in
-    200|201|204)
-        rm -f "$response_body"
-        ;;
-    *)
-        ci_log "The upload of $srcfile to ${upload_url}${targfile} failed (HTTP $http_code, curl exit $curl_status)."
-        # The answer of S3 names the cause. It carries no closing newline, so print one.
-        [ -s "$response_body" ] && printf '%s\n' "$(<"$response_body")" >&2
-        rm -f "$response_body"
-        exit 1
-        ;;
+attempts=${S3_UPLOAD_ATTEMPTS:-4}
+delay=${S3_UPLOAD_RETRY_DELAY_SECONDS:-5}
+attempt=1
+
+# A value that is not a number makes every `-ge` below fail, which the loop reads as "attempts
+# left" and never ends.
+case "$attempts" in
+    ''|*[!0-9]*|0) s3_log "S3_UPLOAD_ATTEMPTS must be a positive integer. Its value is '$attempts'."; exit 2;;
 esac
+case "$delay" in
+    ''|*[!0-9]*) s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a non-negative integer. Its value is '$delay'."; exit 2;;
+esac
+
+while true; do
+    sign_request
+
+    s3_log "Uploading: $srcfile ($mime) to $upload_url$targfile (attempt $attempt of $attempts)"
+
+    response_body=$(mktemp)
+    response_headers=$(mktemp)
+    curl_status=0
+    # Quote the key: Cypress names a screenshot after its test, so it holds spaces and brackets.
+    # Unquoted, the shell splits it and curl sends a truncated key, which the server rejects.
+    # The file name goes in curl's own quotes too: in -F, an unquoted @path ends at a ',' or ';'.
+    # $key_and_sig_args stays unquoted on purpose — it is several arguments, and must split.
+    http_code=$(curl                \
+        -# -k $CURL_FLAGS           \
+        -F key="$targfile"          \
+        $key_and_sig_args           \
+        -F "Content-Type=$mime"     \
+        -F "file=@\"$srcfile\""     \
+        --dump-header "$response_headers" \
+        --write-out '%{http_code}'  \
+        --output "$response_body"   \
+        "$upload_url") || curl_status=$?
+
+    # S3 answers 204 to a form upload, and 200 or 201 when the policy asks for it. Read the status,
+    # not the exit code of curl. A 301 (bucket in another region) and a 307 (young bucket) both
+    # leave the file unwritten and exit 0.
+    case "$http_code" in
+        200|201|204)
+            rm -f "$response_body" "$response_headers"
+            exit 0
+            ;;
+    esac
+
+    s3_log "The upload of $srcfile to ${upload_url}${targfile} failed (HTTP $http_code, curl exit $curl_status)."
+    # The error body names the cause. It carries no closing newline, so print one.
+    [ -s "$response_body" ] && printf '%s\n' "$(<"$response_body")" >&2
+
+    if ! is_retryable "$http_code" "$curl_status"; then
+        s3_log "Another attempt gives the same result."
+        rm -f "$response_body" "$response_headers"
+        exit 1
+    fi
+
+    if [ "$attempt" -ge "$attempts" ]; then
+        s3_log "The upload of $srcfile failed on all $attempts attempts."
+        rm -f "$response_body" "$response_headers"
+        exit 1
+    fi
+
+    # `Retry-After` carries the wait the server asks for, and the cap bounds a wrong value.
+    # `|| true` because a missing header is normal, and errexit would end the run on it.
+    wait_s=$delay
+    retry_after=$(tr -d '\r' < "$response_headers" | grep -i '^retry-after:' | tail -1 | sed 's/[^0-9]//g') || true
+    if [ -n "$retry_after" ] && [ "$retry_after" -gt 0 ] 2>/dev/null; then
+        wait_s=$retry_after
+        [ "$wait_s" -gt 60 ] && wait_s=60
+    fi
+    rm -f "$response_body" "$response_headers"
+
+    s3_log "Another attempt starts in ${wait_s}s."
+    sleep "$wait_s"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+done

@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # Upload Cypress failure artifacts (videos, screenshots, logs) to S3, so a red e2e job leaves
-# something to look at after its runner is destroyed. Mirrors the ROR KBN repo's
-# scripts/uploadCypressArtifactsToS3.sh; kept as a script (not a run-pipeline.sh task) because the
-# workflow calls it from a separate `if: failure()` step, after run_e2e_tests has already returned.
+# something to look at after its runner is destroyed. It is a script, not a run-pipeline.sh task,
+# because the workflow calls it from a separate `if: failure()` step, after run_e2e_tests returned.
 #
 # S3, not GitHub artifacts: those count against the metered Actions-storage quota.
 #
@@ -70,6 +69,10 @@ S3_PATH="${PATH_PREFIX:+${PATH_PREFIX%/}/}${S3_SUBFOLDER%/}/"
 # Consumed by s3-uploader.sh, which switches to path-style addressing when it is set.
 export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 
+# Fewer attempts than a release upload gets. These artifacts help somebody read a red job, and a
+# storage outage must not hold the job open for minutes per file.
+export S3_UPLOAD_ATTEMPTS="${S3_UPLOAD_ATTEMPTS:-2}"
+
 # An explicit mime type keeps the uploader from calling `file` (its guess path), which is not
 # guaranteed to exist on a bare runner. Without it the Content-Type comes out empty, the signed-POST
 # policy rejects the malformed form, and the upload 403s.
@@ -110,8 +113,8 @@ while IFS= read -r -d '' FILE; do
     continue
   fi
 
-  # The uploader prints the answer of S3 on every failure, so the log already names the cause of
-  # this one: AccessDenied, SignatureDoesNotMatch, or a policy condition.
+  # The uploader retried the transient answers and printed the error body, so the log already
+  # names the cause.
   ci_log "The upload of $FILE failed. The run continues with the next file."
   FAILED=$((FAILED + 1))
 done < <(find "$SOURCE_DIR" -type f -print0)

@@ -224,7 +224,7 @@ publish_version_artifacts() {
   local mode=$1 ror_version=$2 module=$3 es_version=$4 zip=$5
 
   # publish always - even if this is not a release
-  if ! retry_with_backoff ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
+  if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
     ci_log "The S3 upload of $module ES $es_version failed."
     return 1
   fi
