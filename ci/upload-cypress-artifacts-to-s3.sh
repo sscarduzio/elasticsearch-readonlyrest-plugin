@@ -84,13 +84,47 @@ mime_of() {
   esac
 }
 
+# S3_UPLOADER_MAX_TIME caps one upload. A stalled connection would otherwise hold the job until
+# its timeout. The shared uploader has no cap by default, because a release zip upload can take
+# more than 300 s.
 upload_one() {
   local FILE=$1 KEY=$2 MIME=$3
-  "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
+  S3_UPLOADER_MAX_TIME=300 "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
+}
+
+# Any file can hold a CI secret, whatever its name. SECRETS_TO_REDACT holds one secret per line. In a
+# text file (no NUL byte) each occurrence of a secret becomes <redacted>. A file that still holds one
+# after that is not uploaded at all.
+SECRETS=()
+while IFS= read -r SECRET; do
+  [ -n "$SECRET" ] && SECRETS+=("$SECRET")
+done <<< "${SECRETS_TO_REDACT:-}"
+holds_secret() {
+  local SECRET
+  for SECRET in "${SECRETS[@]}"; do
+    grep -qF -- "$SECRET" "$1" 2>/dev/null && return 0
+  done
+  return 1
+}
+# A file with no NUL byte is text. grep -I is not enough: with -q, grep can stop at the first match
+# before it reads a NUL byte that comes later in the file.
+is_text() {
+  [ "$(LC_ALL=C tr -dc '\000' < "$1" | head -c 1 | wc -c)" -eq 0 ]
+}
+redact() {
+  local FILE=$1 SECRET
+  holds_secret "$FILE" || return 0
+  if is_text "$FILE"; then
+    for SECRET in "${SECRETS[@]}"; do
+      SECRET="$SECRET" perl -i -pe 's/\Q$ENV{SECRET}\E/<redacted>/g' "$FILE"
+    done
+  fi
+  ! holds_secret "$FILE"
 }
 
 UPLOADED=0
 SKIPPED_EMPTY=0
+SKIPPED_SECRET=0
 FAILED=0
 
 # -print0/read -d '' so paths with spaces survive; the relative path becomes the key, keeping the
@@ -105,6 +139,11 @@ while IFS= read -r -d '' FILE; do
 
   REL=${FILE#"$SOURCE_DIR"/}
   MIME=$(mime_of "$FILE")
+  if ! redact "$FILE"; then
+    ci_log "WARNING: $REL holds a secret; not uploaded"
+    SKIPPED_SECRET=$((SKIPPED_SECRET + 1))
+    continue
+  fi
   if upload_one "$FILE" "${S3_PATH}${REL}" "$MIME"; then
     UPLOADED=$((UPLOADED + 1))
     continue
@@ -116,9 +155,9 @@ while IFS= read -r -d '' FILE; do
   FAILED=$((FAILED + 1))
 done < <(find "$SOURCE_DIR" -type f -print0)
 
-ci_log "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"
+ci_log "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY skipped_secret=$SKIPPED_SECRET failed=$FAILED"
 if [ "$UPLOADED" -gt 0 ]; then
   ci_log "Uploaded $UPLOADED Cypress artifact(s) to s3://${BUCKET}/${S3_PATH}"
-elif [ "$FAILED" -eq 0 ]; then
+elif [ "$FAILED" -eq 0 ] && [ "$SKIPPED_SECRET" -eq 0 ]; then
   ci_log "No Cypress artifacts found in $SOURCE_DIR - nothing to upload."
 fi

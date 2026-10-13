@@ -468,7 +468,9 @@ the module, not the ES version, so branch-protection checks survive a version bu
 
 On failure the job uploads the Cypress videos and screenshots to the E2E_REPORTS store
 (`ci/upload-cypress-artifacts-to-s3.sh`), under `<prefix>/<date>/build_<run id>/<module>_<elk>/`.
-S3, not GitHub artifacts: those count against the metered Actions-storage quota.
+S3, not GitHub artifacts: those count against the metered Actions-storage quota. Before the upload
+the script replaces each secret in `SECRETS_TO_REDACT` (one per line; the workflow passes
+`ROR_ENT_ACTIVATION_TOKEN`) with `<redacted>` in text files, and skips a file that still holds one.
 
 Needs `ROR_ENT_ACTIVATION_TOKEN` (the suite refuses to start without it) and `ROR_GH_TOKEN` (to
 dispatch the ROR KBN build and read its status).

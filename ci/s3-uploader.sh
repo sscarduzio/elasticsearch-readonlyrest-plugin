@@ -27,6 +27,8 @@ Where <arg> is one of:
 Optional environment variables:
   S3_ENDPOINT_URL  custom S3-compatible endpoint (uses path-style addressing).
                    Defaults to https://<bucket>.s3.amazonaws.com/ when unset.
+  S3_UPLOADER_MAX_TIME  maximum seconds for the whole upload (curl --max-time).
+                   No limit when unset.
 
 Dependencies:
   To run, this shell script depends on command-line curl and openssl, as well
@@ -147,10 +149,15 @@ fi
 # The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';', so a spec
 # name that holds either would send a truncated file. $key_and_sig_args stays unquoted on purpose —
 # it is several arguments, and must split.
+# --connect-timeout stops a connection that never opens. S3_UPLOADER_MAX_TIME (seconds) caps the
+# whole upload; the e2e report uploader sets it. It is unset for release uploads: in the 1.72.0
+# release two plugin zips took 335 s and 457 s and succeeded.
 response_body=$(mktemp)
 curl_status=0
 http_code=$(curl                \
     -# $CURL_FLAGS              \
+    --connect-timeout 30        \
+    ${S3_UPLOADER_MAX_TIME:+--max-time "$S3_UPLOADER_MAX_TIME"} \
     -F "key=$targfile"          \
     $key_and_sig_args           \
     -F "Content-Type=$mime"     \
