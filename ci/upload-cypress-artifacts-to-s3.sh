@@ -69,9 +69,9 @@ S3_PATH="${PATH_PREFIX:+${PATH_PREFIX%/}/}${S3_SUBFOLDER%/}/"
 # Consumed by s3-uploader.sh, which switches to path-style addressing when it is set.
 export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 
-# Fewer attempts than a release upload gets. These artifacts help somebody read a red job, and a
-# storage outage must not hold the job open for minutes per file.
-export S3_UPLOAD_ATTEMPTS="${S3_UPLOAD_ATTEMPTS:-2}"
+# A shorter retry budget than a release upload gets. These artifacts help somebody read a red job,
+# and a storage outage must not hold the job open for minutes per file.
+export S3_UPLOAD_RETRY_BUDGET_SECONDS="${S3_UPLOAD_RETRY_BUDGET_SECONDS:-30}"
 
 # An explicit mime type keeps the uploader from calling `file` (its guess path), which is not
 # guaranteed to exist on a bare runner. Without it the Content-Type comes out empty, the signed-POST

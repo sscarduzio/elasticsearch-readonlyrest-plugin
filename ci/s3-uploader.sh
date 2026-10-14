@@ -40,18 +40,19 @@ Where <arg> is one of:
 
 Exits 0 only when the server confirms the upload with 200, 201 or 204. Every
 other answer is printed with the error body of the server. A transient one
-(429, 5xx, or no answer at all) is attempted again.
+(429, 5xx, or no answer at all) is retried until the retry budget is spent.
 
 Optional environment variables:
   S3_ENDPOINT_URL  custom S3-compatible endpoint (uses path-style addressing).
                    Defaults to https://<bucket>.s3.amazonaws.com/ when unset.
-  S3_UPLOAD_ATTEMPTS
-                   how many attempts a transient failure gets (default 4).
-                   Set it to 1 to switch the retry off.
+  S3_UPLOAD_RETRY_BUDGET_SECONDS
+                   how long this upload may spend waiting for a transient
+                   failure to clear, in total (default 300). Sending the file
+                   does not count. 0 switches the retry off.
   S3_UPLOAD_RETRY_DELAY_SECONDS
                    the wait before the second attempt, doubled for each one
-                   after it (default 5). A `Retry-After` header of the server
-                   wins over it, up to 60s.
+                   after it and capped at 60 (default 5). A `Retry-After`
+                   header of the server wins over it, up to 60s.
   S3_UPLOADER_MAX_TIME
                    maximum seconds for one attempt (curl --max-time). No limit
                    when unset.
@@ -207,14 +208,22 @@ else
     CURL_INSECURE=""
 fi
 
-attempts=${S3_UPLOAD_ATTEMPTS:-4}
+# How long this file may spend waiting between attempts, in total. A budget, not a count of
+# attempts: an attempt on a 40-byte .sha512 takes under a second and an attempt on a 50MB zip takes
+# a minute or two, so the same count of attempts covers a 35-second outage for one and a
+# six-minute outage for the other. A budget covers the same outage for both.
+#
+# Transfer time is deliberately outside it. The budget answers "how long do we wait for the storage
+# to come back", and sending a file is not waiting.
+budget=${S3_UPLOAD_RETRY_BUDGET_SECONDS:-300}
 delay=${S3_UPLOAD_RETRY_DELAY_SECONDS:-5}
+spent=0
 attempt=1
 
-# A value that is not a number makes every `-ge` below fail, which the loop reads as "attempts
+# A value that is not a number makes every comparison below fail, which the loop reads as "budget
 # left" and never ends.
-case "$attempts" in
-    ''|*[!0-9]*|0) s3_log "S3_UPLOAD_ATTEMPTS must be a positive integer. Its value is '$attempts'."; exit 2;;
+case "$budget" in
+    ''|*[!0-9]*) s3_log "S3_UPLOAD_RETRY_BUDGET_SECONDS must be a non-negative integer. Its value is '$budget'."; exit 2;;
 esac
 case "$delay" in
     ''|*[!0-9]*) s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a non-negative integer. Its value is '$delay'."; exit 2;;
@@ -223,7 +232,7 @@ esac
 while true; do
     sign_request
 
-    s3_log "Uploading: $srcfile ($mime) to $upload_url$targfile (attempt $attempt of $attempts)"
+    s3_log "Uploading: $srcfile ($mime) to $upload_url$targfile (attempt $attempt)"
 
     response_body=$(mktemp)
     response_headers=$(mktemp)
@@ -267,12 +276,6 @@ while true; do
         exit 1
     fi
 
-    if [ "$attempt" -ge "$attempts" ]; then
-        s3_log "The upload of $srcfile failed on all $attempts attempts."
-        rm -f "$response_body" "$response_headers"
-        exit 1
-    fi
-
     # `Retry-After` carries the wait the server asks for, and the cap bounds a wrong value.
     # `|| true` because a missing header is normal, and errexit would end the run on it.
     wait_s=$delay
@@ -283,8 +286,16 @@ while true; do
     fi
     rm -f "$response_body" "$response_headers"
 
-    s3_log "Another attempt starts in ${wait_s}s."
+    if [ "$(( spent + wait_s ))" -gt "$budget" ]; then
+        s3_log "The upload of $srcfile failed, and its ${budget}s of retries are spent."
+        exit 1
+    fi
+
+    s3_log "Another attempt starts in ${wait_s}s (${spent}s of ${budget}s spent)."
     sleep "$wait_s"
+    spent=$(( spent + wait_s ))
     attempt=$((attempt + 1))
+    # The cap keeps the last waits of a long budget from growing past a minute.
     delay=$((delay * 2))
+    [ "$delay" -gt 60 ] && delay=60
 done

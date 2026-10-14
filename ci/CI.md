@@ -491,8 +491,10 @@ each prefix separately". That was never true: the artifacts key writes `builds/`
 ### A failed upload
 
 `ci/s3-uploader.sh` fails on any answer but 200, 201 and 204, prints the error body, and retries a
-429, a 5xx or no answer at all. Its own header documents the attempt knobs. Nothing wraps it in a
-second retry, because that would repeat a whole set of files to reach the one that failed.
+429, a 5xx or no answer at all. It retries one file for five minutes of waiting, and sending the
+file does not count against that — so a 40-byte `.sha512` and a 50MB zip ride out the same outage.
+Nothing retries around it. The Cypress upload shortens the budget to 30s, because those files help
+somebody read a red job and must not hold it open.
 
 The same file lives in ROR KBN and in the e2e repo, identical below its shared header. Port every
 change to all three.
