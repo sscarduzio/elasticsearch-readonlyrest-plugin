@@ -40,7 +40,8 @@ Where <arg> is one of:
 
 Exits 0 only when the server confirms the upload with 200, 201 or 204. Every
 other answer is printed with the error body of the server. A transient one
-(429, 5xx, or no answer at all) is retried until the retry budget is spent.
+(429, 500, 502, 503, 504, or no answer at all) is retried until the retry
+budget is spent.
 
 Exit status:
   0  the server confirmed the upload
@@ -175,8 +176,10 @@ POLICY
 }
 
 # True when a retry can give a different answer. $1 is the HTTP status, $2 the exit code of curl.
-# A 429 or a 5xx is transient, and a 403 is not. Wrong credentials, a rejected policy condition and
-# an empty file give the same answer every time, so the release must stop on them.
+# A 429, 500, 502, 503 or 504 is transient, and the AWS SDKs retry the same four 5xx answers. Every
+# other answer is not: a 501 or a 505 names a request S3 does not support. Wrong credentials, a
+# rejected policy condition and an empty file give the same answer every time, so the release must
+# stop on them.
 is_retryable()
 {
     case "$1" in
@@ -201,7 +204,7 @@ fi
 
 # Off by default: a release uploads about 600 files, and the trace of each one makes the job log
 # unreadable. The error body printed below attributes a failure without it.
-if [ -n "${S3_UPLOADER_DEBUG:-}" ]; then
+if [ "${S3_UPLOADER_DEBUG:-}" = 1 ]; then
     CURL_FLAGS="-v -S"
 else
     CURL_FLAGS=""
@@ -209,7 +212,7 @@ fi
 
 # -k, only when the caller asks for it. A container with no CA bundle cannot verify the endpoint,
 # and its uploads fail without this. Every other caller verifies.
-if [ -n "${S3_UPLOADER_INSECURE:-}" ]; then
+if [ "${S3_UPLOADER_INSECURE:-}" = 1 ]; then
     CURL_INSECURE="-k"
 else
     CURL_INSECURE=""
