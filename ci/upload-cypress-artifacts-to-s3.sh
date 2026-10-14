@@ -71,7 +71,7 @@ export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 
 # A shorter retry budget than a release upload gets. These artifacts help somebody read a red job.
 # The budget counts only the waits between attempts. An attempt that times out is retried, so one
-# file can hold the job for about 3 x S3_UPLOADER_MAX_TIME. The loop below stops at the first file
+# file can hold the job for about 4 x S3_UPLOADER_MAX_TIME. The loop below stops at the first file
 # whose budget is spent, so an outage holds the job for one file only.
 export S3_UPLOAD_RETRY_BUDGET_SECONDS="${S3_UPLOAD_RETRY_BUDGET_SECONDS:-30}"
 
@@ -94,7 +94,7 @@ mime_of() {
 # more than 300 s.
 upload_one() {
   local FILE=$1 KEY=$2 MIME=$3
-  S3_UPLOADER_MAX_TIME=300 "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
+  S3_UPLOADER_MAX_TIME="${S3_UPLOADER_MAX_TIME:-300}" "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
 # Any file can hold a CI secret, whatever its name. SECRETS_TO_REDACT holds one secret per line. In a

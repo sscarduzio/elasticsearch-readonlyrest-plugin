@@ -54,7 +54,8 @@ Optional environment variables:
   S3_UPLOAD_RETRY_BUDGET_SECONDS
                    how long this upload may spend waiting for a transient
                    failure to clear, in total (default 300). Sending the file
-                   does not count. 0 switches the retry off.
+                   does not count. The last wait is shortened to fit. 0
+                   switches the retry off.
   S3_UPLOAD_RETRY_DELAY_SECONDS
                    the wait before the second attempt, at least 1, doubled
                    for each one after it and capped at 60 (default 5). A
@@ -297,10 +298,12 @@ while true; do
     fi
     rm -f "$response_body" "$response_headers"
 
-    if [ "$(( spent + wait_s ))" -gt "$budget" ]; then
+    if [ "$spent" -ge "$budget" ]; then
         s3_log "The upload of $srcfile failed, and its ${budget}s of retries are spent."
         exit 3
     fi
+    # The last wait takes only what is left of the budget, so the whole budget is used.
+    [ "$(( spent + wait_s ))" -gt "$budget" ] && wait_s=$(( budget - spent ))
 
     s3_log "Another attempt starts in ${wait_s}s (${spent}s of ${budget}s spent)."
     sleep "$wait_s"
