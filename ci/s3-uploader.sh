@@ -240,6 +240,10 @@ if [[ ! $delay =~ ^[0-9]+$ ]] || [ "$delay" -lt 1 ]; then
     s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a positive integer. Its value is '$delay'."
     exit 2
 fi
+# Bash arithmetic reads a leading 0 as octal: 010 counts as 8, and 08 stops the run. `[` reads the
+# same text as decimal, so the two would disagree, and the loop would never end.
+budget=$((10#$budget))
+delay=$((10#$delay))
 
 while true; do
     sign_request
@@ -295,8 +299,9 @@ while true; do
     wait_s=$delay
     retry_after=$(tr -d '\r' < "$response_headers" | grep -i '^retry-after:' | tail -1 \
         | sed 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*$//') || true
-    if [[ $retry_after =~ ^[0-9]+$ ]] && [ "$retry_after" -gt 0 ] 2>/dev/null; then
-        wait_s=$retry_after
+    # Base 10, as for the budget: `Retry-After: 08` is 8 seconds.
+    if [[ $retry_after =~ ^[0-9]+$ ]] && [ "$((10#$retry_after))" -gt 0 ]; then
+        wait_s=$((10#$retry_after))
         [ "$wait_s" -gt 60 ] && wait_s=60
     fi
     rm -f "$response_body" "$response_headers"
