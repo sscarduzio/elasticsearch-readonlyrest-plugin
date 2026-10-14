@@ -488,17 +488,6 @@ An earlier revision claimed each store had its own credentials "because the gate
 each prefix separately". That was never true: the artifacts key writes `builds/`, `libs/` and
 `e2e_reports/` alike.
 
-### A failed upload
-
-`ci/s3-uploader.sh` fails on any answer but 200, 201 and 204, prints the error body, and retries a
-429, a 5xx or no answer at all. It retries one file for five minutes of waiting, and sending the
-file does not count against that — so a 40-byte `.sha512` and a 50MB zip ride out the same outage.
-Nothing retries around it. The Cypress upload shortens the budget to 30s, because those files help
-somebody read a red job and must not hold it open.
-
-The same file lives in ROR KBN and in the e2e repo, identical below its shared header. Port every
-change to all three.
-
 | Store | Holds | Written by |
 |---|---|---|
 | `ARTIFACTS` | the plugin zips customers download (`builds/`) | `upload_pre_ror` / `release_ror` |
@@ -513,6 +502,22 @@ they cannot name different locations — when they did, the symptom was an unres
 Mirroring is manual and one-off per ES version: run **Mirror ES Libs** with `es_versions` set
 (e.g. `9.5.1 9.4.5`), and run it **before** the branch adding that version goes through CI — the
 build cannot compile against jars that are not in the store yet.
+
+### A failed upload
+
+`ci/s3-uploader.sh` fails on any answer but 200, 201 and 204, prints the error body, and retries a
+429, a 5xx or no answer at all. It waits up to five minutes in total for one file, and sending the
+file does not count against that — so a 40-byte `.sha512` and a 50MB zip get the same time to wait
+for the storage. It exits 3 when that budget is spent.
+
+`publish_es_major` builds a failed module again, up to 3 times, but not for a failed upload: the
+uploader already retried it, and a new build does not change the answer of the storage.
+
+The Cypress upload shortens the budget to 30s, and stops at the first file whose budget is spent.
+Those files help somebody read a red job, so an outage holds the job for one file only.
+
+The same file lives in ROR KBN and in the e2e repo, identical below its shared header. Port every
+change to all three.
 
 ## Secrets & variables
 

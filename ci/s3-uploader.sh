@@ -21,11 +21,11 @@ usage()
 {
     cat >&2 <<USAGE
 ##########################################################################
-Script taken from https://www.aws.ps/how-to-upload-file-to-s3-using-curl
+Originally adapted from https://www.aws.ps/how-to-upload-file-to-s3-using-curl
+(since modified for ROR: custom S3_ENDPOINT_URL, SigV4 date-scope fix, no ACL/MD5).
 
-Simple script uploading a file to S3. Supports AWS signature version 4, custom
-region, permissions and mime-types. Uses Content-MD5 header to guarantee
-uncorrupted file transfer.
+Simple script uploading a file to S3 (or any S3-compatible endpoint). Supports AWS
+signature version 4, custom region, a custom endpoint, and mime-types.
 
 Usage:
   `basename $0` aws_ak aws_sk bucket srcfile targfile [mime_type]
@@ -41,6 +41,12 @@ Where <arg> is one of:
 Exits 0 only when the server confirms the upload with 200, 201 or 204. Every
 other answer is printed with the error body of the server. A transient one
 (429, 5xx, or no answer at all) is retried until the retry budget is spent.
+
+Exit status:
+  0  the server confirmed the upload
+  1  the upload failed for a cause that another attempt does not change
+  2  a wrong argument or a wrong setting; nothing was sent
+  3  the retry budget is spent, and the last answer was still transient
 
 Optional environment variables:
   S3_ENDPOINT_URL  custom S3-compatible endpoint (uses path-style addressing).
@@ -239,9 +245,10 @@ while true; do
     response_body=$(mktemp)
     response_headers=$(mktemp)
     curl_status=0
-    # Quote the key: Cypress names a screenshot after its test, so it holds spaces and brackets.
-    # Unquoted, the shell splits it and curl sends a truncated key, which the server rejects.
-    # The file name goes in curl's own quotes too: in -F, an unquoted @path ends at a ',' or ';'.
+    # Cypress names a screenshot after its test, so a key can hold spaces, brackets and a ';'. -F
+    # ends a value at a ';' and reads the rest as its own options, so S3 gets a short key and
+    # answers 204. --form-string sends the key and the mime type as they are.
+    # The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';'.
     # $key_and_sig_args stays unquoted on purpose — it is several arguments, and must split.
     # --connect-timeout bounds a connection that never opens. S3_UPLOADER_MAX_TIME bounds one
     # attempt, and no caller that uploads a release zip sets it: such an upload runs for minutes.
@@ -249,9 +256,9 @@ while true; do
         -# $CURL_INSECURE $CURL_FLAGS \
         --connect-timeout 30        \
         ${S3_UPLOADER_MAX_TIME:+--max-time "$S3_UPLOADER_MAX_TIME"} \
-        -F key="$targfile"          \
+        --form-string "key=$targfile" \
         $key_and_sig_args           \
-        -F "Content-Type=$mime"     \
+        --form-string "Content-Type=$mime" \
         -F "file=@\"$srcfile\""     \
         --dump-header "$response_headers" \
         --write-out '%{http_code}'  \
@@ -278,11 +285,13 @@ while true; do
         exit 1
     fi
 
-    # `Retry-After` carries the wait the server asks for, and the cap bounds a wrong value.
+    # `Retry-After` carries the wait the server asks for, and the cap bounds a wrong value. The
+    # header holds a number of seconds or an HTTP date. A date keeps the backoff.
     # `|| true` because a missing header is normal, and errexit would end the run on it.
     wait_s=$delay
-    retry_after=$(tr -d '\r' < "$response_headers" | grep -i '^retry-after:' | tail -1 | sed 's/[^0-9]//g') || true
-    if [ -n "$retry_after" ] && [ "$retry_after" -gt 0 ] 2>/dev/null; then
+    retry_after=$(tr -d '\r' < "$response_headers" | grep -i '^retry-after:' | tail -1 \
+        | sed 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*$//') || true
+    if [[ $retry_after =~ ^[0-9]+$ ]] && [ "$retry_after" -gt 0 ] 2>/dev/null; then
         wait_s=$retry_after
         [ "$wait_s" -gt 60 ] && wait_s=60
     fi
@@ -290,7 +299,7 @@ while true; do
 
     if [ "$(( spent + wait_s ))" -gt "$budget" ]; then
         s3_log "The upload of $srcfile failed, and its ${budget}s of retries are spent."
-        exit 1
+        exit 3
     fi
 
     s3_log "Another attempt starts in ${wait_s}s (${spent}s of ${budget}s spent)."
