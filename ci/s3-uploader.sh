@@ -50,9 +50,9 @@ Optional environment variables:
                    failure to clear, in total (default 300). Sending the file
                    does not count. 0 switches the retry off.
   S3_UPLOAD_RETRY_DELAY_SECONDS
-                   the wait before the second attempt, doubled for each one
-                   after it and capped at 60 (default 5). A `Retry-After`
-                   header of the server wins over it, up to 60s.
+                   the wait before the second attempt, at least 1, doubled
+                   for each one after it and capped at 60 (default 5). A
+                   `Retry-After` header of the server wins over it, up to 60s.
   S3_UPLOADER_MAX_TIME
                    maximum seconds for one attempt (curl --max-time). No limit
                    when unset.
@@ -221,13 +221,15 @@ spent=0
 attempt=1
 
 # A value that is not a number makes every comparison below fail, which the loop reads as "budget
-# left" and never ends.
+# left" and never ends. A delay of 0 stays 0 when it doubles, so the waits never spend the budget.
+# The loop then never ends, even with a budget of 0.
 case "$budget" in
     ''|*[!0-9]*) s3_log "S3_UPLOAD_RETRY_BUDGET_SECONDS must be a non-negative integer. Its value is '$budget'."; exit 2;;
 esac
-case "$delay" in
-    ''|*[!0-9]*) s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a non-negative integer. Its value is '$delay'."; exit 2;;
-esac
+if [[ ! $delay =~ ^[0-9]+$ ]] || [ "$delay" -lt 1 ]; then
+    s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a positive integer. Its value is '$delay'."
+    exit 2
+fi
 
 while true; do
     sign_request
