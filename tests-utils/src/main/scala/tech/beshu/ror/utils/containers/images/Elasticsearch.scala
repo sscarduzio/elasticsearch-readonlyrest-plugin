@@ -272,8 +272,8 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // name, and no Docker Hub mirror can serve it.
       .create(DockerHubMirror.applyTo("ubuntu:24.04"), customEntrypoint)
       .user("root")
-      .run(withRetries(s"apt-get $aptRetries update"))
-      .run(withRetries(s"apt-get $aptRetries install -y ca-certificates gnupg2 curl apt-transport-https"))
+      .run(aptGet("update", "install -y ca-certificates gnupg2 curl apt-transport-https"))
+      // artifacts.elastic.co sometimes fails for a short time.
       .run(
         withRetries(
           "curl -fsSL --retry 5 --retry-all-errors https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -"
@@ -283,8 +283,9 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
         s"""echo "deb https://artifacts.elastic.co/packages/$esMajorVersion/apt stable main" > /etc/apt/sources.list.d/elastic-$esMajorVersion.list"""
       )
       .run(
-        withRetries(
-          s"""apt-get $aptRetries update && apt-get $aptRetries install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion"""
+        aptGet(
+          "update",
+          s"""install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion"""
         )
       )
       .run("apt clean && rm -rf /var/lib/apt/lists/*")
@@ -318,12 +319,15 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .user("elasticsearch")
   }
 
-  // apt retries each failed download this many times.
-  private val aptRetries = "-o Acquire::Retries=5"
+  // Runs the apt-get commands in one chain, with two retry levels, because the Ubuntu mirrors and
+  // artifacts.elastic.co sometimes fail for a short time. Acquire::Retries retries one failed
+  // download inside one apt run. withRetries runs the full chain again after a longer outage, and the
+  // new `apt-get update` then gets new indexes when the mirror changed.
+  private def aptGet(commands: String*): String =
+    withRetries(commands.map(command => s"apt-get -o Acquire::Retries=5 $command").mkString(" && "))
 
-  // The Ubuntu mirrors and artifacts.elastic.co sometimes fail for a short time, and apt then exits
-  // with code 100. This runs the command up to 5 times, with 10 s, 20 s, 30 s and 40 s between the
-  // attempts, and fails the build after the last failed attempt.
+  // Runs the command up to 5 times, with 10 s, 20 s, 30 s and 40 s between the attempts. Fails after
+  // the last failed attempt.
   private def withRetries(command: String): String =
     s"""for attempt in 1 2 3 4 5; do ($command) && break; [ "$$attempt" -lt 5 ] || exit 1; sleep $$((attempt * 10)); done"""
 
