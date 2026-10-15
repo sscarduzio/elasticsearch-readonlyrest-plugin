@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.utils.containers
 
+import cats.data.NonEmptyList
+
 object DependencyRunner {
 
   // When a dependency does not start, this stops all the dependencies and throws the failure.
   def startDependencies(definitions: List[DependencyDef]): StartedClusterDependencies = {
-    ContainersCleanup.stopAllWhenStartFails(
-      ContainersCleanup.stopAll(definitions.map(definition => () => definition.container.stop()))
-    ) {
-      ContainersCleanup.startAllInParallel(definitions.map(_.container))
-    }
+    NonEmptyList
+      .fromList(definitions.map(_.container))
+      .foreach(containers => AllOrNothingContainers.inParallel(containers).start())
     convertToStartedDependencies(definitions)
   }
 

@@ -115,7 +115,7 @@ object support {
     this: Suite & EsClusterProvider & ESVersionSupport =>
 
     override lazy val container: AllOrNothingContainers =
-      new AllOrNothingContainers(clusterContainers.toList)
+      AllOrNothingContainers.inOrder(clusterContainers)
 
     def clusterContainers: NonEmptyList[EsClusterContainer]
   }
