@@ -27,18 +27,23 @@ import java.util.UUID
 
 object DockerImageCreator extends StrictLogging {
 
+  // The integration-tests build removes the images and layers with this label after the test run.
+  val itImageLabel = "tech.beshu.ror.it-image"
+
   def create(elasticsearch: Elasticsearch): ImageFromDockerfile = {
     val imageDescription = elasticsearch.toDockerImageDescription
-    // STABLE content-derived tag (DockerImageDescription.imageTag): identical images share one tag →
-    // cache hit across parallel workers (no concurrent rebuilds, fails at shardCount>=3).
-    // deleteOnExit is false. With true, Ryuk removes the image when this JVM ends, and it also removes
-    // the untagged parent layers. Another shard JVM can be in a build on those layers at that time.
-    // EsContainer.removeImage removes the tag when a cluster stops.
+    // The tag comes from the image content, so parallel test JVMs that need the same image share one
+    // build. deleteOnExit is false, because Ryuk then also removes the untagged parent layers, and
+    // another test JVM can build on them at that time. The label marks the image for the removal
+    // after the test run.
     val stableTag = s"ror-it-es:${imageDescription.imageTag}"
     copyFilesFrom(imageDescription, to = new ImageFromDockerfile(stableTag, /* deleteOnExit = */ false))
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         val dockerfile = builder
           .from(imageDescription.baseImage)
+          // Directly after FROM, so that every layer the build adds has the label, also the layers
+          // that stay when the image tag is removed.
+          .label(java.util.Map.of(itImageLabel, "true"))
           .applyStepsFrom(imageDescription) // COPY/RUN/USER in DECLARATION order (config files last)
           .addEnvsFrom(imageDescription)
           .setEntrypointFrom(imageDescription)

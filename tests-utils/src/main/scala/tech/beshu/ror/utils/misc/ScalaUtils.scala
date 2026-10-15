@@ -23,11 +23,12 @@ import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
 
 import java.io.InputStream
+import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.time.Duration
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
-import scala.annotation.tailrec
+import scala.annotation.{tailrec, varargs}
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
@@ -173,6 +174,20 @@ object ScalaUtils extends LazyLogging {
    */
   def sha512(file: BetterFile): String =
     digestHex(file, "SHA-512", uppercase = false)
+
+  /**
+   * SHA-256 hex digest of the parts, in lowercase. Each part goes in with its length first, so two
+   * different lists of parts never give the same digest ("a" + "bc" and "ab" + "c" would without it).
+   */
+  @varargs
+  def sha256OfParts(parts: Array[Byte]*): String = {
+    val md = MessageDigest.getInstance("SHA-256")
+    parts.foreach { part =>
+      md.update(ByteBuffer.allocate(Integer.BYTES).putInt(part.length).array())
+      md.update(part)
+    }
+    md.digest().map("%02x".format(_)).mkString
+  }
 
   private def digestHex(file: BetterFile, algorithm: String, uppercase: Boolean): String = {
     val md = MessageDigest.getInstance(algorithm)

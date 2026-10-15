@@ -18,8 +18,6 @@
 package tech.beshu.ror.utils.containers;
 
 import com.google.common.collect.Lists;
-import com.google.common.hash.Hasher;
-import com.google.common.hash.Hashing;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,7 +25,9 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder;
+import tech.beshu.ror.utils.containers.images.DockerImageCreator;
 import tech.beshu.ror.utils.httpclient.RestClient;
+import tech.beshu.ror.utils.misc.ScalaUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,7 +35,9 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class WireMockContainer extends GenericContainer<WireMockContainer> {
@@ -55,8 +57,9 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         Lists.newArrayList(mappings).stream()
             .map(ContainerUtils::getResourceFile)
             .collect(Collectors.toList());
-    // deleteOnExit is false for the reason in DockerImageCreator. The tag comes from the content,
-    // so the same mappings reuse one image.
+    // The tag comes from the content, so the same mappings reuse one image. deleteOnExit is false,
+    // because Ryuk then also removes the untagged parent layers, and another test JVM can build on
+    // them at that time. The label marks the image for the removal after the test run.
     ImageFromDockerfile dockerfile =
         new ImageFromDockerfile(
             "ror-it-wiremock:" + contentHash(mappingFiles), /* deleteOnExit= */ false);
@@ -68,6 +71,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
             dockerfile.withDockerfileFromBuilder(
                 builder -> {
                   DockerfileBuilder b = builder.from(BASE_IMAGE);
+                  b.label(Map.of(DockerImageCreator.itImageLabel(), "true"));
                   mappingFiles.forEach(
                       mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
                   // the image's own CMD plus -Xmx: its JDK 8 is not cgroup-aware and defaults to
@@ -92,25 +96,18 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
                 "[WIREMOCK-ext-port:" + cont.getWireMockPort() + "] " + s.getUtf8String()));
   }
 
-  // Each field goes in with its length first, so two different mapping sets never hash the same
-  // bytes ("a" + "bc" and "ab" + "c" would without it).
   private static String contentHash(List<File> mappingFiles) {
-    Hasher hasher = Hashing.sha256().newHasher();
-    putFramed(hasher, BASE_IMAGE.getBytes(StandardCharsets.UTF_8));
+    List<byte[]> parts = new ArrayList<>();
+    parts.add(BASE_IMAGE.getBytes(StandardCharsets.UTF_8));
     for (File mappingFile : mappingFiles) {
-      putFramed(hasher, mappingFile.getName().getBytes(StandardCharsets.UTF_8));
+      parts.add(mappingFile.getName().getBytes(StandardCharsets.UTF_8));
       try {
-        putFramed(hasher, Files.readAllBytes(mappingFile.toPath()));
+        parts.add(Files.readAllBytes(mappingFile.toPath()));
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
     }
-    return hasher.hash().toString().substring(0, 20);
-  }
-
-  private static void putFramed(Hasher hasher, byte[] bytes) {
-    hasher.putInt(bytes.length);
-    hasher.putBytes(bytes);
+    return ScalaUtils.sha256OfParts(parts.toArray(new byte[0][])).substring(0, 20);
   }
 
   public String getWireMockHost() {
