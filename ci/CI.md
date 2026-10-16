@@ -470,7 +470,9 @@ On failure the job uploads the Cypress videos and screenshots to the E2E_REPORTS
 (`ci/upload-cypress-artifacts-to-s3.sh`), under `<prefix>/<date>/build_<run id>/<module>_<elk>/`.
 S3, not GitHub artifacts: those count against the metered Actions-storage quota. Before the upload
 the script replaces each secret in `SECRETS_TO_REDACT` (one per line; the workflow passes
-`ROR_ENT_ACTIVATION_TOKEN`) with `<redacted>` in text files, and skips a file that still holds one.
+`ROR_ENT_ACTIVATION_TOKEN`) with `<redacted>` in text files, and skips a file that still holds
+one. An empty `SECRETS_TO_REDACT` uploads nothing: with no secret to look for, the check passes
+every file.
 
 Needs `ROR_ENT_ACTIVATION_TOKEN` (the suite refuses to start without it) and `ROR_GH_TOKEN` (to
 dispatch the ROR KBN build and read its status).

@@ -66,6 +66,10 @@ fi
 
 S3_PATH="${PATH_PREFIX:+${PATH_PREFIX%/}/}${S3_SUBFOLDER%/}/"
 
+# The gateway rejects a key with an empty path segment ('//'). The prefix can carry one in the
+# middle, where trimming the ends does not reach.
+S3_PATH=$(printf '%s' "$S3_PATH" | sed 's://*:/:g')
+
 # Consumed by s3-uploader.sh, which switches to path-style addressing when it is set.
 export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 
@@ -104,6 +108,12 @@ SECRETS=()
 while IFS= read -r SECRET; do
   [ -n "$SECRET" ] && SECRETS+=("$SECRET")
 done <<< "${SECRETS_TO_REDACT:-}"
+# With no secret to look for, every file passes the check. An empty value is a caller defect,
+# for example a renamed secret, so nothing is uploaded.
+if [ ${#SECRETS[@]} -eq 0 ]; then
+  ci_log "ERROR: SECRETS_TO_REDACT is empty, so the files cannot be checked for secrets. Nothing is uploaded."
+  exit 1
+fi
 holds_secret() {
   local SECRET
   for SECRET in "${SECRETS[@]}"; do
