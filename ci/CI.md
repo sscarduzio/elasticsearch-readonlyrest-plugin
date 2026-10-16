@@ -521,7 +521,8 @@ the job itself times out.
 `publish_es_major` builds a module up to 3 times in total, but not again after a failed upload: the
 uploader already retried it, and a new build does not change the answer of the storage.
 
-The Cypress upload shortens the budget to 30s, and stops at the first file whose budget is spent.
+The Cypress upload shortens the budget to 30s, and stops at the first file whose budget is spent,
+or whose settings the uploader refuses.
 Those files help somebody read a red job, so an outage holds the job for one file only.
 
 The same file lives in ROR KBN and in the e2e repo, identical below its shared header. Port every

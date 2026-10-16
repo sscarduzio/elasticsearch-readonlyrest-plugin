@@ -159,10 +159,14 @@ while IFS= read -r -d '' FILE; do
   # The uploader retried the transient answers and printed the error body, so the log already
   # names the cause.
   FAILED=$((FAILED + 1))
-  # Status 3: the storage stayed down for the whole retry budget. Every later file waits for the
-  # same budget and fails the same way, so the run stops here.
+  # Status 3 is a storage that stayed down for the whole retry budget, and status 2 a wrong
+  # setting. Every later file meets the same thing, so the run stops on both.
   if [ "$UPLOAD_STATUS" -eq 3 ]; then
     ci_log "The upload of $FILE failed. The storage stayed down for the whole retry budget, so the files that remain are not uploaded."
+    break
+  fi
+  if [ "$UPLOAD_STATUS" -eq 2 ]; then
+    ci_log "The upload of $FILE failed. A setting of the uploader is wrong, so the files that remain are not uploaded."
     break
   fi
   ci_log "The upload of $FILE failed. The run continues with the next file."
