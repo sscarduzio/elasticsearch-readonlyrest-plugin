@@ -6,10 +6,9 @@
 #   readonlyrest_kbn                    scripts/utils/s3Uploader.sh
 #   readonlyrest-e2e-tests              .github/scripts/s3-uploader.sh
 #
-# Below this header the three copies are identical, byte for byte, and `diff` proves it. Nothing
-# here names a repository, and the file sources no other file: one of the three has no logger.
-#
-# The tests live in readonlyrest_kbn, scripts/tests/s3Uploader.test.sh. Run them there.
+# The three copies are identical below this header. Nothing here names a repository, and the file
+# sources no other file: one of the three has no logger. The tests live in readonlyrest_kbn,
+# scripts/tests/s3Uploader.test.sh.
 
 # Writes one message to standard error. Standard output stays empty, so a caller can capture a
 # value from it.
@@ -125,15 +124,14 @@ srcfile="$4"                                                             # sourc
 targfile=`echo -n "$5" | sed "s/\/$/\/$(basename "$srcfile")/"`          # target file
 mime=${6:-"`guessmime "$srcfile"`"}                                      # mime type
 
-# curl's own quotes around the file name below end at a '"' in the path, and curl reads the rest as
-# -F options. The file it then sends is a sibling of the file this script was given. A backslash
-# escapes a '"' and a '\' inside those quotes.
+# The file name goes to curl in its own quotes: an unquoted @path in -F ends at a ',' or a ';'. The
+# quotes end at a '"' in the path, and curl reads the rest as -F options, so it sends a sibling of
+# this file. A backslash escapes a '"' and a '\' inside the quotes.
 srcfile_arg=$(printf '%s' "$srcfile" | sed 's/[\\"]/\\&/g')
 
-# Signs one upload. Sets `p` (the base64 policy) and `key_and_sig_args` (credential, algorithm,
-# signature, date, policy). Empty keys sign nothing, which is how an anonymous upload to a
-# public-writable bucket works. Every attempt signs again, because the credential scope carries
-# today's date and a retry can cross midnight.
+# Signs one upload. Sets `p`, the base64 policy, and `key_and_sig_args`. Empty keys sign nothing,
+# which is how an anonymous upload to a public-writable bucket works. Every attempt signs again:
+# the credential scope carries today's date, and a retry can cross midnight.
 sign_request()
 {
     key_and_sig_args=''
@@ -142,16 +140,14 @@ sign_request()
         return 0
     fi
 
-    # SigV4 requires the credential scope date to match the request date.
-    # `today_s` is used for both signing and the X-Amz-Credential field.
-    # `expdate` is the policy expiration (tomorrow), unrelated to the credential date.
+    # SigV4 requires the credential scope date to match the request date. `expdate` is the
+    # expiration of the policy, and carries no scope.
     local date today_s expdate service s
     date=`date -u +%Y%m%dT%H%M%SZ`
     today_s=`date -u +%Y%m%d`
     expdate=`if ! date -v+1d +%Y-%m-%d 2>/dev/null; then date -d tomorrow +%Y-%m-%d; fi`
     service='s3'
 
-    # Generate policy and sign with secret key following AWS Signature version 4, below
     # -A suppresses base64 line wrapping (some S3-compatible proxies reject wrapped policies).
     p=$(cat <<POLICY | openssl base64 -A
 { "expiration": "${expdate}T12:00:00.000Z",
@@ -182,8 +178,8 @@ POLICY
 }
 
 # True when the attempt used the whole of S3_UPLOADER_MAX_TIME. $1 is the exit code of curl, $2 the
-# seconds the attempt ran. curl exits 28 both when the storage is silent and when the file needs
-# more seconds than the cap, and only the time the attempt ran separates the two.
+# seconds the attempt ran. curl exits 28 when the storage is silent, and also when the file needs
+# more seconds than the cap. Only the time the attempt ran separates the two.
 max_time_spent()
 {
     [ "$1" = 28 ] || return 1
@@ -193,38 +189,34 @@ max_time_spent()
 }
 
 # True when a retry can give a different answer. $1 is the HTTP status, $2 the exit code of curl,
-# $3 the file that holds the error body.
-# A 429, 500, 502, 503 or 504 is transient, and the AWS SDKs retry these. So is a 408, which a
-# proxy in front of the storage can send, not S3 itself. Every other answer is not: a 501 or a 505
-# names a request S3 does not support. Wrong credentials, a rejected policy condition and an empty
-# file give the same answer every time, so the release must stop on them.
+# $3 the file that holds the error body. The AWS SDKs retry the statuses below. Wrong credentials, a
+# rejected policy condition, an empty file and an unsupported request give the same answer every
+# time. The release stops on them.
 is_retryable()
 {
     case "$1" in
         408|429|500|502|503|504) return 0;;
-        # S3 answers 400, not 408, and carries the code RequestTimeout in the body: the
-        # connection opened and then the body stopped moving. The AWS SDKs retry it. Every other
-        # 400 means a request S3 cannot read.
+        # A 408 comes from a proxy in front of the storage. S3 itself answers 400, and carries
+        # the code RequestTimeout in the body, when the connection opens and the body then stops
+        # moving. Every other 400 means a request S3 cannot read.
         400) grep -q '<Code>RequestTimeout</Code>' "$3" 2>/dev/null && return 0
              return 1;;
         # No status at all: curl prints 000 for a DNS failure, a refused connection, a timeout or a
-        # broken TLS handshake, and its exit code names which. An empty value means curl stopped
+        # broken TLS handshake. Its exit code says which. An empty value means curl stopped
         # before `--write-out`.
         000|'') ;;
         # The server answered, and its answer decides. A body that breaks in transit after a 403
         # does not make the 403 transient, and a retry of it only spends the budget.
         *) return 1;;
     esac
-    # A timeout that spent the whole S3_UPLOADER_MAX_TIME never reaches this function.
     case "$2" in
         6|7|16|18|28|35|52|55|56|92) return 0;;
     esac
     return 1
 }
 
-# Determine upload URL.
-# - If S3_ENDPOINT_URL is set (e.g. for the DGP proxy) use path-style addressing: ${endpoint}/${bucket}/
-# - Otherwise default to AWS virtual-hosted-style: https://${bucket}.s3.amazonaws.com/
+# A custom endpoint takes path-style addressing, because an S3-compatible proxy serves no bucket
+# subdomain. AWS itself takes the virtual-hosted form.
 if [ -n "${S3_ENDPOINT_URL:-}" ]; then
     upload_url="${S3_ENDPOINT_URL%/}/${bucket}/"
 else
@@ -247,13 +239,9 @@ else
     CURL_INSECURE=""
 fi
 
-# How long this file may spend waiting between attempts, in total. A budget, not a count of
-# attempts: an attempt on a 40-byte .sha512 takes under a second and an attempt on a 50MB zip takes
-# a minute or two, so the same count of attempts covers a 35-second outage for one and a
-# six-minute outage for the other. A budget covers the same outage for both.
-#
-# Transfer time is deliberately outside it. The budget answers "how long do we wait for the storage
-# to come back", and sending a file is not waiting.
+# How long this file may spend waiting between attempts, in total. A count of attempts would cover
+# a 35-second outage for a 40-byte .sha512 and a six-minute one for a 50MB zip. Transfer time stays
+# outside the budget: sending a file is not waiting for the storage.
 budget=${S3_UPLOAD_RETRY_BUDGET_SECONDS:-300}
 delay=${S3_UPLOAD_RETRY_DELAY_SECONDS:-5}
 spent=0
@@ -287,14 +275,10 @@ while true; do
     # Cypress names a screenshot after its test, so a key can hold spaces, brackets and a ';'. -F
     # ends a value at a ';' and reads the rest as its own options, so S3 gets a short key and
     # answers 204. --form-string sends the key and the mime type as they are.
-    # The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';'. A '"'
-    # and a '\' in the path are escaped above.
     # $key_and_sig_args stays unquoted on purpose — it is several arguments, and must split.
-    # --connect-timeout bounds a connection that never opens, and --speed-time a transfer that
-    # opens and then stalls: curl exits 28 after two minutes under 1KB/s, and the retry carries it.
-    # Two minutes, because S3 holds the connection quiet for a moment after a large body.
-    # S3_UPLOADER_MAX_TIME bounds one whole attempt, and no caller that uploads a release zip sets
-    # it: such an upload runs for minutes.
+    # --connect-timeout bounds a connection that never opens, and --speed-time one that opens and
+    # then stalls. curl exits 28 after two minutes under 1KB/s, and the loop retries it. Two
+    # minutes, because S3 can take a moment to answer after a large body.
     curl_out=$(curl                 \
         -# $CURL_INSECURE $CURL_FLAGS \
         --connect-timeout 30        \
@@ -325,8 +309,8 @@ while true; do
     # The error body names the cause. It carries no closing newline, so print one.
     [ -s "$response_body" ] && printf '%s\n' "$(<"$response_body")" >&2
 
-    # A file that needs more seconds than the cap fails the same way on every attempt, and the
-    # waits between them hold the job open. A 1 lets the caller carry on with the next file.
+    # A file that needs more seconds than the cap fails the same way on every attempt. The caller
+    # takes a 1 and carries on with the next file.
     if max_time_spent "$curl_status" "$time_total"; then
         s3_log "The upload took the whole ${S3_UPLOADER_MAX_TIME}s of S3_UPLOADER_MAX_TIME. Another attempt takes as long."
         rm -f "$response_body" "$response_headers"
@@ -340,9 +324,8 @@ while true; do
     fi
 
     # `Retry-After` carries the wait the server asks for, and the cap bounds a wrong value. The
-    # header holds a number of seconds or an HTTP date. A date keeps the backoff. A missing header
-    # is normal: `grep` then finds nothing, `sed` reads nothing and exits 0, and the pipeline with
-    # it.
+    # header holds a number of seconds or an HTTP date, and a date keeps the backoff. A missing
+    # header is normal: `grep` finds nothing, and `sed` then exits 0.
     wait_s=$delay
     retry_after=$(tr -d '\r' < "$response_headers" | grep -i '^retry-after:' | tail -1 \
         | sed 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*$//')

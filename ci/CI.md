@@ -505,15 +505,16 @@ build cannot compile against jars that are not in the store yet.
 
 ### A failed upload
 
-`ci/s3-uploader.sh` fails on any answer but 200, 201 and 204, prints the error body, and retries a
-408, a 429, a 500, 502, 503 or 504, a 400 whose body carries the code `RequestTimeout`, or no answer at all. It waits up to five minutes in total for one file, and sending the
-file does not count against that — so a 40-byte `.sha512` and a 50MB zip get the same time to wait
-for the storage. It exits 3 when that budget is spent.
+`ci/s3-uploader.sh` fails on any answer but 200, 201 and 204, and prints the error body. It retries
+a 408, a 429, a 500, 502, 503 or 504, a 400 that carries the code `RequestTimeout`, and no answer at
+all. It waits up to five minutes in total for one file, and sending the file does not count against
+that. A 40-byte `.sha512` and a 50MB zip therefore get the same time to wait for the storage. The
+uploader exits 3 when that budget is spent.
 
 An attempt that spends `S3_UPLOADER_MAX_TIME` exits 1, and no retry follows. The next attempt on
 that file needs the same time, and the storage can be healthy.
 
-A transfer that moves less than 1KB/s for two minutes is abandoned, and the retry covers it. A
+curl abandons a transfer that moves less than 1KB/s for two minutes, and the loop retries it. A
 release upload sets no `--max-time`, so without that bound a stalled connection holds the job until
 the job itself times out.
 
