@@ -63,7 +63,8 @@ Optional environment variables:
                    `Retry-After` header of the server wins over it, up to 60s.
   S3_UPLOADER_MAX_TIME
                    maximum seconds for one attempt (curl --max-time). No limit
-                   when unset.
+                   when unset. An attempt that spends it exits 1, with no
+                   retry: the next attempt needs the same time.
   S3_UPLOADER_INSECURE
                    1 stops curl from verifying the certificate of the endpoint.
                    For a caller whose container holds no CA bundle.
@@ -175,6 +176,17 @@ POLICY
     key_and_sig_args="-F X-Amz-Credential=$aws_ak/$today_s/$region/$service/aws4_request -F X-Amz-Algorithm=AWS4-HMAC-SHA256 -F X-Amz-Signature=$s -F X-Amz-Date=${date} -F Policy=$p"
 }
 
+# True when the attempt used the whole of S3_UPLOADER_MAX_TIME. $1 is the exit code of curl, $2 the
+# seconds the attempt ran. curl exits 28 both when the storage is silent and when the file needs
+# more seconds than the cap, and only the time the attempt ran separates the two.
+max_time_spent()
+{
+    [ "$1" = 28 ] || return 1
+    [[ ${S3_UPLOADER_MAX_TIME:-} =~ ^[0-9]+$ ]] || return 1
+    # curl can end the attempt a few milliseconds early, so the last whole second counts as spent.
+    [ "$(( ${2%%.*} + 1 ))" -ge "$S3_UPLOADER_MAX_TIME" ]
+}
+
 # True when a retry can give a different answer. $1 is the HTTP status, $2 the exit code of curl.
 # A 429, 500, 502, 503 or 504 is transient, and the AWS SDKs retry the same four 5xx answers. Every
 # other answer is not: a 501 or a 505 names a request S3 does not support. Wrong credentials, a
@@ -186,7 +198,8 @@ is_retryable()
         429|500|502|503|504) return 0;;
     esac
     # curl got no complete answer: a DNS failure, a refused connection, a timeout, a broken TLS
-    # handshake. `--write-out` prints 000 for these, so the status cannot classify them.
+    # handshake. `--write-out` prints 000 for these, so the status cannot classify them. A timeout
+    # that spent the whole S3_UPLOADER_MAX_TIME never reaches this function.
     case "$2" in
         6|7|16|18|28|35|52|55|56|92) return 0;;
     esac
@@ -260,7 +273,7 @@ while true; do
     # $key_and_sig_args stays unquoted on purpose — it is several arguments, and must split.
     # --connect-timeout bounds a connection that never opens. S3_UPLOADER_MAX_TIME bounds one
     # attempt, and no caller that uploads a release zip sets it: such an upload runs for minutes.
-    http_code=$(curl                \
+    curl_out=$(curl                 \
         -# $CURL_INSECURE $CURL_FLAGS \
         --connect-timeout 30        \
         ${S3_UPLOADER_MAX_TIME:+--max-time "$S3_UPLOADER_MAX_TIME"} \
@@ -269,9 +282,11 @@ while true; do
         --form-string "Content-Type=$mime" \
         -F "file=@\"$srcfile\""     \
         --dump-header "$response_headers" \
-        --write-out '%{http_code}'  \
+        --write-out '%{http_code} %{time_total}' \
         --output "$response_body"   \
         "$upload_url") || curl_status=$?
+    http_code=${curl_out%% *}
+    time_total=${curl_out##* }
 
     # S3 answers 204 to a form upload, and 200 or 201 when the policy asks for it. Read the status,
     # not the exit code of curl. A 301 (bucket in another region) and a 307 (young bucket) both
@@ -286,6 +301,14 @@ while true; do
     s3_log "The upload of $srcfile to ${upload_url}${targfile} failed (HTTP $http_code, curl exit $curl_status)."
     # The error body names the cause. It carries no closing newline, so print one.
     [ -s "$response_body" ] && printf '%s\n' "$(<"$response_body")" >&2
+
+    # A file that needs more seconds than the cap fails the same way on every attempt, and the
+    # waits between them hold the job open. A 1 lets the caller carry on with the next file.
+    if max_time_spent "$curl_status" "$time_total"; then
+        s3_log "The upload took the whole ${S3_UPLOADER_MAX_TIME}s of S3_UPLOADER_MAX_TIME. Another attempt takes as long."
+        rm -f "$response_body" "$response_headers"
+        exit 1
+    fi
 
     if ! is_retryable "$http_code" "$curl_status"; then
         s3_log "Another attempt gives the same result."

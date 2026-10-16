@@ -70,9 +70,9 @@ S3_PATH="${PATH_PREFIX:+${PATH_PREFIX%/}/}${S3_SUBFOLDER%/}/"
 export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 
 # A shorter retry budget than a release upload gets. These artifacts help somebody read a red job.
-# The budget counts only the waits between attempts. An attempt that times out is retried, so one
-# file can hold the job for about 4 x S3_UPLOADER_MAX_TIME. The loop below stops at the first file
-# whose budget is spent, so an outage holds the job for one file only.
+# The budget counts only the waits between attempts. An attempt that spends S3_UPLOADER_MAX_TIME
+# is not retried, so one file holds the job for that long at most. The loop below stops at the
+# first file whose budget is spent, so an outage holds the job for one file only.
 export S3_UPLOAD_RETRY_BUDGET_SECONDS="${S3_UPLOAD_RETRY_BUDGET_SECONDS:-30}"
 
 # An explicit mime type keeps the uploader from calling `file` (its guess path), which is not

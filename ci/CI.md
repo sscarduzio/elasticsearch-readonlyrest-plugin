@@ -510,6 +510,9 @@ build cannot compile against jars that are not in the store yet.
 file does not count against that — so a 40-byte `.sha512` and a 50MB zip get the same time to wait
 for the storage. It exits 3 when that budget is spent.
 
+An attempt that spends `S3_UPLOADER_MAX_TIME` exits 1, and no retry follows. The next attempt on
+that file needs the same time, and the storage can be healthy.
+
 `publish_es_major` builds a failed module again, up to 3 times, but not for a failed upload: the
 uploader already retried it, and a new build does not change the answer of the storage.
 
