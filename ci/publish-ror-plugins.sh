@@ -245,8 +245,8 @@ publish_version_artifacts() {
   return 0
 }
 
-# Drives all ES modules in a generation through the publish flow. A module that fails is built
-# again, up to 3 times. A failed S3 upload is the exception: the uploader already retried it, and a
+# Drives all ES modules in a generation through the publish flow. A module that fails is built up
+# to 3 times in total. A failed S3 upload is the exception: the uploader already retried it, and a
 # new build does not change the answer of the storage.
 # Usage: publish_es_major <es major> <upload_pre|release>
 publish_es_major() {

@@ -517,7 +517,7 @@ A transfer that moves less than 1KB/s for two minutes is abandoned, and the retr
 release upload sets no `--max-time`, so without that bound a stalled connection holds the job until
 the job itself times out.
 
-`publish_es_major` builds a failed module again, up to 3 times, but not for a failed upload: the
+`publish_es_major` builds a module up to 3 times in total, but not again after a failed upload: the
 uploader already retried it, and a new build does not change the answer of the storage.
 
 The Cypress upload shortens the budget to 30s, and stops at the first file whose budget is spent.

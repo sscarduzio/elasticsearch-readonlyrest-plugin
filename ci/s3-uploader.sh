@@ -273,6 +273,8 @@ fi
 # same text as decimal, so the two would disagree, and the loop would never end.
 budget=$((10#$budget))
 delay=$((10#$delay))
+# The same cap the doubling below applies: a caller that asks for more than a minute gets a minute.
+[ "$delay" -gt 60 ] && delay=60
 
 while true; do
     sign_request
@@ -338,11 +340,12 @@ while true; do
     fi
 
     # `Retry-After` carries the wait the server asks for, and the cap bounds a wrong value. The
-    # header holds a number of seconds or an HTTP date. A date keeps the backoff.
-    # `|| true` because a missing header is normal, and errexit would end the run on it.
+    # header holds a number of seconds or an HTTP date. A date keeps the backoff. A missing header
+    # is normal: `grep` then finds nothing, `sed` reads nothing and exits 0, and the pipeline with
+    # it.
     wait_s=$delay
     retry_after=$(tr -d '\r' < "$response_headers" | grep -i '^retry-after:' | tail -1 \
-        | sed 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*$//') || true
+        | sed 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*$//')
     # Base 10, as for the budget: `Retry-After: 08` is 8 seconds.
     if [[ $retry_after =~ ^[0-9]+$ ]] && [ "$((10#$retry_after))" -gt 0 ]; then
         wait_s=$((10#$retry_after))
