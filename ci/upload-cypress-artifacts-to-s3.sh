@@ -75,9 +75,9 @@ export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 # first file whose budget is spent, so an outage holds the job for one file only.
 export S3_UPLOAD_RETRY_BUDGET_SECONDS="${S3_UPLOAD_RETRY_BUDGET_SECONDS:-30}"
 
-# An explicit mime type keeps the uploader from calling `file` (its guess path), which is not
-# guaranteed to exist on a bare runner. Without it the Content-Type comes out empty, the signed-POST
-# policy rejects the malformed form, and the upload 403s.
+# An explicit mime type, because the guess of the uploader needs `file`, which a container here can
+# lack, and its extension table maps neither .mp4 nor .png. A video served as
+# application/octet-stream downloads instead of playing.
 mime_of() {
   case "$1" in
     *.mp4) echo "video/mp4" ;;

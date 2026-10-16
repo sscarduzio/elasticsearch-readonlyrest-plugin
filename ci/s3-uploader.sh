@@ -94,7 +94,9 @@ USAGE
 
 guessmime()
 {
-    mime=`file -b --mime-type "$1"`
+    mime=$(file -b --mime-type "$1" 2>/dev/null) || mime=''
+    # A caller can run in a container that holds no `file`, and the table below then answers alone.
+    [ -n "$mime" ] || mime=application/octet-stream
     if [ "$mime" = "text/plain" ] || [ "$mime" = "application/octet-stream" ]; then
         case $1 in
             *.zip)           mime=application/zip;;
