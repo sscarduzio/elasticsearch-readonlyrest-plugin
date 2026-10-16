@@ -276,11 +276,15 @@ while true; do
     # answers 204. --form-string sends the key and the mime type as they are.
     # The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';'.
     # $key_and_sig_args stays unquoted on purpose — it is several arguments, and must split.
-    # --connect-timeout bounds a connection that never opens. S3_UPLOADER_MAX_TIME bounds one
-    # attempt, and no caller that uploads a release zip sets it: such an upload runs for minutes.
+    # --connect-timeout bounds a connection that never opens, and --speed-time a transfer that
+    # opens and then stalls: curl exits 28 after two minutes under 1KB/s, and the retry carries it.
+    # Two minutes, because S3 holds the connection quiet for a moment after a large body.
+    # S3_UPLOADER_MAX_TIME bounds one whole attempt, and no caller that uploads a release zip sets
+    # it: such an upload runs for minutes.
     curl_out=$(curl                 \
         -# $CURL_INSECURE $CURL_FLAGS \
         --connect-timeout 30        \
+        --speed-limit 1024 --speed-time 120 \
         ${S3_UPLOADER_MAX_TIME:+--max-time "$S3_UPLOADER_MAX_TIME"} \
         --form-string "key=$targfile" \
         $key_and_sig_args           \
