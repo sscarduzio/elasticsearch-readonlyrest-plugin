@@ -60,7 +60,7 @@ Optional environment variables:
   S3_UPLOAD_RETRY_DELAY_SECONDS
                    the wait before the second attempt, at least 1, doubled
                    for each one after it and capped at 60 (default 5). A
-                   `Retry-After` header of the server wins over it, up to 60s.
+                   Retry-After header of the server wins over it, up to 60s.
   S3_UPLOADER_MAX_TIME
                    maximum seconds for one attempt (curl --max-time). No limit
                    when unset. An attempt that spends it exits 1, with no
@@ -123,7 +123,12 @@ aws_sk="$2"                                     # secret key
 bucket=`printf $3 | awk 'BEGIN{FS="@"}{print $1}'`                       # bucket name
 region=`printf $3 | awk 'BEGIN{FS="@"}{print ($2==""?"us-east-1":$2)}'`  # region name
 srcfile="$4"                                                             # source file
-targfile=`echo -n "$5" | sed "s/\/$/\/$(basename "$srcfile")/"`          # target file
+# A target that ends with '/' takes the name of the source file. The name is text, not a `sed`
+# program: a '&' in it stands for the match and writes another key, and a newline ends the run.
+case "$5" in
+    */) targfile="$5$(basename "$srcfile")";;
+    *)  targfile="$5";;
+esac
 mime=${6:-"`guessmime "$srcfile"`"}                                      # mime type
 
 # The file name goes to curl in its own quotes: an unquoted @path in -F ends at a ',' or a ';'. The
@@ -251,18 +256,27 @@ attempt=1
 
 # A value that is not a number makes every comparison below fail, which the loop reads as "budget
 # left" and never ends. A delay of 0 stays 0 when it doubles, so the waits never spend the budget.
-# The loop then never ends, even with a budget of 0.
-case "$budget" in
-    ''|*[!0-9]*) s3_log "S3_UPLOAD_RETRY_BUDGET_SECONDS must be a non-negative integer. Its value is '$budget'."; exit 2;;
-esac
-if [[ ! $delay =~ ^[0-9]+$ ]] || [ "$delay" -lt 1 ]; then
-    s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a positive integer. Its value is '$delay'."
+# The loop then never ends, even with a budget of 0. Nine digits are more seconds than any caller
+# asks for, and they keep the value inside the range of the arithmetic below: a larger one makes
+# `[` report an error, which an `if` reads as "no error", and $(( )) then wraps it to 0.
+if [[ ! $budget =~ ^[0-9]{1,9}$ ]]; then
+    s3_log "S3_UPLOAD_RETRY_BUDGET_SECONDS must be a non-negative integer of up to 9 digits. Its value is '$budget'."
+    exit 2
+fi
+if [[ ! $delay =~ ^[0-9]{1,9}$ ]]; then
+    s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a positive integer of up to 9 digits. Its value is '$delay'."
     exit 2
 fi
 # Bash arithmetic reads a leading 0 as octal: 010 counts as 8, and 08 stops the run. `[` reads the
 # same text as decimal, so the two would disagree, and the loop would never end.
 budget=$((10#$budget))
 delay=$((10#$delay))
+# A delay of 0 stays 0 when it doubles, so no wait spends the budget. `0` and `00` reach here as
+# digits, and only the conversion above tells them from a wait of one second.
+if [ "$delay" -lt 1 ]; then
+    s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a positive integer of up to 9 digits. Its value is '$delay'."
+    exit 2
+fi
 # The same cap the doubling below applies: a caller that asks for more than a minute gets a minute.
 [ "$delay" -gt 60 ] && delay=60
 
