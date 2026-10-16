@@ -40,8 +40,9 @@ Where <arg> is one of:
 
 Exits 0 only when the server confirms the upload with 200, 201 or 204. Every
 other answer is printed with the error body of the server. A transient one
-(429, 500, 502, 503, 504, or no answer at all) is retried until the retry
-budget is spent.
+(408, 429, 500, 502, 503, 504, a 400 whose body carries the code
+RequestTimeout, or no answer at all) is retried until the retry budget is
+spent.
 
 Exit status:
   0  the server confirmed the upload
@@ -191,15 +192,21 @@ max_time_spent()
     [ "$(( ${2%%.*} + 1 ))" -ge "$S3_UPLOADER_MAX_TIME" ]
 }
 
-# True when a retry can give a different answer. $1 is the HTTP status, $2 the exit code of curl.
-# A 429, 500, 502, 503 or 504 is transient, and the AWS SDKs retry the same four 5xx answers. Every
-# other answer is not: a 501 or a 505 names a request S3 does not support. Wrong credentials, a
-# rejected policy condition and an empty file give the same answer every time, so the release must
-# stop on them.
+# True when a retry can give a different answer. $1 is the HTTP status, $2 the exit code of curl,
+# $3 the file that holds the error body.
+# A 429, 500, 502, 503 or 504 is transient, and the AWS SDKs retry these. So is a 408, which a
+# proxy in front of the storage can send, not S3 itself. Every other answer is not: a 501 or a 505
+# names a request S3 does not support. Wrong credentials, a rejected policy condition and an empty
+# file give the same answer every time, so the release must stop on them.
 is_retryable()
 {
     case "$1" in
-        429|500|502|503|504) return 0;;
+        408|429|500|502|503|504) return 0;;
+        # S3 answers 400, not 408, and carries the code RequestTimeout in the body: the
+        # connection opened and then the body stopped moving. The AWS SDKs retry it. Every other
+        # 400 means a request S3 cannot read.
+        400) grep -q '<Code>RequestTimeout</Code>' "$3" 2>/dev/null && return 0
+             return 1;;
         # No status at all: curl prints 000 for a DNS failure, a refused connection, a timeout or a
         # broken TLS handshake, and its exit code names which. An empty value means curl stopped
         # before `--write-out`.
@@ -324,7 +331,7 @@ while true; do
         exit 1
     fi
 
-    if ! is_retryable "$http_code" "$curl_status"; then
+    if ! is_retryable "$http_code" "$curl_status" "$response_body"; then
         s3_log "Another attempt gives the same result."
         rm -f "$response_body" "$response_headers"
         exit 1
