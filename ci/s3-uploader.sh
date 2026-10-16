@@ -124,6 +124,10 @@ srcfile="$4"                                                             # sourc
 targfile=`echo -n "$5" | sed "s/\/$/\/$(basename "$srcfile")/"`          # target file
 mime=${6:-"`guessmime "$srcfile"`"}                                      # mime type
 
+# curl's own quotes around the file name below end at a '"' in the path, and curl reads the rest as
+# -F options. The file it then sends is a sibling of the file this script was given. A backslash
+# escapes a '"' and a '\' inside those quotes.
+srcfile_arg=$(printf '%s' "$srcfile" | sed 's/[\\"]/\\&/g')
 
 # Signs one upload. Sets `p` (the base64 policy) and `key_and_sig_args` (credential, algorithm,
 # signature, date, policy). Empty keys sign nothing, which is how an anonymous upload to a
@@ -274,7 +278,8 @@ while true; do
     # Cypress names a screenshot after its test, so a key can hold spaces, brackets and a ';'. -F
     # ends a value at a ';' and reads the rest as its own options, so S3 gets a short key and
     # answers 204. --form-string sends the key and the mime type as they are.
-    # The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';'.
+    # The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';'. A '"'
+    # and a '\' in the path are escaped above.
     # $key_and_sig_args stays unquoted on purpose — it is several arguments, and must split.
     # --connect-timeout bounds a connection that never opens, and --speed-time a transfer that
     # opens and then stalls: curl exits 28 after two minutes under 1KB/s, and the retry carries it.
@@ -289,7 +294,7 @@ while true; do
         --form-string "key=$targfile" \
         $key_and_sig_args           \
         --form-string "Content-Type=$mime" \
-        -F "file=@\"$srcfile\""     \
+        -F "file=@\"$srcfile_arg\"" \
         --dump-header "$response_headers" \
         --write-out '%{http_code} %{time_total}' \
         --output "$response_body"   \
