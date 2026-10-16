@@ -67,7 +67,7 @@ Optional environment variables:
                    retry: the next attempt needs the same time.
   S3_UPLOADER_INSECURE
                    1 stops curl from verifying the certificate of the endpoint.
-                   For a caller whose container holds no CA bundle.
+                   For an endpoint behind a private CA. No caller sets it.
   S3_UPLOADER_DEBUG
                    1 adds the curl trace, including the TLS handshake.
 
@@ -238,8 +238,8 @@ else
     CURL_FLAGS=""
 fi
 
-# -k, only when the caller asks for it. A container with no CA bundle cannot verify the endpoint,
-# and its uploads fail without this. Every other caller verifies.
+# -k, only when the caller asks for it. A caller that cannot verify the certificate of its endpoint
+# needs it, and every other caller verifies.
 if [ "${S3_UPLOADER_INSECURE:-}" = 1 ]; then
     CURL_INSECURE="-k"
 else
