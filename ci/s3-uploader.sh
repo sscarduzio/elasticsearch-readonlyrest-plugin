@@ -277,6 +277,17 @@ if [ "$delay" -lt 1 ]; then
     s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a positive integer of up to 9 digits. Its value is '$delay'."
     exit 2
 fi
+
+# curl takes a fraction here, and refuses a word. A fraction also defeats the no-retry rule above,
+# which reads whole seconds, and a 0 asks curl for no limit at all. Leave the knob unset for that.
+if [ -n "${S3_UPLOADER_MAX_TIME:-}" ]; then
+    if [[ ! $S3_UPLOADER_MAX_TIME =~ ^[0-9]{1,9}$ ]] || [ "$((10#$S3_UPLOADER_MAX_TIME))" -lt 1 ]; then
+        s3_log "S3_UPLOADER_MAX_TIME must be a positive integer of up to 9 digits, or unset for no limit. Its value is '$S3_UPLOADER_MAX_TIME'."
+        exit 2
+    fi
+    # The same text reaches curl and the comparison of the no-retry rule, so both read one value.
+    S3_UPLOADER_MAX_TIME=$((10#$S3_UPLOADER_MAX_TIME))
+fi
 # The same cap the doubling below applies: a caller that asks for more than a minute gets a minute.
 [ "$delay" -gt 60 ] && delay=60
 
