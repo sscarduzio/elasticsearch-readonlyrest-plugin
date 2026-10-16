@@ -196,10 +196,15 @@ is_retryable()
 {
     case "$1" in
         429|500|502|503|504) return 0;;
+        # No status at all: curl prints 000 for a DNS failure, a refused connection, a timeout or a
+        # broken TLS handshake, and its exit code names which. An empty value means curl stopped
+        # before `--write-out`.
+        000|'') ;;
+        # The server answered, and its answer decides. A body that breaks in transit after a 403
+        # does not make the 403 transient, and a retry of it only spends the budget.
+        *) return 1;;
     esac
-    # curl got no complete answer: a DNS failure, a refused connection, a timeout, a broken TLS
-    # handshake. `--write-out` prints 000 for these, so the status cannot classify them. A timeout
-    # that spent the whole S3_UPLOADER_MAX_TIME never reaches this function.
+    # A timeout that spent the whole S3_UPLOADER_MAX_TIME never reaches this function.
     case "$2" in
         6|7|16|18|28|35|52|55|56|92) return 0;;
     esac
