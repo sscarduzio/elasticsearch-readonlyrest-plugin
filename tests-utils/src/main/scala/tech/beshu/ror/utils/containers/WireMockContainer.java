@@ -25,11 +25,14 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder;
+import tech.beshu.ror.utils.containers.images.DockerImageCreator;
 import tech.beshu.ror.utils.httpclient.RestClient;
+import tech.beshu.ror.utils.misc.ScalaUtils;
 
 import java.io.File;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class WireMockContainer extends GenericContainer<WireMockContainer> {
@@ -45,11 +48,15 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   }
 
   public static WireMockContainer create(String... mappings) {
-    ImageFromDockerfile dockerfile = new ImageFromDockerfile();
     List<File> mappingFiles =
         Lists.newArrayList(mappings).stream()
             .map(ContainerUtils::getResourceFile)
             .collect(Collectors.toList());
+    // Not deleteOnExit: the integration-tests build removes the labeled images after the test run.
+    ImageFromDockerfile dockerfile =
+        new ImageFromDockerfile(
+            "ror-it-wiremock:" + ScalaUtils.sha256(mappingFiles).substring(0, 20),
+            /* deleteOnExit= */ false);
     mappingFiles.forEach(
         mappingFile -> dockerfile.withFileFromFile(mappingFile.getName(), mappingFile));
     logger.info("Creating WireMock container ...");
@@ -58,6 +65,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
             dockerfile.withDockerfileFromBuilder(
                 builder -> {
                   DockerfileBuilder b = builder.from(BASE_IMAGE);
+                  b.label(Map.of(DockerImageCreator.itImageLabel(), "true"));
                   mappingFiles.forEach(
                       mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
                   // the image's own CMD plus -Xmx: its JDK 8 is not cgroup-aware and defaults to

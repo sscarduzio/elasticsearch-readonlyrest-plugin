@@ -17,11 +17,9 @@
 package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
-import com.dimafeng.testcontainers.{Container, SingleContainer}
+import com.dimafeng.testcontainers.SingleContainer
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.images.{
@@ -39,7 +37,7 @@ class EsClusterContainer private[containers] (
     val esClusterSettings: EsClusterSettings,
     val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
     dependencies: List[DependencyDef]
-) extends Container {
+) extends StoppedOnFailedStart {
 
   private var clusterNodes = List.empty[EsContainer]
   private var aStartedDependencies = StartedClusterDependencies(Nil)
@@ -51,39 +49,19 @@ class EsClusterContainer private[containers] (
     case None => throw new IllegalStateException("Nodes of cluster have not started yet. Cannot determine ES version.")
   }
 
-  override def start(): Unit = {
+  // A node left running stays on the per-JVM network, and the next cluster with the same cluster
+  // name discovers it.
+  override protected def startParts(): Unit = {
     aStartedDependencies = DependencyRunner.startDependencies(dependencies)
-    clusterNodes = startClusterNodes(aStartedDependencies)
+    val newNodes = nodeCreators.map(creator => creator(aStartedDependencies))
+    clusterNodes = newNodes.toList
+    AllOrNothingContainers.inParallel(newNodes).start()
   }
 
-  override def stop(): Unit = {
-    clusterNodes.foreach(_.stop())
-    // Reclaim each node's image right after the node stops. A leg builds many distinct
-    // ror-it-es:<contenthash> images (one per node config); deleteOnExit only reaps them at JVM exit,
-    // so on a low-disk CI runner they accumulate mid-leg and exhaust disk ("No space left on device" —
-    // the ES 8.x legs). Removing a STOPPED cluster's own images is safe: each image is uniquely tagged
-    // by content (different node.name -> different tag), so this never touches a sibling suite's live
-    // image, and removeImage swallows the "image in use" case for any shared base layers.
-    clusterNodes.foreach { node =>
-      try node.removeImage()
-      catch { case scala.util.control.NonFatal(_) => () } // best-effort; never fail teardown on cleanup
-    }
-    aStartedDependencies.values.foreach(_.container.stop())
-  }
-
-  private def startClusterNodes(dependencies: StartedClusterDependencies) = {
-    val nodes = nodeCreators.toList.map(creator => creator(dependencies))
-    startContainersAsynchronously(nodes)
-    nodes
-  }
-
-  private def startContainersAsynchronously(containers: Iterable[SingleContainer[_]]): Unit = {
-    Task
-      .parSequenceUnordered {
-        containers.map(c => Task(c.start()))
-      }
-      .runSyncUnsafe()
-  }
+  override protected def stopActions: List[() => Unit] =
+    clusterNodes.map(node => () => node.stop()) ++
+      clusterNodes.map(node => () => node.removeImage()) ++
+      aStartedDependencies.values.map(dependency => () => dependency.container.stop())
 
   def resolvedRorSettings(config: String): String = {
     RorSettingsAdjuster.adjustUsingDependencies(config, aStartedDependencies)
@@ -95,9 +73,9 @@ class EsRemoteClustersContainer private[containers] (
     val localCluster: EsClusterContainer,
     remoteClusters: NonEmptyList[EsClusterContainer],
     remoteClusterSetup: SetupRemoteCluster
-) extends Container {
+) extends StoppedOnFailedStart {
 
-  override def start(): Unit = {
+  override protected def startParts(): Unit = {
     remoteClusters.toList.foreach(_.start())
     localCluster.start()
     remoteClustersInitializer(
@@ -106,10 +84,8 @@ class EsRemoteClustersContainer private[containers] (
     )
   }
 
-  override def stop(): Unit = {
-    localCluster.stop()
-    remoteClusters.toList.foreach(_.stop())
-  }
+  override protected def stopActions: List[() => Unit] =
+    (localCluster :: remoteClusters.toList).map(cluster => () => cluster.stop())
 
   private def remoteClustersInitializer(
       container: EsClusterContainer,

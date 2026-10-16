@@ -263,3 +263,34 @@ tasks.register('shardedTest', tech.beshu.ror.buildbase.ShardedGradlewTest) {
     getEsVersion().set(project.gradle.startParameter.projectProperties['esVersion'] as String)
 }
 
+// Runs after the last test JVM, because other test JVMs build on these layers.
+tasks.register('removeItDockerImages') {
+    def skip = project.hasProperty('keepItDockerImages') || System.getenv('CI') != null
+    onlyIf { !skip }
+    doLast {
+        def run = { List<String> command ->
+            def process = new ProcessBuilder(command).redirectErrorStream(true).start()
+            def output = process.inputStream.text
+            [process.waitFor(), output]
+        }
+        def listIds = {
+            def (exit, output) = run(['docker', 'image', 'ls', '--all', '--quiet', '--filter', 'label=tech.beshu.ror.it-image'])
+            if (exit != 0) throw new GradleException("docker image ls failed: ${output.trim()}")
+            output.readLines()*.trim().findAll { it }.unique()
+        }
+        try {
+            def ids = listIds()
+            if (ids.isEmpty()) return
+            run(['docker', 'image', 'rm'] + ids)
+            def kept = listIds()
+            logger.lifecycle(">>> removed ${ids.size() - kept.size()} of ${ids.size()} integration-test Docker images" +
+                (kept.isEmpty() ? '' : "; Docker kept ${kept}"))
+        } catch (IOException | GradleException e) {
+            logger.warn(">>> cannot remove the integration-test Docker images: ${e.message}")
+        }
+    }
+}
+tasks.named('shardedTest') { finalizedBy 'removeItDockerImages' }
+if (!project.hasProperty('shardIndex')) {
+    test.finalizedBy 'removeItDockerImages'
+}

@@ -16,22 +16,16 @@
  */
 package tech.beshu.ror.utils.containers
 
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import cats.data.NonEmptyList
 
 object DependencyRunner {
 
+  // When a dependency does not start, this stops all the dependencies and throws the failure.
   def startDependencies(definitions: List[DependencyDef]): StartedClusterDependencies = {
-    startContainersAsynchronously(definitions)
+    NonEmptyList
+      .fromList(definitions.map(_.container))
+      .foreach(containers => AllOrNothingContainers.inParallel(containers).start())
     convertToStartedDependencies(definitions)
-  }
-
-  private def startContainersAsynchronously(dependencies: List[DependencyDef]): Unit = {
-    Task
-      .parSequenceUnordered {
-        dependencies.map(dependency => Task(dependency.container.start()))
-      }
-      .runSyncUnsafe()
   }
 
   private def convertToStartedDependencies(dependencies: List[DependencyDef]) = {

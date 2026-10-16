@@ -70,8 +70,8 @@ object WarmDockerImageCache extends StrictLogging {
   }
 
   // Starts the singleton container (the only reliable way to trigger the full image build+tag), then
-  // stops it. The named image is reaped by Ryuk on this JVM's exit; the built LAYERS persist in the
-  // Docker graph store, so each worker rebuilds the named image fast.
+  // stops it. The stop removes the tag and keeps the layers, so each worker rebuilds the named image
+  // from the build cache.
   private def prebuildSingletonEsImage(): Unit = {
     // Touching `singleton` triggers its construction + start(), which builds the image + its layers.
     val _ = SingletonEsContainerWithRorSecurity.singleton.nodes.head
