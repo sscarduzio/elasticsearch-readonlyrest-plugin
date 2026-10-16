@@ -263,12 +263,7 @@ tasks.register('shardedTest', tech.beshu.ror.buildbase.ShardedGradlewTest) {
     getEsVersion().set(project.gradle.startParameter.projectProperties['esVersion'] as String)
 }
 
-
-// Removes the Docker images and layers that the suites built (label tech.beshu.ror.it-image), also
-// the untagged ones that a stopped cluster left. It runs after the last test JVM of this invocation
-// ends, because a removal during a run removes layers that another test JVM builds on. For the same
-// reason, set -PkeepItDockerImages on an invocation that runs at the same time as another one on the
-// same Docker daemon. CI skips it, because each runner is discarded after its job.
+// Runs after the last test JVM, because other test JVMs build on these layers.
 tasks.register('removeItDockerImages') {
     def skip = project.hasProperty('keepItDockerImages') || System.getenv('CI') != null
     onlyIf { !skip }
@@ -286,8 +281,6 @@ tasks.register('removeItDockerImages') {
         try {
             def ids = listIds()
             if (ids.isEmpty()) return
-            // No --force: Docker keeps an image that a container still uses. A layer that comes
-            // before its child in the list fails, and goes with the child.
             run(['docker', 'image', 'rm'] + ids)
             def kept = listIds()
             logger.lifecycle(">>> removed ${ids.size() - kept.size()} of ${ids.size()} integration-test Docker images" +
@@ -298,7 +291,6 @@ tasks.register('removeItDockerImages') {
     }
 }
 tasks.named('shardedTest') { finalizedBy 'removeItDockerImages' }
-// A shard is one of the test JVMs of a shardedTest run, so it must not remove the images.
 if (!project.hasProperty('shardIndex')) {
     test.finalizedBy 'removeItDockerImages'
 }

@@ -20,11 +20,8 @@ import com.dimafeng.testcontainers.Container
 
 import scala.util.control.NonFatal
 
-// A container made of parts. When startParts() fails, start() stops the parts that started and
-// throws the start failure. The caller cannot do it: ForAllTestContainer calls stop() only after
-// start() returns.
-// stop() runs every stop action, also after one of them fails, and then throws the first failure.
-// The other failures are attached to it as suppressed.
+// When startParts() fails, start() stops the started parts, because ForAllTestContainer calls stop()
+// only after a successful start().
 trait StoppedOnFailedStart extends Container {
 
   protected def startParts(): Unit
@@ -45,26 +42,28 @@ trait StoppedOnFailedStart extends Container {
   }
 
   override final def stop(): Unit = {
-    StoppedOnFailedStart.throwFirst(stopActions.flatMap { stopAction =>
-      try {
-        stopAction()
-        None
-      } catch {
-        case NonFatal(ex) => Some(ex)
-      }
-    })
+    StoppedOnFailedStart
+      .firstWithOthersSuppressed(stopActions.flatMap { stopAction =>
+        try {
+          stopAction()
+          None
+        } catch {
+          case NonFatal(ex) => Some(ex)
+        }
+      })
+      .foreach(failure => throw failure)
   }
 
 }
 
 object StoppedOnFailedStart {
 
-  // Throws the first failure, with the other failures attached as suppressed.
-  private[containers] def throwFirst(failures: List[Throwable]): Unit = failures match {
-    case Nil           => ()
-    case first :: rest =>
-      rest.foreach(first.addSuppressed)
-      throw first
-  }
+  private[containers] def firstWithOthersSuppressed(failures: List[Throwable]): Option[Throwable] =
+    failures match {
+      case Nil           => None
+      case first :: rest =>
+        rest.foreach(first.addSuppressed)
+        Some(first)
+    }
 
 }

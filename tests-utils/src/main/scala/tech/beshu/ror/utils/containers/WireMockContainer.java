@@ -30,12 +30,7 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 import tech.beshu.ror.utils.misc.ScalaUtils;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -57,12 +52,11 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         Lists.newArrayList(mappings).stream()
             .map(ContainerUtils::getResourceFile)
             .collect(Collectors.toList());
-    // The tag comes from the content, so the same mappings reuse one image. deleteOnExit is false,
-    // because Ryuk then also removes the untagged parent layers, and another test JVM can build on
-    // them at that time. The label marks the image for the removal after the test run.
+    // Not deleteOnExit: the integration-tests build removes the labeled images after the test run.
     ImageFromDockerfile dockerfile =
         new ImageFromDockerfile(
-            "ror-it-wiremock:" + contentHash(mappingFiles), /* deleteOnExit= */ false);
+            "ror-it-wiremock:" + ScalaUtils.sha256(mappingFiles).substring(0, 20),
+            /* deleteOnExit= */ false);
     mappingFiles.forEach(
         mappingFile -> dockerfile.withFileFromFile(mappingFile.getName(), mappingFile));
     logger.info("Creating WireMock container ...");
@@ -94,20 +88,6 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         s ->
             System.out.print(
                 "[WIREMOCK-ext-port:" + cont.getWireMockPort() + "] " + s.getUtf8String()));
-  }
-
-  private static String contentHash(List<File> mappingFiles) {
-    List<byte[]> parts = new ArrayList<>();
-    parts.add(BASE_IMAGE.getBytes(StandardCharsets.UTF_8));
-    for (File mappingFile : mappingFiles) {
-      parts.add(mappingFile.getName().getBytes(StandardCharsets.UTF_8));
-      try {
-        parts.add(Files.readAllBytes(mappingFile.toPath()));
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
-    }
-    return ScalaUtils.sha256OfParts(parts.toArray(new byte[0][])).substring(0, 20);
   }
 
   public String getWireMockHost() {

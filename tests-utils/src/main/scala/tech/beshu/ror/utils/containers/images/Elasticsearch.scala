@@ -319,15 +319,10 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .user("elasticsearch")
   }
 
-  // Runs the apt-get commands in one chain, with two retry levels, because the Ubuntu mirrors and
-  // artifacts.elastic.co sometimes fail for a short time. Acquire::Retries retries one failed
-  // download inside one apt run. withRetries runs the full chain again after a longer outage, and the
-  // new `apt-get update` then gets new indexes when the mirror changed.
+  // Adds Acquire::Retries to each apt-get command.
   private def aptGet(commands: String*): String =
     withRetries(commands.map(command => s"apt-get -o Acquire::Retries=5 $command").mkString(" && "))
 
-  // Runs the command up to 5 times, with 10 s, 20 s, 30 s and 40 s between the attempts. Fails after
-  // the last failed attempt.
   private def withRetries(command: String): String =
     s"""for attempt in 1 2 3 4 5; do ($command) && break; [ "$$attempt" -lt 5 ] || exit 1; sleep $$((attempt * 10)); done"""
 

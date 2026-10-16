@@ -21,10 +21,7 @@ import com.dimafeng.testcontainers.Container
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 
-// Starts the containers. When one does not start, stops all of them and throws. This is
-// MultipleContainers of testcontainers-scala plus the cleanup: there, a failed start leaves the
-// containers that started before it running.
-// The containers are created on the first start(), not before.
+// Starts all the containers. When one does not start, stops all of them and throws.
 class AllOrNothingContainers private (createContainers: => NonEmptyList[Container], parallel: Boolean)
     extends StoppedOnFailedStart {
 
@@ -42,7 +39,9 @@ class AllOrNothingContainers private (createContainers: => NonEmptyList[Containe
     val results = Task
       .parTraverseUnordered(containers.toList)(container => Task(container.start()).attempt)
       .runSyncUnsafe()
-    StoppedOnFailedStart.throwFirst(results.collect { case Left(failure) => failure })
+    StoppedOnFailedStart
+      .firstWithOthersSuppressed(results.collect { case Left(failure) => failure })
+      .foreach(failure => throw failure)
   }
 
 }

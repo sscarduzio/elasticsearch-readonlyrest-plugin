@@ -22,14 +22,16 @@ import cats.implicits.*
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
 
-import java.io.InputStream
+import java.io.{FileInputStream, InputStream}
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Duration
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
-import scala.annotation.{tailrec, varargs}
+import scala.annotation.tailrec
 import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
 import scala.util.Using
@@ -176,15 +178,17 @@ object ScalaUtils extends LazyLogging {
     digestHex(file, "SHA-512", uppercase = false)
 
   /**
-   * SHA-256 hex digest of the parts, in lowercase. Each part goes in with its length first, so two
-   * different lists of parts never give the same digest ("a" + "bc" and "ab" + "c" would without it).
+   * SHA-256 hex digest of the names and contents of the files, in order. Returns lowercase hex string
+   * (no prefix). Two different file collections never give the same digest.
    */
-  @varargs
-  def sha256OfParts(parts: Array[Byte]*): String = {
+  def sha256(files: java.util.Collection[java.io.File]): String = {
     val md = MessageDigest.getInstance("SHA-256")
-    parts.foreach { part =>
-      md.update(ByteBuffer.allocate(Integer.BYTES).putInt(part.length).array())
-      md.update(part)
+    files.asScala.foreach { file =>
+      val name = file.getName.getBytes(StandardCharsets.UTF_8)
+      md.update(ByteBuffer.allocate(Integer.BYTES).putInt(name.length).array())
+      md.update(name)
+      md.update(ByteBuffer.allocate(java.lang.Long.BYTES).putLong(file.length()).array())
+      updateDigestFromFile(md, new FileInputStream(file))
     }
     md.digest().map("%02x".format(_)).mkString
   }
