@@ -470,7 +470,9 @@ On failure the job uploads the Cypress videos and screenshots to the E2E_REPORTS
 (`ci/upload-cypress-artifacts-to-s3.sh`), under `<prefix>/<date>/build_<run id>/<module>_<elk>/`.
 S3, not GitHub artifacts: those count against the metered Actions-storage quota. Before the upload
 the script replaces each secret in `SECRETS_TO_REDACT` (one per line; the workflow passes
-`ROR_ENT_ACTIVATION_TOKEN`) with `<redacted>` in text files, and skips a file that still holds one.
+`ROR_ENT_ACTIVATION_TOKEN`) with `<redacted>` in text files, and skips a file that still holds
+one. An empty `SECRETS_TO_REDACT` uploads nothing: with no secret to look for, the check passes
+every file.
 
 Needs `ROR_ENT_ACTIVATION_TOKEN` (the suite refuses to start without it) and `ROR_GH_TOKEN` (to
 dispatch the ROR KBN build and read its status).
@@ -502,6 +504,31 @@ they cannot name different locations — when they did, the symptom was an unres
 Mirroring is manual and one-off per ES version: run **Mirror ES Libs** with `es_versions` set
 (e.g. `9.5.1 9.4.5`), and run it **before** the branch adding that version goes through CI — the
 build cannot compile against jars that are not in the store yet.
+
+### A failed upload
+
+`ci/s3-uploader.sh` fails on any answer but 200, 201 and 204, and prints the error body. It retries
+a 408, a 429, a 500, 502, 503 or 504, a 400 that carries the code `RequestTimeout`, and no answer at
+all. It waits up to five minutes in total for one file, and sending the file does not count against
+that. A 40-byte `.sha512` and a 50MB zip therefore get the same time to wait for the storage. The
+uploader exits 3 when that budget is spent.
+
+An attempt that spends `S3_UPLOADER_MAX_TIME` exits 1, and no retry follows. The next attempt on
+that file needs the same time, and the storage can be healthy.
+
+curl abandons a transfer that moves less than 1KB/s for two minutes, and the loop retries it. A
+release upload sets no `--max-time`, so without that bound a stalled connection holds the job until
+the job itself times out.
+
+`publish_es_major` builds a module up to 3 times in total, but not again after a failed upload: the
+uploader already retried it, and a new build does not change the answer of the storage.
+
+The Cypress upload shortens the budget to 30s, and stops at the first file whose budget is spent,
+or whose settings the uploader refuses.
+Those files help somebody read a red job, so an outage holds the job for one file only.
+
+The same file lives in ROR KBN and in the e2e repo, identical below its shared header. Port every
+change to all three.
 
 ## Secrets & variables
 

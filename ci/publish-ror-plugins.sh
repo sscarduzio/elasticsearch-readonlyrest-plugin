@@ -3,6 +3,10 @@
 # Function library for publishing ROR plugins (build once per ES module, repackage for each supported version).
 # Sourced by ci/run-pipeline.sh.
 
+# The status of publish_version_artifacts and publish_module when an S3 upload fails. The uploader
+# has already retried every transient answer, so publish_es_major does not build the module again.
+PUBLISH_UPLOAD_FAILED=5
+
 cleanup_docker_and_build() {
   # On the shared box the daemon also serves the readonlyrest_kbn runners, which hold running ELK
   # stacks. The full sweep below would delete them, so reclaim only what this build left behind.
@@ -162,9 +166,11 @@ publish_module() {
 
     local zip="${dist_dir}/readonlyrest-${ror_version}_es${version}.zip"
 
-    if ! publish_version_artifacts "$mode" "$ror_version" "$module" "$version" "$zip"; then
+    local publish_status=0
+    publish_version_artifacts "$mode" "$ror_version" "$module" "$version" "$zip" || publish_status=$?
+    if [ "$publish_status" -ne 0 ]; then
       ci_log "The publish of $module ES $version failed."
-      return 1
+      return "$publish_status"
     fi
 
     if [ "$mode" = "release" ] && ! tag "$(release_tag "$ror_version" "$version")"; then
@@ -219,14 +225,14 @@ push_ror_docker_image() {
 }
 
 # Publishes one already-derived version: S3 upload + (release) Docker image. Tagging is the
-# caller's job.
+# caller's job. Returns PUBLISH_UPLOAD_FAILED when the S3 upload fails, and 1 on any other failure.
 publish_version_artifacts() {
   local mode=$1 ror_version=$2 module=$3 es_version=$4 zip=$5
 
   # publish always - even if this is not a release
-  if ! retry_with_backoff ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
+  if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
     ci_log "The S3 upload of $module ES $es_version failed."
-    return 1
+    return "$PUBLISH_UPLOAD_FAILED"
   fi
 
   if [ "$mode" = "release" ]; then
@@ -239,7 +245,9 @@ publish_version_artifacts() {
   return 0
 }
 
-# Drives all ES modules in a generation through the publish flow, with per-module retry on failure.
+# Drives all ES modules in a generation through the publish flow. A module that fails is built up
+# to 3 times in total. A failed S3 upload is the exception: the uploader already retried it, and a
+# new build does not change the answer of the storage.
 # Usage: publish_es_major <es major> <upload_pre|release>
 publish_es_major() {
   if [ "$#" -ne 2 ]; then
@@ -265,10 +273,16 @@ publish_es_major() {
   while IFS= read -r module; do
     [ -z "$module" ] && continue
 
-    local attempt
+    local attempt module_status
     for attempt in 1 2 3; do
-      if time publish_module "$mode" "$ror_version" "$module"; then
+      module_status=0
+      time publish_module "$mode" "$ror_version" "$module" || module_status=$?
+      if [ "$module_status" -eq 0 ]; then
         break
+      fi
+      if [ "$module_status" -eq "$PUBLISH_UPLOAD_FAILED" ]; then
+        ci_log "Module $module stops on attempt $attempt: its S3 upload failed after the retries of the uploader."
+        return 1
       fi
       if [ "$attempt" -lt 3 ]; then
         ci_log "Module $module failed on attempt $attempt of 3. The next attempt starts after a cleanup."
