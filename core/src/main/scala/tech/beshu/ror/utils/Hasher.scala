@@ -19,12 +19,12 @@ package tech.beshu.ror.utils
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-import java.nio.charset.Charset
+import java.nio.charset.{Charset, StandardCharsets}
 import java.security.MessageDigest
 import java.util.Base64
 
 trait Hasher {
-  def hashString(input: String): String
+  def hashString(input: String, charset: Charset = StandardCharsets.UTF_8): String
 }
 
 object Hasher {
@@ -32,7 +32,7 @@ object Hasher {
   private val hexDigits = "0123456789abcdef".toCharArray
 
   /** Hashes the input with a JDK digest algorithm and returns the digest as lowercase hex. */
-  def digestHex(algorithm: String, input: String, charset: Charset): String = {
+  private def digestHex(algorithm: String, input: String, charset: Charset): String = {
     val digest = MessageDigest.getInstance(algorithm).digest(input.getBytes(charset))
     val hex = new Array[Char](digest.length * 2)
     var i = 0
@@ -46,24 +46,24 @@ object Hasher {
 
   object Sha1 extends Hasher {
 
-    override def hashString(input: String): String = {
-      digestHex("SHA-1", input, Charset.defaultCharset)
+    override def hashString(input: String, charset: Charset): String = {
+      digestHex("SHA-1", input, charset)
     }
 
   }
 
   object Sha256 extends Hasher {
 
-    override def hashString(input: String): String = {
-      digestHex("SHA-256", input, Charset.defaultCharset)
+    override def hashString(input: String, charset: Charset): String = {
+      digestHex("SHA-256", input, charset)
     }
 
   }
 
   object Sha512 extends Hasher {
 
-    override def hashString(input: String): String = {
-      digestHex("SHA-512", input, Charset.defaultCharset)
+    override def hashString(input: String, charset: Charset): String = {
+      digestHex("SHA-512", input, charset)
     }
 
   }
@@ -71,8 +71,8 @@ object Hasher {
   object PBKDF2WithHmacSHA512 extends Hasher {
     private val secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
 
-    override def hashString(input: String): String = {
-      val spec = new PBEKeySpec(input.toCharArray, input.getBytes, 10000, 64 * 8 /* 512 bits */ )
+    override def hashString(input: String, charset: Charset): String = {
+      val spec = new PBEKeySpec(input.toCharArray, input.getBytes(charset), 10000, 64 * 8 /* 512 bits */ )
       val key = secretKeyFactory.generateSecret(spec)
       Base64.getEncoder.encodeToString(key.getEncoded)
     }

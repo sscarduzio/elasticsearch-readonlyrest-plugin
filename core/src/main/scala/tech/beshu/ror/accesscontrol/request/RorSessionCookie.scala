@@ -147,10 +147,9 @@ object RorSessionCookie extends RequestIdAwareLogging {
     def sign(cookie: RorSessionCookie)(
         implicit uuidProvider: UuidProvider
     ): Signature = Signature {
-      Hasher.digestHex(
-        "SHA-256",
-        s"${uuidProvider.instanceUuid.toString}${cookie.userId.value}${cookie.expiryDate.toEpochMilli}",
-        StandardCharsets.UTF_8
+      Hasher.Sha256.hashString(
+        input = s"${uuidProvider.instanceUuid.toString}${cookie.userId.value}${cookie.expiryDate.toEpochMilli}",
+        charset = StandardCharsets.UTF_8
       )
     }
 

@@ -38,6 +38,8 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.utils.Hasher
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
+import java.nio.charset.Charset
+
 sealed abstract class AuthKeyHashingRule(
     override val settings: BasicAuthenticationRule.Settings[HashedCredentials],
     override implicit val userIdCaseSensitivity: CaseSensitivity,
@@ -95,12 +97,18 @@ object AuthKeyHashingRule {
 
   object HashedCredentials {
 
+    // The hashes in the user settings are made with the JVM default charset. Do not change it to a
+    // fixed charset: a non-ASCII password would then stop matching its configured hash.
+    private val hashCharset = Charset.defaultCharset
+
     final case class HashedUserAndPassword(hash: NonEmptyString) extends HashedCredentials
 
     object HashedUserAndPassword {
 
       def from(credentials: Credentials, hasher: Hasher): HashedUserAndPassword = HashedUserAndPassword {
-        NonEmptyString.unsafeFrom(hasher.hashString(s"${credentials.user.value.value}:${credentials.secret.value}"))
+        NonEmptyString.unsafeFrom(
+          hasher.hashString(s"${credentials.user.value.value}:${credentials.secret.value}", hashCharset)
+        )
       }
 
       implicit val eqHashedUserAndPassword: Eq[HashedUserAndPassword] = Eq.by(_.hash.value)
@@ -112,7 +120,7 @@ object AuthKeyHashingRule {
 
       def from(credentials: Credentials, hasher: Hasher): HashedOnlyPassword = HashedOnlyPassword(
         credentials.user,
-        NonEmptyString.unsafeFrom(hasher.hashString(credentials.secret.value.value))
+        NonEmptyString.unsafeFrom(hasher.hashString(credentials.secret.value.value, hashCharset))
       )
 
       implicit def eqHashedOnlyPassword(
