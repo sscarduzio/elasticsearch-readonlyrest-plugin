@@ -30,35 +30,21 @@ object Wiremock {
         // Per-shard port window (RorShard): sharded Windows runs share one host, and two shards
         // starting wiremock-backed suites concurrently raced for the same fixed port ("Failed to
         // bind to /0.0.0.0:8080"). originalPort moves too — on Windows it is what gets substituted
-        // into readonlyrest.yml placeholders (RorSettingsAdjuster), and providePort is what test
-        // clients dial; all three must agree on the shifted port.
-        val shardedPort = RorShard.shardedBasePort(portWhenRunningOnWindows)
-        new WiremockContainer(
-          container = new WindowsPseudoWiremockContainer(shardedPort, mappings),
-          host = "localhost",
-          portProvider = () => shardedPort,
-          originalPort = shardedPort,
-        )
+        // into readonlyrest.yml placeholders (RorSettingsAdjuster), and wireMockPort is what test
+        // clients dial; both must agree on the shifted port.
+        WindowsPseudoWiremockContainer.create(RorShard.shardedBasePort(portWhenRunningOnWindows), mappings)
       case CurrentOs.OtherThanWindows =>
-        val container = WireMockContainer.create(mappings)
-        new WiremockContainer(
-          container = container,
-          host = container.wireMockHost,
-          portProvider = () => container.wireMockPort,
-          originalPort = WireMockContainer.port,
-        )
+        WireMockContainer.create(mappings)
     }
   }
 
-  class WiremockContainer(
-      val container: SingleContainer[GenericContainer[_]],
-      val host: String,
-      val portProvider: WiremockPortProvider,
-      val originalPort: Int
-  )
+  trait WiremockContainer extends SingleContainer[GenericContainer[_]] {
 
-  trait WiremockPortProvider {
-    def providePort(): Int
+    def originalPort: Int
+
+    def wireMockHost: String
+
+    def wireMockPort: Int
   }
 
 }

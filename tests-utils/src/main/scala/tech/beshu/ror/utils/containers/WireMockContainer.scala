@@ -22,6 +22,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.http.client.methods.HttpGet
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.WireMockContainer.{port, startupTimeout}
+import tech.beshu.ror.utils.containers.Wiremock.WiremockContainer
 import tech.beshu.ror.utils.containers.images.DockerImageCreator
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils
@@ -34,10 +35,13 @@ class WireMockContainer private (mappingFiles: Seq[BetterFile])
       dockerImage = WireMockContainer.image(mappingFiles),
       exposedPorts = Seq(port),
       waitStrategy = Some(new WireMockWaitStrategy().withStartupTimeout(startupTimeout))
-    ) {
+    )
+    with WiremockContainer {
 
   container.setNetwork(TestNetwork.perJvm)
   container.withLogConsumer(frame => System.out.print(s"[WIREMOCK-ext-port:$wireMockPort] ${frame.getUtf8String}"))
+
+  def originalPort: Int = port
 
   def wireMockHost: String = container.getHost
 
