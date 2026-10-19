@@ -319,7 +319,6 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .user("elasticsearch")
   }
 
-  // Adds Acquire::Retries to each apt-get command.
   private def aptGet(commands: String*): String =
     withRetries(commands.map(command => s"apt-get -o Acquire::Retries=5 $command").mkString(" && "))
 

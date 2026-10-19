@@ -60,7 +60,7 @@ object WarmDockerImageCache extends StrictLogging {
   // Skipped on Windows, where ES runs as a native process and there is no Docker environment at all.
   private def pullBaseImages(): Unit = {
     val _ = OsUtils.ignoreOnWindows {
-      List(WireMockContainer.BASE_IMAGE).foreach { image =>
+      List(WireMockContainer.baseImage).foreach { image =>
         logger.info(s"Pulling base image $image ...")
         val _ = new RemoteDockerImage(DockerImageName.parse(image))
           .withImageNameSubstitutor(ImageNameSubstitutor.noop())

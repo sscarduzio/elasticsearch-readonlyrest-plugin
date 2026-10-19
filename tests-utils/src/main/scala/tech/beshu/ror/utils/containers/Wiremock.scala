@@ -40,12 +40,12 @@ object Wiremock {
           originalPort = shardedPort,
         )
       case CurrentOs.OtherThanWindows =>
-        val container = new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
+        val container = WireMockContainer.create(mappings)
         new WiremockContainer(
           container = container,
-          host = container.getWireMockHost,
-          portProvider = () => container.getWireMockPort,
-          originalPort = WireMockContainer.WIRE_MOCK_PORT,
+          host = container.wireMockHost,
+          portProvider = () => container.wireMockPort,
+          originalPort = WireMockContainer.port,
         )
     }
   }

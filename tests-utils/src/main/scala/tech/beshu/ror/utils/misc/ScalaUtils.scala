@@ -22,16 +22,13 @@ import cats.implicits.*
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
 
-import java.io.{FileInputStream, InputStream}
-import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
+import java.io.InputStream
 import java.security.MessageDigest
 import java.time.Duration
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import scala.annotation.tailrec
 import scala.concurrent.duration.*
-import scala.jdk.CollectionConverters.*
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
 import scala.util.Using
@@ -168,34 +165,25 @@ object ScalaUtils extends LazyLogging {
    * Byte-identical to `better.files.File#sha256` — safe to replace it anywhere.
    */
   def sha256(file: BetterFile): String =
-    digestHex(file, "SHA-256", uppercase = true)
+    digestHex(List(file), "SHA-256", uppercase = true)
+
+  /**
+   * SHA-256 hex digest of the content of the files, in order. Returns uppercase hex string (no prefix).
+   * For one file, the result is the same as `sha256(file)`.
+   */
+  def sha256(files: Iterable[BetterFile]): String =
+    digestHex(files, "SHA-256", uppercase = true)
 
   /**
    * SHA-512 hex digest of a file's content. Returns lowercase hex string (no prefix).
    * Used for download integrity verification against Elastic's published `.sha512` checksums.
    */
   def sha512(file: BetterFile): String =
-    digestHex(file, "SHA-512", uppercase = false)
+    digestHex(List(file), "SHA-512", uppercase = false)
 
-  /**
-   * SHA-256 hex digest of the names and contents of the files, in order. Returns lowercase hex string
-   * (no prefix). Two different file collections never give the same digest.
-   */
-  def sha256(files: java.util.Collection[java.io.File]): String = {
-    val md = MessageDigest.getInstance("SHA-256")
-    files.asScala.foreach { file =>
-      val name = file.getName.getBytes(StandardCharsets.UTF_8)
-      md.update(ByteBuffer.allocate(Integer.BYTES).putInt(name.length).array())
-      md.update(name)
-      md.update(ByteBuffer.allocate(java.lang.Long.BYTES).putLong(file.length()).array())
-      updateDigestFromFile(md, new FileInputStream(file))
-    }
-    md.digest().map("%02x".format(_)).mkString
-  }
-
-  private def digestHex(file: BetterFile, algorithm: String, uppercase: Boolean): String = {
+  private def digestHex(files: Iterable[BetterFile], algorithm: String, uppercase: Boolean): String = {
     val md = MessageDigest.getInstance(algorithm)
-    updateDigestFromFile(md, file.newInputStream)
+    files.foreach(file => updateDigestFromFile(md, file.newInputStream))
     val format = if (uppercase) "%02X" else "%02x"
     md.digest().map(format.format(_)).mkString
   }
