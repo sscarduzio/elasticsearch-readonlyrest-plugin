@@ -18,9 +18,9 @@ package tech.beshu.ror.utils
 
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
+import org.apache.commons.codec.digest.DigestUtils
 
 import java.nio.charset.{Charset, StandardCharsets}
-import java.security.MessageDigest
 import java.util.Base64
 
 trait Hasher {
@@ -29,25 +29,10 @@ trait Hasher {
 
 object Hasher {
 
-  private val hexDigits = "0123456789abcdef".toCharArray
-
-  /** Hashes the input with a JDK digest algorithm and returns the digest as lowercase hex. */
-  private def digestHex(algorithm: String, input: String, charset: Charset): String = {
-    val digest = MessageDigest.getInstance(algorithm).digest(input.getBytes(charset))
-    val hex = new Array[Char](digest.length * 2)
-    var i = 0
-    while (i < digest.length) {
-      hex(2 * i) = hexDigits((digest(i) >> 4) & 0xf)
-      hex(2 * i + 1) = hexDigits(digest(i) & 0xf)
-      i += 1
-    }
-    new String(hex)
-  }
-
   object Sha1 extends Hasher {
 
     override def hashString(input: String, charset: Charset): String = {
-      digestHex("SHA-1", input, charset)
+      DigestUtils.sha1Hex(input.getBytes(charset))
     }
 
   }
@@ -55,7 +40,7 @@ object Hasher {
   object Sha256 extends Hasher {
 
     override def hashString(input: String, charset: Charset): String = {
-      digestHex("SHA-256", input, charset)
+      DigestUtils.sha256Hex(input.getBytes(charset))
     }
 
   }
@@ -63,7 +48,7 @@ object Hasher {
   object Sha512 extends Hasher {
 
     override def hashString(input: String, charset: Charset): String = {
-      digestHex("SHA-512", input, charset)
+      DigestUtils.sha512Hex(input.getBytes(charset))
     }
 
   }
