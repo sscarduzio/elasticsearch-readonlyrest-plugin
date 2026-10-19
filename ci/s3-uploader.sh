@@ -1,7 +1,20 @@
 #!/bin/bash -e
 
-# shellcheck source=ci/log.sh
-source "$(dirname "${BASH_SOURCE[0]}")/log.sh"
+# THE SAME FILE LIVES IN THREE REPOSITORIES. PORT EVERY CHANGE TO ALL THREE.
+#
+#   elasticsearch-readonlyrest-plugin   ci/s3-uploader.sh
+#   readonlyrest_kbn                    scripts/utils/s3Uploader.sh
+#   readonlyrest-e2e-tests              .github/scripts/s3-uploader.sh
+#
+# The three copies are identical below this header. Nothing here names a repository, and the file
+# sources no other file: one of the three has no logger. The tests live in readonlyrest_kbn,
+# scripts/tests/s3Uploader.test.sh.
+
+# Writes one message to standard error. Standard output stays empty, so a caller can capture a
+# value from it.
+s3_log() {
+    echo "[s3-uploader] $*" >&2
+}
 
 usage()
 {
@@ -24,11 +37,39 @@ Where <arg> is one of:
   targfile   path to target (dir if it ends with '/', relative to bucket root)
   mime_type  optional mime-type (tries to guess if omitted)
 
+Exits 0 only when the server confirms the upload with 200, 201 or 204. Every
+other answer is printed with the error body of the server. A transient one
+(408, 429, 500, 502, 503, 504, a 400 whose body carries the code
+RequestTimeout, or no answer at all) is retried until the retry budget is
+spent.
+
+Exit status:
+  0  the server confirmed the upload
+  1  the upload failed for a cause that another attempt does not change
+  2  a wrong argument or a wrong setting; nothing was sent
+  3  the retry budget is spent, and the last answer was still transient
+
 Optional environment variables:
   S3_ENDPOINT_URL  custom S3-compatible endpoint (uses path-style addressing).
                    Defaults to https://<bucket>.s3.amazonaws.com/ when unset.
-  S3_UPLOADER_MAX_TIME  maximum seconds for the whole upload (curl --max-time).
-                   No limit when unset.
+  S3_UPLOAD_RETRY_BUDGET_SECONDS
+                   how long this upload may spend waiting for a transient
+                   failure to clear, in total (default 300). Sending the file
+                   does not count. The last wait is shortened to fit. 0
+                   switches the retry off.
+  S3_UPLOAD_RETRY_DELAY_SECONDS
+                   the wait before the second attempt, at least 1, doubled
+                   for each one after it and capped at 60 (default 5). A
+                   Retry-After header of the server wins over it, up to 60s.
+  S3_UPLOADER_MAX_TIME
+                   maximum seconds for one attempt (curl --max-time). No limit
+                   when unset. An attempt that spends it exits 1, with no
+                   retry: the next attempt needs the same time.
+  S3_UPLOADER_INSECURE
+                   1 stops curl from verifying the certificate of the endpoint.
+                   For an endpoint behind a private CA. No caller sets it.
+  S3_UPLOADER_DEBUG
+                   1 adds the curl trace, including the TLS handshake.
 
 Dependencies:
   To run, this shell script depends on command-line curl and openssl, as well
@@ -46,14 +87,16 @@ Examples:
     `basename $0` '' '' storage ~/blog/image.png x/y.png
 
 USAGE
-    # Non-zero: the only caller of this function is the argument check, and a caller that reads 0
-    # counts a file as uploaded that nothing sent.
+    # Non-zero: the argument check is the only caller, and a 0 here counts a file as uploaded
+    # that nothing sent.
     exit 2
 }
 
 guessmime()
 {
-    mime=`file -b --mime-type "$1"`
+    mime=$(file -b --mime-type "$1" 2>/dev/null) || mime=''
+    # A caller can run in a container that holds no `file`, and the table below then answers alone.
+    [ -n "$mime" ] || mime=application/octet-stream
     if [ "$mime" = "text/plain" ] || [ "$mime" = "application/octet-stream" ]; then
         case $1 in
             *.zip)           mime=application/zip;;
@@ -80,23 +123,38 @@ aws_sk="$2"                                     # secret key
 bucket=`printf $3 | awk 'BEGIN{FS="@"}{print $1}'`                       # bucket name
 region=`printf $3 | awk 'BEGIN{FS="@"}{print ($2==""?"us-east-1":$2)}'`  # region name
 srcfile="$4"                                                             # source file
-targfile=`echo -n "$5" | sed "s/\/$/\/$(basename "$srcfile")/"`            # target file
+# A target that ends with '/' takes the name of the source file. The name is text, not a `sed`
+# program: a '&' in it stands for the match and writes another key, and a newline ends the run.
+case "$5" in
+    */) targfile="$5$(basename "$srcfile")";;
+    *)  targfile="$5";;
+esac
 mime=${6:-"`guessmime "$srcfile"`"}                                      # mime type
 
+# The file name goes to curl in its own quotes: an unquoted @path in -F ends at a ',' or a ';'. The
+# quotes end at a '"' in the path, and curl reads the rest as -F options, so it sends a sibling of
+# this file. A backslash escapes a '"' and a '\' inside the quotes.
+srcfile_arg=$(printf '%s' "$srcfile" | sed 's/[\\"]/\\&/g')
 
-# Create signature if not public upload.
-key_and_sig_args=''
-if [ "$aws_ak" != "" ] && [ "$aws_sk" != "" ]; then
+# Signs one upload. Sets `p`, the base64 policy, and `key_and_sig_args`. Empty keys sign nothing,
+# which is how an anonymous upload to a public-writable bucket works. Every attempt signs again:
+# the credential scope carries today's date, and a retry can cross midnight.
+sign_request()
+{
+    key_and_sig_args=''
+    p=''
+    if [ "$aws_ak" = "" ] || [ "$aws_sk" = "" ]; then
+        return 0
+    fi
 
-    # SigV4 requires the credential scope date to match the request date.
-    # `today_s` is used for both signing and the X-Amz-Credential field.
-    # `expdate` is the policy expiration (tomorrow), unrelated to the credential date.
+    # SigV4 requires the credential scope date to match the request date. `expdate` is the
+    # expiration of the policy, and carries no scope.
+    local date today_s expdate service s
     date=`date -u +%Y%m%dT%H%M%SZ`
     today_s=`date -u +%Y%m%d`
     expdate=`if ! date -v+1d +%Y-%m-%d 2>/dev/null; then date -d tomorrow +%Y-%m-%d; fi`
     service='s3'
 
-    # Generate policy and sign with secret key following AWS Signature version 4, below
     # -A suppresses base64 line wrapping (some S3-compatible proxies reject wrapped policies).
     p=$(cat <<POLICY | openssl base64 -A
 { "expiration": "${expdate}T12:00:00.000Z",
@@ -122,63 +180,201 @@ POLICY
     s=`printf "aws4_request" | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
     s=`printf "$p"           | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
 
-    # Policy goes here (not the curl line) so it's only sent when we actually signed — an
-    # anonymous upload (empty keys) leaves $p unset and must not send an empty Policy= field.
+    # Policy goes here, not on the curl line: an anonymous upload must send no Policy field.
     key_and_sig_args="-F X-Amz-Credential=$aws_ak/$today_s/$region/$service/aws4_request -F X-Amz-Algorithm=AWS4-HMAC-SHA256 -F X-Amz-Signature=$s -F X-Amz-Date=${date} -F Policy=$p"
-fi
+}
 
-# Determine upload URL.
-# - If S3_ENDPOINT_URL is set (e.g. for the DGP proxy) use path-style addressing: ${endpoint}/${bucket}/
-# - Otherwise default to AWS virtual-hosted-style: https://${bucket}.s3.amazonaws.com/
+# True when the attempt used the whole of S3_UPLOADER_MAX_TIME. $1 is the exit code of curl, $2 the
+# seconds the attempt ran. curl exits 28 when the storage is silent, and also when the file needs
+# more seconds than the cap. Only the time the attempt ran separates the two.
+max_time_spent()
+{
+    [ "$1" = 28 ] || return 1
+    [[ ${S3_UPLOADER_MAX_TIME:-} =~ ^[0-9]+$ ]] || return 1
+    # curl can end the attempt a few milliseconds early, so the last whole second counts as spent.
+    [ "$(( ${2%%.*} + 1 ))" -ge "$S3_UPLOADER_MAX_TIME" ]
+}
+
+# True when a retry can give a different answer. $1 is the HTTP status, $2 the exit code of curl,
+# $3 the file that holds the error body. The AWS SDKs retry the statuses below. Wrong credentials, a
+# rejected policy condition, an empty file and an unsupported request give the same answer every
+# time. The release stops on them.
+is_retryable()
+{
+    case "$1" in
+        408|429|500|502|503|504) return 0;;
+        # A 408 comes from a proxy in front of the storage. S3 itself answers 400, and carries
+        # the code RequestTimeout in the body, when the connection opens and the body then stops
+        # moving. Every other 400 means a request S3 cannot read.
+        400) grep -q '<Code>RequestTimeout</Code>' "$3" 2>/dev/null && return 0
+             return 1;;
+        # No status at all: curl prints 000 for a DNS failure, a refused connection, a timeout or a
+        # broken TLS handshake. Its exit code says which. An empty value means curl stopped
+        # before `--write-out`.
+        000|'') ;;
+        # The server answered, and its answer decides. A body that breaks in transit after a 403
+        # does not make the 403 transient, and a retry of it only spends the budget.
+        *) return 1;;
+    esac
+    case "$2" in
+        6|7|16|18|28|35|52|55|56|92) return 0;;
+    esac
+    return 1
+}
+
+# A custom endpoint takes path-style addressing, because an S3-compatible proxy serves no bucket
+# subdomain. AWS itself takes the virtual-hosted form.
 if [ -n "${S3_ENDPOINT_URL:-}" ]; then
     upload_url="${S3_ENDPOINT_URL%/}/${bucket}/"
 else
     upload_url="https://${bucket}.s3.amazonaws.com/"
 fi
 
-# Upload. Supports anonymous upload if bucket is public-writable, and keys are set to ''.
-ci_log "Uploading: $srcfile ($mime) to $upload_url$targfile"
-# Set S3_UPLOADER_DEBUG=1 to debug: adds `-v` (verbose, incl. the full TLS handshake trace —
-# very noisy on curl 8.x/OpenSSL). `-v` is deliberately OFF by default, otherwise every upload
-# floods the CI log with TLS traces.
-if [ -n "${S3_UPLOADER_DEBUG:-}" ]; then
+# Off by default: a release uploads about 600 files, and the trace of each one makes the job log
+# unreadable. The error body printed below attributes a failure without it.
+if [ "${S3_UPLOADER_DEBUG:-}" = 1 ]; then
     CURL_FLAGS="-v -S"
 else
     CURL_FLAGS=""
 fi
-# The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';', so a spec
-# name that holds either would send a truncated file. $key_and_sig_args stays unquoted on purpose —
-# it is several arguments, and must split.
-# --connect-timeout stops a connection that never opens. S3_UPLOADER_MAX_TIME (seconds) caps the
-# whole upload; the e2e report uploader sets it. It is unset for release uploads: in the 1.72.0
-# release two plugin zips took 335 s and 457 s and succeeded.
-response_body=$(mktemp)
-curl_status=0
-http_code=$(curl                \
-    -# $CURL_FLAGS              \
-    --connect-timeout 30        \
-    ${S3_UPLOADER_MAX_TIME:+--max-time "$S3_UPLOADER_MAX_TIME"} \
-    -F "key=$targfile"          \
-    $key_and_sig_args           \
-    -F "Content-Type=$mime"     \
-    -F "file=@\"$srcfile\""         \
-    --write-out '%{http_code}'  \
-    --output "$response_body"   \
-    "$upload_url") || curl_status=$?
 
-# S3 answers 204 to a form upload, and 200 or 201 when the policy asks for it. Read the status, not
-# the exit code of curl: a redirect leaves the file unwritten and exits 0. S3 redirects a bucket in
-# another region with 301 and a young bucket with 307, so a wrong region uploads nothing and reports
-# success.
-case "$http_code" in
-    200|201|204)
-        rm -f "$response_body"
-        ;;
-    *)
-        ci_log "The upload of $srcfile to ${upload_url}${targfile} failed (HTTP $http_code, curl exit $curl_status)."
-        # The answer of S3 names the cause. It carries no closing newline, so print one.
-        [ -s "$response_body" ] && printf '%s\n' "$(<"$response_body")" >&2
-        rm -f "$response_body"
+# -k, only when the caller asks for it. A caller that cannot verify the certificate of its endpoint
+# needs it, and every other caller verifies.
+if [ "${S3_UPLOADER_INSECURE:-}" = 1 ]; then
+    CURL_INSECURE="-k"
+else
+    CURL_INSECURE=""
+fi
+
+# How long this file may spend waiting between attempts, in total. A count of attempts would cover
+# a 35-second outage for a 40-byte .sha512 and a six-minute one for a 50MB zip. Transfer time stays
+# outside the budget: sending a file is not waiting for the storage.
+budget=${S3_UPLOAD_RETRY_BUDGET_SECONDS:-300}
+delay=${S3_UPLOAD_RETRY_DELAY_SECONDS:-5}
+spent=0
+attempt=1
+
+# A value that is not a number makes every comparison below fail, which the loop reads as "budget
+# left" and never ends. A delay of 0 stays 0 when it doubles, so the waits never spend the budget.
+# The loop then never ends, even with a budget of 0. Nine digits are more seconds than any caller
+# asks for, and they keep the value inside the range of the arithmetic below: a larger one makes
+# `[` report an error, which an `if` reads as "no error", and $(( )) then wraps it to 0.
+if [[ ! $budget =~ ^[0-9]{1,9}$ ]]; then
+    s3_log "S3_UPLOAD_RETRY_BUDGET_SECONDS must be a non-negative integer of up to 9 digits. Its value is '$budget'."
+    exit 2
+fi
+if [[ ! $delay =~ ^[0-9]{1,9}$ ]]; then
+    s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a positive integer of up to 9 digits. Its value is '$delay'."
+    exit 2
+fi
+# Bash arithmetic reads a leading 0 as octal: 010 counts as 8, and 08 stops the run. `[` reads the
+# same text as decimal, so the two would disagree, and the loop would never end.
+budget=$((10#$budget))
+delay=$((10#$delay))
+# A delay of 0 stays 0 when it doubles, so no wait spends the budget. `0` and `00` reach here as
+# digits, and only the conversion above tells them from a wait of one second.
+if [ "$delay" -lt 1 ]; then
+    s3_log "S3_UPLOAD_RETRY_DELAY_SECONDS must be a positive integer of up to 9 digits. Its value is '$delay'."
+    exit 2
+fi
+
+# curl takes a fraction here, and refuses a word. A fraction also defeats the no-retry rule above,
+# which reads whole seconds, and a 0 asks curl for no limit at all. Leave the knob unset for that.
+if [ -n "${S3_UPLOADER_MAX_TIME:-}" ]; then
+    if [[ ! $S3_UPLOADER_MAX_TIME =~ ^[0-9]{1,9}$ ]] || [ "$((10#$S3_UPLOADER_MAX_TIME))" -lt 1 ]; then
+        s3_log "S3_UPLOADER_MAX_TIME must be a positive integer of up to 9 digits, or unset for no limit. Its value is '$S3_UPLOADER_MAX_TIME'."
+        exit 2
+    fi
+    # The same text reaches curl and the comparison of the no-retry rule, so both read one value.
+    S3_UPLOADER_MAX_TIME=$((10#$S3_UPLOADER_MAX_TIME))
+fi
+# The same cap the doubling below applies: a caller that asks for more than a minute gets a minute.
+[ "$delay" -gt 60 ] && delay=60
+
+while true; do
+    sign_request
+
+    s3_log "Uploading: $srcfile ($mime) to $upload_url$targfile (attempt $attempt)"
+
+    response_body=$(mktemp)
+    response_headers=$(mktemp)
+    curl_status=0
+    # Cypress names a screenshot after its test, so a key can hold spaces, brackets and a ';'. -F
+    # ends a value at a ';' and reads the rest as its own options, so S3 gets a short key and
+    # answers 204. --form-string sends the key and the mime type as they are.
+    # $key_and_sig_args stays unquoted on purpose — it is several arguments, and must split.
+    # --connect-timeout bounds a connection that never opens, and --speed-time one that opens and
+    # then stalls. curl exits 28 after two minutes under 1KB/s, and the loop retries it. Two
+    # minutes, because S3 can take a moment to answer after a large body.
+    curl_out=$(curl                 \
+        -# $CURL_INSECURE $CURL_FLAGS \
+        --connect-timeout 30        \
+        --speed-limit 1024 --speed-time 120 \
+        ${S3_UPLOADER_MAX_TIME:+--max-time "$S3_UPLOADER_MAX_TIME"} \
+        --form-string "key=$targfile" \
+        $key_and_sig_args           \
+        --form-string "Content-Type=$mime" \
+        -F "file=@\"$srcfile_arg\"" \
+        --dump-header "$response_headers" \
+        --write-out '%{http_code} %{time_total}' \
+        --output "$response_body"   \
+        "$upload_url") || curl_status=$?
+    http_code=${curl_out%% *}
+    time_total=${curl_out##* }
+
+    # S3 answers 204 to a form upload, and 200 or 201 when the policy asks for it. Read the status,
+    # not the exit code of curl. A 301 (bucket in another region) and a 307 (young bucket) both
+    # leave the file unwritten and exit 0.
+    case "$http_code" in
+        200|201|204)
+            rm -f "$response_body" "$response_headers"
+            exit 0
+            ;;
+    esac
+
+    s3_log "The upload of $srcfile to ${upload_url}${targfile} failed (HTTP $http_code, curl exit $curl_status)."
+    # The error body names the cause. It carries no closing newline, so print one.
+    [ -s "$response_body" ] && printf '%s\n' "$(<"$response_body")" >&2
+
+    # A file that needs more seconds than the cap fails the same way on every attempt. The caller
+    # takes a 1 and carries on with the next file.
+    if max_time_spent "$curl_status" "$time_total"; then
+        s3_log "The upload took the whole ${S3_UPLOADER_MAX_TIME}s of S3_UPLOADER_MAX_TIME. Another attempt takes as long."
+        rm -f "$response_body" "$response_headers"
         exit 1
-        ;;
-esac
+    fi
+
+    if ! is_retryable "$http_code" "$curl_status" "$response_body"; then
+        s3_log "Another attempt gives the same result."
+        rm -f "$response_body" "$response_headers"
+        exit 1
+    fi
+
+    # `Retry-After` carries the wait the server asks for, and the cap bounds a wrong value. The
+    # header holds a number of seconds or an HTTP date, and a date keeps the backoff. A missing
+    # header is normal: `grep` finds nothing, and `sed` then exits 0.
+    wait_s=$delay
+    retry_after=$(tr -d '\r' < "$response_headers" | grep -i '^retry-after:' | tail -1 \
+        | sed 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*$//')
+    # Base 10, as for the budget: `Retry-After: 08` is 8 seconds.
+    if [[ $retry_after =~ ^[0-9]+$ ]] && [ "$((10#$retry_after))" -gt 0 ]; then
+        wait_s=$((10#$retry_after))
+        [ "$wait_s" -gt 60 ] && wait_s=60
+    fi
+    rm -f "$response_body" "$response_headers"
+
+    if [ "$spent" -ge "$budget" ]; then
+        s3_log "The upload of $srcfile failed, and its ${budget}s of retries are spent."
+        exit 3
+    fi
+    # The last wait takes only what is left of the budget, so the whole budget is used.
+    [ "$(( spent + wait_s ))" -gt "$budget" ] && wait_s=$(( budget - spent ))
+
+    s3_log "Another attempt starts in ${wait_s}s (${spent}s of ${budget}s spent)."
+    sleep "$wait_s"
+    spent=$(( spent + wait_s ))
+    attempt=$((attempt + 1))
+    # The cap keeps the last waits of a long budget from growing past a minute.
+    delay=$((delay * 2))
+    [ "$delay" -gt 60 ] && delay=60
+done

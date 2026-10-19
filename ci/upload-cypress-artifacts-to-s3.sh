@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # Upload Cypress failure artifacts (videos, screenshots, logs) to S3, so a red e2e job leaves
-# something to look at after its runner is destroyed. Mirrors the ROR KBN repo's
-# scripts/uploadCypressArtifactsToS3.sh; kept as a script (not a run-pipeline.sh task) because the
-# workflow calls it from a separate `if: failure()` step, after run_e2e_tests has already returned.
+# something to look at after its runner is destroyed. It is a script, not a run-pipeline.sh task,
+# because the workflow calls it from a separate `if: failure()` step, after run_e2e_tests returned.
 #
 # S3, not GitHub artifacts: those count against the metered Actions-storage quota.
 #
@@ -67,12 +66,22 @@ fi
 
 S3_PATH="${PATH_PREFIX:+${PATH_PREFIX%/}/}${S3_SUBFOLDER%/}/"
 
+# The gateway rejects a key with an empty path segment ('//'). The prefix can carry one in the
+# middle, where trimming the ends does not reach.
+S3_PATH=$(printf '%s' "$S3_PATH" | sed 's://*:/:g')
+
 # Consumed by s3-uploader.sh, which switches to path-style addressing when it is set.
 export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 
-# An explicit mime type keeps the uploader from calling `file` (its guess path), which is not
-# guaranteed to exist on a bare runner. Without it the Content-Type comes out empty, the signed-POST
-# policy rejects the malformed form, and the upload 403s.
+# A shorter retry budget than a release upload gets. These artifacts help somebody read a red job.
+# The budget counts only the waits between attempts. An attempt that spends S3_UPLOADER_MAX_TIME
+# is not retried, so one file holds the job for that long at most. The loop below stops at the
+# first file whose budget is spent, so an outage holds the job for one file only.
+export S3_UPLOAD_RETRY_BUDGET_SECONDS="${S3_UPLOAD_RETRY_BUDGET_SECONDS:-30}"
+
+# An explicit mime type, because the guess of the uploader needs `file`, which a container here can
+# lack, and its extension table maps neither .mp4 nor .png. A video served as
+# application/octet-stream downloads instead of playing.
 mime_of() {
   case "$1" in
     *.mp4) echo "video/mp4" ;;
@@ -89,7 +98,7 @@ mime_of() {
 # more than 300 s.
 upload_one() {
   local FILE=$1 KEY=$2 MIME=$3
-  S3_UPLOADER_MAX_TIME=300 "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
+  S3_UPLOADER_MAX_TIME="${S3_UPLOADER_MAX_TIME:-300}" "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
 # Any file can hold a CI secret, whatever its name. SECRETS_TO_REDACT holds one secret per line. In a
@@ -99,6 +108,12 @@ SECRETS=()
 while IFS= read -r SECRET; do
   [ -n "$SECRET" ] && SECRETS+=("$SECRET")
 done <<< "${SECRETS_TO_REDACT:-}"
+# With no secret to look for, every file passes the check. An empty value is a caller defect,
+# for example a renamed secret, so nothing is uploaded.
+if [ ${#SECRETS[@]} -eq 0 ]; then
+  ci_log "ERROR: SECRETS_TO_REDACT is empty, so the files cannot be checked for secrets. Nothing is uploaded."
+  exit 1
+fi
 holds_secret() {
   local SECRET
   for SECRET in "${SECRETS[@]}"; do
@@ -144,15 +159,27 @@ while IFS= read -r -d '' FILE; do
     SKIPPED_SECRET=$((SKIPPED_SECRET + 1))
     continue
   fi
-  if upload_one "$FILE" "${S3_PATH}${REL}" "$MIME"; then
+  UPLOAD_STATUS=0
+  upload_one "$FILE" "${S3_PATH}${REL}" "$MIME" || UPLOAD_STATUS=$?
+  if [ "$UPLOAD_STATUS" -eq 0 ]; then
     UPLOADED=$((UPLOADED + 1))
     continue
   fi
 
-  # The uploader prints the answer of S3 on every failure, so the log already names the cause of
-  # this one: AccessDenied, SignatureDoesNotMatch, or a policy condition.
-  ci_log "The upload of $FILE failed. The run continues with the next file."
+  # The uploader retried the transient answers and printed the error body, so the log already
+  # names the cause.
   FAILED=$((FAILED + 1))
+  # Status 3 is a storage that stayed down for the whole retry budget, and status 2 a wrong
+  # setting. Every later file meets the same thing, so the run stops on both.
+  if [ "$UPLOAD_STATUS" -eq 3 ]; then
+    ci_log "The upload of $FILE failed. The storage stayed down for the whole retry budget, so the files that remain are not uploaded."
+    break
+  fi
+  if [ "$UPLOAD_STATUS" -eq 2 ]; then
+    ci_log "The upload of $FILE failed. A setting of the uploader is wrong, so the files that remain are not uploaded."
+    break
+  fi
+  ci_log "The upload of $FILE failed. The run continues with the next file."
 done < <(find "$SOURCE_DIR" -type f -print0)
 
 ci_log "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY skipped_secret=$SKIPPED_SECRET failed=$FAILED"
