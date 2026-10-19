@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.dlsfls
 
-import com.google.common.collect.Iterators
 import org.apache.lucene.codecs.StoredFieldsReader
 import org.apache.lucene.index.*
 import org.apache.lucene.index.StoredFieldVisitor.Status
@@ -70,7 +69,7 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
         private val originalFields = originalTermVectors.get(doc)
 
         override def iterator(): JavaIterator[String] =
-          Iterators.filter(originalFields.iterator, (s: String) => policy.canKeep(s))
+          originalFields.iterator.asScala.filter(policy.canKeep).asJava
         override def terms(field: String): Terms = if (policy.canKeep(field)) originalFields.terms(field) else null
         override def size(): Int = remainingFieldsInfo.size
       }

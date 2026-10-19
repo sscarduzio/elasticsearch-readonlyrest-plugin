@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.request
 
 import cats.{Eq, Show}
-import com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.parser.*
 import io.circe.{Decoder, Encoder}
@@ -27,7 +26,7 @@ import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Ab
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.UuidProvider
-import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.{Hasher, RequestIdAwareLogging}
 
 import java.net.HttpCookie
 import java.nio.charset.StandardCharsets
@@ -148,13 +147,11 @@ object RorSessionCookie extends RequestIdAwareLogging {
     def sign(cookie: RorSessionCookie)(
         implicit uuidProvider: UuidProvider
     ): Signature = Signature {
-      Hashing
-        .sha256()
-        .hashString(
-          s"${uuidProvider.instanceUuid.toString}${cookie.userId.value}${cookie.expiryDate.toEpochMilli}",
-          StandardCharsets.UTF_8
-        )
-        .toString
+      Hasher.digestHex(
+        "SHA-256",
+        s"${uuidProvider.instanceUuid.toString}${cookie.userId.value}${cookie.expiryDate.toEpochMilli}",
+        StandardCharsets.UTF_8
+      )
     }
 
     implicit val eq: Eq[Signature] = Eq.fromUniversalEquals
