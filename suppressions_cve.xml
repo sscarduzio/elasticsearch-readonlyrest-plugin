@@ -2,10 +2,21 @@
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
     <suppress>
         <notes><![CDATA[
-   file name: refined_3-0.11.3.jar
-   ]]></notes>
-        <sha1>7fd9ec8896c9f65e28a8dcf87b9d95070a6d29bd</sha1>
+False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not eu.timepit:refined_3
+  ]]></notes>
+        <packageUrl regex="true">^pkg:maven/eu\.timepit/refined_3@.+(\?.*)?$</packageUrl>
         <cve>CVE-2021-34364</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+False positive: dependency-check builds the CPE cpe:2.3:a:apache:httpclient from the WireMock version
+(4.0.0-beta.40 -> 4.0.0.40). CVE-2014-3577 and CVE-2020-13956 affect Apache HttpClient before 4.3.5 and
+before 4.5.13 / 5.0.3. wiremock-httpclient-apache5 is a WireMock module, and it uses httpclient5 5.6.x.
+The CPE value ends with a colon. A CPE rule is a prefix match, and the colon stops it at the product name,
+so it does not remove cpe:/a:apache:httpclient5 findings.
+  ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.wiremock/wiremock-httpclient-apache5@.+$</packageUrl>
+        <cpe>cpe:/a:apache:httpclient:</cpe>
     </suppress>
     <suppress>
         <notes><![CDATA[

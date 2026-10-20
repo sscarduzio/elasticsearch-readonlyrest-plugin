@@ -364,6 +364,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = requestContextId)
           val responseContext = Errored(requestContext, new Exception("error"))
 
+          auditLogFile.parent.createDirectories()
           auditLogFile.overwrite("")
 
           auditingTool.audit(responseContext).runSyncUnsafe()

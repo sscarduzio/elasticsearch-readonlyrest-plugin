@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.integration.suites
 
-import net.jodah.failsafe.{Failsafe, RetryPolicy}
+import dev.failsafe.function.CheckedBiPredicate
+import dev.failsafe.{Failsafe, RetryPolicy}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
@@ -24,7 +25,6 @@ import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, Searc
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 import java.time.Duration
-import java.util.function.BiPredicate
 
 //TODO: change test names. Current names are copies from old java integration tests
 class MSearchWithFilterSuite
@@ -75,17 +75,19 @@ class MSearchWithFilterSuite
   }
 
   private def waitUntilAllIndexed(): Unit = {
-    val retryPolicy: RetryPolicy[SearchManager#MSearchResult] = new RetryPolicy[SearchManager#MSearchResult]()
+    val retryPolicy: RetryPolicy[SearchManager#MSearchResult] = RetryPolicy
+      .builder[SearchManager#MSearchResult]()
       .handleIf(resultsContainsLessElementsThan())
       .withMaxRetries(20)
       .withDelay(Duration.ofMillis(500))
       .withMaxDuration(Duration.ofSeconds(10))
+      .build()
     Failsafe
       .`with`[SearchManager#MSearchResult, RetryPolicy[SearchManager#MSearchResult]](retryPolicy)
       .get(() => adminSearchManager.mSearchUnsafe(matchAllIndicesQuery*))
   }
 
-  private def resultsContainsLessElementsThan(): BiPredicate[SearchManager#MSearchResult, Throwable] =
+  private def resultsContainsLessElementsThan(): CheckedBiPredicate[SearchManager#MSearchResult, Throwable] =
     (searchResult: SearchManager#MSearchResult, throwable: Throwable) =>
       throwable != null || searchResult == null || searchResult.totalHitsForResponse(0) < 4
 

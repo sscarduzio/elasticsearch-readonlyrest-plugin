@@ -32,14 +32,7 @@ eclipse-build
 // Script generated files
 
 docker/*
-eshome/plugins/readonlyrest/plugin-descriptor.properties
 integration-tests/src/main/resources/plugin-descriptor.properties
-eshome/**/data
-eshome/**/logs
-eshome/**/modules/*/*.jar
-eshome/**/plugins/*/*.jar
-eshome/*.log
-eshome/**/config/elasticsearch.keystore
 target/
 .ror-nested-gradle.lock
 

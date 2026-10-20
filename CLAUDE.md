@@ -15,9 +15,6 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 # Build plugin using the latest supported ES version
 ./gradlew clean buildRorPlugin
 
-# Run ES locally with ROR for debugging (supports ES 8.x)
-./gradlew clean eshome:runEs
-
 # Unit tests (core module)
 ./gradlew core:test
 
@@ -36,9 +33,6 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 
 # Check formatting without modifying files (used in CI)
 ./gradlew formatCodeCheck
-
-# Clean eshome (needed when switching ES versions)
-./gradlew :eshome:clean
 ```
 
 **Requirements**: JDK 17+, Gradle (wrapper included). Core module compiles with JDK 11 toolchain. Each ES module sets its toolchain in `ext.javaLanguageVersion`: 11 for es6x/es7x, 17 for es8x, 21 for es9x. The build writes the same value to `java.version` in `plugin-descriptor.properties`, and ES refuses a JVM older than it.
@@ -52,7 +46,6 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 - **`integration-tests/`** — Docker-based integration tests using TestContainers. Execution model, knobs and sharding: `integration-tests/README.md`.
 - **`tests-utils/`** — Shared test fixtures and utilities (MockRequestContext, MockEsServices, etc.).
 - **`ror-tools/` / `ror-tools-core/`** — CLI tools and utilities.
-- **`eshome/`** — Local ES runner for IDE debugging. Config in `eshome/config/` (elasticsearch.yml, readonlyrest.yml). Must be cleaned when switching ES versions.
 - **`build-base/`** — Gradle convention plugins applied to all modules (`readonlyrest.base-common-conventions`, `readonlyrest.plugin-common-conventions`).
 
 ## Key Source Paths
