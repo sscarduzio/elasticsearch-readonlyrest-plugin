@@ -100,7 +100,7 @@ dependencies {
     testImplementation  group: 'org.scalamock',              name: 'scalamock_3',                    version: '7.3.0'
     testImplementation  group: 'org.scalatestplus',          name: 'scalacheck-1-18_3',              version: '3.2.19.0'
     testImplementation  group: 'org.scalatest',              name: 'scalatest_3',                    version: '3.2.19'
-    testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala-core_3',    version: '0.44.0'
+    testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala-core_3',    version: '0.44.1'
 
     constraints {
         api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.138.Final'
