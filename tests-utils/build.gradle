@@ -49,7 +49,7 @@ dependencies {
     api group: 'io.jsonwebtoken',                name: 'jjwt-orgjson',                      version: '0.13.0'
     api group: 'org.jooq',                       name: 'joor',                              version: '0.9.16'
     api group: 'io.monix',                       name: 'monix_3',                           version: '3.4.1'
-    api group: 'com.lihaoyi',                    name: 'os-lib_3',                          version: '0.11.6'
+    api group: 'com.lihaoyi',                    name: 'os-lib_3',                          version: '0.11.8'
     api group: 'eu.timepit',                     name: 'refined_3',                         version: '0.11.4'
     api group: 'org.scala-lang',                 name: 'scala3-library_3',                  version: '3.3.8'
     api group: 'org.scala-lang.modules'  ,       name: 'scala-parallel-collections_3',      version: '1.2.0'
