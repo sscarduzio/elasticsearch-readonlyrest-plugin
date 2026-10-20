@@ -93,8 +93,8 @@ dependencies {
     api group: 'org.bouncycastle',                  name: 'bcutil-fips',                         version: '2.1.7'
 
     testImplementation  project(':tests-utils')
-    compileOnly         group: 'org.apache.logging.log4j',   name: 'log4j-core',                     version: '2.25.5'
-    testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                     version: '2.25.5'
+    compileOnly         group: 'org.apache.logging.log4j',   name: 'log4j-core',                     version: '2.26.1'
+    testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                     version: '2.26.1'
     testRuntimeOnly     group: 'ch.qos.logback',             name: 'logback-classic',                version: '1.5.23'
     testImplementation  group: 'com.typesafe.scala-logging', name: 'scala-logging_3',                version: '3.9.6'
     testImplementation  group: 'org.scalamock',              name: 'scalamock_3',                    version: '7.3.0'
