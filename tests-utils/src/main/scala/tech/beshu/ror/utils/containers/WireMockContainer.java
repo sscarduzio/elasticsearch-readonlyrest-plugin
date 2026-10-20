@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.utils.containers;
 
-import com.google.common.collect.Lists;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,6 +28,7 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.File;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -47,9 +47,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   public static WireMockContainer create(String... mappings) {
     ImageFromDockerfile dockerfile = new ImageFromDockerfile();
     List<File> mappingFiles =
-        Lists.newArrayList(mappings).stream()
-            .map(ContainerUtils::getResourceFile)
-            .collect(Collectors.toList());
+        Arrays.stream(mappings).map(ContainerUtils::getResourceFile).collect(Collectors.toList());
     mappingFiles.forEach(
         mappingFile -> dockerfile.withFileFromFile(mappingFile.getName(), mappingFile));
     logger.info("Creating WireMock container ...");

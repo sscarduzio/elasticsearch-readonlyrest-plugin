@@ -41,10 +41,9 @@ dependencies {
     api group: 'net.jodah',                      name: 'failsafe',                          version: '2.4.4'
     api group: 'org.gradle',                     name: 'gradle-tooling-api',                version: '9.2.1'
     api group: 'com.google.code.gson',           name: 'gson',                              version: '2.13.2'
-    api group: 'com.google.guava',               name: 'guava',                             version: '33.5.0-jre'
     api group: 'org.apache.httpcomponents',      name: 'httpclient',                        version: '4.5.14'
-    api group: 'org.apache.logging.log4j',       name: 'log4j-1.2-api',                     version: '2.25.4'
-    api group: 'org.apache.logging.log4j',       name: 'log4j-core',                        version: '2.25.4'
+    api group: 'org.apache.logging.log4j',       name: 'log4j-1.2-api',                     version: '2.25.5'
+    api group: 'org.apache.logging.log4j',       name: 'log4j-core',                        version: '2.25.5'
     api group: 'io.jsonwebtoken',                name: 'jjwt-api',                          version: '0.13.0'
     api group: 'io.jsonwebtoken',                name: 'jjwt-impl',                         version: '0.13.0'
     api group: 'io.jsonwebtoken',                name: 'jjwt-orgjson',                      version: '0.13.0'
@@ -63,7 +62,13 @@ dependencies {
     api group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                    version: "2.1.11"
     api group: 'com.unboundid',                  name: 'unboundid-ldapsdk',                 version: '7.0.4'
     api group: 'com.lihaoyi',                    name: 'upickle_3',                         version: '4.4.1'
-    api group: 'com.github.tomakehurst',         name: 'wiremock-jre8',                     version: '2.35.2'
+    api group: 'org.wiremock',                   name: 'wiremock',                          version: '3.13.2'
+
+    constraints {
+        api group: 'org.ow2.asm',                name: 'asm',                               version: '9.11.1'
+        // wiremock needs Guava at runtime. 33.7.2-jre is the CVE-2026-102554 floor.
+        api group: 'com.google.guava',           name: 'guava',                             version: '33.7.2-jre'
+    }
 }
 
 dependencyCheck {
