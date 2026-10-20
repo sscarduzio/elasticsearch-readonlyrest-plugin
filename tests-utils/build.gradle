@@ -47,20 +47,20 @@ dependencies {
     api group: 'io.jsonwebtoken',                name: 'jjwt-api',                          version: '0.13.0'
     api group: 'io.jsonwebtoken',                name: 'jjwt-impl',                         version: '0.13.0'
     api group: 'io.jsonwebtoken',                name: 'jjwt-orgjson',                      version: '0.13.0'
-    api group: 'org.jooq',                       name: 'joor',                              version: '0.9.15'
+    api group: 'org.jooq',                       name: 'joor',                              version: '0.9.16'
     api group: 'io.monix',                       name: 'monix_3',                           version: '3.4.1'
     api group: 'com.lihaoyi',                    name: 'os-lib_3',                          version: '0.11.6'
-    api group: 'eu.timepit',                     name: 'refined_3',                         version: '0.11.3'
+    api group: 'eu.timepit',                     name: 'refined_3',                         version: '0.11.4'
     api group: 'org.scala-lang',                 name: 'scala3-library_3',                  version: '3.3.8'
     api group: 'org.scala-lang.modules'  ,       name: 'scala-parallel-collections_3',      version: '1.2.0'
-    api group: 'com.typesafe.scala-logging',     name: 'scala-logging_3',                   version: '3.9.5'
+    api group: 'com.typesafe.scala-logging',     name: 'scala-logging_3',                   version: '3.9.6'
     api group: 'org.scalatest',                  name: 'scalatest_3',                       version: '3.2.19'
     api group: 'org.typelevel',                  name: 'squants_3',                         version: '1.8.3'
     api group: 'com.dimafeng',                   name: 'testcontainers-scala-scalatest_3',  version: '0.44.1'
     api group: 'org.testcontainers',             name: 'testcontainers',                    version: "2.0.5"
     api group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                    version: "2.1.11"
-    api group: 'com.unboundid',                  name: 'unboundid-ldapsdk',                 version: '7.0.4'
-    api group: 'com.lihaoyi',                    name: 'upickle_3',                         version: '4.4.1'
+    api group: 'com.unboundid',                  name: 'unboundid-ldapsdk',                 version: '7.0.5'
+    api group: 'com.lihaoyi',                    name: 'upickle_3',                         version: '4.4.3'
     api group: 'org.wiremock',                   name: 'wiremock',                          version: '4.0.0-beta.40'
 
     constraints {
