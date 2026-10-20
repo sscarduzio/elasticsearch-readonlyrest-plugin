@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.utils;
 
-import com.google.common.collect.Sets;
+import tech.beshu.ror.utils.JavaUtils.Sets;
 
 import java.util.Set;
 import java.util.function.Consumer;
@@ -101,7 +101,7 @@ public class ZeroKnowledgeIndexFilter {
         shouldReplace = true;
       }
     }
-    if (shouldReplace || !Sets.symmetricDifference(newIndices, indices).isEmpty()) {
+    if (shouldReplace || !newIndices.equals(indices)) {
       return newIndices;
     } else {
       return indices;

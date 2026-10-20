@@ -16,39 +16,39 @@
  */
 package tech.beshu.ror.utils
 
-import com.google.common.hash.Hashing
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
+import org.apache.commons.codec.digest.DigestUtils
 
-import java.nio.charset.Charset
+import java.nio.charset.{Charset, StandardCharsets}
 import java.util.Base64
 
 trait Hasher {
-  def hashString(input: String): String
+  def hashString(input: String, charset: Charset = StandardCharsets.UTF_8): String
 }
 
 object Hasher {
 
   object Sha1 extends Hasher {
 
-    override def hashString(input: String): String = {
-      SuppressSha1Deprecation.sha1().hashString(input, Charset.defaultCharset).toString
+    override def hashString(input: String, charset: Charset): String = {
+      DigestUtils.sha1Hex(input.getBytes(charset))
     }
 
   }
 
   object Sha256 extends Hasher {
 
-    override def hashString(input: String): String = {
-      Hashing.sha256().hashString(input, Charset.defaultCharset).toString
+    override def hashString(input: String, charset: Charset): String = {
+      DigestUtils.sha256Hex(input.getBytes(charset))
     }
 
   }
 
   object Sha512 extends Hasher {
 
-    override def hashString(input: String): String = {
-      Hashing.sha512().hashString(input, Charset.defaultCharset).toString
+    override def hashString(input: String, charset: Charset): String = {
+      DigestUtils.sha512Hex(input.getBytes(charset))
     }
 
   }
@@ -56,8 +56,8 @@ object Hasher {
   object PBKDF2WithHmacSHA512 extends Hasher {
     private val secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
 
-    override def hashString(input: String): String = {
-      val spec = new PBEKeySpec(input.toCharArray, input.getBytes, 10000, 64 * 8 /* 512 bits */ )
+    override def hashString(input: String, charset: Charset): String = {
+      val spec = new PBEKeySpec(input.toCharArray, input.getBytes(charset), 10000, 64 * 8 /* 512 bits */ )
       val key = secretKeyFactory.generateSecret(spec)
       Base64.getEncoder.encodeToString(key.getEncoded)
     }
