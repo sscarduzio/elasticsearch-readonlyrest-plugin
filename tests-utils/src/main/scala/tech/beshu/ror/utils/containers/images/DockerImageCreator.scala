@@ -27,16 +27,17 @@ import java.util.UUID
 
 object DockerImageCreator extends StrictLogging {
 
+  val itImageLabel = "tech.beshu.ror.it-image"
+
   def create(elasticsearch: Elasticsearch): ImageFromDockerfile = {
     val imageDescription = elasticsearch.toDockerImageDescription
-    // STABLE content-derived tag (DockerImageDescription.imageTag): identical images share one tag →
-    // cache hit across parallel workers (no concurrent rebuilds, fails at shardCount>=3). deleteOnExit
-    // reclaims per-suite images post-use.
     val stableTag = s"ror-it-es:${imageDescription.imageTag}"
-    copyFilesFrom(imageDescription, to = new ImageFromDockerfile(stableTag, /* deleteOnExit = */ true))
+    // Not deleteOnExit: the integration-tests build removes the labeled images after the test run.
+    copyFilesFrom(imageDescription, to = new ImageFromDockerfile(stableTag, /* deleteOnExit = */ false))
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         val dockerfile = builder
           .from(imageDescription.baseImage)
+          .label(java.util.Map.of(itImageLabel, "true"))
           .applyStepsFrom(imageDescription) // COPY/RUN/USER in DECLARATION order (config files last)
           .addEnvsFrom(imageDescription)
           .setEntrypointFrom(imageDescription)

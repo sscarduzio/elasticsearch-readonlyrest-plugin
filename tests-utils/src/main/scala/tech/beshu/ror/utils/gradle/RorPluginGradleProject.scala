@@ -21,7 +21,8 @@ import com.typesafe.scalalogging.LazyLogging
 import org.gradle.tooling.GradleConnector
 import tech.beshu.ror.utils.misc.FileLocks
 
-import java.io.File as JFile
+import java.io.{ByteArrayOutputStream, File as JFile}
+import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
 import scala.collection.mutable
 import scala.util.Try
@@ -149,16 +150,29 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
       .map(new JFile(_))
       .filter(home => new JFile(home, ".ror-ci-baked").isFile)
     bakedGradleHome.foreach(connector.useGradleUserHomeDir)
+    // The nested build writes its output here, not to the console of the test JVM. A failure then
+    // throws with the end of that output, so the cause (for example a dependency download) is visible.
+    val output = new ByteArrayOutputStream()
     val connect = Try(connector.connect())
     val result = connect.map { c =>
       val args =
         (if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")).map(v => s"-PesVersion=$v").toList
          else Nil) ++ extraArgs
-      val build = c.newBuild().forTasks(task)
+      val build = c.newBuild().forTasks(task).setStandardOutput(output).setStandardError(output)
       (if (args.nonEmpty) build.withArguments(args*) else build).run()
     }
     connect.map(_.close())
-    result.fold(throw _, _ => ())
+    result.fold(
+      cause => throw new IllegalStateException(nestedBuildFailureMessage(task, output), cause),
+      _ => ()
+    )
+  }
+
+  private def nestedBuildFailureMessage(task: String, output: ByteArrayOutputStream): String = {
+    val text = output.toString(StandardCharsets.UTF_8)
+    val maxChars = 20000
+    val tail = if (text.length > maxChars) "[...]\n" + text.takeRight(maxChars) else text
+    s"The nested Gradle build of [$task] failed. Its output:\n$tail"
   }
 
 }

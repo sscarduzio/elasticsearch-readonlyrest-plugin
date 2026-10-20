@@ -127,7 +127,7 @@ class ReadonlyRestStartingTests
     )
   )
 
-  override val container: Container = wiremock.container
+  override val container: Container = wiremock
 
   "A ReadonlyREST core" should {
     "support the main engine" should {
@@ -1627,8 +1627,8 @@ class ReadonlyRestStartingTests
         val dataStreamOutputConfig2 = dataStreamOutputConfig1.copy(
           auditCluster = AuditCluster.RemoteAuditCluster(
             nodes = UniqueNonEmptyList.of(
-              AuditClusterNode(Uri.parse(s"http://${wiremock.host}:${wiremock.portProvider.providePort()}/c1n1")),
-              AuditClusterNode(Uri.parse(s"http://${wiremock.host}:${wiremock.portProvider.providePort()}/c1n2")),
+              AuditClusterNode(Uri.parse(s"http://${wiremock.wireMockHost}:${wiremock.wireMockPort}/c1n1")),
+              AuditClusterNode(Uri.parse(s"http://${wiremock.wireMockHost}:${wiremock.wireMockPort}/c1n2")),
             ),
             mode = ClusterMode.RoundRobin,
             credentials = Some(NodeCredentials("admin", "pass")),
@@ -2473,7 +2473,7 @@ class ReadonlyRestStartingTests
     mockedManager
   }
 
-  private def wiremockHost: String = s"${wiremock.host}:${wiremock.portProvider.providePort()}"
+  private def wiremockHost: String = s"${wiremock.wireMockHost}:${wiremock.wireMockPort}"
 
   private sealed trait AttemptCount
 
