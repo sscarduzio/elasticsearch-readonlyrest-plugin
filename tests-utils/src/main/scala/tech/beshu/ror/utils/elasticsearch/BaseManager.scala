@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import net.jodah.failsafe.{Failsafe, RetryPolicy}
+import dev.failsafe.function.CheckedBiPredicate
+import dev.failsafe.{Failsafe, RetryPolicy}
 import org.apache.http.client.methods.HttpUriRequest
 import org.apache.http.{HttpRequest, HttpResponse}
 import org.testcontainers.shaded.org.yaml.snakeyaml.constructor.SafeConstructor
@@ -31,7 +32,6 @@ import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
 import java.time.Duration
 import java.util
-import java.util.function.BiPredicate
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
@@ -57,8 +57,9 @@ abstract class BaseManager(client: RestClient, esVersion: String, esNativeApi: B
   }
 
   private def requestRepeatPolicy[T <: SimpleResponse](shouldRepeat: T => Boolean): RetryPolicy[T] = {
-    new RetryPolicy[T]()
-      .handleIf(new BiPredicate[T, Throwable] {
+    RetryPolicy
+      .builder[T]()
+      .handleIf(new CheckedBiPredicate[T, Throwable] {
         override def test(response: T, ex: Throwable): Boolean = {
           ex != null || Try(shouldRepeat(response)).getOrElse(true)
         }
@@ -66,6 +67,7 @@ abstract class BaseManager(client: RestClient, esVersion: String, esNativeApi: B
       .withMaxRetries(20)
       .withDelay(Duration.ofMillis(500))
       .withMaxDuration(Duration.ofSeconds(10))
+      .build()
   }
 
   protected def additionalHeaders: Map[String, String] = Map.empty

@@ -38,7 +38,7 @@ dependencies {
     api group: 'commons-io',                     name: 'commons-io',                        version: '2.22.0'
     api group: 'org.apache.commons',             name: 'commons-lang3',                     version: '3.21.0'
     api group: 'org.apache.commons',             name: 'commons-text',                      version: '1.15.0'
-    api group: 'net.jodah',                      name: 'failsafe',                          version: '2.4.4'
+    api group: 'dev.failsafe',                   name: 'failsafe',                          version: '3.3.2'
     api group: 'org.gradle',                     name: 'gradle-tooling-api',                version: '9.8.2'
     api group: 'com.google.code.gson',           name: 'gson',                              version: '2.14.0'
     api group: 'org.apache.httpcomponents',      name: 'httpclient',                        version: '4.5.14'
