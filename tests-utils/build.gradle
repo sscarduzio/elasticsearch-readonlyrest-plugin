@@ -11,7 +11,7 @@ repositories {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(11)
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
@@ -62,12 +62,10 @@ dependencies {
     api group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                    version: "2.1.11"
     api group: 'com.unboundid',                  name: 'unboundid-ldapsdk',                 version: '7.0.4'
     api group: 'com.lihaoyi',                    name: 'upickle_3',                         version: '4.4.1'
-    api group: 'org.wiremock',                   name: 'wiremock',                          version: '3.13.2'
+    api group: 'org.wiremock',                   name: 'wiremock',                          version: '4.0.0-beta.40'
 
     constraints {
         api group: 'org.ow2.asm',                name: 'asm',                               version: '9.11.1'
-        // wiremock needs Guava at runtime. 33.7.2-jre is the CVE-2026-102554 floor.
-        api group: 'com.google.guava',           name: 'guava',                             version: '33.7.2-jre'
     }
 }
 

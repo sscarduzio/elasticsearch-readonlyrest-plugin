@@ -1,0 +1,39 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+// Compiles and runs the tests of a module on Java 17, while its main code keeps the module's own toolchain.
+// tests-utils targets Java 17 (WireMock 4 needs it). A module with a Java 11 toolchain cannot use tests-utils
+// without this plugin: Gradle refuses a Java 17 library on a Java 11 classpath, and a Java 11 JVM cannot load
+// Java 17 class files. The main classpaths and the published jar keep the Java 11 level.
+def testsJavaVersion = 17
+
+configurations.matching { it.name in ['testCompileClasspath', 'testRuntimeClasspath'] }.configureEach {
+    attributes { attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, testsJavaVersion) }
+}
+
+tasks.matching { it.name in ['compileTestScala', 'compileTestJava'] }.configureEach {
+    if (it.hasProperty('javaLauncher')) {
+        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(testsJavaVersion) }
+    }
+    if (it.hasProperty('javaCompiler')) {
+        javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(testsJavaVersion) }
+    }
+}
+
+tasks.withType(Test).configureEach {
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(testsJavaVersion) }
+}
