@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import cats.{Eq, Show}
-import com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Url
 import monix.eval.Task
@@ -30,9 +29,8 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.utils.AsyncCacheableActionWithKeyMappingAndTimeout
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.Hasher
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
-
-import java.nio.charset.Charset
 
 trait ExternalAuthenticationService extends Item {
   override type Id = Name
@@ -146,7 +144,7 @@ class CacheableExternalAuthenticationServiceDecorator(
   private def hashCredential(credentials: Credentials) = {
     HashedUserCredentials(
       credentials.user,
-      Hashing.sha256.hashString(credentials.secret.value.value, Charset.defaultCharset).toString
+      Hasher.Sha256.hashString(credentials.secret.value.value)
     )
   }
 

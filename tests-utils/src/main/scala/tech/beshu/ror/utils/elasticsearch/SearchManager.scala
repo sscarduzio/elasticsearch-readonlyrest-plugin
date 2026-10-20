@@ -164,6 +164,9 @@ class SearchManager(
     new HttpPost(client.from(s"/_search/scroll/$scrollId"))
   }
 
+  // The ES default `wait_for_completion_timeout` is 1 s. On a busy CI runner the search is then still
+  // running, and ES returns 200 with no hits and "is_running": true. AsyncSearchResult fails on such a
+  // response.
   private def createAsyncSearchRequest(indexNames: List[String], body: Option[JSON]) = {
     val request = new HttpPost(
       client.from(
@@ -171,7 +174,7 @@ class SearchManager(
           case Nil   => "/_async_search"
           case names => s"/${names.mkString(",")}/_async_search"
         },
-        Map("size" -> "10")
+        Map("size" -> "10", "wait_for_completion_timeout" -> "30s")
       )
     )
     body match {
@@ -241,7 +244,17 @@ class SearchManager(
   }
 
   class AsyncSearchResult(response: HttpResponse) extends BaseSearchResult(response) {
-    override lazy val searchHitsWithSettings: Value = force().responseJson("response")("hits")("hits")
+
+    override lazy val searchHitsWithSettings: Value = {
+      val json = force().responseJson
+      if (json.obj.get("is_running").exists(_.boolOpt.contains(true))) {
+        throw new IllegalStateException(
+          s"The _async_search did not complete in its wait_for_completion_timeout (\"is_running\": true). Response: $body"
+        )
+      }
+      json("response")("hits")("hits")
+    }
+
   }
 
   class MSearchResult(response: HttpResponse) extends JsonResponse(response) {

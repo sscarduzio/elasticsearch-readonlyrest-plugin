@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.utils;
 
-import com.google.common.collect.Sets;
+import tech.beshu.ror.utils.JavaUtils.Sets;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -65,7 +65,7 @@ public class ZeroKnowledgeMatchFilter {
         shouldReplace = true;
       }
     }
-    if (shouldReplace || !Sets.symmetricDifference(newIndices, indices).isEmpty()) {
+    if (shouldReplace || !newIndices.equals(indices)) {
       return newIndices;
     } else {
       // This means you don't need to replace at all.

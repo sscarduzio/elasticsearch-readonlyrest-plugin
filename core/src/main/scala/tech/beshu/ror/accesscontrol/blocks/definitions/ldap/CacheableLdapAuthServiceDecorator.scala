@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
-import com.google.common.hash.Hashing
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.CacheableLdapAuthenticationServiceDecorator.HashedUserCredentials
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
@@ -25,10 +24,9 @@ import tech.beshu.ror.accesscontrol.utils.{
   AsyncCacheableActionWithKeyMappingAndTimeout,
   AsyncCacheableActionWithTimeout
 }
+import tech.beshu.ror.utils.Hasher
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueList
-
-import java.nio.charset.Charset
 
 class CacheableLdapAuthenticationServiceDecorator(
     val underlying: LdapAuthenticationService,
@@ -61,7 +59,7 @@ class CacheableLdapAuthenticationServiceDecorator(
 
   private def hashCredential(value: (User.Id, PlainTextSecret)) = {
     val (user, secret) = value
-    HashedUserCredentials(user, Hashing.sha256.hashString(secret.value.value, Charset.defaultCharset).toString)
+    HashedUserCredentials(user, Hasher.Sha256.hashString(secret.value.value))
   }
 
   private def authenticateAction(value: (User.Id, PlainTextSecret))(

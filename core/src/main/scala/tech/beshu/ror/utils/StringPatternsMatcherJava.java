@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.utils;
 
-import com.google.common.collect.Sets;
 import scala.jdk.CollectionConverters;
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity;
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher;
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher$;
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable$;
+import tech.beshu.ror.utils.JavaUtils.Sets;
 import tech.beshu.ror.utils.set.CovariantSet;
 
 import java.util.Set;

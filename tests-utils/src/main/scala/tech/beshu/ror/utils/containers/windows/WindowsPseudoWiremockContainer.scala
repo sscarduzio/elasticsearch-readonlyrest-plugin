@@ -23,16 +23,28 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import com.github.tomakehurst.wiremock.standalone.JsonFileMappingsSource
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.ContainerUtils
+import tech.beshu.ror.utils.containers.Wiremock.WiremockContainer
 import tech.beshu.ror.utils.containers.windows.WindowsPseudoWiremockContainer.WindowsPseudoGenericContainerWiremock
 
 import java.io.File
 
-class WindowsPseudoWiremockContainer(val port: Int, mappings: List[String])
-    extends SingleContainer[GenericContainer[_]] {
+class WindowsPseudoWiremockContainer private (port: Int, mappings: List[String])
+    extends SingleContainer[GenericContainer[_]]
+    with WiremockContainer {
+
   override val container: GenericContainer[_] = new WindowsPseudoGenericContainerWiremock(port, mappings)
+
+  def originalPort: Int = port
+
+  def wireMockHost: String = "localhost"
+
+  def wireMockPort: Int = port
 }
 
 object WindowsPseudoWiremockContainer {
+
+  def create(port: Int, mappings: List[String]): WiremockContainer =
+    new WindowsPseudoWiremockContainer(port, mappings)
 
   private class WindowsPseudoGenericContainerWiremock(port: Int, mappings: List[String])
       extends WindowsPseudoContainer[WindowsPseudoGenericContainerWiremock] {

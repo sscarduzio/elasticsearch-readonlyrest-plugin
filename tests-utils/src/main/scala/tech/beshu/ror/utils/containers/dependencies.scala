@@ -40,7 +40,7 @@ object dependencies {
     val wiremock = Wiremock.create(mappings.toList, portWhenRunningOnWindows)
     DependencyDef(
       name = name,
-      container = wiremock.container,
+      container = wiremock,
       originalPort = wiremock.originalPort,
     )
   }
