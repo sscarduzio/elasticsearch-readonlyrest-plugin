@@ -42,7 +42,7 @@ object FileUtils {
     val digest = MessageDigest.getInstance("SHA-256")
     digest.update(filePath.toString.getBytes(UTF_8)) // Include file path in hash
     digest.update(Files.readAllBytes(filePath)) // Include file contents in hash
-    digest.digest.map("%02x".format(_)).mkString
+    digest.digest.map("%02x".formatLocal(Locale.ROOT, _)).mkString
   }
 
   def haveSameContent(first: Path, second: Path): Boolean = {

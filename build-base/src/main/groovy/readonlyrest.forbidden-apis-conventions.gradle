@@ -36,6 +36,7 @@ forbiddenApis {
         // scala.io.Source and other APIs without an explicit Codec
         "scala.io.Codec\$#fallbackSystemCodec() @ ${defaultCharset}",
         "scala.io.Codec\$#defaultCharsetCodec() @ ${defaultCharset}",
+        "scala.io.Codec\$#fileEncodingCodec() @ ${defaultCharset}",
         "scala.io.Codec\$#default() @ ${defaultCharset}",
         // better-files: a call without the charset argument gets DefaultCharset from these default argument methods
         "better.files.File#chars\$default\$1() @ ${defaultCharset}",
