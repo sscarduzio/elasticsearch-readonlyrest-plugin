@@ -20,8 +20,9 @@ import better.files.File
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 
 import java.io.{File => JFile, PrintWriter}
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, StandardCopyOption}
-import scala.io.Source
+import scala.io.{Codec, Source}
 import scala.util.Using
 
 private[patches] abstract class SecurityPolicyFileModifier extends FileModifier {
@@ -29,18 +30,17 @@ private[patches] abstract class SecurityPolicyFileModifier extends FileModifier 
   protected def addPermission(policyFile: File, permission: String): Unit = {
     val policyJFile = policyFile.toJava
     policyFile.replaceKeepingPermissionsAndOwner {
+      // The file is read completely before the temporary file is created. A read error then stops
+      // the change, and the original file stays as it is.
+      val lines = Using.resource(Source.fromFile(policyJFile)(Codec.UTF8))(_.getLines().toList)
       val tmp = new JFile(policyJFile.getPath + ".tmp") // Temporary File
-      Using(new PrintWriter(tmp)) { writer =>
-        Using(Source.fromFile(policyJFile)) { source =>
-          source
-            .getLines()
-            .zipWithIndex
-            .flatMap {
-              case (line, 1) => List(permission, line)
-              case (line, _) => List(line)
-            }
-            .foreach(line => writer.println(line))
-        }
+      Using.resource(new PrintWriter(tmp, StandardCharsets.UTF_8)) { writer =>
+        lines.zipWithIndex
+          .flatMap {
+            case (line, 1) => List(permission, line)
+            case (line, _) => List(line)
+          }
+          .foreach(line => writer.println(line))
       }
       // NOT File.renameTo: on Windows it fails when the destination exists, and it reports that by
       // returning false, so the permission would be dropped without a trace. Files.move throws instead.
