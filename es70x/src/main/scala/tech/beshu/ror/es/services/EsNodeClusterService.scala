@@ -330,10 +330,8 @@ class EsNodeClusterService(
   }
 
   private def indexAttributeFrom(indexMetadata: IndexMetaData): IndexAttribute = {
-    indexMetadata.getState.name().toRootUpperCase match {
-      case "CLOSED" => IndexAttribute.Closed
-      case _        => IndexAttribute.Opened
-    }
+    if (indexMetadata.getState == IndexMetaData.State.CLOSE) IndexAttribute.Closed
+    else IndexAttribute.Opened
   }
 
   private def allSnapshotsFrom(repository: RepositoryName.Full)(
