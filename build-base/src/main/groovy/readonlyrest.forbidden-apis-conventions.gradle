@@ -18,12 +18,64 @@
 // Fails the build when the main code calls a JDK method that uses the JVM default charset, locale or time zone
 // (signature set jdk-unsafe), for example String.toLowerCase() or String.getBytes(). The check reads the class
 // files, so it covers the Scala code too. Use the explicit form: toRootLowerCase, UTF_8 or Locale.ROOT.
+// A deliberate call takes @SuppressForbidden(reason = "...") on its method.
 plugins {
     id "de.thetaphi.forbiddenapis"
 }
 
+def defaultCharset = 'Uses the default charset. Pass UTF_8 explicitly.'
+
 forbiddenApis {
     bundledSignatures = ['jdk-unsafe']
+    // Calls that select the JVM default charset, but that jdk-unsafe does not contain
+    signatures = [
+        "java.nio.charset.Charset#defaultCharset() @ ${defaultCharset}",
+        // scala.io.Source and other APIs without an explicit Codec
+        "scala.io.Codec\$#fallbackSystemCodec() @ ${defaultCharset}",
+        "scala.io.Codec\$#defaultCharsetCodec() @ ${defaultCharset}",
+        "scala.io.Codec\$#default() @ ${defaultCharset}",
+        // better-files: a call without the charset argument gets DefaultCharset from these default argument methods
+        "better.files.File#chars\$default\$1() @ ${defaultCharset}",
+        "better.files.File#lines\$default\$1() @ ${defaultCharset}",
+        "better.files.File#lineCount\$default\$1() @ ${defaultCharset}",
+        "better.files.File#lineIterator\$default\$1() @ ${defaultCharset}",
+        "better.files.File#tokens\$default\$2(better.files.StringSplitter) @ ${defaultCharset}",
+        "better.files.File#contentAsString\$default\$1() @ ${defaultCharset}",
+        "better.files.File#appendLines\$default\$2(scala.collection.immutable.Seq) @ ${defaultCharset}",
+        "better.files.File#appendLine\$default\$2(java.lang.String) @ ${defaultCharset}",
+        "better.files.File#append\$default\$2(java.lang.String) @ ${defaultCharset}",
+        "better.files.File#appendText\$default\$2(java.lang.String) @ ${defaultCharset}",
+        "better.files.File#write\$default\$3(java.lang.String) @ ${defaultCharset}",
+        "better.files.File#writeText\$default\$3(java.lang.String) @ ${defaultCharset}",
+        "better.files.File#overwrite\$default\$3(java.lang.String) @ ${defaultCharset}",
+        "better.files.File#newBufferedReader\$default\$1() @ ${defaultCharset}",
+        "better.files.File#bufferedReader\$default\$1() @ ${defaultCharset}",
+        "better.files.File#newBufferedWriter\$default\$1() @ ${defaultCharset}",
+        "better.files.File#bufferedWriter\$default\$1() @ ${defaultCharset}",
+        "better.files.File#newScanner\$default\$2(better.files.StringSplitter) @ ${defaultCharset}",
+        "better.files.File#scanner\$default\$2(better.files.StringSplitter) @ ${defaultCharset}",
+        "better.files.File#zipInputStream\$default\$1() @ ${defaultCharset}",
+        "better.files.File#newZipInputStream\$default\$1() @ ${defaultCharset}",
+        "better.files.File#zipOutputStream\$default\$2() @ ${defaultCharset}",
+        "better.files.File#newZipOutputStream\$default\$2() @ ${defaultCharset}",
+        "better.files.File#zip\$default\$2(int) @ ${defaultCharset}",
+        "better.files.File#zipIn\$default\$3(scala.collection.Iterator,int) @ ${defaultCharset}",
+        "better.files.File#zipTo\$default\$3(better.files.File,int) @ ${defaultCharset}",
+        "better.files.File#unzip\$default\$2(scala.Function1) @ ${defaultCharset}",
+        "better.files.File#unzipTo\$default\$3(better.files.File,scala.Function1) @ ${defaultCharset}",
+        "better.files.File#streamedUnzip\$default\$2(better.files.File) @ ${defaultCharset}",
+        // better-files: no charset parameter at all
+        "better.files.File#printLines(scala.collection.IterableOnce,scala.collection.immutable.Seq) @ ${defaultCharset}",
+        "better.files.File#printWriter(boolean,scala.collection.immutable.Seq) @ ${defaultCharset}",
+        "better.files.File#newPrintWriter(boolean,scala.collection.immutable.Seq) @ ${defaultCharset}",
+        "better.files.File#fileReader() @ ${defaultCharset}",
+        "better.files.File#newFileReader() @ ${defaultCharset}",
+        "better.files.File#fileWriter(boolean) @ ${defaultCharset}",
+        "better.files.File#newFileWriter(boolean) @ ${defaultCharset}",
+    ].collect { it.toString() }
+    // Not every module has better-files or the Scala library on its classpath
+    ignoreSignaturesOfMissingClasses = true
+    suppressAnnotations = ['**.SuppressForbidden']
 }
 
 // Only the main code: the test code is not shipped, and some tests use the default charset on purpose
