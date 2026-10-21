@@ -29,6 +29,8 @@ import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 import tech.beshu.ror.utils.yaml.YamlParser
 
+import java.nio.charset.StandardCharsets
+
 final class ElasticsearchConfigLoader(file: File)(
     implicit systemContext: SystemContext
 ) {
@@ -60,7 +62,7 @@ final class ElasticsearchConfigLoader(file: File)(
   }
 
   private lazy val loadedSettingsJson: Either[LoadingError, Json] = {
-    file.fileReader { reader =>
+    file.bufferedReader(StandardCharsets.UTF_8) { reader =>
       yamlParser
         .parse(reader)
         .map(jsonWithOneLinerKeysToRegularJson)

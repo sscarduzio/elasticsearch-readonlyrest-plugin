@@ -22,6 +22,7 @@ import squants.information.Information
 import tech.beshu.ror.org.yaml.snakeyaml.LoaderOptions
 
 import java.io.{Reader, StringReader}
+import java.nio.charset.StandardCharsets
 
 class YamlParser(maxSize: Option[Information] = None) {
 
@@ -30,7 +31,7 @@ class YamlParser(maxSize: Option[Information] = None) {
   }
 
   def parse(file: File): Either[ParsingFailure, Json] = {
-    file.fileReader { reader => parse(reader) }
+    file.bufferedReader(StandardCharsets.UTF_8) { reader => parse(reader) }
   }
 
   def parse(yamlContent: String): Either[ParsingFailure, Json] = {

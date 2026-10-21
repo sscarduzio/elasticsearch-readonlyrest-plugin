@@ -27,12 +27,14 @@ import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsEr
 }
 import tech.beshu.ror.utils.yaml.{YamlOps, YamlParser}
 
+import java.nio.charset.StandardCharsets
+
 class RawRorSettingsYamlParser(maxSize: Information) {
 
   private val yamlParser: YamlParser = new YamlParser(Some(maxSize))
 
   def fromFile(file: File): Either[ParsingRorSettingsError, RawRorSettings] = {
-    fromString(file.contentAsString)
+    fromString(file.contentAsString(StandardCharsets.UTF_8))
   }
 
   def fromString(content: String): Either[ParsingRorSettingsError, RawRorSettings] = {

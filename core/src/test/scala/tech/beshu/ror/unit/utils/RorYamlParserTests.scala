@@ -16,14 +16,20 @@
  */
 package tech.beshu.ror.unit.utils
 
+import better.files.File
 import io.circe.Json
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import squants.information.{Bytes, Kilobytes, Megabytes}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
+import tech.beshu.ror.settings.ror.source.FileSettingsSource
 import tech.beshu.ror.utils.yaml.YamlParser
+
+import java.nio.charset.StandardCharsets
 
 class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
@@ -162,6 +168,36 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
         }
       }
     }
+    "read a settings file as UTF-8" when {
+      val nonAsciiYaml =
+        """
+          |readonlyrest:
+          |
+          |    access_control_rules:
+          |
+          |    - name: "zażółć gęślą jaźń"
+          |      auth_key: "admin:container"
+          |""".stripMargin
+
+      "the file is parsed by the ROR settings parser" in {
+        withUtf8File(nonAsciiYaml) { file =>
+          inside(settingsYamlParser.fromFile(file)) { case Right(settings) =>
+            settings.rawYaml shouldBe nonAsciiYaml
+          }
+        }
+      }
+      "the file is parsed by the YAML parser" in {
+        withUtf8File(nonAsciiYaml) { file =>
+          new YamlParser().parse(file) shouldBe new YamlParser().parse(nonAsciiYaml)
+        }
+      }
+      "the file is loaded by the file settings source" in {
+        withUtf8File(nonAsciiYaml) { file =>
+          val result = new FileSettingsSource[String](file).load()(RequestId("test")).runSyncUnsafe()
+          result shouldBe Right(nonAsciiYaml)
+        }
+      }
+    }
     "yaml parser relies on parsing numbers from yaml" when {
       "is represented as float" in {
         parseYaml("200.0") shouldEqual Json.fromBigDecimal(200)
@@ -200,4 +236,12 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
   private def parseYaml(yamlContent: String): Json =
     new YamlParser(Some(Kilobytes(100))).parse(yamlContent).toTry.get
+
+  private def withUtf8File[A](content: String)(f: File => A): A =
+    File
+      .temporaryFile()
+      .map(_.writeByteArray(content.getBytes(StandardCharsets.UTF_8)))
+      .map(f)
+      .get()
+
 }

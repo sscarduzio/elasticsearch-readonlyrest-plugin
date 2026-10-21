@@ -32,6 +32,8 @@ import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 
+import java.nio.charset.StandardCharsets
+
 class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
 
   private given PropertiesProvider = TestsPropertiesProvider.default
@@ -100,6 +102,18 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
         given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "ssl", "enable")
 
         loadWith[Option[String]](yaml) should be(Right(Some("true")))
+      }
+      "decode a value with non-ASCII characters from a UTF-8 file" in {
+        val yaml =
+          """
+            |readonlyrest:
+            |  settings:
+            |    file_path: /etc/ror/zażółć gęślą jaźń.yml
+            |""".stripMargin
+
+        given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "file_path")
+
+        loadWith[Option[String]](yaml) should be(Right(Some("/etc/ror/zażółć gęślą jaźń.yml")))
       }
     }
 
@@ -214,7 +228,7 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
     given SystemContext = new SystemContext(envVarsProvider = TestsEnvVarsProvider.usingMap(envVars))
     File
       .temporaryFile()
-      .map(_.write(content))
+      .map(_.writeByteArray(content.getBytes(StandardCharsets.UTF_8)))
       .map(file => new ElasticsearchConfigLoader(file).loadSettings[A]("test settings").runSyncUnsafe())
       .get()
   }
