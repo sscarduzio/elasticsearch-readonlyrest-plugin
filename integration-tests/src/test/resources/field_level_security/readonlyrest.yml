@@ -76,3 +76,13 @@ readonlyrest:
       auth_key: "user6:pass"
       indices: [ "manydocs" ]
       fields: ["_source", "user1" ]
+
+    - name: blacklist_regex_metacharacters
+      auth_key: "user7:pass"
+      indices: ["metachars"]
+      fields: ["~price(usd)"]
+
+    - name: blacklist_unbalanced_regex_metacharacter
+      auth_key: "user9:pass"
+      indices: ["metachars"]
+      fields: ["~a(b"]

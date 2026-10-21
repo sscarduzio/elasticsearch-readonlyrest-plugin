@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.utils
 
+import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
@@ -55,6 +56,44 @@ class FieldsPolicyTests extends AnyWordSpec {
       matcher.canKeep("item.endDate.text") should be(false)
       matcher.canKeep("item.endDate1") should be(true)
     }
+    "match regex metacharacters in field names literally" when {
+      "whitelist mode is used" in {
+        val matcher = policy(AccessMode.Whitelist, "price(usd)", "a[b]", "x*y")
+
+        matcher.canKeep("price(usd)") should be(true)
+        matcher.canKeep("priceusd") should be(false)
+        matcher.canKeep("a[b]") should be(true)
+        matcher.canKeep("ab") should be(false)
+        matcher.canKeep("x(1)y") should be(true)
+        matcher.canKeep("xy") should be(true)
+        matcher.canKeep("x") should be(false)
+      }
+      "blacklist mode is used" in {
+        val matcher = policy(AccessMode.Blacklist, "price(usd)", "a[b]", "x*y", "n+.v?")
+
+        matcher.canKeep("price(usd)") should be(false)
+        matcher.canKeep("priceusd") should be(true)
+        matcher.canKeep("a[b]") should be(false)
+        matcher.canKeep("ab") should be(true)
+        matcher.canKeep("x(1)y") should be(false)
+        matcher.canKeep("xy") should be(false)
+        matcher.canKeep("x") should be(true)
+        matcher.canKeep("n+.v?") should be(false)
+        matcher.canKeep("nn.v") should be(true)
+      }
+      "a field name is not a valid regex" in {
+        policy(AccessMode.Whitelist, "a(b").canKeep("a(b") should be(true)
+        policy(AccessMode.Blacklist, "a(b").canKeep("a(b") should be(false)
+      }
+    }
   }
+
+  private def policy(mode: AccessMode, fields: String*) =
+    new FieldsPolicy(
+      FieldsRestrictions(
+        UniqueNonEmptyList.unsafeFrom(fields.map(f => DocumentField(NonEmptyString.unsafeFrom(f)))),
+        mode
+      )
+    )
 
 }

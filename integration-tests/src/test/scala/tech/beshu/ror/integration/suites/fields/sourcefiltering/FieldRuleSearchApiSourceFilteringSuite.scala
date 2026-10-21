@@ -96,6 +96,27 @@ class FieldRuleSearchApiSourceFilteringSuite
     result.searchHits(0).obj.get("fields") shouldBe None
   }
 
+  "Fields rule should match regex metacharacters in field names literally" when {
+    "a blacklisted field name contains them" in {
+      val searchManager = new SearchManager(basicAuthClient("user7", "pass"), esVersionUsed)
+
+      val result = searchManager.search("metachars", ujson.read("""{"docvalue_fields": ["price(usd)", "priceusd"]}"""))
+
+      result should have statusCode 200
+      sourceOfFirstDoc(result) shouldBe Some(ujson.read("""{"priceusd": 2, "a(b": 3}"""))
+      result.searchHits(0).obj.get("fields") shouldBe Some(ujson.read("""{"priceusd": [2]}"""))
+    }
+    "a blacklisted field name is not a valid regex" in {
+      val searchManager = new SearchManager(basicAuthClient("user9", "pass"), esVersionUsed)
+
+      val result = searchManager.search("metachars", ujson.read("""{"docvalue_fields": ["a(b", "priceusd"]}"""))
+
+      result should have statusCode 200
+      sourceOfFirstDoc(result) shouldBe Some(ujson.read("""{"price(usd)": 1, "priceusd": 2}"""))
+      result.searchHits(0).obj.get("fields") shouldBe Some(ujson.read("""{"priceusd": [2]}"""))
+    }
+  }
+
   "Fields rule should work in case of many docs" when {
     "blacklist mode is used" in {
       val searchManager = new SearchManager(basicAuthClient("user5", "pass"), esVersionUsed)
@@ -138,6 +159,14 @@ object FieldRuleSearchApiSourceFilteringSuite {
         )
         .force()
     }
+
+    documentManager
+      .createDoc(
+        index = "metachars",
+        id = 1,
+        content = ujson.read("""{"price(usd)": 1, "priceusd": 2, "a(b": 3}""")
+      )
+      .force()
   }
 
 }

@@ -43,10 +43,7 @@ class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
     else {
       val foundMismatch = fieldParts
         .zip(enhancedField.fieldPartPatterns)
-        .exists { case (fieldPart, patternPart) =>
-          if (fieldPart == patternPart.pattern()) false
-          else !wildcardedPatternMatch(patternPart, fieldPart)
-        }
+        .exists { case (fieldPart, patternPart) => !patternPart.matches(fieldPart) }
       !foundMismatch
     }
   }
@@ -57,16 +54,9 @@ class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
     else {
       val foundMismatch = enhancedField.fieldPartPatterns
         .zip(fieldParts)
-        .forall { case (patternPart, fieldPart) =>
-          if (patternPart.pattern() == fieldPart) true
-          else wildcardedPatternMatch(patternPart, fieldPart)
-        }
+        .forall { case (patternPart, fieldPart) => patternPart.matches(fieldPart) }
       foundMismatch
     }
-  }
-
-  private def wildcardedPatternMatch(pattern: Pattern, value: String): Boolean = {
-    pattern.matcher(value).find()
   }
 
 }
@@ -75,14 +65,23 @@ object FieldsPolicy {
 
   private class EnhancedDocumentField(field: DocumentField) {
 
-    val fieldPartPatterns: List[Pattern] =
+    val fieldPartPatterns: List[FieldPartPattern] =
       field.value.value
         .split("\\.")
         .toList
-        .map { part =>
-          Pattern.compile(s"^${part.replace("*", ".*")}$$")
-        }
+        .map(FieldPartPattern.apply)
 
+  }
+
+  // One dot-separated part of a configured field name. `*` matches any characters.
+  // Every other character, regex metacharacters included, matches only itself.
+  private final class FieldPartPattern private (pattern: Pattern) {
+    def matches(fieldPart: String): Boolean = pattern.matcher(fieldPart).matches()
+  }
+
+  private object FieldPartPattern {
+    def apply(part: String): FieldPartPattern =
+      new FieldPartPattern(Pattern.compile(part.split("\\*", -1).map(Pattern.quote).mkString(".*")))
   }
 
 }
