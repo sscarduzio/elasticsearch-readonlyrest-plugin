@@ -40,6 +40,7 @@ import tech.beshu.ror.accesscontrol.utils.AsyncOps.deferFuture
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
+import java.nio.charset.StandardCharsets
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 import scala.util.control.Exception.catching
@@ -66,9 +67,22 @@ private class ApacheBasedSimpleHttpClient[F[_]: Async: ContextShift](client: Clo
       .map { response =>
         HttpClient.Response(
           status = response.getCode,
-          body = Option(response.getBodyText).getOrElse("") // getBodyText returns null for empty-body responses
+          body = bodyTextOf(response)
         )
       }
+  }
+
+  // Not SimpleHttpResponse.getBodyText: for a Content-Type without a charset (e.g. "application/json"),
+  // it decodes the body as US-ASCII and replaces each non-ASCII character. JSON is UTF-8 (RFC 8259).
+  private def bodyTextOf(response: SimpleHttpResponse): String = {
+    Option(response.getBodyBytes) match {
+      case Some(bytes) =>
+        val charset =
+          Option(response.getContentType).flatMap(ct => Option(ct.getCharset)).getOrElse(StandardCharsets.UTF_8)
+        new String(bytes, charset)
+      case None =>
+        "" // no body
+    }
   }
 
   override def close(): F[Unit] =
