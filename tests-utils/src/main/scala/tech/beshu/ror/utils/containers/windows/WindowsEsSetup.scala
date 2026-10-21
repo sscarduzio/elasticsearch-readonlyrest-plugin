@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.containers.windows.WindowsEsPortProvider.*
 import tech.beshu.ror.utils.containers.windows.WindowsEsRunner.{WindowsEsProcess, startEs}
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.function.Consumer
 import scala.language.postfixOps
 
@@ -91,12 +91,12 @@ object WindowsEsSetup extends LazyLogging {
     val esPorts = WindowsEsPortProvider.get(elasticsearch.config.nodeName)
     val file =
       elasticsearch.esConfigFile
-        .appendLine(s"http.port: ${esPorts.esPort}")(StandardCharsets.UTF_8)
-        .appendLine(s"transport.port: ${esPorts.transportPort}")(StandardCharsets.UTF_8)
+        .appendLine(s"http.port: ${esPorts.esPort}")(UTF_8)
+        .appendLine(s"transport.port: ${esPorts.transportPort}")(UTF_8)
         .replaceLineWithPrefix("network.host:", "network.host: 127.0.0.1")
 
     // Replace all names of other ES hosts with 127.0.0.1 address with correct transport port
-    val lines = file.contentAsString(StandardCharsets.UTF_8).linesIterator.toList
+    val lines = file.contentAsString(UTF_8).linesIterator.toList
     val updatedContent = lines.head + "\n" +
       esNodeNameToEsPorts.foldLeft(lines.tail.mkString("\n")) {
         case (content, (oldValue, WindowsEsPorts(_, transportPort))) =>
@@ -104,7 +104,7 @@ object WindowsEsSetup extends LazyLogging {
       }
 
     file
-      .overwrite(updatedContent)(charset = StandardCharsets.UTF_8)
+      .overwrite(updatedContent)(charset = UTF_8)
       .copyTo(
         File(configFilePath(elasticsearch.config.clusterName, elasticsearch.config.nodeName).toString),
         overwrite = true
@@ -114,7 +114,7 @@ object WindowsEsSetup extends LazyLogging {
   extension (file: File)
 
     private def replaceLineWithPrefix(prefix: String, newLine: String): File =
-      val updated = file.lines(StandardCharsets.UTF_8).map(line => if (line.startsWith(prefix)) newLine else line)
-      file.overwrite(updated.mkString("\n"))(charset = StandardCharsets.UTF_8)
+      val updated = file.lines(UTF_8).map(line => if (line.startsWith(prefix)) newLine else line)
+      file.overwrite(updated.mkString("\n"))(charset = UTF_8)
 
 }

@@ -35,7 +35,7 @@ import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.attribute.{BasicFileAttributes, PosixFileAttributeView, PosixFileAttributes, PosixFilePermissions}
 import java.nio.file.{Files, Path}
 import java.util.UUID
@@ -452,7 +452,7 @@ class RorToolsAppSuite
       )
 
       patchMetadataFile.exists() should be(true)
-      val metadata = EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString(StandardCharsets.UTF_8)).toOption.get
+      val metadata = EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString(UTF_8)).toOption.get
 
       patchMetadataFile.delete()
       patchMetadataFile.exists() should be(false)
@@ -965,11 +965,11 @@ class RorToolsAppSuite
   }
 
   private def readMetadataFile(): EsPatchMetadata = {
-    EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString(StandardCharsets.UTF_8)).toOption.get
+    EsPatchMetadataCodec.decode(patchMetadataFile.contentAsString(UTF_8)).toOption.get
   }
 
   private def modifyMetadataFile(f: EsPatchMetadata => EsPatchMetadata): Unit = {
-    patchMetadataFile.overwrite(EsPatchMetadataCodec.encode(f(readMetadataFile())))(charset = StandardCharsets.UTF_8)
+    patchMetadataFile.overwrite(EsPatchMetadataCodec.encode(f(readMetadataFile())))(charset = UTF_8)
   }
 
   private def captureResultAndOutput(

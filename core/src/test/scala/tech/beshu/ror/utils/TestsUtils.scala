@@ -79,7 +79,7 @@ import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import tech.beshu.ror.utils.yaml.{JsonPathOps, YamlParser}
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
 import java.time.Duration
 import java.util.Base64
@@ -102,7 +102,7 @@ object TestsUtils {
   def basicAuthHeader(value: String): Header =
     new Header(
       Header.Name.authorization,
-      NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(value.getBytes(StandardCharsets.UTF_8))}")
+      NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(value.getBytes(UTF_8))}")
     )
 
   def bearerHeader(rawValue: String): Header =
@@ -475,7 +475,7 @@ object TestsUtils {
   }
 
   def getResourceContent(resource: String): String = {
-    File(getResourcePath(resource)).contentAsString(StandardCharsets.UTF_8)
+    File(getResourcePath(resource)).contentAsString(UTF_8)
   }
 
   def circeJsonFrom(jsonString: String): Json = {
@@ -485,7 +485,7 @@ object TestsUtils {
   def createEsEnv(configDir: File): EsEnv = {
     def loadPathFrom[T: Decoder](configDir: File, path: NonEmptyList[String], default: T): T = {
       val json =
-        rorYamlParser.parse((configDir / "elasticsearch.yml").contentAsString(StandardCharsets.UTF_8)).toTry.get
+        rorYamlParser.parse((configDir / "elasticsearch.yml").contentAsString(UTF_8)).toTry.get
       val nesPath = path.map(NonEmptyString.unsafeFrom)
       JsonPathOps.focusAt(json, nesPath).flatMap(_.as[T].toOption).getOrElse(default)
     }
@@ -506,9 +506,9 @@ object TestsUtils {
 
   def withEsEnv[T](esConfigYaml: String, additionalFiles: Map[String, String] = Map.empty)(f: (EsEnv, File) => T): T =
     Using.resource(File.newTemporaryDirectory()) { configDir =>
-      (configDir / "elasticsearch.yml").writeText(esConfigYaml)(charset = StandardCharsets.UTF_8)
+      (configDir / "elasticsearch.yml").writeText(esConfigYaml)(charset = UTF_8)
       additionalFiles.foreach { case (name, content) =>
-        (configDir / name).writeText(content)(charset = StandardCharsets.UTF_8)
+        (configDir / name).writeText(content)(charset = UTF_8)
       }
       f(createEsEnv(configDir), configDir)
     }

@@ -22,7 +22,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 
-import java.nio.charset.{CharacterCodingException, StandardCharsets}
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.StandardCharsets.UTF_8
 
 class SecurityPolicyFileModifierSuite extends AnyWordSpec with Matchers {
 
@@ -41,12 +42,12 @@ class SecurityPolicyFileModifierSuite extends AnyWordSpec with Matchers {
               "  permission java.io.FilePermission \"/tmp/ż\", \"read\";",
               "};"
             )
-              .getBytes(StandardCharsets.UTF_8)
+              .getBytes(UTF_8)
           )
 
         modifier(policyFile)
 
-        new String(policyFile.byteArray, StandardCharsets.UTF_8) should be(
+        new String(policyFile.byteArray, UTF_8) should be(
           policyLines(
             "grant {",
             "permission java.lang.RuntimePermission \"createClassLoader\";",
@@ -60,7 +61,7 @@ class SecurityPolicyFileModifierSuite extends AnyWordSpec with Matchers {
     "fail and keep the policy file as it is when the file is not valid UTF-8" in {
       File.usingTemporaryDirectory() { directory =>
         val content =
-          "grant {".getBytes(StandardCharsets.UTF_8) ++ Array(0xff.toByte) ++ "\n};\n".getBytes(StandardCharsets.UTF_8)
+          "grant {".getBytes(UTF_8) ++ Array(0xff.toByte) ++ "\n};\n".getBytes(UTF_8)
         val policyFile = (directory / "plugin-security.policy").writeByteArray(content)
 
         a[CharacterCodingException] should be thrownBy modifier(policyFile)

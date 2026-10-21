@@ -37,7 +37,7 @@ import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 
 class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
@@ -214,7 +214,7 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
           .withHeaders(
             header(
               "Authorization",
-              "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes(StandardCharsets.UTF_8))
+              "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes(UTF_8))
             )
           )
           .copy(filteredIndices = Set(requestedIndex("g34_index")))

@@ -22,7 +22,7 @@ import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.{Keys, MacAlgorithm}
 import tech.beshu.ror.utils.misc.JwtUtils.Jwt.Secret
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 
@@ -35,7 +35,7 @@ object JwtUtils {
         case Secret.NotPresent           => Jwts.builder
         case Secret.Key(value)           => Jwts.builder.signWith(value)
         case Secret.KeyWithAlg(alg, key) =>
-          Jwts.builder.signWith(Keys.hmacShaKeyFor(key.getBytes(StandardCharsets.UTF_8)), alg)
+          Jwts.builder.signWith(Keys.hmacShaKeyFor(key.getBytes(UTF_8)), alg)
       }
       builder
         .subject("test")

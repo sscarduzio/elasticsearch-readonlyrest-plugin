@@ -33,7 +33,7 @@ import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
@@ -88,7 +88,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
               "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                .getBytes(StandardCharsets.UTF_8)
+                .getBytes(UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "arbitrary_group_name")
           )
@@ -110,7 +110,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
               "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                .getBytes(StandardCharsets.UTF_8)
+                .getBytes(UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "group_in_jwt_token")
           )
@@ -134,7 +134,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
               "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                .getBytes(StandardCharsets.UTF_8)
+                .getBytes(UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := List("viewer_group"))
           )
@@ -167,7 +167,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
               "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                .getBytes(StandardCharsets.UTF_8)
+                .getBytes(UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "")
           )
@@ -185,7 +185,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
               "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                .getBytes(StandardCharsets.UTF_8)
+                .getBytes(UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "arbitrary_group_name")
           )

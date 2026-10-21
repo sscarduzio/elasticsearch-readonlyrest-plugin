@@ -20,7 +20,7 @@ import better.files.File
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 
 import java.io.{File => JFile, PrintWriter}
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, StandardCopyOption}
 import scala.io.{Codec, Source}
 import scala.util.Using
@@ -34,7 +34,7 @@ private[patches] abstract class SecurityPolicyFileModifier extends FileModifier 
       // the change, and the original file stays as it is.
       val lines = Using.resource(Source.fromFile(policyJFile)(Codec.UTF8))(_.getLines().toList)
       val tmp = new JFile(policyJFile.getPath + ".tmp") // Temporary File
-      Using.resource(new PrintWriter(tmp, StandardCharsets.UTF_8)) { writer =>
+      Using.resource(new PrintWriter(tmp, UTF_8)) { writer =>
         lines.zipWithIndex
           .flatMap {
             case (line, 1) => List(permission, line)

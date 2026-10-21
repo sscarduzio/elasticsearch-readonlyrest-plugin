@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.utils
 import better.files.File
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.attribute.{
   DosFileAttributeView,
   DosFileAttributes,
@@ -40,7 +40,7 @@ object FileUtils {
 
   def calculateFileHash(filePath: Path): String = {
     val digest = MessageDigest.getInstance("SHA-256")
-    digest.update(filePath.toString.getBytes(StandardCharsets.UTF_8)) // Include file path in hash
+    digest.update(filePath.toString.getBytes(UTF_8)) // Include file path in hash
     digest.update(Files.readAllBytes(filePath)) // Include file contents in hash
     digest.digest.map("%02x".format(_)).mkString
   }

@@ -40,7 +40,7 @@ import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTes
 import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils.*
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.security.KeyPairGenerator
 import java.util.Base64
 
@@ -121,7 +121,7 @@ class JwtAuthenticationRuleSettingsTests extends BaseRuleSettingsDecoderTest[Jwt
                     |""".stripMargin,
           assertion = rule => {
             inside(rule.settings.jwt.checkMethod) { case SignatureCheckMethod.Hmac(key) =>
-              key.toList should be(signatureKey.getBytes(StandardCharsets.UTF_8).toList)
+              key.toList should be(signatureKey.getBytes(UTF_8).toList)
             }
           }
         )

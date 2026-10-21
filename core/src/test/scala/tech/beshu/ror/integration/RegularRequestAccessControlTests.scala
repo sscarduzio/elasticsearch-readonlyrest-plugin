@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, unsafeNes}
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 
 class RegularRequestAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
@@ -82,7 +82,7 @@ class RegularRequestAccessControlTests extends AnyWordSpec with BaseYamlLoadedAc
           new Header(
             Name(NonEmptyString.unsafeFrom("authorization")),
             NonEmptyString.unsafeFrom(
-              "Basic " + Base64.getEncoder.encodeToString("admin:container".getBytes(StandardCharsets.UTF_8))
+              "Basic " + Base64.getEncoder.encodeToString("admin:container".getBytes(UTF_8))
             )
           )
         )

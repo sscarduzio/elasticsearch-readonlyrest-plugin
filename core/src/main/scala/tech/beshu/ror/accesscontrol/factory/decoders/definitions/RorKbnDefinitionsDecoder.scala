@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCre
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.toRootUpperCase
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 object RorKbnDefinitionsDecoder {
 
@@ -87,7 +87,7 @@ object RorKbnDefinitionsDecoder {
       checkMethod <- alg.map(_.toRootUpperCase) match {
         case Some("HMAC") | None =>
           decodeSignatureKey
-            .map(_.getBytes(StandardCharsets.UTF_8))
+            .map(_.getBytes(UTF_8))
             .map(SignatureCheckMethod.Hmac.apply)
         case Some("RSA") =>
           decodeSignatureKey

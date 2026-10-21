@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
 
@@ -228,7 +228,7 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
     given SystemContext = new SystemContext(envVarsProvider = TestsEnvVarsProvider.usingMap(envVars))
     File
       .temporaryFile()
-      .map(_.writeByteArray(content.getBytes(StandardCharsets.UTF_8)))
+      .map(_.writeByteArray(content.getBytes(UTF_8)))
       .map(file => new ElasticsearchConfigLoader(file).loadSettings[A]("test settings").runSyncUnsafe())
       .get()
   }

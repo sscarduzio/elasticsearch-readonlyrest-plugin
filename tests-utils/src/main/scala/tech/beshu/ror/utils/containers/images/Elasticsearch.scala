@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager
 import tech.beshu.ror.utils.containers.{ContainerUtils, DockerHubMirror}
 import tech.beshu.ror.utils.misc.{JDK, Version}
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 object Elasticsearch {
 
@@ -361,8 +361,8 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
   def esConfigFile: File = {
     val file = File
       .newTemporaryFile()
-      .appendLines(updateEsConfigBuilderFromPlugins(baseEsConfigBuilder).entries: _*)(StandardCharsets.UTF_8)
-    logger.info(s"elasticsearch.yml content:\n${file.contentAsString(StandardCharsets.UTF_8)}")
+      .appendLines(updateEsConfigBuilderFromPlugins(baseEsConfigBuilder).entries: _*)(UTF_8)
+    logger.info(s"elasticsearch.yml content:\n${file.contentAsString(UTF_8)}")
     file
   }
 

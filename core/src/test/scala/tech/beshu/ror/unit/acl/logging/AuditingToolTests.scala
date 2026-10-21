@@ -62,7 +62,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.attribute.PosixFilePermission
 import java.time.*
 import java.util.UUID
@@ -369,7 +369,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           auditLogFile.overwrite("")
 
           auditingTool.audit(responseContext).runSyncUnsafe()
-          val logFileContent = auditLogFile.contentAsString(StandardCharsets.UTF_8)
+          val logFileContent = auditLogFile.contentAsString(UTF_8)
 
           logFileContent should include(requestContextId.value)
         }
@@ -414,7 +414,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             .toOption
             .get
 
-          filePathAuditLog.contentAsString(StandardCharsets.UTF_8) shouldBe empty
+          filePathAuditLog.contentAsString(UTF_8) shouldBe empty
 
           val requestContextId = RequestContext.Id.fromString(UUID.randomUUID().toString)
           val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = requestContextId)
@@ -423,7 +423,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           auditingTool.audit(responseContext).runSyncUnsafe()
           auditingTool.close().runSyncUnsafe()
 
-          filePathAuditLog.contentAsString(StandardCharsets.UTF_8) should include(requestContextId.value)
+          filePathAuditLog.contentAsString(UTF_8) should include(requestContextId.value)
         }
         "should write to custom log file when defaultAclLog is also enabled" in {
           val customLogFile = File("/tmp/ror/audit_logs/test_both_outputs_audit.log")
@@ -472,7 +472,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           auditingTool.audit(responseContext).runSyncUnsafe()
           auditingTool.close().runSyncUnsafe()
 
-          customLogFile.contentAsString(StandardCharsets.UTF_8) should include(requestContextId.value)
+          customLogFile.contentAsString(UTF_8) should include(requestContextId.value)
         }
       }
     }

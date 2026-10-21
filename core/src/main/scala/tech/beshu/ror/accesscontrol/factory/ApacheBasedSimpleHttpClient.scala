@@ -40,7 +40,7 @@ import tech.beshu.ror.accesscontrol.utils.AsyncOps.deferFuture
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 import scala.util.control.Exception.catching
@@ -78,7 +78,7 @@ private class ApacheBasedSimpleHttpClient[F[_]: Async: ContextShift](client: Clo
     Option(response.getBodyBytes) match {
       case Some(bytes) =>
         val charset =
-          Option(response.getContentType).flatMap(ct => Option(ct.getCharset)).getOrElse(StandardCharsets.UTF_8)
+          Option(response.getContentType).flatMap(ct => Option(ct.getCharset)).getOrElse(UTF_8)
         new String(bytes, charset)
       case None =>
         "" // no body

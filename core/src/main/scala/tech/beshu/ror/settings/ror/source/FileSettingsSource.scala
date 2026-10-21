@@ -26,7 +26,7 @@ import tech.beshu.ror.settings.ror.source.FileSettingsSource.LoadingError.FileNo
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError.SourceSpecificError
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
     extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
@@ -45,7 +45,7 @@ class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
 
   private def loadSettingsFromFile(file: File): EitherT[Task, FileSettingsLoadingError, SETTINGS] = {
     EitherT
-      .pure[Task, FileSettingsLoadingError](file.contentAsString(StandardCharsets.UTF_8))
+      .pure[Task, FileSettingsLoadingError](file.contentAsString(UTF_8))
       .subflatMap { raw =>
         Json
           .fromString(raw)

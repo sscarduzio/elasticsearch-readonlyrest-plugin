@@ -21,7 +21,7 @@ import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.httpclient.RestClient
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 
 object providers {
@@ -36,7 +36,7 @@ object providers {
       val rorMetadataJsonString =
         s"""{ "headers": [ ${headers.map { case (name, value) => s"\"$name:$value\"" }.mkString(",")} ] }"""
       val basicAuthWithRorMetadata =
-        s"Basic ${encoder.encodeToString(userPassString.getBytes(StandardCharsets.UTF_8))}, ror_metadata=${encoder.encodeToString(rorMetadataJsonString.getBytes(StandardCharsets.UTF_8))}"
+        s"Basic ${encoder.encodeToString(userPassString.getBytes(UTF_8))}, ror_metadata=${encoder.encodeToString(rorMetadataJsonString.getBytes(UTF_8))}"
       client(Credentials.Token(basicAuthWithRorMetadata))
     }
 

@@ -20,11 +20,12 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import org.apache.commons.codec.digest.DigestUtils
 
-import java.nio.charset.{Charset, StandardCharsets}
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 
 trait Hasher {
-  def hashString(input: String, charset: Charset = StandardCharsets.UTF_8): String
+  def hashString(input: String, charset: Charset = UTF_8): String
 }
 
 object Hasher {

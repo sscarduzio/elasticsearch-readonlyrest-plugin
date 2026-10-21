@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 class RorKbnAuthnAndAuthzYamlLoadedAccessControlTests
     extends AnyWordSpec
@@ -90,7 +90,7 @@ class RorKbnAuthnAndAuthzYamlLoadedAccessControlTests
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
               "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                .getBytes(StandardCharsets.UTF_8)
+                .getBytes(UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "")
           )

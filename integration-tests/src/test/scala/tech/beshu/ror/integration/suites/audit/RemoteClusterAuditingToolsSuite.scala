@@ -37,7 +37,7 @@ import tech.beshu.ror.utils.elasticsearch.{
 import tech.beshu.ror.utils.misc.OsUtils.{CurrentOs, ignoreOnWindows}
 import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.UUID
 import scala.concurrent.duration.*
 
@@ -100,7 +100,7 @@ class RemoteClusterAuditingToolsSuite
   override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] =
     NonEmptyList.fromListUnsafe(auditEsContainers)
 
-  override protected def baseRorSettingsYaml: String = resolvedRorSettingsFile.contentAsString(StandardCharsets.UTF_8)
+  override protected def baseRorSettingsYaml: String = resolvedRorSettingsFile.contentAsString(UTF_8)
 
   override protected def baseAuditDataStreamName: Option[String] =
     Option.when(isDataStreamSupported)("audit_data_stream")

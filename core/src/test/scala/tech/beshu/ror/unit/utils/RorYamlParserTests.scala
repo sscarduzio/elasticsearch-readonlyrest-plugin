@@ -29,7 +29,7 @@ import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
 import tech.beshu.ror.settings.ror.source.FileSettingsSource
 import tech.beshu.ror.utils.yaml.YamlParser
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
@@ -240,7 +240,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
   private def withUtf8File[A](content: String)(f: File => A): A =
     File
       .temporaryFile()
-      .map(_.writeByteArray(content.getBytes(StandardCharsets.UTF_8)))
+      .map(_.writeByteArray(content.getBytes(UTF_8)))
       .map(f)
       .get()
 

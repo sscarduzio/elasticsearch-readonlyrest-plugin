@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient.Method
 import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient.Config
 
 import java.net.InetSocketAddress
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 
 class ApacheBasedSimpleHttpClientTests extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
@@ -40,13 +40,13 @@ class ApacheBasedSimpleHttpClientTests extends AnyWordSpec with Matchers with Be
   private lazy val client = clientsFactory.create(Config.default)
 
   override protected def beforeAll(): Unit = {
-    respond("/json-without-charset", Some("application/json"), nonAsciiJson.getBytes(StandardCharsets.UTF_8))
+    respond("/json-without-charset", Some("application/json"), nonAsciiJson.getBytes(UTF_8))
     respond(
       "/json-with-charset",
       Some("application/json; charset=ISO-8859-1"),
-      "café".getBytes(StandardCharsets.ISO_8859_1)
+      "café".getBytes(ISO_8859_1)
     )
-    respond("/no-content-type", None, nonAsciiJson.getBytes(StandardCharsets.UTF_8))
+    respond("/no-content-type", None, nonAsciiJson.getBytes(UTF_8))
     respond("/empty", Some("application/json"), Array.emptyByteArray)
     server.start()
   }
