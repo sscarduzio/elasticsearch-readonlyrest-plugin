@@ -34,7 +34,8 @@ class RorAuditDataStreamTests extends AnyWordSpec with TableDrivenPropertyChecks
           "stream123",
           "data-stream-99",
           "valid_stream",
-          "a" * 255 // Exactly 255 bytes in length
+          "a" * 255, // Exactly 255 bytes in length
+          "ą" * 127 + "a" // Exactly 255 bytes in UTF-8 ('ą' is 2 bytes)
         )
       ) { dataStream =>
         createRorAuditDataStream(dataStream) shouldBe a[Right[_, RorAuditDataStream]]
@@ -63,6 +64,7 @@ class RorAuditDataStreamTests extends AnyWordSpec with TableDrivenPropertyChecks
           ("..", forbiddenNameError),
           ("a" * 256, maxSizeExceededError), // Exceeds 255 bytes
           ("😊" * 85, maxSizeExceededError), // Exceeds 255 bytes due to multi-byte encoding
+          ("ą" * 128, maxSizeExceededError), // 128 characters, but 256 bytes in UTF-8
         )
       ) { case (dataStream: String, errorCause) =>
         createRorAuditDataStream(dataStream) shouldBe Left(error(dataStream, errorCause))

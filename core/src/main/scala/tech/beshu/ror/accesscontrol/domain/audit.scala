@@ -28,6 +28,7 @@ import tech.beshu.ror.utils.NonEmptyStringOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+import java.nio.charset.StandardCharsets
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
@@ -138,7 +139,10 @@ object RorAuditDataStream {
       ),
       (value => forbiddenPrefixes.exists(value.startsWith), s"name must not start with ${forbiddenPrefixes.show}"),
       (value => forbiddenVariants.contains(value), s"name cannot be any of ${forbiddenVariants.show}"),
-      (value => value.getBytes.length > maxBytes, s"name must be not longer than 255 bytes"),
+      (
+        value => value.getBytes(StandardCharsets.UTF_8).length > maxBytes,
+        s"name must be not longer than $maxBytes bytes"
+      ),
     )
       .map { case (test, errorMsg) =>
         Validated.cond(!test(value.value), (), errorMsg).toValidatedNel
