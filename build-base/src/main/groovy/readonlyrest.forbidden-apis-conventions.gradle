@@ -24,11 +24,14 @@ plugins {
 }
 
 def defaultCharset = 'Uses the default charset. Pass UTF_8 explicitly.'
+def defaultLocale = 'Uses the default locale. Use formatLocal(Locale.ROOT, ...).'
 
 forbiddenApis {
     bundledSignatures = ['jdk-unsafe']
-    // Calls that select the JVM default charset, but that jdk-unsafe does not contain
+    // Calls that select the JVM default charset or locale, but that jdk-unsafe does not contain
     signatures = [
+        // Scala "...".format(...) and f"..." call String.format without a Locale, inside scala-library
+        "scala.collection.StringOps\$#format\$extension(java.lang.String,scala.collection.immutable.Seq) @ ${defaultLocale}",
         "java.nio.charset.Charset#defaultCharset() @ ${defaultCharset}",
         // scala.io.Source and other APIs without an explicit Codec
         "scala.io.Codec\$#fallbackSystemCodec() @ ${defaultCharset}",
