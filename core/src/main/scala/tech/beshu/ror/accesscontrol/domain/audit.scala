@@ -26,12 +26,12 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.NonEmptyStringOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.SuppressForbidden
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
-import java.util.Locale
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
@@ -75,11 +75,16 @@ object RorAuditIndexTemplate {
   }
 
   private def formatterOfPattern(pattern: NonEmptyString): Either[CreationError.ParsingError, DateTimeFormatter] = {
-    Try(DateTimeFormatter.ofPattern(pattern.value, Locale.ROOT).withZone(ZoneId.of("UTC"))) match {
+    Try(formatterInNodeLocale(pattern.value).withZone(ZoneId.of("UTC"))) match {
       case Success(formatter) => Right(formatter)
       case Failure(ex)        => Left(CreationError.ParsingError(ex.getMessage))
     }
   }
+
+  // Text fields (MMM, EEE) give a valid lowercase index name only in some locales, e.g. "oct." in French.
+  // Locale.ROOT gives "Oct", which ES rejects, so it would break the audit of these nodes.
+  @SuppressForbidden(reason = "An audit index name with text date fields depends on the node locale")
+  private def formatterInNodeLocale(pattern: String): DateTimeFormatter = DateTimeFormatter.ofPattern(pattern)
 
   private def rorAuditIndexPattern(pattern: NonEmptyString): Either[CreationError.ParsingError, IndexPattern] = {
     pattern.replaceDateTimePatternWithWildcard match {
