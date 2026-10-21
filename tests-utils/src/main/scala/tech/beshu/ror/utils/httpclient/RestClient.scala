@@ -35,6 +35,7 @@ import org.apache.http.util.EntityUtils
 import org.apache.http.{Header, HttpResponse}
 
 import java.net.URI
+import java.nio.charset.StandardCharsets
 import scala.annotation.nowarn
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
@@ -141,7 +142,7 @@ class RestClient(ssl: Boolean, host: String, port: Int, basicAuth: Option[(Strin
 object RestClient {
 
   def bodyFrom(response: HttpResponse): String = {
-    EntityUtils.toString(response.getEntity)
+    EntityUtils.toString(response.getEntity, StandardCharsets.UTF_8)
   }
 
 }

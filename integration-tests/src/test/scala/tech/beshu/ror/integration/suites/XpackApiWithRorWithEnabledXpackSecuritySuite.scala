@@ -25,6 +25,7 @@ import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, Search
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
 
+import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
@@ -180,7 +181,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
         val apiKeyId = createResponse.responseJson("id").str
         val apiKeyValue = createResponse.responseJson("api_key").str
-        val encodedKey = Base64.getEncoder.encodeToString(s"$apiKeyId:$apiKeyValue".getBytes)
+        val encodedKey = Base64.getEncoder.encodeToString(s"$apiKeyId:$apiKeyValue".getBytes(StandardCharsets.UTF_8))
 
         val agentSearchManager = new SearchManager(tokenAuthClient(s"ApiKey $encodedKey"), esVersionUsed)
         val searchResponse = agentSearchManager.search(".apm-agent-configuration")
@@ -197,7 +198,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         createResponse should have statusCode 200
         val apiKeyId = createResponse.responseJson("id").str
         val apiKeyValue = createResponse.responseJson("api_key").str
-        val encodedKey = Base64.getEncoder.encodeToString(s"$apiKeyId:$apiKeyValue".getBytes)
+        val encodedKey = Base64.getEncoder.encodeToString(s"$apiKeyId:$apiKeyValue".getBytes(StandardCharsets.UTF_8))
 
         val updateResponse = adminXpackApiManager.updateApiKey(apiKeyId)
         updateResponse should have statusCode 200
@@ -213,7 +214,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         val keyId1 = createResponse1.responseJson("id").str
         val keyId2 = createResponse2.responseJson("id").str
         val keyValue1 = createResponse1.responseJson("api_key").str
-        val encodedKey1 = Base64.getEncoder.encodeToString(s"$keyId1:$keyValue1".getBytes)
+        val encodedKey1 = Base64.getEncoder.encodeToString(s"$keyId1:$keyValue1".getBytes(StandardCharsets.UTF_8))
 
         val bulkUpdateResponse = adminXpackApiManager.bulkUpdateApiKeys(keyId1, keyId2)
         bulkUpdateResponse should have statusCode 200
