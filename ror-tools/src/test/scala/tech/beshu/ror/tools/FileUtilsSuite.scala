@@ -19,16 +19,32 @@ package tech.beshu.ror.tools
 import better.files.File
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.tools.core.utils.FileUtils
 import tech.beshu.ror.tools.core.utils.FileUtils.replaceKeepingPermissionsAndOwner
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.attribute.{DosFileAttributeView, DosFileAttributes}
 import java.nio.file.{Files, StandardCopyOption}
+import java.security.MessageDigest
 
 class FileUtilsSuite extends AnyWordSpec with Matchers {
 
   "FileUtils" should {
+    "hash a file using the UTF-8 bytes of its non-ASCII path" in {
+      File.usingTemporaryDirectory() { directory =>
+        val content = "content".getBytes(StandardCharsets.UTF_8)
+        val file = (directory / "zażółć gęślą jaźń.jar").writeByteArray(content)
+
+        val digest = MessageDigest.getInstance("SHA-256")
+        digest.update(file.path.toString.getBytes(StandardCharsets.UTF_8))
+        digest.update(content)
+        val expectedHash = digest.digest.map("%02x".format(_)).mkString
+
+        FileUtils.calculateFileHash(file.path) should be(expectedHash)
+      }
+    }
     // The read-only and archive flags are different from the flags of a new file. Each case sets only one of the
     // hidden and system flags, so the test finds a flag that is not restored, and a restore that swaps the two flags.
     List(

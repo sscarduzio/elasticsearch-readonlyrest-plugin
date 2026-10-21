@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.regex.Pattern as RegexPattern
 import scala.language.{implicitConversions, postfixOps}
@@ -91,7 +92,7 @@ object headerValues {
 
     val fieldsJsonString = upickle.default.write(fieldsRestrictions)
     NonEmptyString.unsafeFrom(
-      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes("UTF-8"))
+      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes(StandardCharsets.UTF_8))
     )
   }
 
