@@ -20,6 +20,7 @@ import tech.beshu.ror.gradle.utils.PluginArtifact
 
 plugins {
     id "readonlyrest.base-common-conventions"
+    id "readonlyrest.forbidden-apis-conventions"
     id "readonlyrest.verify-repackage-bytecode"
     id "readonlyrest.scala-compile-conventions"
     id "readonlyrest.docker-image-conventions"

@@ -31,6 +31,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
+import java.util.Locale
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
@@ -74,7 +75,7 @@ object RorAuditIndexTemplate {
   }
 
   private def formatterOfPattern(pattern: NonEmptyString): Either[CreationError.ParsingError, DateTimeFormatter] = {
-    Try(DateTimeFormatter.ofPattern(pattern.value).withZone(ZoneId.of("UTC"))) match {
+    Try(DateTimeFormatter.ofPattern(pattern.value, Locale.ROOT).withZone(ZoneId.of("UTC"))) match {
       case Success(formatter) => Right(formatter)
       case Failure(ex)        => Left(CreationError.ParsingError(ex.getMessage))
     }

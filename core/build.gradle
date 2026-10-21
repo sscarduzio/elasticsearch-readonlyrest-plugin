@@ -24,6 +24,7 @@ buildscript {
 
 plugins {
     id "readonlyrest.base-common-conventions"
+    id "readonlyrest.forbidden-apis-conventions"
     id "readonlyrest.java17-tests-conventions"
 
     id "com.github.maiflai.scalatest"   version "0.33"
@@ -125,28 +126,6 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
-}
-
-// Runs TurkishLocaleTests in a JVM with the tr_TR default locale. There, "I".toLowerCase is "ı" and
-// "i".toUpperCase is "İ", so a case conversion that uses the default locale fails. The suite cancels its
-// tests with any other default locale. A separate JVM is necessary: the suites of `test` run in parallel
-// in one JVM, so Locale.setDefault in a test would change the locale of the other suites.
-tasks.register('testWithTurkishLocale', Test) {
-    description = 'Runs TurkishLocaleTests with the tr_TR default locale.'
-    group = 'verification'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    systemProperty 'user.language', 'tr'
-    systemProperty 'user.country', 'TR'
-    suite 'tech.beshu.ror.unit.utils.TurkishLocaleTests'
-    testLogging {
-        exceptionFormat = 'full'
-        events "passed", "skipped", "failed"
-    }
-}
-
-tasks.named('check') {
-    dependsOn 'testWithTurkishLocale'
 }
 
 tasks.withType(ScalaCompile).configureEach {

@@ -33,7 +33,7 @@ import java.util.TimeZone;
 @Deprecated
 public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String, ?>> {
   private static final SimpleDateFormat zuluFormat =
-      new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+      new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ROOT);
 
   static {
     zuluFormat.setTimeZone(TimeZone.getTimeZone("GMT"));

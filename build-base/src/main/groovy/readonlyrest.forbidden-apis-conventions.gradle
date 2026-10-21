@@ -1,0 +1,31 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+// Fails the build when the main code calls a JDK method that uses the JVM default charset, locale or time zone
+// (signature set jdk-unsafe), for example String.toLowerCase() or String.getBytes(). The check reads the class
+// files, so it covers the Scala code too. Use the explicit form: toRootLowerCase, UTF_8 or Locale.ROOT.
+plugins {
+    id "de.thetaphi.forbiddenapis"
+}
+
+forbiddenApis {
+    bundledSignatures = ['jdk-unsafe']
+}
+
+// Only the main code: the test code is not shipped, and some tests use the default charset on purpose
+tasks.matching { it.name.startsWith('forbiddenApis') && it.name != 'forbiddenApis' && it.name != 'forbiddenApisMain' }
+    .configureEach { enabled = false }
