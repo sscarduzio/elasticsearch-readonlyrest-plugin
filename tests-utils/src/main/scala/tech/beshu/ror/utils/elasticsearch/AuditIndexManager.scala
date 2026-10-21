@@ -17,7 +17,6 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
-import org.apache.http.entity.StringEntity
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers.shouldBe
 import tech.beshu.ror.utils.TestUjson.ujson
@@ -66,7 +65,7 @@ class AuditIndexManager(restClient: RestClient, esVersion: String, indexName: St
   object AuditEntriesResult {
 
     private def refreshEntity(simpleResponse: searchManager.SimpleResponse) = {
-      simpleResponse.response.setEntity(new StringEntity(simpleResponse.body))
+      simpleResponse.response.setEntity(stringEntity(simpleResponse.body))
       simpleResponse.response
     }
 

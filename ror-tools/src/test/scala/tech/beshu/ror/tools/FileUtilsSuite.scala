@@ -28,14 +28,18 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.attribute.{DosFileAttributeView, DosFileAttributes}
 import java.nio.file.{Files, StandardCopyOption}
 import java.security.MessageDigest
+import scala.util.Try
 
 class FileUtilsSuite extends AnyWordSpec with Matchers {
 
   "FileUtils" should {
     "hash a file using the UTF-8 bytes of its non-ASCII path" in {
       File.usingTemporaryDirectory() { directory =>
+        val fileName = "zażółć gęślą jaźń.jar"
+        // With a non-UTF-8 locale (for example LC_ALL=C), the JVM cannot create a path with this name
+        assume(Try(directory.path.resolve(fileName)).isSuccess, "the file system cannot represent a non-ASCII name")
         val content = "content".getBytes(StandardCharsets.UTF_8)
-        val file = (directory / "zażółć gęślą jaźń.jar").writeByteArray(content)
+        val file = (directory / fileName).writeByteArray(content)
 
         val digest = MessageDigest.getInstance("SHA-256")
         digest.update(file.path.toString.getBytes(StandardCharsets.UTF_8))

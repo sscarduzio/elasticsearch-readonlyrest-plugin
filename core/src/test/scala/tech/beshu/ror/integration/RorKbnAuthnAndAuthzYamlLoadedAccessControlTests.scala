@@ -30,6 +30,8 @@ import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 
+import java.nio.charset.StandardCharsets
+
 class RorKbnAuthnAndAuthzYamlLoadedAccessControlTests
     extends AnyWordSpec
     with BaseYamlLoadedAccessControlTest
@@ -87,7 +89,8 @@ class RorKbnAuthnAndAuthzYamlLoadedAccessControlTests
         "JWT token is defined" in {
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
-              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                .getBytes(StandardCharsets.UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "")
           )

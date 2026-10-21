@@ -33,6 +33,8 @@ import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
+import java.nio.charset.StandardCharsets
+
 class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
   override protected def settingsYaml: String =
@@ -85,7 +87,8 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
         "JWT token with some arbitrary group is defined" in {
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
-              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                .getBytes(StandardCharsets.UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "arbitrary_group_name")
           )
@@ -106,7 +109,8 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
         "JWT token with some arbitrary group is defined, preferred group is used and matches group in JWT" in {
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
-              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                .getBytes(StandardCharsets.UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "group_in_jwt_token")
           )
@@ -129,7 +133,8 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
         "JWT token with non-empty list of groups is defined, preferred group is used" in {
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
-              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                .getBytes(StandardCharsets.UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := List("viewer_group"))
           )
@@ -161,7 +166,8 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
         "JWT token with empty list of groups is defined" in {
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
-              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                .getBytes(StandardCharsets.UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "")
           )
@@ -178,7 +184,8 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
         "JWT token with some arbitrary group is defined, preferred group is used and does not match group in JWT" in {
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
-              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                .getBytes(StandardCharsets.UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "arbitrary_group_name")
           )

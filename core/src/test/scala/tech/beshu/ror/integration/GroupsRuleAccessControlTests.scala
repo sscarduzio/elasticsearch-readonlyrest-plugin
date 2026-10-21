@@ -37,6 +37,7 @@ import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
+import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
@@ -210,7 +211,12 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
     "auth_key is used with local groups" should {
       "allow when authorization satisfies all groups" in {
         val request = MockRequestContext.indices
-          .withHeaders(header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes)))
+          .withHeaders(
+            header(
+              "Authorization",
+              "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes(StandardCharsets.UTF_8))
+            )
+          )
           .copy(filteredIndices = Set(requestedIndex("g34_index")))
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
         inside(result) { case Allowed(blockContext) =>

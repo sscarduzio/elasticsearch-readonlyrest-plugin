@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
 import java.io.{BufferedReader, InputStreamReader}
+import java.nio.charset.StandardCharsets
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 
@@ -121,9 +122,11 @@ object LdapContainer {
     val result = for {
       inputStream <- ldapInitScript match {
         case InitScriptSource.Resource(resourceName) =>
-          new Dispose(new BufferedReader(new InputStreamReader(Resource.getAsStream(resourceName))))
+          new Dispose(
+            new BufferedReader(new InputStreamReader(Resource.getAsStream(resourceName), StandardCharsets.UTF_8))
+          )
         case InitScriptSource.AFile(file) =>
-          file.bufferedReader
+          file.bufferedReader(StandardCharsets.UTF_8)
       }
       reader <- new Dispose(new LDIFReader(inputStream))
     } yield {

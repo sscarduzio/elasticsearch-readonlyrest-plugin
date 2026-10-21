@@ -17,7 +17,6 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
@@ -54,7 +53,7 @@ class SqlApiManager(restClient: RestClient, esVersion: String) extends BaseManag
     }
     request.setHeader("Content-Type", "application/json")
     request.setHeader("timeout", "50s")
-    request.setEntity(new StringEntity(body))
+    request.setEntity(stringEntity(body))
     request
   }
 

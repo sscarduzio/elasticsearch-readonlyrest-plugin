@@ -19,7 +19,6 @@ package tech.beshu.ror.utils.elasticsearch
 import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.*
@@ -136,7 +135,7 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
   override protected def createIndexTemplateRequest(templateName: String, body: JSON): HttpPut = {
     val request = new HttpPut(client.from(s"/_template/$templateName"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(body)))
+    request.setEntity(stringEntity(ujson.write(body)))
     request
   }
 
@@ -257,7 +256,7 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
   override protected def createIndexTemplateRequest(templateName: String, body: JSON): HttpPut = {
     val request = new HttpPut(client.from(s"/_index_template/$templateName"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(body)))
+    request.setEntity(stringEntity(ujson.write(body)))
     request
   }
 
@@ -310,7 +309,9 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
 
   private def createSimulateTemplateRequest(indexPatterns: NonEmptyList[String], aliases: Set[String]) = {
     val request = new HttpPost(client.from(s"/_index_template/_simulate/"))
-    request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases, 1))))
+    request.setEntity(
+      stringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases, 1)))
+    )
     request.setHeader("Content-Type", "application/json")
     request.setHeader("timeout", "50s")
     request
@@ -402,7 +403,7 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
   private def createPutComponentTemplateRequest(templateName: String, body: JSON) = {
     val request = new HttpPut(client.from(s"/_component_template/$templateName"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(body)))
+    request.setEntity(stringEntity(ujson.write(body)))
     request
   }
 

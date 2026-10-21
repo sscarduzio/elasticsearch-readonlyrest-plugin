@@ -34,6 +34,8 @@ import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.{FileBas
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, nes, withEsEnv, withTempConfigDir}
 import tech.beshu.ror.utils.{SSLCertHelper, TestsEnvVarsProvider, TestsPropertiesProvider}
 
+import java.nio.charset.StandardCharsets
+
 class RorSslSettingsTest extends AnyWordSpec with Inside {
 
   "A ReadonlyREST ES API SSL settings" should {
@@ -553,8 +555,8 @@ class RorSslSettingsTest extends AnyWordSpec with Inside {
               |    keystore_pass: "readonlyrest1
               |    key_pass: "readonlyrest2"
               |""".stripMargin
-          )
-          (configDir / "readonlyrest.yml").writeText("readonlyrest:\n")
+          )(charset = StandardCharsets.UTF_8)
+          (configDir / "readonlyrest.yml").writeText("readonlyrest:\n")(charset = StandardCharsets.UTF_8)
           val esNodeSettings =
             EsNodeSettings(clusterName = "testEsCluster", nodeName = "testEsNode", xpackSecurityEnabled = false)
           val esEnv = EsEnv(configDir, configDir, defaultEsVersionForTests, esNodeSettings)
