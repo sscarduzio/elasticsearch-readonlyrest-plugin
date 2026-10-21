@@ -19,11 +19,12 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers
 import better.files.File
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 
-import java.io.{File => JFile, PrintWriter}
+import java.io.File as JFile
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, StandardCopyOption}
 import scala.io.{Codec, Source}
 import scala.util.Using
+import scala.util.control.NonFatal
 
 private[patches] abstract class SecurityPolicyFileModifier extends FileModifier {
 
@@ -34,13 +35,23 @@ private[patches] abstract class SecurityPolicyFileModifier extends FileModifier 
       // the change, and the original file stays as it is.
       val lines = Using.resource(Source.fromFile(policyJFile)(Codec.UTF8))(_.getLines().toList)
       val tmp = new JFile(policyJFile.getPath + ".tmp") // Temporary File
-      Using.resource(new PrintWriter(tmp, UTF_8)) { writer =>
-        lines.zipWithIndex
-          .flatMap {
-            case (line, 1) => List(permission, line)
-            case (line, _) => List(line)
-          }
-          .foreach(line => writer.println(line))
+      // NOT PrintWriter: it hides write errors, so on a full disk a partial file would replace the policy file
+      try {
+        Using.resource(Files.newBufferedWriter(tmp.toPath, UTF_8)) { writer =>
+          lines.zipWithIndex
+            .flatMap {
+              case (line, 1) => List(permission, line)
+              case (line, _) => List(line)
+            }
+            .foreach { line =>
+              writer.write(line)
+              writer.newLine()
+            }
+        }
+      } catch {
+        case NonFatal(ex) =>
+          Files.deleteIfExists(tmp.toPath)
+          throw ex
       }
       // NOT File.renameTo: on Windows it fails when the destination exists, and it reports that by
       // returning false, so the permission would be dropped without a trace. Files.move throws instead.

@@ -22,8 +22,10 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 
+import java.io.IOException
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.{Files, Paths}
 
 class SecurityPolicyFileModifierSuite extends AnyWordSpec with Matchers {
 
@@ -66,6 +68,22 @@ class SecurityPolicyFileModifierSuite extends AnyWordSpec with Matchers {
 
         a[CharacterCodingException] should be thrownBy modifier(policyFile)
 
+        policyFile.byteArray.toList should be(content.toList)
+        directory.list.map(_.name).toList should be(List("plugin-security.policy"))
+      }
+    }
+    "fail and keep the policy file as it is when the temporary file cannot be written" in {
+      // Each write to /dev/full fails with "No space left on device", as on a full disk
+      val deviceFull = Paths.get("/dev/full")
+      assume(Files.exists(deviceFull), "the system has no /dev/full")
+      File.usingTemporaryDirectory() { directory =>
+        val content = policyLines("grant {", "};").getBytes(UTF_8)
+        val policyFile = (directory / "plugin-security.policy").writeByteArray(content)
+        Files.createSymbolicLink((directory / "plugin-security.policy.tmp").path, deviceFull)
+
+        an[IOException] should be thrownBy modifier(policyFile)
+
+        Files.isSymbolicLink(policyFile.path) should be(false)
         policyFile.byteArray.toList should be(content.toList)
         directory.list.map(_.name).toList should be(List("plugin-security.policy"))
       }
