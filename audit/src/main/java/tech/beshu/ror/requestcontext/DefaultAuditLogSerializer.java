@@ -19,25 +19,23 @@ package tech.beshu.ror.requestcontext;
 import tech.beshu.ror.commons.ResponseContext;
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
 
-import java.text.SimpleDateFormat;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TimeZone;
 
 /**
  * @deprecated Use {@link tech.beshu.ror.audit.instances.DefaultAuditLogSerializer} instead
  */
 @Deprecated
 public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String, ?>> {
-  private static final SimpleDateFormat zuluFormat =
-      new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ROOT);
 
-  static {
-    zuluFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-  }
+  private static final DateTimeFormatter zuluFormat =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ROOT)
+          .withZone(ZoneId.of("GMT"));
 
   @Override
   public Map<String, ?> createLoggableEntry(ResponseContext rc) {
@@ -50,7 +48,7 @@ public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String,
     map.put("correlation_id", rc.getRequestContext().getCorrelationId());
     map.put("final_state", rc.finalState().name());
 
-    map.put("@timestamp", zuluFormat.format(rc.getRequestContext().getTimestamp()));
+    map.put("@timestamp", zuluFormat.format(rc.getRequestContext().getTimestamp().toInstant()));
     map.put("processingMillis", rc.getDurationMillis());
 
     map.put("error_type", rc.getError() != null ? rc.getError().getClass().getSimpleName() : null);

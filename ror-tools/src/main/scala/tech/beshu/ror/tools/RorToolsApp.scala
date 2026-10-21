@@ -55,7 +55,7 @@ trait RorTools {
     val allArgs = args ++ readArgsFromEnvVariables()
     OParser.runParser(
       parser,
-      allArgs.map(arg => if (arg.startsWith("--")) arg.toLowerCase(Locale.ROOT) else arg),
+      allArgs.map(withLowerCaseOptionName),
       ScriptArguments(None),
       parserSetup,
     ) match {
@@ -347,6 +347,17 @@ trait RorTools {
 
 object RorTools {
   private val consentFlagName = "i_understand_and_accept_es_patching"
+
+  // Option names are case-insensitive. In "--name=value" and "--name:value", the value keeps its case,
+  // because it can be a path.
+  private[tools] def withLowerCaseOptionName(arg: String): String = {
+    if (!arg.startsWith("--")) arg
+    else
+      arg.indexWhere(c => c == '=' || c == ':') match {
+        case -1        => arg.toLowerCase(Locale.ROOT)
+        case separator => arg.substring(0, separator).toLowerCase(Locale.ROOT) + arg.substring(separator)
+      }
+  }
 
   private final case class ScriptArguments(command: Option[Command])
 
