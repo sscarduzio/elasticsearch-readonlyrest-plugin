@@ -40,6 +40,7 @@ import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTes
 import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils.*
 
+import java.nio.charset.StandardCharsets
 import java.security.KeyPairGenerator
 import java.util.Base64
 
@@ -97,6 +98,31 @@ class JwtAuthenticationRuleSettingsTests extends BaseRuleSettingsDecoderTest[Jwt
             rule.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
             rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
+          }
+        )
+      }
+      "HMAC signature key contains non-ASCII characters" in {
+        val signatureKey = "zażółć gęślą jaźń " * 4
+        assertDecodingSuccess(
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    jwt_authentication: jwt1
+                    |
+                    |  jwt:
+                    |
+                    |  - name: jwt1
+                    |    user_claim: user
+                    |    signature_key: "$signatureKey"
+                    |
+                    |""".stripMargin,
+          assertion = rule => {
+            inside(rule.settings.jwt.checkMethod) { case SignatureCheckMethod.Hmac(key) =>
+              key.toList should be(signatureKey.getBytes(StandardCharsets.UTF_8).toList)
+            }
           }
         )
       }

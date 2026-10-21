@@ -36,6 +36,8 @@ import tech.beshu.ror.accesscontrol.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
 
+import java.nio.charset.StandardCharsets
+
 object JwtDefinitionsDecoder {
 
   def instance(
@@ -154,7 +156,7 @@ object JwtDefinitionsDecoder {
             .map(SignatureCheckMethod.NoCheck.apply)
         case Some("HMAC") | None =>
           decodeSignatureKey
-            .map(_.getBytes)
+            .map(_.getBytes(StandardCharsets.UTF_8))
             .map(SignatureCheckMethod.Hmac.apply)
         case Some("RSA") =>
           decodeSignatureKey

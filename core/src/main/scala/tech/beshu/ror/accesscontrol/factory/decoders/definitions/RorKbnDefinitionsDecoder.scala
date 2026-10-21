@@ -30,6 +30,8 @@ import tech.beshu.ror.accesscontrol.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
 
+import java.nio.charset.StandardCharsets
+
 object RorKbnDefinitionsDecoder {
 
   def instance(variableCreator: RuntimeResolvableVariableCreator): ADecoder[Id, Definitions[RorKbnDef]] = {
@@ -84,7 +86,7 @@ object RorKbnDefinitionsDecoder {
       checkMethod <- alg.map(_.toUpperCase) match {
         case Some("HMAC") | None =>
           decodeSignatureKey
-            .map(_.getBytes)
+            .map(_.getBytes(StandardCharsets.UTF_8))
             .map(SignatureCheckMethod.Hmac.apply)
         case Some("RSA") =>
           decodeSignatureKey
