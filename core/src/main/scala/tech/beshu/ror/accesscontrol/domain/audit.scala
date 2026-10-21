@@ -125,14 +125,15 @@ object RorAuditDataStream {
     // - Cannot include \, /, *, ?, ", <, >, |, ,, #, :, or a space character
     // - Cannot start with -, _, +, or .ds-
     // - Cannot be . or ..
-    // - Cannot be longer than 255 bytes. Multi-byte characters count towards this limit faster.
+    // - Cannot be longer than 233 bytes. Multi-byte characters count towards this limit faster.
+    //   ES limits the backing index name ".ds-<name>-yyyy.MM.dd-000001" to 255 bytes, which adds 22 bytes.
     // https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-data-stream.html#indices-create-data-stream-api-path-params
 
     val forbiddenCharacters: List[Char] = List('\\', '/', '*', '?', '"', '<', '>', '|', ',', '#', ':', ' ')
     val forbiddenCharactersSet = forbiddenCharacters.toSet
     val forbiddenPrefixes = List("-", "_", "+", ".ds-")
     val forbiddenVariants = List(".", "..")
-    val maxBytes = 255
+    val maxBytes = 233
 
     implicit val charShow: Show[Char] = Show.show(c => s"'$c'")
     implicit val stringShow: Show[String] = Show.show(str => s"'$str'")

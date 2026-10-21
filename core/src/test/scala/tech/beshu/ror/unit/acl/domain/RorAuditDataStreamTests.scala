@@ -34,8 +34,8 @@ class RorAuditDataStreamTests extends AnyWordSpec with TableDrivenPropertyChecks
           "stream123",
           "data-stream-99",
           "valid_stream",
-          "a" * 255, // Exactly 255 bytes in length
-          "ą" * 127 + "a" // Exactly 255 bytes in UTF-8 ('ą' is 2 bytes)
+          "a" * 233, // Exactly 233 bytes in length
+          "ą" * 116 + "a" // Exactly 233 bytes in UTF-8 ('ą' is 2 bytes)
         )
       ) { dataStream =>
         createRorAuditDataStream(dataStream) shouldBe a[Right[_, RorAuditDataStream]]
@@ -62,9 +62,9 @@ class RorAuditDataStreamTests extends AnyWordSpec with TableDrivenPropertyChecks
           (".ds-invalid", forbiddenPrefixError),
           (".", forbiddenNameError),
           ("..", forbiddenNameError),
-          ("a" * 256, maxSizeExceededError), // Exceeds 255 bytes
-          ("😊" * 85, maxSizeExceededError), // Exceeds 255 bytes due to multi-byte encoding
-          ("ą" * 128, maxSizeExceededError), // 128 characters, but 256 bytes in UTF-8
+          ("a" * 234, maxSizeExceededError), // Exceeds 233 bytes
+          ("😊" * 85, maxSizeExceededError), // Exceeds 233 bytes due to multi-byte encoding
+          ("ą" * 117, maxSizeExceededError), // 117 characters, but 234 bytes in UTF-8
         )
       ) { case (dataStream: String, errorCause) =>
         createRorAuditDataStream(dataStream) shouldBe Left(error(dataStream, errorCause))
@@ -82,5 +82,5 @@ class RorAuditDataStreamTests extends AnyWordSpec with TableDrivenPropertyChecks
     "name must not contain forbidden characters '\\', '/', '*', '?', '\"', '<', '>', '|', ',', '#', ':', ' '"
   private lazy val forbiddenPrefixError = "name must not start with '-', '_', '+', '.ds-'"
   private lazy val forbiddenNameError = "name cannot be any of '.', '..'"
-  private lazy val maxSizeExceededError = "name must be not longer than 255 bytes"
+  private lazy val maxSizeExceededError = "name must be not longer than 233 bytes"
 }
