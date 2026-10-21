@@ -68,6 +68,14 @@ class PatternsMatcherTest extends AnyWordSpec with ScalaCheckDrivenPropertyCheck
         matcher.`match`(value) shouldBe true
       }
     }
+    "value matches complex pattern case insensitive" in {
+      // Complex patterns ('?', or '*' inside) go to the glob engine, not to the prefix/suffix/infix checks
+      val matcher = PatternsMatcher.create(List("*ADMIN*X", "us?r_ID"))(caseInsensitiveStringMatchable)
+      matcher.`match`("adminx") shouldBe true
+      matcher.`match`("my_admin_box") shouldBe true
+      matcher.`match`("USER_id") shouldBe true
+      matcher.`match`("admin") shouldBe false
+    }
     "value mismatches matches empty" in {
       forAll("haystack") { (haystack: String) =>
         val matcher = PatternsMatcher.create(List.empty)(caseSensitiveStringMatchable)

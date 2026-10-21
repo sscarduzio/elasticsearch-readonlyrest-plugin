@@ -32,7 +32,7 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
   override val patterns: Iterable[String] = values.map(matchable.show)
 
   private val ignoreCase: Boolean = caseSensitivity == CaseSensitivity.Disabled
-  private val compiled: Compiled = Compiled.from(patterns, ignoreCase, globPatternFlags(caseSensitivity))
+  private val compiled: Compiled = Compiled.from(patterns, ignoreCase)
 
   override def `match`[B <: A](value: B): Boolean = {
     if (compiled.matchAll) true
@@ -43,7 +43,7 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
       matchesPrefix(norm) ||
       matchesSuffix(norm) ||
       matchesInfix(norm) ||
-      matchesComplex(raw) // raw (not norm): the glob engine handles case-insensitivity via globFlags
+      matchesComplex(norm)
     }
   }
 
@@ -54,7 +54,7 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
   private def matchesPrefix(norm: String): Boolean = compiled.prefixes.existsWith(norm.startsWith)
   private def matchesSuffix(norm: String): Boolean = compiled.suffixes.existsWith(norm.endsWith)
   private def matchesInfix(norm: String): Boolean = compiled.infixes.existsWith(norm.indexOf(_) >= 0)
-  private def matchesComplex(raw: String): Boolean = compiled.complex.existsWith(_.matches(raw))
+  private def matchesComplex(norm: String): Boolean = compiled.complex.existsWith(_.matches(norm))
 
   override def `match`[B: Conversion](value: B): Boolean = {
     val conv = implicitly[Conversion[B]]
@@ -72,11 +72,6 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
   private def filterWith[B](items: IterableOnce[B], conversion: Conversion[B]): Set[B] = {
     if (compiled.matchAll) items.toCovariantSet
     else items.iterator.filter(b => `match`(conversion(b))).toCovariantSet
-  }
-
-  private def globPatternFlags(cs: CaseSensitivity): Int = cs match {
-    case CaseSensitivity.Enabled  => 0
-    case CaseSensitivity.Disabled => GlobPattern.CASE_INSENSITIVE
   }
 
 }
@@ -101,7 +96,7 @@ private[matchers] object GlobPatternsMatcher {
 
   private object Compiled {
 
-    def from(patterns: Iterable[String], ignoreCase: Boolean, globFlags: Int): Compiled = {
+    def from(patterns: Iterable[String], ignoreCase: Boolean): Compiled = {
       def norm(s: String) = if (ignoreCase) s.toRootLowerCase else s
       val kinds = patterns.iterator.map(Kind.of).toVector
       new Compiled(
@@ -110,7 +105,8 @@ private[matchers] object GlobPatternsMatcher {
         prefixes = kinds.collect { case Kind.Prefix(p) => norm(p) }.toArray,
         suffixes = kinds.collect { case Kind.Suffix(p) => norm(p) }.toArray,
         infixes = kinds.collect { case Kind.Infix(p) => norm(p) }.toArray,
-        complex = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }.toArray
+        // Flags 0, not GlobPattern.CASE_INSENSITIVE: the glob engine folds case with the JVM default locale
+        complex = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(norm(p), '*', '?', 0) }.toArray
       )
     }
 
