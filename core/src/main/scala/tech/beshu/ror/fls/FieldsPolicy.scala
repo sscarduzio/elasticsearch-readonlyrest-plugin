@@ -20,8 +20,6 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.constants
 
-import java.util.regex.Pattern
-
 class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
 
   private val enhancedFields = fieldsRestrictions.documentFields.toList.map(new FieldsPolicy.EnhancedDocumentField(_))
@@ -39,24 +37,14 @@ class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
 
   private def whitelistMatch(enhancedField: FieldsPolicy.EnhancedDocumentField, field: String): Boolean = {
     val fieldParts = field.split("\\.").toList
-    if (enhancedField.fieldPartPatterns.length < fieldParts.length) false
-    else {
-      val foundMismatch = fieldParts
-        .zip(enhancedField.fieldPartPatterns)
-        .exists { case (fieldPart, patternPart) => !patternPart.matches(fieldPart) }
-      !foundMismatch
-    }
+    fieldParts.length <= enhancedField.fieldPartPatterns.length &&
+    fieldParts.zip(enhancedField.fieldPartPatterns).forall { case (fieldPart, pattern) => pattern.matches(fieldPart) }
   }
 
   private def blacklistMatch(enhancedField: FieldsPolicy.EnhancedDocumentField, field: String): Boolean = {
     val fieldParts = field.split("\\.").toList
-    if (enhancedField.fieldPartPatterns.length > fieldParts.length) false
-    else {
-      val foundMismatch = enhancedField.fieldPartPatterns
-        .zip(fieldParts)
-        .forall { case (patternPart, fieldPart) => patternPart.matches(fieldPart) }
-      foundMismatch
-    }
+    enhancedField.fieldPartPatterns.length <= fieldParts.length &&
+    enhancedField.fieldPartPatterns.zip(fieldParts).forall { case (pattern, fieldPart) => pattern.matches(fieldPart) }
   }
 
 }
@@ -69,19 +57,34 @@ object FieldsPolicy {
       field.value.value
         .split("\\.")
         .toList
-        .map(FieldPartPattern.apply)
+        .map(new FieldPartPattern(_))
 
   }
 
-  // One dot-separated part of a configured field name. `*` matches any characters.
-  // Every other character, regex metacharacters included, matches only itself.
-  private final class FieldPartPattern private (pattern: Pattern) {
-    def matches(fieldPart: String): Boolean = pattern.matcher(fieldPart).matches()
-  }
+  // One dot-separated part of a configured field name. `*` matches any characters, and every other character
+  // matches only itself. The field name can come from the request, so matching does not backtrack.
+  private final class FieldPartPattern(part: String) {
+    private val literals = part.split("\\*", -1).toList
 
-  private object FieldPartPattern {
-    def apply(part: String): FieldPartPattern =
-      new FieldPartPattern(Pattern.compile(part.split("\\*", -1).map(Pattern.quote).mkString(".*")))
+    def matches(fieldPart: String): Boolean = literals match {
+      case exact :: Nil =>
+        fieldPart == exact
+      case prefix :: rest =>
+        val suffix = rest.last
+        val end = fieldPart.length - suffix.length
+        prefix.length <= end && fieldPart.startsWith(prefix) && fieldPart.endsWith(suffix) &&
+        containsInOrder(fieldPart, rest.init, from = prefix.length, end)
+      case Nil =>
+        false
+    }
+
+    private def containsInOrder(value: String, infixes: List[String], from: Int, end: Int): Boolean = infixes match {
+      case Nil             => true
+      case infix :: others =>
+        val index = value.indexOf(infix, from)
+        index >= 0 && index + infix.length <= end && containsInOrder(value, others, index + infix.length, end)
+    }
+
   }
 
 }

@@ -17,7 +17,9 @@
 package tech.beshu.ror.unit.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
+import org.scalatest.concurrent.TimeLimits
 import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.time.{Second, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -25,7 +27,7 @@ import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class FieldsPolicyTests extends AnyWordSpec {
+class FieldsPolicyTests extends AnyWordSpec with TimeLimits {
 
   "A FieldMatcher" should {
     "work in whitelist mode" in {
@@ -84,6 +86,16 @@ class FieldsPolicyTests extends AnyWordSpec {
       "a field name is not a valid regex" in {
         policy(AccessMode.Whitelist, "a(b").canKeep("a(b") should be(true)
         policy(AccessMode.Blacklist, "a(b").canKeep("a(b") should be(false)
+      }
+    }
+    "match `*` to any characters" when {
+      "the field name contains a line terminator" in {
+        policy(AccessMode.Blacklist, "secret*").canKeep("secret\nx") should be(false)
+      }
+      "the field name is long and almost matches a pattern with many wildcards" in {
+        failAfter(Span(1, Second)) {
+          policy(AccessMode.Blacklist, "*a*a*a*a*b").canKeep("a" * 200) should be(true)
+        }
       }
     }
   }
