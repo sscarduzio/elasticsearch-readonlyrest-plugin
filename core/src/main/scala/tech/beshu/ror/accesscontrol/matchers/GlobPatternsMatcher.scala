@@ -20,7 +20,7 @@ import com.hrakaroo.glob.{GlobPattern, MatchingEngine}
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ScalaOps.existsWith
+import tech.beshu.ror.utils.ScalaOps.{existsWith, toRootLowerCase}
 
 private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A]) extends PatternsMatcher[A] {
 
@@ -38,7 +38,7 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
     if (compiled.matchAll) true
     else {
       val raw = matchable.show(value)
-      val norm = if (ignoreCase) raw.toLowerCase else raw
+      val norm = if (ignoreCase) raw.toRootLowerCase else raw
       matchesExact(norm) ||
       matchesPrefix(norm) ||
       matchesSuffix(norm) ||
@@ -102,7 +102,7 @@ private[matchers] object GlobPatternsMatcher {
   private object Compiled {
 
     def from(patterns: Iterable[String], ignoreCase: Boolean, globFlags: Int): Compiled = {
-      def norm(s: String) = if (ignoreCase) s.toLowerCase else s
+      def norm(s: String) = if (ignoreCase) s.toRootLowerCase else s
       val kinds = patterns.iterator.map(Kind.of).toVector
       new Compiled(
         matchAll = kinds.contains(Kind.All),

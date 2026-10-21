@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decoding
 import tech.beshu.ror.accesscontrol.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.ScalaOps.toRootUpperCase
 
 import java.nio.charset.StandardCharsets
 
@@ -137,7 +138,7 @@ object JwtDefinitionsDecoder {
 
     for {
       alg <- c.downField("signature_algo").as[Option[String]]
-      checkMethod <- alg.map(_.toUpperCase) match {
+      checkMethod <- alg.map(_.toRootUpperCase) match {
         case Some("NONE") =>
           Decoder[ExternalAuthenticationService]
             .tryDecode(

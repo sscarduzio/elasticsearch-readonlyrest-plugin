@@ -21,6 +21,9 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 # Run a single test class
 ./gradlew core:test --tests "tech.beshu.ror.unit.SomeTestClass"
 
+# Case-conversion tests in a JVM with the tr_TR default locale
+./gradlew core:testWithTurkishLocale
+
 # Integration tests (requires specifying an ES module)
 ./gradlew integration-tests:test -PesModule=es818x
 
@@ -71,6 +74,7 @@ ES module entry point pattern: `es{version}x/src/main/scala/tech/beshu/ror/es/Re
 - **Code formatting**: scalafmt (Scala) + Google Java Format (Java) via Spotless. Pre-commit hook formats staged files automatically. Run `./gradlew formatCode` manually or `./gradlew formatCodeCheck` to verify.
 - **Comments**: a comment explains the current state, not the change that made it — history belongs to the commit message and the PR. Full rule: `docs/dev/code-style.md`
 - **Writing style**: comments, commit messages, PR descriptions, review comments and answers to the user all use Simplified Technical English (ASD-STE100) plus Zinsser — one idea per sentence, active voice, no metaphor. See `docs/dev/writing-style.md`
+- **Case conversion**: use `toRootLowerCase` / `toRootUpperCase` from `tech.beshu.ror.utils.ScalaOps`, never `toLowerCase` / `toUpperCase` without a `Locale` (in a Turkish locale, `"I".toLowerCase` is `"ı"`). Modules without core (`audit`, `ror-tools`, `ror-tools-core`) use `Locale.ROOT`
 - **Internal Scala APIs**: avoid `scala.runtime.ScalaRunTime._*` and other `_`-prefixed runtime methods — they are implementation details
 - **Plugin ZIP output**: `es{version}x/build/distributions/readonlyrest-{pluginVersion}_es{esVersion}.zip`
 

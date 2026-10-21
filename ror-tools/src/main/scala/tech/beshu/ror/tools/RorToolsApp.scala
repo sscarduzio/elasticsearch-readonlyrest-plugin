@@ -24,6 +24,7 @@ import tech.beshu.ror.tools.core.utils.*
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 
 import java.io.{PrintWriter, StringWriter}
+import java.util.Locale
 import scala.util.{Failure, Success, Try}
 
 object RorToolsApp extends RorTools {
@@ -54,7 +55,7 @@ trait RorTools {
     val allArgs = args ++ readArgsFromEnvVariables()
     OParser.runParser(
       parser,
-      allArgs.map(arg => if (arg.startsWith("--")) arg.toLowerCase else arg),
+      allArgs.map(arg => if (arg.startsWith("--")) arg.toLowerCase(Locale.ROOT) else arg),
       ScriptArguments(None),
       parserSetup,
     ) match {
@@ -76,8 +77,8 @@ trait RorTools {
       consentFlagName,
     )
     rawEnvVariablesProvider.getSysEnv.toList
-      .filter(env => allowedEnvVariableNames.contains(env._1.toLowerCase))
-      .flatMap { case (name, value) => Array(s"--${name.toLowerCase}", value) }
+      .filter(env => allowedEnvVariableNames.contains(env._1.toLowerCase(Locale.ROOT)))
+      .flatMap { case (name, value) => Array(s"--${name.toLowerCase(Locale.ROOT)}", value) }
       .toArray
   }
 
@@ -160,7 +161,7 @@ trait RorTools {
           )
           PatchingConsent.AnswerNotGiven
         case Some(line) =>
-          line.toLowerCase match {
+          line.toLowerCase(Locale.ROOT) match {
             case "yes" => PatchingConsent.Accepted
             case _     => PatchingConsent.Rejected
           }
@@ -294,7 +295,7 @@ trait RorTools {
   private lazy val patchingConsent =
     patchingConsentDefinition
       .validate { value =>
-        value.toLowerCase match {
+        value.toLowerCase(Locale.ROOT) match {
           case "yes" => success
           case "no"  => success
           case other =>
@@ -302,7 +303,7 @@ trait RorTools {
         }
       }
       .action { (answer, args) =>
-        answer.toLowerCase match {
+        answer.toLowerCase(Locale.ROOT) match {
           case "yes" => addPatchingConsentValue(args, PatchingConsent.Accepted)
           case "no"  => addPatchingConsentValue(args, PatchingConsent.Rejected)
         }
@@ -362,7 +363,7 @@ object RorTools {
         else if (patchingConsentValues.forall(_ == PatchingConsent.Rejected)) Right(PatchingConsent.Rejected)
         else
           Left(
-            s"There are conflicting values of the ${consentFlagName.toUpperCase} setting. Please check env variables and program arguments."
+            s"There are conflicting values of the ${consentFlagName.toUpperCase(Locale.ROOT)} setting. Please check env variables and program arguments."
           )
       }
 

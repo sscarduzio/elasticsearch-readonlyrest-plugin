@@ -330,7 +330,7 @@ class EsNodeClusterService(
   }
 
   private def indexAttributeFrom(indexMetadata: IndexMetaData): IndexAttribute = {
-    indexMetadata.getState.name().toUpperCase() match {
+    indexMetadata.getState.name().toRootUpperCase match {
       case "CLOSED" => IndexAttribute.Closed
       case _        => IndexAttribute.Opened
     }

@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.json.JsonPath
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.{Base64, Locale}
+import java.util.Base64
 
 final case class Credentials(user: User.Id, secret: PlainTextSecret)
 
@@ -139,7 +139,7 @@ object AuthorizationTokenPrefix {
 
   implicit val eq: Eq[AuthorizationTokenPrefix] = Eq.instance((x, y) =>
     (x, y) match {
-      case (Exact(a), Exact(b)) => a.value.toLowerCase(Locale.US) === b.value.toLowerCase(Locale.US)
+      case (Exact(a), Exact(b)) => a.value.toRootLowerCase === b.value.toRootLowerCase
       case (NoPrefix, NoPrefix) => true
       case (Exact(_), NoPrefix) => false
       case (NoPrefix, Exact(_)) => false

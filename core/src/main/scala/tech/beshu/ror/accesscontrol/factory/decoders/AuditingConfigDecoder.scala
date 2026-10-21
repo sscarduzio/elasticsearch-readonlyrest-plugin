@@ -57,6 +57,7 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.ScalaOps.toRootLowerCase
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.annotation.nowarn
@@ -581,7 +582,7 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
   private given serializerTypeDecoder: Decoder[SerializerType] = Decoder.instance { c =>
     c.downField("serializer").as[Option[Json]].flatMap {
       case Some(json) if json.isObject =>
-        json.hcursor.downField("type").as[String].map(_.toLowerCase).flatMap {
+        json.hcursor.downField("type").as[String].map(_.toRootLowerCase).flatMap {
           case "static" =>
             Right(SerializerType.ExtendedSyntaxStaticSerializer)
           case "configurable" =>
@@ -626,7 +627,7 @@ object AuditingConfigDecoder extends RequestIdAwareLogging {
   }
 
   private given ecsSerializerVersionDecoder: Decoder[EcsSerializerVersion] =
-    Decoder.decodeString.map(_.toLowerCase).emap {
+    Decoder.decodeString.map(_.toRootLowerCase).emap {
       case "v1"  => Right(EcsSerializerVersion.V1)
       case other => Left(s"Invalid ECS serializer version $other")
     }

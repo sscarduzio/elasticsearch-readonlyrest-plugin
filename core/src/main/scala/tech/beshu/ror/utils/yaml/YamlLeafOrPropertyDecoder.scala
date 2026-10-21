@@ -25,6 +25,7 @@ import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.FromString
+import tech.beshu.ror.utils.ScalaOps.toRootUpperCase
 
 import scala.language.implicitConversions
 
@@ -174,7 +175,7 @@ object JsonPathOps {
     NonEmptyString.unsafeFrom(path.toList.map(_.value).mkString("."))
 
   def pathToEnvVarName(path: NonEmptyList[NonEmptyString]): String =
-    "ES_SETTING_" + path.toList.map(seg => seg.value.replace("_", "__").toUpperCase).mkString("_")
+    "ES_SETTING_" + path.toList.map(seg => seg.value.replace("_", "__").toRootUpperCase).mkString("_")
 
   def pathPrefixToEnvVarPrefix(path: NonEmptyList[NonEmptyString]): String =
     pathToEnvVarName(path) + "_"

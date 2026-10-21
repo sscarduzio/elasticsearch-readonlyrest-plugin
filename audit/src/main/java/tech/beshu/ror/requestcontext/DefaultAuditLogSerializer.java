@@ -22,6 +22,7 @@ import tech.beshu.ror.commons.shims.request.RequestContextShim;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TimeZone;
@@ -65,7 +66,7 @@ public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String,
 
     Optional<String> xff =
         req.getHeaders().entrySet().stream()
-            .filter(entry -> entry.getKey().toLowerCase().equals("x-forwarded-for"))
+            .filter(entry -> entry.getKey().toLowerCase(Locale.ROOT).equals("x-forwarded-for"))
             .findFirst()
             .map(Map.Entry::getValue);
     if (xff.isPresent() && !xff.get().equals("")) {

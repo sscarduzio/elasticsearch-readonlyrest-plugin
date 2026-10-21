@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.utils.ScalaOps.toRootLowerCase
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.nio.charset.StandardCharsets
@@ -193,7 +194,7 @@ object orders {
   def userIdOrder(globalSettings: GlobalSettings): Order[User.Id] = Order.by { userId =>
     globalSettings.userIdCaseSensitivity match {
       case CaseSensitivity.Enabled  => userId.value.value
-      case CaseSensitivity.Disabled => userId.value.value.toLowerCase
+      case CaseSensitivity.Disabled => userId.value.value.toRootLowerCase
     }
   }
 

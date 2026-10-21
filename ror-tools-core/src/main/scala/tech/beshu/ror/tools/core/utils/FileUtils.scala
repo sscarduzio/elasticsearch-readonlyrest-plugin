@@ -31,6 +31,7 @@ import java.nio.file.attribute.{
 }
 import java.nio.file.{FileSystemException, Files, Path}
 import java.security.MessageDigest
+import java.util.Locale
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
@@ -165,7 +166,7 @@ object FileUtils {
       .flatMap { osNamePropName =>
         Option(System.getProperty(osNamePropName))
       } match
-      case Some(osName) => osName.toLowerCase.contains("win")
+      case Some(osName) => osName.toLowerCase(Locale.ROOT).contains("win")
       case None         => false
   }
 

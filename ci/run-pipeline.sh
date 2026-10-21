@@ -132,7 +132,7 @@ run_core_tests() {
   local args=()
   mapfile -t args < <(windows_gradle_args)
 
-  local suites=(core:test ror-tools:test)
+  local suites=(core:test core:testWithTurkishLocale ror-tools:test)
   is_windows || suites+=(audit:test build-base:test)
 
   ci_log "Running the unit tests (${suites[*]})."

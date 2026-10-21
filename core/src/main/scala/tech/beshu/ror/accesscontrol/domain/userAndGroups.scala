@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.toRootLowerCase
 import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -57,7 +58,7 @@ object User {
     ): Eq[Id] =
       caseSensitivity match {
         case CaseSensitivity.Enabled  => Eq.by(_.value.value)
-        case CaseSensitivity.Disabled => Eq.by(_.value.value.toLowerCase)
+        case CaseSensitivity.Disabled => Eq.by(_.value.value.toRootLowerCase)
       }
 
   }
