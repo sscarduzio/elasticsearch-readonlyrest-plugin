@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 
-import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 
 class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
 
@@ -203,6 +203,18 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
         }
       }
     }
+
+    "the file is not valid UTF-8" should {
+      "return MalformedSettings error" in {
+        val yaml = "readonlyrest:\n  settings:\n    index_name: café\n".getBytes(ISO_8859_1)
+
+        given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "index_name")
+
+        inside(loadBytesWith[Option[String]](yaml)) { case Left(error: LoadingError.MalformedSettings) =>
+          error.message should be(s"The file ${error.file.pathAsString} is not valid UTF-8")
+        }
+      }
+    }
   }
 
   private def optionalAt(segments: String*)(
@@ -224,11 +236,16 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
   private def loadWith[A: YamlLeafOrPropertyOrEnvDecoder](
       content: String,
       envVars: Map[NonEmptyString, String] = Map.empty
+  ): Either[LoadingError, A] = loadBytesWith(content.getBytes(UTF_8), envVars)
+
+  private def loadBytesWith[A: YamlLeafOrPropertyOrEnvDecoder](
+      content: Array[Byte],
+      envVars: Map[NonEmptyString, String] = Map.empty
   ): Either[LoadingError, A] = {
     given SystemContext = new SystemContext(envVarsProvider = TestsEnvVarsProvider.usingMap(envVars))
     File
       .temporaryFile()
-      .map(_.writeByteArray(content.getBytes(UTF_8)))
+      .map(_.writeByteArray(content))
       .map(file => new ElasticsearchConfigLoader(file).loadSettings[A]("test settings").runSyncUnsafe())
       .get()
   }

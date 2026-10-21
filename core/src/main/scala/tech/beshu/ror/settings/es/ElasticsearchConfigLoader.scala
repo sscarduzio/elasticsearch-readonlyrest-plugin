@@ -25,11 +25,10 @@ import tech.beshu.ror.accesscontrol.factory.JsonStaticVariablesResolver
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
+import tech.beshu.ror.utils.FileOps.contentAsUtf8String
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 import tech.beshu.ror.utils.yaml.YamlParser
-
-import java.nio.charset.StandardCharsets.UTF_8
 
 final class ElasticsearchConfigLoader(file: File)(
     implicit systemContext: SystemContext
@@ -62,19 +61,18 @@ final class ElasticsearchConfigLoader(file: File)(
   }
 
   private lazy val loadedSettingsJson: Either[LoadingError, Json] = {
-    file.bufferedReader(UTF_8) { reader =>
-      yamlParser
-        .parse(reader)
+    for {
+      content <- file.contentAsUtf8String.left.map(createError)
+      json <- yamlParser
+        .parse(content)
         .map(jsonWithOneLinerKeysToRegularJson)
         .left
         .map(e => createError(s"Cannot parse file ${file.pathAsString.show} content. Cause: ${e.message.show}"))
-        .flatMap { json =>
-          jsonStaticVariableResolver
-            .resolve(json)
-            .left
-            .map(e => createError(s"Unable to resolve environment variables for file ${file.pathAsString.show}. $e."))
-        }
-    }
+      resolvedJson <- jsonStaticVariableResolver
+        .resolve(json)
+        .left
+        .map(e => createError(s"Unable to resolve environment variables for file ${file.pathAsString.show}. $e."))
+    } yield resolvedJson
   }
 
   private def prettyCause(error: String) = {
