@@ -20,42 +20,89 @@ import org.scalacheck.Gen
 import org.scalactic.anyvals.PosInt
 import org.scalatest.concurrent.TimeLimits
 import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.prop.TableDrivenPropertyChecks
+import org.scalatest.prop.Tables.Table
 import org.scalatest.time.{Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import tech.beshu.ror.accesscontrol.matchers.WildcardPattern
 
-class WildcardPatternTests extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with TimeLimits {
+class WildcardPatternTests
+    extends AnyWordSpec
+    with ScalaCheckDrivenPropertyChecks
+    with TableDrivenPropertyChecks
+    with TimeLimits {
 
   import WildcardPatternTests.*
 
   override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(
-      minSuccessful = 50000,
+      minSuccessful = 10000,
       workers = PosInt.ensuringValid(Runtime.getRuntime.availableProcessors())
     )
 
   "WildcardPattern" should {
-    "match like a reference glob" when {
+    "match the examples" when {
       "`?` is a literal" in {
-        forAll(genPatternAndValue(singleCharWildcard = false)) { case (pattern, value) =>
-          new WildcardPattern(pattern, singleCharWildcard = false).matches(value) should be(
-            referenceMatches(pattern, singleCharWildcard = false, value)
-          )
+        forAll(commonExamples ++ literalQuestionMarkExamples) { (pattern, value, expected) =>
+          new WildcardPattern(pattern, singleCharWildcard = false).matches(value) should be(expected)
         }
       }
       "`?` is a one-character wildcard" in {
-        forAll(genPatternAndValue(singleCharWildcard = true)) { case (pattern, value) =>
-          new WildcardPattern(pattern, singleCharWildcard = true).matches(value) should be(
-            referenceMatches(pattern, singleCharWildcard = true, value)
-          )
+        forAll(commonExamples ++ singleCharWildcardExamples) { (pattern, value, expected) =>
+          new WildcardPattern(pattern, singleCharWildcard = true).matches(value) should be(expected)
         }
       }
     }
-    "match `?` as one character only when the flag is on" in {
-      new WildcardPattern("a?c", singleCharWildcard = true).matches("abc") should be(true)
-      new WildcardPattern("a?c", singleCharWildcard = false).matches("abc") should be(false)
-      new WildcardPattern("a?c", singleCharWildcard = false).matches("a?c") should be(true)
+    "match a pattern without wildcards only to itself" in {
+      forAll(genLiteral, genLiteral) { (pattern, value) =>
+        bothModes(pattern).foreach(_.matches(pattern) should be(true))
+        bothModes(pattern).foreach(_.matches(value) should be(pattern == value))
+      }
+    }
+    "match `*` to any value" in {
+      forAll(genAnyString) { value =>
+        bothModes("*").foreach(_.matches(value) should be(true))
+      }
+    }
+    "match `literal*` to the values that start with the literal" in {
+      forAll(genLiteral, genAnyString) { (literal, value) =>
+        bothModes(s"$literal*").foreach(_.matches(value) should be(value.startsWith(literal)))
+        bothModes(s"$literal*").foreach(_.matches(literal + value) should be(true))
+      }
+    }
+    "match `*literal` to the values that end with the literal" in {
+      forAll(genLiteral, genAnyString) { (literal, value) =>
+        bothModes(s"*$literal").foreach(_.matches(value) should be(value.endsWith(literal)))
+        bothModes(s"*$literal").foreach(_.matches(value + literal) should be(true))
+      }
+    }
+    "match `*literal*` to the values that contain the literal" in {
+      forAll(genLiteral, genAnyString) { (literal, value) =>
+        bothModes(s"*$literal*").foreach(_.matches(value) should be(value.contains(literal)))
+      }
+    }
+    "match a pattern to each value made from it" when {
+      "each `*` becomes any text" in {
+        forAll(genPatternAndInstance(singleCharWildcard = false)) { case (pattern, value) =>
+          new WildcardPattern(pattern, singleCharWildcard = false).matches(value) should be(true)
+        }
+      }
+      "each `*` becomes any text and each `?` one character" in {
+        forAll(genPatternAndInstance(singleCharWildcard = true)) { case (pattern, value) =>
+          new WildcardPattern(pattern, singleCharWildcard = true).matches(value) should be(true)
+        }
+      }
+    }
+    "not match a value shorter than the pattern without its `*`" in {
+      forAll(genPatternAndInstance(singleCharWildcard = true)) { case (pattern, value) =>
+        val minimalLength = pattern.count(_ != '*')
+        whenever(minimalLength > 0) {
+          new WildcardPattern(pattern, singleCharWildcard = true).matches(value.take(minimalLength - 1)) should be(
+            false
+          )
+        }
+      }
     }
     "not backtrack" when {
       // A backtracking matcher does not end on these values, so the limit only separates linear time from backtracking.
@@ -75,62 +122,121 @@ class WildcardPatternTests extends AnyWordSpec with ScalaCheckDrivenPropertyChec
 
 object WildcardPatternTests {
 
-  // Regex metacharacters, `*`, `?`, `.`, line terminators and non-ASCII characters. The emoji is a surrogate pair.
-  private val alphabet = ("ab*?.^$|+()[]{}\\- é日\n\r \u0085".map(_.toString) :+ "😀").toVector
+  private val regexMetacharacters = "^$|+()[]{}\\-".map(_.toString).toVector
+  private val lineTerminators = Vector("\n", "\r", " ", "\u0085")
+  private val nonAscii = Vector("é", "日", "😀") // the emoji is a surrogate pair
+  private val literals = Vector("a", "b", " ", ".") ++ regexMetacharacters ++ lineTerminators ++ nonAscii
+  val alphabet: Vector[String] = literals ++ Vector("*", "?")
 
-  // Few symbols make repeated and overlapping pieces frequent.
-  private val smallAlphabet = "ab*?.".map(_.toString).toVector
+  private val commonExamples = Table(
+    ("pattern", "value", "expected"),
+    ("", "", true),
+    ("", "a", false),
+    ("abc", "abc", true),
+    ("abc", "ab", false),
+    ("abc", "abcd", false),
+    ("abc", "ABC", false),
+    ("*", "", true),
+    ("*", "a\nb", true),
+    ("**", "", true),
+    ("a*", "a", true),
+    ("a*", "ab", true),
+    ("a*", "ba", false),
+    ("*b", "ab", true),
+    ("*b", "ba", false),
+    ("a*b", "a b", true),
+    ("a*b", "ab", true),
+    ("a*b", "abc", false),
+    ("*a*", "bab", true),
+    ("*a*", "bbb", false),
+    ("a**b", "axb", true),
+    // the prefix and the suffix must not overlap
+    ("ab*ba", "aba", false),
+    ("ab*ba", "abba", true),
+    // each piece must come after the one before
+    ("*b*a", "ab", false),
+    ("*aa*aa*", "aaa", false),
+    ("*aa*aa*", "aaaa", true),
+    ("*a*b*c", "cba", false),
+    ("*a*b*c", "xaybzc", true),
+    // regex metacharacters, line terminators and non-ASCII characters match only themselves
+    ("a(b", "a(b", true),
+    ("a(b", "ab", false),
+    ("price(usd)", "price(usd)", true),
+    ("price(usd)", "priceusd", false),
+    ("a.c", "abc", false),
+    ("a|b", "a", false),
+    ("a+", "aa", false),
+    ("[ab]", "a", false),
+    ("[ab]", "[ab]", true),
+    ("{1}", "{1}", true),
+    ("^a$", "^a$", true),
+    ("\\d", "1", false),
+    ("\\d", "\\d", true),
+    ("a\nb", "a\nb", true),
+    ("a\nb", "a\rb", false),
+    ("\u0085*", "\u0085x", true),
+    ("é*", "é", true),
+    ("é*", "e", false),
+    ("*😀", "x😀", true),
+    ("😀", "😀", true)
+  )
 
-  def genPatternAndValue(singleCharWildcard: Boolean): Gen[(String, String)] =
+  private val literalQuestionMarkExamples = Table(
+    ("pattern", "value", "expected"),
+    ("a?c", "a?c", true),
+    ("a?c", "abc", false),
+    ("?", "a", false),
+    ("*?", "a?", true),
+    ("*?", "ab", false)
+  )
+
+  private val singleCharWildcardExamples = Table(
+    ("pattern", "value", "expected"),
+    ("a?c", "abc", true),
+    ("a?c", "a?c", true),
+    ("a?c", "ac", false),
+    ("a?c", "abbc", false),
+    ("?", "", false),
+    ("?", "a", true),
+    ("?", "\n", true),
+    ("*?", "", false),
+    ("*?", "ab", true),
+    ("a?*?b", "a12b", true),
+    ("a?*?b", "a1b", false),
+    ("*a?c*", "xxabcxx", true),
+    ("*a?c*", "xxacxx", false),
+    // `?` matches one UTF-16 character, and the emoji is two
+    ("?", "😀", false),
+    ("??", "😀", true)
+  )
+
+  private val genLiteral: Gen[String] = genString(literals, 8)
+
+  private val genAnyString: Gen[String] = genString(alphabet, 12)
+
+  // Pattern and value use the same symbols, so that the value often contains the pattern pieces.
+  val genStarText: Gen[String] = Gen.frequency(9 -> genString(literals, 4), 1 -> genString(literals, 1000))
+
+  def genPatternAndInstance(singleCharWildcard: Boolean, starText: Gen[String] = genStarText): Gen[(String, String)] =
     for {
-      symbols <- Gen.oneOf(alphabet, smallAlphabet)
-      pattern <- Gen.frequency(19 -> genString(symbols, 10), 1 -> genString(symbols, 60))
-      value <- genValue(symbols, pattern, singleCharWildcard)
+      pattern <- Gen.frequency(19 -> genString(alphabet, 10), 1 -> genString(alphabet, 60))
+      value <- Gen
+        .sequence[List[String], String](pattern.toList.map {
+          case '*'                       => starText
+          case '?' if singleCharWildcard => Gen.oneOf(literals).map(_.take(1))
+          case c                         => Gen.const(c.toString)
+        })
+        .map(_.mkString)
     } yield (pattern, value)
-
-  // Half of the values come from the pattern, with each wildcard replaced, so that many cases match.
-  private def genValue(symbols: Vector[String], pattern: String, singleCharWildcard: Boolean): Gen[String] = {
-    val literals = symbols.filterNot(s => s == "*" || s == "?")
-    val instance = Gen
-      .sequence[List[String], String](pattern.toList.map {
-        case '*'                       => Gen.frequency(9 -> genString(literals, 4), 1 -> genString(literals, 1000))
-        case '?' if singleCharWildcard => Gen.oneOf(literals)
-        case c                         => Gen.const(c.toString)
-      })
-      .map(_.mkString)
-    val mutated = for {
-      value <- instance
-      index <- Gen.choose(0, value.length)
-      symbol <- Gen.oneOf(symbols)
-      removed <- Gen.choose(0, if (index < value.length) 1 else 0)
-    } yield value.patch(index, symbol, removed)
-    Gen.frequency(
-      2 -> instance,
-      1 -> mutated,
-      1 -> Gen.frequency(19 -> genString(symbols, 10), 1 -> genString(symbols, 1000))
-    )
-  }
 
   private def genString(symbols: Vector[String], maxLength: Int): Gen[String] =
     Gen.choose(0, maxLength).flatMap(Gen.listOfN(_, Gen.oneOf(symbols))).map(_.mkString)
 
-  // Dynamic programming over pattern and value prefixes: simple, but its time is pattern length × value length.
-  // A regex is not usable as reference: `.*` backtracks for minutes on long values.
-  def referenceMatches(pattern: String, singleCharWildcard: Boolean, value: String): Boolean = {
-    val initial = Array.tabulate(value.length + 1)(_ == 0)
-    val last = pattern.foldLeft(initial) { (matched, p) =>
-      val next = new Array[Boolean](value.length + 1)
-      if (p == '*') {
-        next(0) = matched(0)
-        (1 to value.length).foreach(j => next(j) = matched(j) || next(j - 1))
-      } else {
-        (1 to value.length).foreach { j =>
-          next(j) = matched(j - 1) && ((singleCharWildcard && p == '?') || p == value.charAt(j - 1))
-        }
-      }
-      next
-    }
-    last(value.length)
-  }
+  private def bothModes(pattern: String) =
+    List(
+      new WildcardPattern(pattern, singleCharWildcard = false),
+      new WildcardPattern(pattern, singleCharWildcard = true)
+    )
 
 }

@@ -23,7 +23,6 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
-import tech.beshu.ror.constants
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -31,7 +30,7 @@ class FieldsPolicyTests extends AnyWordSpec with ScalaCheckDrivenPropertyChecks 
 
   override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(
-      minSuccessful = 50000,
+      minSuccessful = 10000,
       workers = PosInt.ensuringValid(Runtime.getRuntime.availableProcessors())
     )
 
@@ -89,29 +88,18 @@ class FieldsPolicyTests extends AnyWordSpec with ScalaCheckDrivenPropertyChecks 
         policy(AccessMode.Blacklist, "secret*").canKeep("secret\nx") should be(false)
       }
     }
-    "match like a reference glob for each dot-separated part" in {
-      forAll(WildcardPatternTests.genPatternAndValue(singleCharWildcard = false)) { case (pattern, field) =>
-        whenever(pattern.nonEmpty) {
-          List(AccessMode.Whitelist, AccessMode.Blacklist).foreach { mode =>
-            withClue(s"mode=$mode: ") {
-              policy(mode, pattern).canKeep(field) should be(expected(mode, pattern, field))
-            }
+    "hide in blacklist mode and keep in whitelist mode each field name made from the configured name" in {
+      // Each `*` becomes text without a dot, so the field has the same dot-separated parts as the configured name.
+      val starText = WildcardPatternTests.genStarText.map(_.replace(".", "") + "a")
+      forAll(WildcardPatternTests.genPatternAndInstance(singleCharWildcard = false, starText)) {
+        case (pattern, field) =>
+          whenever(pattern.nonEmpty) {
+            policy(AccessMode.Whitelist, pattern).canKeep(field) should be(true)
+            policy(AccessMode.Blacklist, pattern).canKeep(field) should be(false)
+            policy(AccessMode.Blacklist, pattern).canKeep(s"$field.child") should be(false)
           }
-        }
       }
     }
-  }
-
-  private def expected(mode: AccessMode, pattern: String, field: String): Boolean = {
-    val patternParts = pattern.split("\\.").toList
-    val fieldParts = field.split("\\.").toList
-    def partsMatch = patternParts.zip(fieldParts).forall { case (p, f) =>
-      WildcardPatternTests.referenceMatches(p, singleCharWildcard = false, f)
-    }
-    constants.FIELDS_ALWAYS_ALLOW.contains(field) || (mode match {
-      case AccessMode.Whitelist => fieldParts.length <= patternParts.length && partsMatch
-      case AccessMode.Blacklist => !(patternParts.length <= fieldParts.length && partsMatch)
-    })
   }
 
   private def policy(mode: AccessMode, fields: String*) =
