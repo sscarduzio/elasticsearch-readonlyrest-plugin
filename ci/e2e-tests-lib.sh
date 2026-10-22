@@ -28,7 +28,7 @@ E2E_TESTS_REPO="https://github.com/beshu-tech/readonlyrest-e2e-tests.git"
 # Path to the shared helpers in the e2e tests clone.
 E2E_PREBUILD_IMAGES_LIB="ci/prebuild-images-lib.sh"
 # The script of the e2e repo that checks out its branch for our branches.
-E2E_CHECKOUT_BRANCH="ci/checkout-branch.sh"
+E2E_CHECKOUT_BRANCH="ci/checkout-matching-branch.sh"
 
 # Per-run image tag. Every entry point reads it from here, so they all name the same images.
 e2e_run_tag() {
@@ -51,19 +51,7 @@ clone_e2e_tests_repo() {
   local E2E_DIR
   E2E_DIR=$(mktemp -d) || return 2
 
-  # Git reads the header from the environment, so the clone and the branch script both send it.
-  local GIT_AUTH=()
-  if [ -n "${ROR_GH_TOKEN:-}" ]; then
-    local GIT_BASIC_AUTH XTRACE_WAS_ENABLED=false
-    [[ $- == *x* ]] && XTRACE_WAS_ENABLED=true && set +x
-    GIT_BASIC_AUTH=$(printf '%s:%s' x-access-token "$ROR_GH_TOKEN" | base64 | tr -d '\n')
-    [ -n "${GITHUB_ACTIONS:-}" ] && echo "::add-mask::$GIT_BASIC_AUTH" >&2
-    GIT_AUTH=(GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
-      "GIT_CONFIG_VALUE_0=AUTHORIZATION: basic $GIT_BASIC_AUTH")
-    [ "$XTRACE_WAS_ENABLED" = true ] && set -x
-  fi
-
-  if ! env "${GIT_AUTH[@]}" git clone --quiet --depth 1 "$E2E_TESTS_REPO" "$E2E_DIR" >&2; then
+  if ! git clone --quiet --depth 1 "$E2E_TESTS_REPO" "$E2E_DIR" >&2; then
     ci_log "Cannot clone $E2E_TESTS_REPO."
     return 3
   fi
@@ -71,7 +59,7 @@ clone_e2e_tests_repo() {
     ci_log "$E2E_TESTS_REPO has no $E2E_CHECKOUT_BRANCH on its default branch."
     return 3
   fi
-  env "${GIT_AUTH[@]}" "$E2E_DIR/$E2E_CHECKOUT_BRANCH" "$1" "$2" >&2 || return 3
+  "$E2E_DIR/$E2E_CHECKOUT_BRANCH" "$1" "$2" >&2 || return 3
   echo "$E2E_DIR"
 }
 
