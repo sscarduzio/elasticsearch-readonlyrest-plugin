@@ -33,8 +33,10 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.utils.ScalaOps.toRootLowerCase
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 import java.util.regex.Pattern as RegexPattern
 import scala.language.{implicitConversions, postfixOps}
@@ -91,7 +93,7 @@ object headerValues {
 
     val fieldsJsonString = upickle.default.write(fieldsRestrictions)
     NonEmptyString.unsafeFrom(
-      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes("UTF-8"))
+      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes(UTF_8))
     )
   }
 
@@ -192,7 +194,7 @@ object orders {
   def userIdOrder(globalSettings: GlobalSettings): Order[User.Id] = Order.by { userId =>
     globalSettings.userIdCaseSensitivity match {
       case CaseSensitivity.Enabled  => userId.value.value
-      case CaseSensitivity.Disabled => userId.value.value.toLowerCase
+      case CaseSensitivity.Disabled => userId.value.value.toRootLowerCase
     }
   }
 

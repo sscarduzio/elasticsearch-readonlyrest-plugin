@@ -19,6 +19,7 @@ package tech.beshu.ror.tools.core.utils
 import better.files.File
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.attribute.{
   DosFileAttributeView,
   DosFileAttributes,
@@ -30,6 +31,7 @@ import java.nio.file.attribute.{
 }
 import java.nio.file.{FileSystemException, Files, Path}
 import java.security.MessageDigest
+import java.util.Locale
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
@@ -38,9 +40,9 @@ object FileUtils {
 
   def calculateFileHash(filePath: Path): String = {
     val digest = MessageDigest.getInstance("SHA-256")
-    digest.update(filePath.toString.getBytes) // Include file path in hash
+    digest.update(filePath.toString.getBytes(UTF_8)) // Include file path in hash
     digest.update(Files.readAllBytes(filePath)) // Include file contents in hash
-    digest.digest.map("%02x".format(_)).mkString
+    digest.digest.map("%02x".formatLocal(Locale.ROOT, _)).mkString
   }
 
   def haveSameContent(first: Path, second: Path): Boolean = {
@@ -164,7 +166,7 @@ object FileUtils {
       .flatMap { osNamePropName =>
         Option(System.getProperty(osNamePropName))
       } match
-      case Some(osName) => osName.toLowerCase.contains("win")
+      case Some(osName) => osName.toLowerCase(Locale.ROOT).contains("win")
       case None         => false
   }
 

@@ -447,7 +447,7 @@ class EsNodeClusterService(
 
   private def indexAttributeFrom(resolvedIndex: ResolvedIndex): IndexAttribute = {
     resolvedIndex.getAttributes.toCovariantSet
-      .find(_.toLowerCase == "CLOSED") match {
+      .find(_.equalsIgnoreCase("closed")) match {
       case Some(_) => IndexAttribute.Closed
       case None    => IndexAttribute.Opened
     }

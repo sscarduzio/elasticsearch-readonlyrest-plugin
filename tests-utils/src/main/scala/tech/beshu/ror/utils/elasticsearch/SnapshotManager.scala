@@ -19,7 +19,6 @@ package tech.beshu.ror.utils.elasticsearch
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -134,7 +133,7 @@ class SnapshotManager(client: RestClient, esVersion: String)
     val request = new HttpPut(client.from(s"/_snapshot/$name"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
+      stringEntity(
         s"""
            |{
            |  "type": "fs",
@@ -201,7 +200,7 @@ class SnapshotManager(client: RestClient, esVersion: String)
     )
     request.addHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
+      stringEntity(
         s"""
            |{
            |  "indices": [ ${indices.mkString("\"", "\",\"", "\"")} ],
@@ -232,7 +231,7 @@ class SnapshotManager(client: RestClient, esVersion: String)
       case Nil => ""
       case f   => s""""feature_states": [ ${f.mkString("\"", "\",\"", "\"")} ],"""
     request.setEntity(
-      new StringEntity(
+      stringEntity(
         s"""
            |{
            |  $optionalFeatureStates

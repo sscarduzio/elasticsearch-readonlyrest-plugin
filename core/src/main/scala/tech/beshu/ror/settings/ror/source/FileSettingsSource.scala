@@ -25,6 +25,7 @@ import tech.beshu.ror.settings.ror.source.FileSettingsSource.FileSettingsLoading
 import tech.beshu.ror.settings.ror.source.FileSettingsSource.LoadingError.FileNotExist
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError.SourceSpecificError
+import tech.beshu.ror.utils.FileOps.contentAsUtf8String
 
 class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
     extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
@@ -43,7 +44,8 @@ class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
 
   private def loadSettingsFromFile(file: File): EitherT[Task, FileSettingsLoadingError, SETTINGS] = {
     EitherT
-      .pure[Task, FileSettingsLoadingError](file.contentAsString)
+      .fromEither[Task](file.contentAsUtf8String)
+      .leftMap[FileSettingsLoadingError](SettingsLoadingError.SettingsMalformed.apply)
       .subflatMap { raw =>
         Json
           .fromString(raw)

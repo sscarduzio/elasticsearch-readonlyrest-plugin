@@ -22,12 +22,14 @@ import tech.beshu.ror.audit.{AuditRequestContext, AuditResponseContext}
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 
 private[ror] object AuditSerializationHelper {
 
-  private val timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneId.of("GMT"))
+  private val timestampFormatter =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ROOT).withZone(ZoneId.of("GMT"))
 
   def serialize(
       responseContext: AuditResponseContext,

@@ -19,7 +19,6 @@ package tech.beshu.ror.utils.elasticsearch
 import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
@@ -77,7 +76,7 @@ class IndexLifecycleManager(client: RestClient, esVersion: String)
   private def createPutPolicyRequest(id: String, policy: JSON) = {
     val request = new HttpPut(client.from(s"_ilm/policy/$id"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(policy)))
+    request.setEntity(stringEntity(ujson.write(policy)))
     request
   }
 
@@ -108,10 +107,14 @@ class IndexLifecycleManager(client: RestClient, esVersion: String)
   private def createMoveToLifecycleStepRequest(index: String, currentStep: JSON, nextStep: JSON) = {
     val request = new HttpPost(client.from(s"_ilm/move/$index"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(s"""{
-                                          |  "current_step": ${ujson.write(currentStep)},
-                                          |  "next_step": ${ujson.write(nextStep)}
-                                          |}""".stripMargin))
+    request.setEntity(
+      stringEntity(
+        s"""{
+           |  "current_step": ${ujson.write(currentStep)},
+           |  "next_step": ${ujson.write(nextStep)}
+           |}""".stripMargin
+      )
+    )
     request
   }
 

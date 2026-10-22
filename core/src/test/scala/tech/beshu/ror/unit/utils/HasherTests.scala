@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.Hasher
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 
 class HasherTests extends AnyWordSpec {
 
@@ -45,20 +45,20 @@ class HasherTests extends AnyWordSpec {
       )
     }
     "keep the leading zeros of each byte" in {
-      Hasher.Sha256.hashString("", StandardCharsets.UTF_8) should be(
+      Hasher.Sha256.hashString("", UTF_8) should be(
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       )
     }
     "hash the bytes of the given charset" in {
-      Hasher.Sha256.hashString(nonAscii, StandardCharsets.UTF_8) should not be
-        Hasher.Sha256.hashString(nonAscii, StandardCharsets.ISO_8859_1)
+      Hasher.Sha256.hashString(nonAscii, UTF_8) should not be
+        Hasher.Sha256.hashString(nonAscii, ISO_8859_1)
     }
     "use UTF-8 when no charset is given" in {
-      Hasher.Sha1.hashString(nonAscii) should be(Hasher.Sha1.hashString(nonAscii, StandardCharsets.UTF_8))
-      Hasher.Sha256.hashString(nonAscii) should be(Hasher.Sha256.hashString(nonAscii, StandardCharsets.UTF_8))
-      Hasher.Sha512.hashString(nonAscii) should be(Hasher.Sha512.hashString(nonAscii, StandardCharsets.UTF_8))
+      Hasher.Sha1.hashString(nonAscii) should be(Hasher.Sha1.hashString(nonAscii, UTF_8))
+      Hasher.Sha256.hashString(nonAscii) should be(Hasher.Sha256.hashString(nonAscii, UTF_8))
+      Hasher.Sha512.hashString(nonAscii) should be(Hasher.Sha512.hashString(nonAscii, UTF_8))
       Hasher.PBKDF2WithHmacSHA512.hashString(nonAscii) should be(
-        Hasher.PBKDF2WithHmacSHA512.hashString(nonAscii, StandardCharsets.UTF_8)
+        Hasher.PBKDF2WithHmacSHA512.hashString(nonAscii, UTF_8)
       )
     }
     "hash a non-ASCII input to a known UTF-8 digest" in {

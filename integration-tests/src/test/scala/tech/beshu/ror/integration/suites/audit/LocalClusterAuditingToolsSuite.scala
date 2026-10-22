@@ -27,6 +27,8 @@ import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweet
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
+import java.nio.charset.StandardCharsets.UTF_8
+
 class LocalClusterAuditingToolsSuite
     extends BaseAuditingToolsSuite
     with BaseSingleNodeEsClusterTest
@@ -47,7 +49,7 @@ class LocalClusterAuditingToolsSuite
 
   override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.of(this)
 
-  override def baseRorSettingsYaml: String = resolvedRorSettingsFile.contentAsString
+  override def baseRorSettingsYaml: String = resolvedRorSettingsFile.contentAsString(UTF_8)
 
   override protected def baseAuditDataStreamName: Option[String] =
     Option.when(Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0))("audit_data_stream")

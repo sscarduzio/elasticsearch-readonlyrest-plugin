@@ -19,7 +19,6 @@ package tech.beshu.ror.utils.elasticsearch
 import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.IndexManager.*
@@ -215,7 +214,7 @@ class IndexManager(
     settings match {
       case Some(s) =>
         request.addHeader("Content-Type", "application/json")
-        request.setEntity(new StringEntity(ujson.write(s)))
+        request.setEntity(stringEntity(ujson.write(s)))
       case None =>
     }
     request
@@ -246,7 +245,7 @@ class IndexManager(
   private def createPutSettingsRequest(indexName: String, settings: JSON) = {
     val request = new HttpPut(client.from(s"/$indexName/_settings/"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(settings)))
+    request.setEntity(stringEntity(ujson.write(settings)))
     request
   }
 
@@ -265,16 +264,20 @@ class IndexManager(
       )
     )
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(s"""{
-                                          |  "properties": ${ujson.write(propertiesJson)}
-                                          |}""".stripMargin))
+    request.setEntity(
+      stringEntity(
+        s"""{
+           |  "properties": ${ujson.write(propertiesJson)}
+           |}""".stripMargin
+      )
+    )
     request
   }
 
   private def createRolloverRequest(target: String, index: Option[String]) = {
     val request = new HttpPost(client.from(s"/$target/_rollover/${index.getOrElse("")}"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(""))
+    request.setEntity(stringEntity(""))
     request
   }
 
@@ -288,11 +291,15 @@ class IndexManager(
 
     val request = new HttpPost(client.from("/_aliases"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(s"""{
-                                          |  "actions": [
-                                          |     ${actionStrings.toList.mkString(",\n")}
-                                          |  ]
-                                          |}""".stripMargin))
+    request.setEntity(
+      stringEntity(
+        s"""{
+           |  "actions": [
+           |     ${actionStrings.toList.mkString(",\n")}
+           |  ]
+           |}""".stripMargin
+      )
+    )
     request
   }
 
@@ -315,24 +322,32 @@ class IndexManager(
     val parsedAliases = aliases.map(alias => s""""$alias": {}""").mkString(",")
     val request = new HttpPost(client.from(s"/$sourceIndex/_shrink/$targetIndex"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(s"""
-                                          |{
-                                          |	"aliases": {
-                                          |		$parsedAliases
-                                          |	}
-                                          |}""".stripMargin))
+    request.setEntity(
+      stringEntity(
+        s"""
+           |{
+           |	"aliases": {
+           |		$parsedAliases
+           |	}
+           |}""".stripMargin
+      )
+    )
     request
   }
 
   private def createSplitRequest(sourceIndex: String, targetIndex: String, numOfShards: Int) = {
     val request = new HttpPost(client.from(s"/$sourceIndex/_split/$targetIndex"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(s"""
-                                          |{
-                                          |  "settings": {
-                                          |    "index.number_of_shards": $numOfShards
-                                          |  }
-                                          |}""".stripMargin))
+    request.setEntity(
+      stringEntity(
+        s"""
+           |{
+           |  "settings": {
+           |    "index.number_of_shards": $numOfShards
+           |  }
+           |}""".stripMargin
+      )
+    )
     request
   }
 
@@ -373,15 +388,19 @@ class IndexManager(
 
     val request = new HttpPost(client.from("/_reindex"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(s"""
-                                          |{
-                                          |	"source": {
-                                          |		${sourceSection(source)}
-                                          |	},
-                                          |	"dest": {
-                                          |		"index": "$destIndexName"
-                                          |	}
-                                          |}""".stripMargin))
+    request.setEntity(
+      stringEntity(
+        s"""
+           |{
+           |	"source": {
+           |		${sourceSection(source)}
+           |	},
+           |	"dest": {
+           |		"index": "$destIndexName"
+           |	}
+           |}""".stripMargin
+      )
+    )
     request
   }
 

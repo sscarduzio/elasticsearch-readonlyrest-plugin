@@ -17,6 +17,7 @@
 
 plugins {
     id "readonlyrest.base-common-conventions"
+    id "readonlyrest.forbidden-apis-conventions"
 
     id "com.github.prokod.gradle-crossbuild" version "0.17.0"
     id "java"

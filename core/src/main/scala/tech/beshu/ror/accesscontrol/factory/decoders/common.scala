@@ -287,7 +287,7 @@ object common extends RequestIdAwareLogging {
 
   implicit val kibanaAccessDecoder: Decoder[KibanaAccess] =
     DecoderHelpers.decodeStringLike
-      .map(_.toLowerCase)
+      .map(_.toRootLowerCase)
       .toSyncDecoder
       .emapE[KibanaAccess] {
         case "ro"           => Right(KibanaAccess.RO)

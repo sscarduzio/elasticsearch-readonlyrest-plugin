@@ -119,8 +119,8 @@ task_cve_check() {
 }
 
 task_compile_codebase_check() {
-  ci_log "Compiling the codebase."
-  ./gradlew --no-daemon classes
+  ci_log "Compiling the codebase and checking it for JDK calls that use the default charset, locale or time zone."
+  ./gradlew --no-daemon classes forbiddenApisMain
 }
 
 task_audit_build_check() {

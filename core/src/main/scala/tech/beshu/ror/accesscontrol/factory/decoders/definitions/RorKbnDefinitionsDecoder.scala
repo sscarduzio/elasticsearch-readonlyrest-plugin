@@ -29,6 +29,9 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decoding
 import tech.beshu.ror.accesscontrol.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.ScalaOps.toRootUpperCase
+
+import java.nio.charset.StandardCharsets.UTF_8
 
 object RorKbnDefinitionsDecoder {
 
@@ -81,10 +84,10 @@ object RorKbnDefinitionsDecoder {
         .tryDecode(c.downField("signature_key"))
     for {
       alg <- c.downField("signature_algo").as[Option[String]]
-      checkMethod <- alg.map(_.toUpperCase) match {
+      checkMethod <- alg.map(_.toRootUpperCase) match {
         case Some("HMAC") | None =>
           decodeSignatureKey
-            .map(_.getBytes)
+            .map(_.getBytes(UTF_8))
             .map(SignatureCheckMethod.Hmac.apply)
         case Some("RSA") =>
           decodeSignatureKey

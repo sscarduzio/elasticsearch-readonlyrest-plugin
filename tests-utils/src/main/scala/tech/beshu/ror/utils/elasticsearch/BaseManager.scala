@@ -19,6 +19,7 @@ package tech.beshu.ror.utils.elasticsearch
 import dev.failsafe.function.CheckedBiPredicate
 import dev.failsafe.{Failsafe, RetryPolicy}
 import org.apache.http.client.methods.HttpUriRequest
+import org.apache.http.entity.StringEntity
 import org.apache.http.{HttpRequest, HttpResponse}
 import org.testcontainers.shaded.org.yaml.snakeyaml.constructor.SafeConstructor
 import org.testcontainers.shaded.org.yaml.snakeyaml.{LoaderOptions, Yaml}
@@ -30,6 +31,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Duration
 import java.util
 import scala.jdk.CollectionConverters.*
@@ -71,6 +73,8 @@ abstract class BaseManager(client: RestClient, esVersion: String, esNativeApi: B
   }
 
   protected def additionalHeaders: Map[String, String] = Map.empty
+
+  protected def stringEntity(content: String): StringEntity = new StringEntity(content, UTF_8)
 
   class SimpleResponse private[elasticsearch] (val response: HttpResponse, request: Option[HttpRequest] = None) {
     val headers: Set[SimpleHeader] = response.getAllHeaders.map(h => SimpleHeader(h.getName, h.getValue)).toSet

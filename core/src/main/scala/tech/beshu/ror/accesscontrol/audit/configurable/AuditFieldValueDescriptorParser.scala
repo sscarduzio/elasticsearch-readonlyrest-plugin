@@ -20,6 +20,7 @@ import cats.parse.{Parser as P, Parser0}
 import cats.syntax.list.*
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldValueDescriptor
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.ScalaOps.toRootUpperCase
 
 object AuditFieldValueDescriptorParser extends RequestIdAwareLogging {
 
@@ -57,7 +58,7 @@ object AuditFieldValueDescriptorParser extends RequestIdAwareLogging {
     }
 
   private def deserializerAuditFieldValueDescriptor(str: String): Option[AuditFieldValueDescriptor] = {
-    str.toUpperCase match {
+    str.toRootUpperCase match {
       case "IS_MATCHED"          => Some(AuditFieldValueDescriptor.IsMatched)
       case "MATCHED_BLOCK_NAMES" => Some(AuditFieldValueDescriptor.MatchedBlockNames)
       case "FINAL_STATE"         => Some(AuditFieldValueDescriptor.FinalState)

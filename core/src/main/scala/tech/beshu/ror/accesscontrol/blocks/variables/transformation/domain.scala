@@ -25,8 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Funct
   FunctionArg,
   PartialApplyError
 }
+import tech.beshu.ror.utils.ScalaOps.{toRootLowerCase, toRootUpperCase}
 
-import java.util.Locale
 import java.util.regex.PatternSyntaxException
 import scala.util.Try
 import scala.util.matching.Regex
@@ -91,11 +91,11 @@ object domain {
     }
 
     final class ToUpperCase extends NoArgsFunction {
-      def apply(value: String): String = value.toUpperCase(Locale.US)
+      def apply(value: String): String = value.toRootUpperCase
     }
 
     final class ToLowerCase extends NoArgsFunction {
-      def apply(value: String): String = value.toLowerCase(Locale.US)
+      def apply(value: String): String = value.toRootLowerCase
     }
 
   }

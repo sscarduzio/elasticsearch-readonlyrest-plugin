@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.{HttpDeleteWithEntity, HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
@@ -174,55 +173,59 @@ class XpackApiManager(client: RestClient, esVersion: String)
       aggregableField: String
   ) = {
     if (Version.greaterOrEqualThan(esVersion, 7, 2, 0)) {
-      new StringEntity(s"""
-                          |{
-                          |  "index_pattern": "$indexPattern",
-                          |  "rollup_index": "$rollupIndex",
-                          |  "cron": "* * */2 * * ?",
-                          |  "page_size": 1000,
-                          |  "groups": {
-                          |    "date_histogram": {
-                          |      "field": "$timestampField",
-                          |      "fixed_interval": "1h",
-                          |      "delay": "7d"
-                          |    },
-                          |    "terms": {
-                          |       "fields": [ "$aggregableField" ]
-                          |     }
-                          |  },
-                          |  "metrics": [
-                          |    {
-                          |      "field": "$aggregableField",
-                          |      "metrics": [ "min", "max", "sum" ]
-                          |    }
-                          |  ]
-                          |}
-      """.stripMargin)
+      stringEntity(
+        s"""
+           |{
+           |  "index_pattern": "$indexPattern",
+           |  "rollup_index": "$rollupIndex",
+           |  "cron": "* * */2 * * ?",
+           |  "page_size": 1000,
+           |  "groups": {
+           |    "date_histogram": {
+           |      "field": "$timestampField",
+           |      "fixed_interval": "1h",
+           |      "delay": "7d"
+           |    },
+           |    "terms": {
+           |       "fields": [ "$aggregableField" ]
+           |     }
+           |  },
+           |  "metrics": [
+           |    {
+           |      "field": "$aggregableField",
+           |      "metrics": [ "min", "max", "sum" ]
+           |    }
+           |  ]
+           |}
+      """.stripMargin
+      )
     } else {
-      new StringEntity(s"""
-                          |{
-                          |  "index_pattern": "$indexPattern",
-                          |  "rollup_index": "$rollupIndex",
-                          |  "cron": "* * */2 * * ?",
-                          |  "page_size": 1000,
-                          |  "groups": {
-                          |    "date_histogram": {
-                          |      "field": "$timestampField",
-                          |      "interval": "1h",
-                          |      "delay": "7d"
-                          |    },
-                          |    "terms": {
-                          |       "fields": [ "$aggregableField" ]
-                          |     }
-                          |  },
-                          |  "metrics": [
-                          |    {
-                          |      "field": "$aggregableField",
-                          |      "metrics": [ "min", "max", "sum" ]
-                          |    }
-                          |  ]
-                          |}
-      """.stripMargin)
+      stringEntity(
+        s"""
+           |{
+           |  "index_pattern": "$indexPattern",
+           |  "rollup_index": "$rollupIndex",
+           |  "cron": "* * */2 * * ?",
+           |  "page_size": 1000,
+           |  "groups": {
+           |    "date_histogram": {
+           |      "field": "$timestampField",
+           |      "interval": "1h",
+           |      "delay": "7d"
+           |    },
+           |    "terms": {
+           |       "fields": [ "$aggregableField" ]
+           |     }
+           |  },
+           |  "metrics": [
+           |    {
+           |      "field": "$aggregableField",
+           |      "metrics": [ "min", "max", "sum" ]
+           |    }
+           |  ]
+           |}
+      """.stripMargin
+      )
     }
   }
 
@@ -257,18 +260,22 @@ class XpackApiManager(client: RestClient, esVersion: String)
   private def createRollupSearchRequest(rollupIndex: String) = {
     val request = new HttpGetWithEntity(client.from(s"/$rollupIndex/_rollup_search"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(s"""
-                                          |{
-                                          |  "size": 0,
-                                          |  "aggregations": {
-                                          |    "max_count": {
-                                          |      "max": {
-                                          |        "field": "count"
-                                          |      }
-                                          |    }
-                                          |  }
-                                          |}
-       """.stripMargin))
+    request.setEntity(
+      stringEntity(
+        s"""
+           |{
+           |  "size": 0,
+           |  "aggregations": {
+           |    "max_count": {
+           |      "max": {
+           |        "field": "count"
+           |      }
+           |    }
+           |  }
+           |}
+       """.stripMargin
+      )
+    )
     request
   }
 
@@ -280,13 +287,15 @@ class XpackApiManager(client: RestClient, esVersion: String)
     val request = new HttpGetWithEntity(client.from("/_security/user/_has_privileges"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(s"""
-                          |{
-                          |  "cluster": [ ${clusterPrivileges.map(p => s"\"$p\"").mkString(",")} ],
-                          |  "index": [ ${indexPrivileges.map(ujson.write(_)).mkString(",")} ],
-                          |  "application": [ ${applicationPrivileges.map(ujson.write(_)).mkString(",")} ]
-                          |}
-       """.stripMargin)
+      stringEntity(
+        s"""
+           |{
+           |  "cluster": [ ${clusterPrivileges.map(p => s"\"$p\"").mkString(",")} ],
+           |  "index": [ ${indexPrivileges.map(ujson.write(_)).mkString(",")} ],
+           |  "application": [ ${applicationPrivileges.map(ujson.write(_)).mkString(",")} ]
+           |}
+       """.stripMargin
+      )
     )
     request
   }
@@ -299,7 +308,7 @@ class XpackApiManager(client: RestClient, esVersion: String)
     val request = new HttpPost(client.from("/_security/api_key/grant"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
+      stringEntity(
         s"""{
            |  "grant_type": "password",
            |  "username": "$username",
@@ -315,9 +324,7 @@ class XpackApiManager(client: RestClient, esVersion: String)
     val request = new HttpPost(client.from("/_security/api_key"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
-        s"""{"name": "$keyName", "expiration": "1d", "role_descriptors": {}}"""
-      )
+      stringEntity(s"""{"name": "$keyName", "expiration": "1d", "role_descriptors": {}}""")
     )
     request
   }
@@ -326,9 +333,7 @@ class XpackApiManager(client: RestClient, esVersion: String)
     val request = new HttpDeleteWithEntity(client.from("/_security/api_key"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
-        s"""{"ids": ["$keyId"]}"""
-      )
+      stringEntity(s"""{"ids": ["$keyId"]}""")
     )
     request
   }
@@ -340,7 +345,7 @@ class XpackApiManager(client: RestClient, esVersion: String)
       case Some(rd) => s"""{"role_descriptors": ${ujson.write(rd)}}"""
       case None     => "{}"
     }
-    request.setEntity(new StringEntity(body))
+    request.setEntity(stringEntity(body))
     request
   }
 
@@ -348,9 +353,7 @@ class XpackApiManager(client: RestClient, esVersion: String)
     val request = new HttpPost(client.from("/_security/api_key/_bulk_update"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
-        s"""{"ids": [${keyIds.map(id => s""""$id"""").mkString(",")}]}"""
-      )
+      stringEntity(s"""{"ids": [${keyIds.map(id => s""""$id"""").mkString(",")}]}""")
     )
     request
   }
@@ -362,7 +365,7 @@ class XpackApiManager(client: RestClient, esVersion: String)
       case Some(name) => s"""{"query": {"term": {"name": "$name"}}}"""
       case None       => "{}"
     }
-    request.setEntity(new StringEntity(body))
+    request.setEntity(stringEntity(body))
     request
   }
 
@@ -373,7 +376,7 @@ class XpackApiManager(client: RestClient, esVersion: String)
     val request = new HttpPost(client.from(s"/$index/_terms_enum"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
+      stringEntity(
         s"""{
            |  "field": "$field",
            |  "timeout": "30s"

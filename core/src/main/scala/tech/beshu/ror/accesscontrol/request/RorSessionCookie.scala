@@ -29,7 +29,7 @@ import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.utils.{Hasher, RequestIdAwareLogging}
 
 import java.net.HttpCookie
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.time.{Clock, Instant}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
@@ -149,7 +149,7 @@ object RorSessionCookie extends RequestIdAwareLogging {
     ): Signature = Signature {
       Hasher.Sha256.hashString(
         input = s"${uuidProvider.instanceUuid.toString}${cookie.userId.value}${cookie.expiryDate.toEpochMilli}",
-        charset = StandardCharsets.UTF_8
+        charset = UTF_8
       )
     }
 

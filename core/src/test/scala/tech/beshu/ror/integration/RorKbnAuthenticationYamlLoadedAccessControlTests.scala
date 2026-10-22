@@ -31,6 +31,8 @@ import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 
+import java.nio.charset.StandardCharsets.UTF_8
+
 class RorKbnAuthenticationYamlLoadedAccessControlTests
     extends AnyWordSpec
     with BaseYamlLoadedAccessControlTest
@@ -74,7 +76,8 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
         "JWT token is defined with empty groups" in {
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
-              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                .getBytes(UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := "")
           )
@@ -94,7 +97,8 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
         "JWT token is defined with group that does not match the current group passed in header" in {
           val jwt = JwtUtils.Jwt(
             secret = Keys.hmacShaKeyFor(
-              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                .getBytes(UTF_8)
             ),
             claims = List("sub" := "test", "user" := "user", "groups" := List("some_group_in_jwt"))
           )

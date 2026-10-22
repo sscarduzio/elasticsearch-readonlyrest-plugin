@@ -20,7 +20,7 @@ import better.files.File
 import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.*
-import org.apache.http.entity.{FileEntity, StringEntity}
+import org.apache.http.entity.FileEntity
 import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction
@@ -129,7 +129,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     val request = new HttpPut(restClient.from(docPath, waitForRefreshParam(waitForRefresh)))
     request.setHeader("timeout", "50s")
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(content)))
+    request.setEntity(stringEntity(ujson.write(content)))
     request
   }
 
@@ -141,7 +141,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     val request = new HttpPost(restClient.from(docPath, waitForRefreshParam(waitForRefresh)))
     request.setHeader("timeout", "50s")
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(content)))
+    request.setEntity(stringEntity(ujson.write(content)))
     request
   }
 
@@ -152,7 +152,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   private def createDeleteByQueryRequest(index: String, query: JSON) = {
     val request = new HttpPost(restClient.from(s"$index/_delete_by_query"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(query)))
+    request.setEntity(stringEntity(ujson.write(query)))
     request
   }
 
@@ -164,7 +164,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   private def createMGetRequest(query: JSON, queryParams: Map[String, String] = Map.empty): HttpUriRequest = {
     val request = new HttpGetWithEntity(restClient.from("_mget", queryParams))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(query)))
+    request.setEntity(stringEntity(ujson.write(query)))
     request
   }
 
@@ -178,7 +178,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
       } :+ "\n"
 
     val payload = (lines :+ "\n").foldLeft("") { case (acc, elem) => s"$acc\n$elem" }
-    request.setEntity(new StringEntity(payload))
+    request.setEntity(stringEntity(payload))
     request
   }
 

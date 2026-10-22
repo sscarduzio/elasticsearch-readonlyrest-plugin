@@ -35,6 +35,7 @@ import tech.beshu.ror.settings.es.SslSettings.ClientCertificateSettings.Truststo
 import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.KeystoreBasedSettings
 
 import java.io.{FileInputStream, FileReader, IOException}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.{KeyStore, PrivateKey}
 import scala.jdk.CollectionConverters.*
@@ -299,7 +300,7 @@ object SSLCertHelper extends RequestIdAwareLogging {
 
   private def loadPrivateKey(file: File): IO[PrivateKey] = {
     Resource
-      .fromAutoCloseable(IO(new FileReader(file.toJava)))
+      .fromAutoCloseable(IO(new FileReader(file.toJava, UTF_8)))
       .use { privateKeyFileReader =>
         IO {
           val pemParser = new PEMParser(privateKeyFileReader)
