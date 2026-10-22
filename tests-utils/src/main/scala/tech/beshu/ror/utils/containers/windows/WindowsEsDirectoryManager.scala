@@ -116,7 +116,7 @@ object WindowsEsDirectoryManager extends LazyLogging {
     val connection = java.net.URI.create(s"${downloadUrl(esVersion)}.sha512").toURL.openConnection()
     connection.setConnectTimeout(30_000)
     connection.setReadTimeout(60_000)
-    Using.resource(scala.io.Source.fromInputStream(connection.getInputStream)) {
+    Using.resource(scala.io.Source.fromInputStream(connection.getInputStream)(scala.io.Codec.UTF8)) {
       _.mkString.trim.split("\\s+").head.toLowerCase
     }
   }

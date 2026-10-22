@@ -20,6 +20,7 @@ import org.apache.http.util.EntityUtils
 import org.elasticsearch.client.{Request, Response}
 import ujson.Value
 
+import java.nio.charset.StandardCharsets.UTF_8
 import scala.util.Try
 
 object RestResponseOps {
@@ -34,7 +35,7 @@ object RestResponseOps {
     }
 
     def entityStr: String = {
-      EntityUtils.toString(response.getEntity)
+      EntityUtils.toString(response.getEntity, UTF_8)
     }
 
     def errorType: Option[String] = Try(entityJson("error")("type").str).toOption

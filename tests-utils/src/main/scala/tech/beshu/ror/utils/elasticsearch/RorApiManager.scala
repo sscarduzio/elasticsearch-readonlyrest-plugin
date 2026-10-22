@@ -20,7 +20,6 @@ import cats.implicits.*
 import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
-import org.apache.http.entity.StringEntity
 import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
@@ -129,9 +128,7 @@ class RorApiManager(
     val request = new HttpPost(client.from("/_readonlyrest/admin/audit/event"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
-        payload.toString()
-      )
+      stringEntity(payload.toString())
     )
     request
   }
@@ -139,14 +136,14 @@ class RorApiManager(
   private def createUpdateRorInIndexSettingsRequest(settings: String) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(rorSettingsIndexDocumentContentFrom(settings)))
+    request.setEntity(stringEntity(rorSettingsIndexDocumentContentFrom(settings)))
     request
   }
 
   private def createUpdateRorInIndexSettingsRequestFromRaw(rawRequestJson: String) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(rawRequestJson))
+    request.setEntity(stringEntity(rawRequestJson))
     request
   }
 
@@ -158,7 +155,7 @@ class RorApiManager(
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
 
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(rorTestSettings(settings, ttl)))
+    request.setEntity(stringEntity(rorTestSettings(settings, ttl)))
     request
   }
 
@@ -166,7 +163,7 @@ class RorApiManager(
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
 
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(rawRequestJson))
+    request.setEntity(stringEntity(rawRequestJson))
     request
   }
 
@@ -207,7 +204,7 @@ class RorApiManager(
   private def createConfigureImpersonationMocksRequest(payload: JSON) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test/authmock"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(payload)))
+    request.setEntity(stringEntity(ujson.write(payload)))
     request
   }
 

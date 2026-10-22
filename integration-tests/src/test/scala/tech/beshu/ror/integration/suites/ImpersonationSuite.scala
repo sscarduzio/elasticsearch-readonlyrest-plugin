@@ -33,6 +33,8 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
+import java.nio.charset.StandardCharsets.UTF_8
+
 class ImpersonationSuite
     extends AnyFreeSpec
     with BaseSingleNodeEsClusterTest
@@ -771,7 +773,7 @@ class ImpersonationSuite
       headersToEncode: Map[String, String]
   ) = {
     def encodeBase64(value: String): String =
-      Base64.encodeBase64(value.getBytes, false).map(_.toChar).mkString
+      Base64.encodeBase64(value.getBytes(UTF_8), false).map(_.toChar).mkString
 
     val rorMetadata =
       s"""
@@ -787,7 +789,7 @@ class ImpersonationSuite
 
   private def loadTestSettings(): Unit = {
     rorApiManager
-      .updateRorTestSettings(resolvedRorSettingsFile.contentAsString)
+      .updateRorTestSettings(resolvedRorSettingsFile.contentAsString(UTF_8))
       .forceOkStatus()
   }
 

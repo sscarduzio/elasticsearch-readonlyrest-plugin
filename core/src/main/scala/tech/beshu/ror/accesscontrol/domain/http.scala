@@ -33,7 +33,7 @@ import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.net.InetSocketAddress
-import java.util.{Locale, UUID}
+import java.util.UUID
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
@@ -58,7 +58,7 @@ object Header extends RequestIdAwareLogging {
       * `equals`, `hashCode`, `Eq` and `Order` all rest on it. `value` keeps the spelling which came from
       * the wire, because audit records and logs report it.
       */
-    private val lowerCased: String = value.value.toLowerCase(Locale.US)
+    private val lowerCased: String = value.value.toRootLowerCase
 
     override val hashCode: Int = lowerCased.hashCode
 

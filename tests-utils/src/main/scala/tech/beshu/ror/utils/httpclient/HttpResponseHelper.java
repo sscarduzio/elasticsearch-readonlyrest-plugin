@@ -23,6 +23,7 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,7 +37,7 @@ public class HttpResponseHelper {
 
   public static String stringBodyFrom(HttpResponse response) {
     try {
-      return EntityUtils.toString(response.getEntity());
+      return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
     } catch (IOException ex) {
       throw new IllegalStateException("Cannot convert body to string", ex);
     }

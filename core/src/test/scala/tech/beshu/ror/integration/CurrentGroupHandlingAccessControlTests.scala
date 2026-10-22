@@ -31,6 +31,8 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.JwtUtils.*
 
+import java.nio.charset.StandardCharsets.UTF_8
+
 class CurrentGroupHandlingAccessControlTests
     extends AnyWordSpec
     with BaseYamlLoadedAccessControlTest
@@ -178,7 +180,7 @@ class CurrentGroupHandlingAccessControlTests
         }
 
         val jwt = Jwt(
-          Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes),
+          Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes(UTF_8)),
           claims = List(
             "user" := "user2",
             "groups" := List("kbn_group1", "kbn_group2", "kbn_group3")
@@ -217,7 +219,7 @@ class CurrentGroupHandlingAccessControlTests
         }
 
         val jwt = Jwt(
-          Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes),
+          Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes(UTF_8)),
           claims = List(
             "user" := "user3",
             "groups" := List("group1", "group3")
@@ -254,7 +256,7 @@ class CurrentGroupHandlingAccessControlTests
         }
 
         val jwt = Jwt(
-          Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes),
+          Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes(UTF_8)),
           claims = List(
             "user" := "user4",
             "groups" := List("group1", "group2", "group3")
@@ -293,7 +295,7 @@ class CurrentGroupHandlingAccessControlTests
         }
 
         val jwt = Jwt(
-          Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes),
+          Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes(UTF_8)),
           claims = List(
             "user" := "user5",
             "groups" := List("jwt_group1", "jwt_group2", "jwt_group3")
@@ -332,7 +334,7 @@ class CurrentGroupHandlingAccessControlTests
         }
 
         val jwt = Jwt(
-          Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes),
+          Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes(UTF_8)),
           claims = List(
             "user" := "user6",
             "groups" := List("group1", "group3")
@@ -371,7 +373,7 @@ class CurrentGroupHandlingAccessControlTests
         }
 
         val jwt = Jwt(
-          Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes),
+          Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes(UTF_8)),
           claims = List(
             "user" := "user7",
             "groups" := List("group1", "group2", "group3")

@@ -51,7 +51,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.ScalaOps.value
+import tech.beshu.ror.utils.ScalaOps.{toRootLowerCase, toRootUpperCase, value}
 
 import java.time.Clock
 import java.util.concurrent.TimeUnit
@@ -384,7 +384,7 @@ object LdapServicesDecoder extends RequestIdAwareLogging {
 
   private def userIdAttributeFrom(attributeName: Option[NonEmptyString], skipUserSearch: Option[Boolean]) = {
     attributeName match {
-      case Some(name) if name.value.toLowerCase == "cn" =>
+      case Some(name) if name.value.toRootLowerCase == "cn" =>
         skipUserSearch match {
           case Some(true)         => Right(UserIdAttribute.OptimizedCn)
           case Some(false) | None => Right(UserIdAttribute.CustomAttribute(name))
@@ -652,7 +652,7 @@ object LdapServicesDecoder extends RequestIdAwareLogging {
   private given Decoder[HaMethod] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
-      .map(_.toUpperCase)
+      .map(_.toRootUpperCase)
       .emapE[HaMethod] {
         case "FAILOVER"    => Right(HaMethod.Failover)
         case "ROUND_ROBIN" => Right(HaMethod.RoundRobin)

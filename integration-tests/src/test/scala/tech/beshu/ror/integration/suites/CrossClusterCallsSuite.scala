@@ -124,6 +124,13 @@ class CrossClusterCallsSuite
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
         }
+        "he queries remote indices with a wildcard that also matches a closed remote index" in {
+          val result = user3SearchManager.search("private1:audit*")
+          result should have statusCode 200
+          result.searchHits.map(i => i("_index").str).toSet should be(
+            Set("private1:audit_2020-03-26", "private1:audit_2020-03-27")
+          )
+        }
         "he queries remote data streams only by data stream name" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search("private2:test1_ds")
           result should have statusCode 200
@@ -1233,6 +1240,8 @@ object CrossClusterCallsSuite extends StrictLogging {
 
       documentManager.createDoc("audit_2020-03-26", 1, ujson.read("""{"usage":"ROR"}""")).force()
       documentManager.createDoc("audit_2020-03-27", 1, ujson.read("""{"usage":"ROR"}""")).force()
+      documentManager.createDoc("audit_closed", 1, ujson.read("""{"usage":"ROR"}""")).force()
+      indexManager.closeIndex("audit_closed").force()
 
       documentManager.createFirstDoc("service2-logs-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
       documentManager.createFirstDoc("service2-logs-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()

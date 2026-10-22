@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.es.{EsNodeSettings, EsServices}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.ScalaOps.toRootUpperCase
 
 import java.time.Instant
 import scala.language.implicitConversions
@@ -121,7 +122,7 @@ object RequestContext extends RequestIdAwareLogging {
     val OPTIONS: Method = Method.fromStringUnsafe("OPTIONS")
     val HEAD: Method = Method.fromStringUnsafe("HEAD")
 
-    def fromStringUnsafe(str: String): Method = new Method(str.toUpperCase)
+    def fromStringUnsafe(str: String): Method = new Method(str.toRootUpperCase)
   }
 
   sealed trait RequestGroup

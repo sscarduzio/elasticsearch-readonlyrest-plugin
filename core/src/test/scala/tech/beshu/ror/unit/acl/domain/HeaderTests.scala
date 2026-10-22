@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.LogEventsCapture.captureLogEvents
 import tech.beshu.ror.utils.TestsUtils.testRequestId
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 
 class HeaderTests extends AnyWordSpec with Matchers {
@@ -388,7 +388,7 @@ class HeaderTests extends AnyWordSpec with Matchers {
   )
 
   private def base64Of(value: String) =
-    Base64.getEncoder.encodeToString(value.getBytes(StandardCharsets.UTF_8))
+    Base64.getEncoder.encodeToString(value.getBytes(UTF_8))
 
   private def headersOf(rawHeaders: Map[String, List[String]]) = rawHeadersOf(rawHeaders) match {
     case Right(headers) => headers

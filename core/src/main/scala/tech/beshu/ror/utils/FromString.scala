@@ -22,6 +22,7 @@ import eu.timepit.refined.numeric.NonNegative
 import eu.timepit.refined.types.all.NonEmptyString
 import squants.information.Information
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ScalaOps.toRootLowerCase
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.{Failure, Success, Try}
@@ -43,7 +44,7 @@ object FromString {
   val string: FromString[String] = instance(Right(_))
 
   val boolean: FromString[Boolean] = instance { str =>
-    str.toLowerCase match {
+    str.toRootLowerCase match {
       case "true"  => Right(true)
       case "false" => Right(false)
       case other   => Left(s"Cannot convert '$other' to boolean")

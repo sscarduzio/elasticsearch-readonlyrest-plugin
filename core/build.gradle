@@ -24,6 +24,7 @@ buildscript {
 
 plugins {
     id "readonlyrest.base-common-conventions"
+    id "readonlyrest.forbidden-apis-conventions"
     id "readonlyrest.java17-tests-conventions"
 
     id "com.github.maiflai.scalatest"   version "0.33"

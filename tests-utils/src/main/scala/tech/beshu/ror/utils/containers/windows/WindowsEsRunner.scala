@@ -22,6 +22,7 @@ import os.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Config
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager.binPath
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.function.Consumer
 import scala.language.postfixOps
 
@@ -42,11 +43,13 @@ object WindowsEsRunner extends LazyLogging {
         ) ++ config.envs,
         stdout = os.ProcessOutput.Readlines { line =>
           logger.info(s"[${config.nodeName}] $line")
-          additionalLogConsumer.foreach(_.accept(new OutputFrame(OutputFrame.OutputType.STDOUT, line.getBytes)))
+          additionalLogConsumer
+            .foreach(_.accept(new OutputFrame(OutputFrame.OutputType.STDOUT, line.getBytes(UTF_8))))
         },
         stderr = os.ProcessOutput.Readlines { line =>
           logger.error(s"[${config.nodeName}] $line")
-          additionalLogConsumer.foreach(_.accept(new OutputFrame(OutputFrame.OutputType.STDERR, line.getBytes)))
+          additionalLogConsumer
+            .foreach(_.accept(new OutputFrame(OutputFrame.OutputType.STDERR, line.getBytes(UTF_8))))
         },
       )
     val process = WindowsEsProcess(config.clusterName, config.nodeName, proc)

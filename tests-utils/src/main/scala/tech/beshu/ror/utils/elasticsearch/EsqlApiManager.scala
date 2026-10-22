@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.HttpPost
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.Arr
@@ -37,7 +36,7 @@ class EsqlApiManager(restClient: RestClient, esVersion: String) extends BaseMana
     val request = new HttpPost(restClient.from("_query", Map("format" -> "json")))
     request.setHeader("Content-Type", "application/json")
     request.setHeader("timeout", "50s")
-    request.setEntity(new StringEntity(requestBody(query, params)))
+    request.setEntity(stringEntity(requestBody(query, params)))
     request
   }
 
