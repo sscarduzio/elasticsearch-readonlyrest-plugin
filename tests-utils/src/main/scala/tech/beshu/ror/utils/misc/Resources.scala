@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.misc
 
 import better.files.File
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
 
 object Resources {
@@ -27,7 +28,7 @@ object Resources {
   }
 
   def getResourceContent(resource: String): String = {
-    File(getResourcePath(resource)).contentAsString
+    File(getResourcePath(resource)).contentAsString(UTF_8)
   }
 
 }

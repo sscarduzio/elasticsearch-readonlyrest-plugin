@@ -34,6 +34,7 @@ import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTes
 import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils.{nes, unsafeNes}
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.security.KeyPairGenerator
 import java.util.Base64
 
@@ -85,6 +86,30 @@ class RorKbnAuthenticationRuleSettingsTests extends BaseRuleSettingsDecoderTest[
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
+          }
+        )
+      }
+      "HMAC signature key contains non-ASCII characters" in {
+        val signatureKey = "zażółć gęślą jaźń " * 4
+        assertDecodingSuccess(
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ror_kbn_authentication: kbn1
+                    |
+                    |  ror_kbn:
+                    |
+                    |  - name: kbn1
+                    |    signature_key: "$signatureKey"
+                    |
+                    |""".stripMargin,
+          assertion = rule => {
+            inside(rule.settings.rorKbn.checkMethod) { case SignatureCheckMethod.Hmac(key) =>
+              key.toList should be(signatureKey.getBytes(UTF_8).toList)
+            }
           }
         )
       }

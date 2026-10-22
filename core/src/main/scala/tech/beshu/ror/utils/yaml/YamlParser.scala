@@ -20,6 +20,7 @@ import better.files.*
 import io.circe.*
 import squants.information.Information
 import tech.beshu.ror.org.yaml.snakeyaml.LoaderOptions
+import tech.beshu.ror.utils.FileOps.contentAsUtf8String
 
 import java.io.{Reader, StringReader}
 
@@ -30,7 +31,9 @@ class YamlParser(maxSize: Option[Information] = None) {
   }
 
   def parse(file: File): Either[ParsingFailure, Json] = {
-    file.fileReader { reader => parse(reader) }
+    file.contentAsUtf8String.left
+      .map(message => ParsingFailure(message, new IllegalArgumentException(message)))
+      .flatMap(content => parse(content))
   }
 
   def parse(yamlContent: String): Either[ParsingFailure, Json] = {

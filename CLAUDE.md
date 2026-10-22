@@ -15,9 +15,6 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 # Build plugin using the latest supported ES version
 ./gradlew clean buildRorPlugin
 
-# Run ES locally with ROR for debugging (supports ES 8.x)
-./gradlew clean eshome:runEs
-
 # Unit tests (core module)
 ./gradlew core:test
 
@@ -36,9 +33,6 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 
 # Check formatting without modifying files (used in CI)
 ./gradlew formatCodeCheck
-
-# Clean eshome (needed when switching ES versions)
-./gradlew :eshome:clean
 ```
 
 **Requirements**: JDK 17+, Gradle (wrapper included). Core module compiles with JDK 11 toolchain. Each ES module sets its toolchain in `ext.javaLanguageVersion`: 11 for es6x/es7x, 17 for es8x, 21 for es9x. The build writes the same value to `java.version` in `plugin-descriptor.properties`, and ES refuses a JVM older than it.
@@ -53,7 +47,6 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 - **`integration-tests/`** — Docker-based integration tests using TestContainers. Execution model, knobs and sharding: `integration-tests/README.md`.
 - **`tests-utils/`** — Shared test fixtures and utilities (MockRequestContext, MockEsServices, etc.).
 - **`ror-tools/` / `ror-tools-core/`** — CLI tools and utilities.
-- **`eshome/`** — Local ES runner for IDE debugging. Config in `eshome/config/` (elasticsearch.yml, readonlyrest.yml). Must be cleaned when switching ES versions.
 - **`build-base/`** — Gradle convention plugins applied to all modules (`readonlyrest.base-common-conventions`, `readonlyrest.plugin-common-conventions`).
 
 ## Key Source Paths
@@ -79,6 +72,8 @@ ES module entry point pattern: `es{version}x/src/main/scala/tech/beshu/ror/es/Re
 - **Code formatting**: scalafmt (Scala) + Google Java Format (Java) via Spotless. Pre-commit hook formats staged files automatically. Run `./gradlew formatCode` manually or `./gradlew formatCodeCheck` to verify.
 - **Comments**: a comment explains the current state, not the change that made it — history belongs to the commit message and the PR. Full rule: `docs/dev/code-style.md`
 - **Writing style**: comments, commit messages, PR descriptions, review comments and answers to the user all use Simplified Technical English (ASD-STE100) plus Zinsser — one idea per sentence, active voice, no metaphor. See `docs/dev/writing-style.md`
+- **Case conversion**: use `toRootLowerCase` / `toRootUpperCase` from `tech.beshu.ror.utils.ScalaOps`, never `toLowerCase` / `toUpperCase` without a `Locale` (in a Turkish locale, `"I".toLowerCase` is `"ı"`). Modules without core (`audit`, `ror-tools`, `ror-tools-core`) use `Locale.ROOT`
+- **Default charset, locale and time zone**: `forbiddenApisMain` (forbidden-apis, signatures `jdk-unsafe` plus `readonlyrest.forbidden-apis-conventions`) fails the build when main code uses them, e.g. `String.getBytes()`, `Charset.defaultCharset`, `scala.io.Source.fromFile` without a `Codec`, better-files without a charset, or Scala `"...".format` / `f"..."` (use `formatLocal(Locale.ROOT, ...)`). Pass `UTF_8`, `Locale.ROOT` or a time zone explicitly. A deliberate call takes `@SuppressForbidden(reason = "...")` (`tech.beshu.ror.utils`) on its method
 - **Internal Scala APIs**: avoid `scala.runtime.ScalaRunTime._*` and other `_`-prefixed runtime methods — they are implementation details
 - **Plugin ZIP output**: `es{version}x/build/distributions/readonlyrest-{pluginVersion}_es{esVersion}.zip`
 

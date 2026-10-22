@@ -17,7 +17,6 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.client.methods.HttpPut
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -32,7 +31,7 @@ class IngestPipelineManager(client: RestClient, esVersion: String)
   private def createPutPipelineRequest(name: String, body: JSON): HttpPut = {
     val request = new HttpPut(client.from(s"/_ingest/pipeline/$name"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(body)))
+    request.setEntity(stringEntity(ujson.write(body)))
     request
   }
 

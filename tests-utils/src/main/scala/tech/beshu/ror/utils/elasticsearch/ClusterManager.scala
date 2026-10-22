@@ -17,7 +17,6 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.client.methods.{HttpGet, HttpPost, HttpPut}
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
@@ -74,7 +73,7 @@ class ClusterManager(
       case Some(indexName) =>
         request.addHeader("Content-Type", "application/json")
         request.setEntity(
-          new StringEntity(
+          stringEntity(
             s"""{
                |"index":"$indexName",
                |"shard": 0,
@@ -114,7 +113,7 @@ class ClusterManager(
     val request = new HttpPost(client.from("_cluster/reroute"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
+      stringEntity(
         s"""{
            |"commands":[
            |  ${commands.map(ujson.write(_)).mkString(",")}
@@ -139,7 +138,7 @@ class ClusterManager(
     val request = new HttpPut(client.from("_cluster/settings"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
+      stringEntity(
         if (Version.greaterOrEqualThan(esVersion, 6, 5, 0)) {
           s"""
              |{
@@ -178,9 +177,7 @@ class ClusterManager(
     val request = new HttpPut(client.from("_cluster/settings"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(
-      new StringEntity(
-        content.toString()
-      )
+      stringEntity(content.toString())
     )
     request
   }

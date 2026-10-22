@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.http.MethodsRuleDecod
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.utils.ScalaOps.toRootUpperCase
 
 object MethodsRuleDecoder extends RuleBaseDecoderWithoutAssociatedFields[MethodsRule] {
 
@@ -42,7 +43,7 @@ private object MethodsRuleDecoderHelper {
 
   implicit val methodDecoder: Decoder[Method] =
     Decoder.decodeString
-      .map(_.toUpperCase)
+      .map(_.toRootUpperCase)
       .map(Method.fromStringUnsafe)
       .toSyncDecoder
       .emapE {

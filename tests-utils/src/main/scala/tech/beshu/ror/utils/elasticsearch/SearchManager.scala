@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpGet, HttpPost}
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager.*
@@ -123,7 +122,7 @@ class SearchManager(
       )
     )
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(queryJsonString))
+    request.setEntity(stringEntity(queryJsonString))
     request
   }
 
@@ -149,11 +148,15 @@ class SearchManager(
     scroll match {
       case Some(_) if Version.lowerThan(esVersion, 7, 0, 0) =>
         request.addHeader("Content-Type", "application/json")
-        request.setEntity(new StringEntity(s"""
-                                              |{
-                                              |  "sort": ["_id"]
-                                              |}
-                                              |""".stripMargin))
+        request.setEntity(
+          stringEntity(
+            s"""
+               |{
+               |  "sort": ["_id"]
+               |}
+               |""".stripMargin
+          )
+        )
       case Some(_) | None =>
     }
 
@@ -180,7 +183,7 @@ class SearchManager(
     body match {
       case Some(b) =>
         request.addHeader("Content-Type", "application/json")
-        request.setEntity(new StringEntity(ujson.write(b)))
+        request.setEntity(stringEntity(ujson.write(b)))
       case None =>
     }
     request
@@ -193,28 +196,28 @@ class SearchManager(
   private def createMultiSearchRequest(payload: String) = {
     val request = new HttpPost(client.from("/_msearch"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(payload))
+    request.setEntity(stringEntity(payload))
     request
   }
 
   private def createRenderTemplateRequest(query: String) = {
     val request = new HttpGetWithEntity(client.from("_render/template"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(query))
+    request.setEntity(stringEntity(query))
     request
   }
 
   private def createSearchTemplateRequest(index: String, query: JSON) = {
     val request = new HttpGetWithEntity(client.from(s"/$index/_search/template"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(query)))
+    request.setEntity(stringEntity(ujson.write(query)))
     request
   }
 
   private def createMultiSearchTemplateRequest(payload: String) = {
     val request = new HttpGetWithEntity(client.from(s"/_msearch/template"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(payload))
+    request.setEntity(stringEntity(payload))
     request
   }
 

@@ -16,14 +16,21 @@
  */
 package tech.beshu.ror.unit.utils
 
+import better.files.File
 import io.circe.Json
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import squants.information.{Bytes, Kilobytes, Megabytes}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
+import tech.beshu.ror.settings.ror.source.FileSettingsSource
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.utils.yaml.YamlParser
+
+import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 
 class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
@@ -162,6 +169,67 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
         }
       }
     }
+    "read a settings file as UTF-8" when {
+      val nonAsciiYaml =
+        """
+          |readonlyrest:
+          |
+          |    access_control_rules:
+          |
+          |    - name: "zażółć gęślą jaźń"
+          |      auth_key: "admin:container"
+          |""".stripMargin
+
+      "the file is parsed by the ROR settings parser" in {
+        withUtf8File(nonAsciiYaml) { file =>
+          inside(settingsYamlParser.fromFile(file)) { case Right(settings) =>
+            settings.rawYaml shouldBe nonAsciiYaml
+          }
+        }
+      }
+      "the file is parsed by the YAML parser" in {
+        withUtf8File(nonAsciiYaml) { file =>
+          new YamlParser().parse(file) shouldBe new YamlParser().parse(nonAsciiYaml)
+        }
+      }
+      "the file is loaded by the file settings source" in {
+        withUtf8File(nonAsciiYaml) { file =>
+          loadWithFileSettingsSource(file) shouldBe Right(nonAsciiYaml)
+        }
+      }
+      "the file starts with a UTF-8 byte order mark" in {
+        withFile(utf8ByteOrderMark ++ nonAsciiYaml.getBytes(UTF_8)) { file =>
+          inside(settingsYamlParser.fromFile(file)) { case Right(settings) =>
+            settings.rawYaml shouldBe nonAsciiYaml
+          }
+          new YamlParser().parse(file) shouldBe new YamlParser().parse(nonAsciiYaml)
+          loadWithFileSettingsSource(file) shouldBe Right(nonAsciiYaml)
+        }
+      }
+    }
+    "return an error for a settings file that is not valid UTF-8" when {
+      val latin1Yaml = "readonlyrest:\n  access_control_rules:\n  - name: \"café\"\n".getBytes(ISO_8859_1)
+
+      "the file is parsed by the ROR settings parser" in {
+        withFile(latin1Yaml) { file =>
+          inside(settingsYamlParser.fromFile(file)) { case Left(error) =>
+            error.show should be(s"Settings content is malformed. Details: ${notUtf8Message(file)}")
+          }
+        }
+      }
+      "the file is parsed by the YAML parser" in {
+        withFile(latin1Yaml) { file =>
+          inside(new YamlParser().parse(file)) { case Left(failure) =>
+            failure.message should be(notUtf8Message(file))
+          }
+        }
+      }
+      "the file is loaded by the file settings source" in {
+        withFile(latin1Yaml) { file =>
+          loadWithFileSettingsSource(file) shouldBe Left(SettingsLoadingError.SettingsMalformed(notUtf8Message(file)))
+        }
+      }
+    }
     "yaml parser relies on parsing numbers from yaml" when {
       "is represented as float" in {
         parseYaml("200.0") shouldEqual Json.fromBigDecimal(200)
@@ -200,4 +268,21 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
   private def parseYaml(yamlContent: String): Json =
     new YamlParser(Some(Kilobytes(100))).parse(yamlContent).toTry.get
+
+  private val utf8ByteOrderMark = Array(0xef.toByte, 0xbb.toByte, 0xbf.toByte)
+
+  private def notUtf8Message(file: File) = s"The file ${file.pathAsString} is not valid UTF-8"
+
+  private def loadWithFileSettingsSource(file: File) =
+    new FileSettingsSource[String](file).load()(RequestId("test")).runSyncUnsafe()
+
+  private def withUtf8File[A](content: String)(f: File => A): A = withFile(content.getBytes(UTF_8))(f)
+
+  private def withFile[A](content: Array[Byte])(f: File => A): A =
+    File
+      .temporaryFile()
+      .map(_.writeByteArray(content))
+      .map(f)
+      .get()
+
 }

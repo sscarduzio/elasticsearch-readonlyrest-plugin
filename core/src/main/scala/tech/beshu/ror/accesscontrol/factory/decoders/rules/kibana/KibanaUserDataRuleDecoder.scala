@@ -42,6 +42,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decoding
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.ScalaOps.toRootUpperCase
 import tech.beshu.ror.utils.js.JsCompiler
 
 import scala.util.{Failure, Success}
@@ -133,7 +134,7 @@ class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex, variableCreator
 
   private implicit lazy val httpMethodDecoder: Decoder[HttpMethod] =
     Decoder.decodeString
-      .map(_.toUpperCase())
+      .map(_.toRootUpperCase)
       .toSyncDecoder
       .emapE[HttpMethod] {
         case "GET"    => Right(HttpMethod.Get)

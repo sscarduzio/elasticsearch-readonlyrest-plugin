@@ -26,8 +26,10 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.NonEmptyStringOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.SuppressForbidden
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
@@ -73,11 +75,16 @@ object RorAuditIndexTemplate {
   }
 
   private def formatterOfPattern(pattern: NonEmptyString): Either[CreationError.ParsingError, DateTimeFormatter] = {
-    Try(DateTimeFormatter.ofPattern(pattern.value).withZone(ZoneId.of("UTC"))) match {
+    Try(formatterInNodeLocale(pattern.value).withZone(ZoneId.of("UTC"))) match {
       case Success(formatter) => Right(formatter)
       case Failure(ex)        => Left(CreationError.ParsingError(ex.getMessage))
     }
   }
+
+  // Text fields (MMM, EEE) give a valid lowercase index name only in some locales, e.g. "oct." in French.
+  // Locale.ROOT gives "Oct", which ES rejects, so it would break the audit of these nodes.
+  @SuppressForbidden(reason = "An audit index name with text date fields depends on the node locale")
+  private def formatterInNodeLocale(pattern: String): DateTimeFormatter = DateTimeFormatter.ofPattern(pattern)
 
   private def rorAuditIndexPattern(pattern: NonEmptyString): Either[CreationError.ParsingError, IndexPattern] = {
     pattern.replaceDateTimePatternWithWildcard match {
@@ -118,14 +125,15 @@ object RorAuditDataStream {
     // - Cannot include \, /, *, ?, ", <, >, |, ,, #, :, or a space character
     // - Cannot start with -, _, +, or .ds-
     // - Cannot be . or ..
-    // - Cannot be longer than 255 bytes. Multi-byte characters count towards this limit faster.
+    // - Cannot be longer than 233 bytes. Multi-byte characters count towards this limit faster.
+    //   ES limits the backing index name ".ds-<name>-yyyy.MM.dd-000001" to 255 bytes, which adds 22 bytes.
     // https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-data-stream.html#indices-create-data-stream-api-path-params
 
     val forbiddenCharacters: List[Char] = List('\\', '/', '*', '?', '"', '<', '>', '|', ',', '#', ':', ' ')
     val forbiddenCharactersSet = forbiddenCharacters.toSet
     val forbiddenPrefixes = List("-", "_", "+", ".ds-")
     val forbiddenVariants = List(".", "..")
-    val maxBytes = 255
+    val maxBytes = 233
 
     implicit val charShow: Show[Char] = Show.show(c => s"'$c'")
     implicit val stringShow: Show[String] = Show.show(str => s"'$str'")
@@ -138,7 +146,10 @@ object RorAuditDataStream {
       ),
       (value => forbiddenPrefixes.exists(value.startsWith), s"name must not start with ${forbiddenPrefixes.show}"),
       (value => forbiddenVariants.contains(value), s"name cannot be any of ${forbiddenVariants.show}"),
-      (value => value.getBytes.length > maxBytes, s"name must be not longer than 255 bytes"),
+      (
+        value => value.getBytes(UTF_8).length > maxBytes,
+        s"name must be not longer than $maxBytes bytes"
+      ),
     )
       .map { case (test, errorMsg) =>
         Validated.cond(!test(value.value), (), errorMsg).toValidatedNel

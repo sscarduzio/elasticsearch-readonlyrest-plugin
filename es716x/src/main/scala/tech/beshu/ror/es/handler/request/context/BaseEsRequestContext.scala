@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.{EsServices, RorRestRequest}
+import tech.beshu.ror.utils.ScalaOps.toRootLowerCase
 
 import java.time.Instant
 import scala.jdk.CollectionConverters.*
@@ -47,7 +48,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext) ext
   override lazy val `type`: Type = Type {
     val requestClazz = esContext.actionRequest.getClass
     val simpleName = requestClazz.getSimpleName
-    simpleName.toLowerCase match {
+    simpleName.toRootLowerCase match {
       case "request" => requestClazz.getName.split("\\.").toList.reverse.headOption.getOrElse(simpleName)
       case _         => simpleName
     }

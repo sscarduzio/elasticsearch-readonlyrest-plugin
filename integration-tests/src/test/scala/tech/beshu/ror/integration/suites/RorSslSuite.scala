@@ -34,9 +34,11 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
-import java.io.{ByteArrayInputStream, InputStream, OutputStream}
+import java.io.{ByteArrayInputStream, InputStream, OutputStream, PrintWriter}
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
 import scala.concurrent.duration.*
+import scala.util.Using
 
 class RorSslSuite
     extends AnyWordSpec
@@ -132,10 +134,12 @@ class RorSslSuite
   }
 
   private def bulkFileWith(index: String, numberOfDocuments: Int): File = {
-    File
-      .newTemporaryFile(prefix = "ror-large-bulk-", suffix = ".ndjson")
-      .deleteOnExit()
-      .printLines(bulkLinesFor(index, numberOfDocuments))
+    val file = File.newTemporaryFile(prefix = "ror-large-bulk-", suffix = ".ndjson").deleteOnExit()
+    // Not File.printLines: it writes with the JVM default charset
+    Using.resource(new PrintWriter(Files.newBufferedWriter(file.path, UTF_8))) { writer =>
+      bulkLinesFor(index, numberOfDocuments).foreach(writer.println)
+    }
+    file
   }
 
   private def bulkBodyWith(index: String, numberOfDocuments: Int): Array[Byte] = {

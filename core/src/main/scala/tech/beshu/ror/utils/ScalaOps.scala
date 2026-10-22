@@ -28,6 +28,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
 import java.util.Base64
+import java.util.Locale
 import scala.collection.immutable.{SortedSet, VectorMap}
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -267,6 +268,12 @@ object ScalaOps extends RequestIdAwareLogging {
 
   extension (value: String)
 
+    // Not String.toLowerCase/toUpperCase without an argument: they use the JVM default locale. With a
+    // Turkish locale, "I".toLowerCase is "ı" (dotless i) and "i".toUpperCase is "İ" (dotted capital I).
+    def toRootLowerCase: String = value.toLowerCase(Locale.ROOT)
+
+    def toRootUpperCase: String = value.toUpperCase(Locale.ROOT)
+
     def splitByFirst(char: Char): Option[(String, String)] = {
       value.split(char).toList match {
         case Nil      => None
@@ -276,8 +283,8 @@ object ScalaOps extends RequestIdAwareLogging {
     }
 
     def splitBy(str: String, caseInsensitive: Boolean = false): (String, Option[String]) = {
-      val normalizedValue = if (caseInsensitive) value.toLowerCase else value
-      val normalizedStr = if (caseInsensitive) str.toLowerCase else str
+      val normalizedValue = if (caseInsensitive) value.toRootLowerCase else value
+      val normalizedStr = if (caseInsensitive) str.toRootLowerCase else str
 
       normalizedValue.indexOf(normalizedStr) match {
         case -1 =>

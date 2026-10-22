@@ -19,6 +19,7 @@ package tech.beshu.ror.utils.containers.windows
 import com.dimafeng.testcontainers.SingleContainer
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.common.SingleRootFileSource
+import com.github.tomakehurst.wiremock.common.filemaker.FilenameMaker
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import com.github.tomakehurst.wiremock.standalone.JsonFileMappingsSource
 import org.testcontainers.containers.GenericContainer
@@ -73,7 +74,7 @@ private object WireMockServerCreator {
     mappingFiles.foreach { mappingFile =>
       val parentDir = mappingFile.getParentFile
       val fileSource = new SingleRootFileSource(parentDir.getAbsolutePath)
-      config.mappingSource(new JsonFileMappingsSource(fileSource))
+      config.mappingSource(new JsonFileMappingsSource(fileSource, new FilenameMaker()))
     }
 
     val wmServer = new WireMockServer(config)

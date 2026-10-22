@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.files
 
 import org.apache.commons.compress.archivers.tar.TarFile
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
@@ -37,7 +38,7 @@ object FileUtils {
       .sorted
 
     val finalDigest = fileList.foldLeft(digest) { (d, file) =>
-      d.update(file.toString.getBytes) // Include file path in hash
+      d.update(file.toString.getBytes(UTF_8)) // Include file path in hash
       d.update(Files.readAllBytes(file)) // Include file contents in hash
       d
     }

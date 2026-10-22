@@ -20,6 +20,7 @@ import cats.Eq
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.JsRegex.CompilationResult
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
+import tech.beshu.ror.utils.ScalaOps.toRootLowerCase
 import tech.beshu.ror.utils.js.JsCompiler
 
 sealed trait KibanaApp
@@ -94,7 +95,7 @@ object RorKbnLicenseType {
   type CreationError = Unit
 
   def from(value: String): Either[CreationError, RorKbnLicenseType] = {
-    value.toLowerCase match {
+    value.toRootLowerCase match {
       case "free"                      => Right(RorKbnLicenseType.Free)
       case "pro"                       => Right(RorKbnLicenseType.Pro)
       case "ent"                       => Right(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true))

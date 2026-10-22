@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.commons;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -27,7 +28,7 @@ public enum Verbosity {
   ERROR;
 
   public static Optional<Verbosity> fromString(String value) {
-    switch (value.toLowerCase()) {
+    switch (value.toLowerCase(Locale.ROOT)) {
       case "info":
         return Optional.of(INFO);
       case "error":

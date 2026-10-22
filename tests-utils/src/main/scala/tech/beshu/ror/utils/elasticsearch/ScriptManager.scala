@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.HttpPost
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.Value
 
@@ -33,7 +32,7 @@ class ScriptManager(client: RestClient, esVersion: String) extends BaseManager(c
     val request = new HttpPost(client.from(endpoint))
     request.setHeader("timeout", "50s")
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(query))
+    request.setEntity(stringEntity(query))
     request
   }
 

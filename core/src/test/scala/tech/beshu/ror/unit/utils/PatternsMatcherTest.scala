@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.toRootLowerCase
 
 class PatternsMatcherTest extends AnyWordSpec with ScalaCheckDrivenPropertyChecks {
 
@@ -53,7 +54,7 @@ class PatternsMatcherTest extends AnyWordSpec with ScalaCheckDrivenPropertyCheck
     }
     "value matches pattern case sensitive" in {
       forAll("CaseVulnerableString") { (caseVulnerableString: CaseVulnerableString) =>
-        val value = caseVulnerableString.value.toLowerCase()
+        val value = caseVulnerableString.value.toRootLowerCase
         val pattern = caseVulnerableString.value
         val matcher = PatternsMatcher.create(List(pattern))(caseSensitiveStringMatchable)
         matcher.`match`(value) shouldBe false
@@ -61,11 +62,19 @@ class PatternsMatcherTest extends AnyWordSpec with ScalaCheckDrivenPropertyCheck
     }
     "value matches pattern case insensitive" in {
       forAll("CaseVulnerableString") { (caseVulnerableString: CaseVulnerableString) =>
-        val value = caseVulnerableString.value.toLowerCase()
+        val value = caseVulnerableString.value.toRootLowerCase
         val pattern = caseVulnerableString.value
         val matcher = PatternsMatcher.create(List(pattern))(caseInsensitiveStringMatchable)
         matcher.`match`(value) shouldBe true
       }
+    }
+    "value matches complex pattern case insensitive" in {
+      // Complex patterns ('?', or '*' inside) go to the glob engine, not to the prefix/suffix/infix checks
+      val matcher = PatternsMatcher.create(List("*ADMIN*X", "us?r_ID"))(caseInsensitiveStringMatchable)
+      matcher.`match`("adminx") shouldBe true
+      matcher.`match`("my_admin_box") shouldBe true
+      matcher.`match`("USER_id") shouldBe true
+      matcher.`match`("admin") shouldBe false
     }
     "value mismatches matches empty" in {
       forAll("haystack") { (haystack: String) =>
@@ -308,7 +317,7 @@ object PatternsMatcherTest {
   implicit val arbPatternAndValue: Arbitrary[PatternAndMatch] = Arbitrary(genPatternAndValue)
 
   implicit val arbCaseVulnerableString: Arbitrary[CaseVulnerableString] =
-    Arbitrary(Gen.asciiPrintableStr.filter(s => s.neqv(s.toLowerCase())).map(CaseVulnerableString.apply))
+    Arbitrary(Gen.asciiPrintableStr.filter(s => s.neqv(s.toRootLowerCase)).map(CaseVulnerableString.apply))
 
   implicit def arbIterator[A](
       implicit arb: Arbitrary[A]

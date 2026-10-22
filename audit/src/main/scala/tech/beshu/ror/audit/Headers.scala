@@ -16,16 +16,18 @@
  */
 package tech.beshu.ror.audit
 
+import java.util.Locale
+
 class Headers(originMap: Map[String, Set[String]]) {
 
   private val mapWithLowerCaseKeys = originMap
     .foldLeft(Map.empty[String, Set[String]]) { case (acc, (key, values)) =>
-      val headerValues = acc.get(key.toLowerCase()).toList.flatten.toSet ++ values
-      acc + (key.toLowerCase -> headerValues)
+      val headerValues = acc.get(key.toLowerCase(Locale.ROOT)).toList.flatten.toSet ++ values
+      acc + (key.toLowerCase(Locale.ROOT) -> headerValues)
     }
 
   def getValue(headerName: String): Option[Set[String]] = {
-    mapWithLowerCaseKeys.get(headerName.toLowerCase())
+    mapWithLowerCaseKeys.get(headerName.toLowerCase(Locale.ROOT))
   }
 
   def names: Set[String] = originMap.keys.toSet

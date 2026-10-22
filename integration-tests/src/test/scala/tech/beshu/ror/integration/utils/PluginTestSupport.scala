@@ -24,6 +24,7 @@ import tech.beshu.ror.utils.containers.providers.*
 import tech.beshu.ror.utils.misc.Resources.getResourcePath
 import tech.beshu.ror.utils.misc.ScalaUtils.{bestEffort, runWithTimeout}
 
+import java.nio.charset.StandardCharsets.UTF_8
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.control.NonFatal
@@ -63,7 +64,7 @@ trait SingletonPluginTestSupport
       // Bound the blocking ES cleanup: if ES is wedged this used to hang the worker JVM at suite
       // start; on timeout we throw, failing THIS suite fast instead of hanging the leg for hours.
       runWithTimeout("cleanUpContainer", 2 minutes)(own.cleanUpContainer())
-      own.updateSettings(resolvedRorSettingsFile.contentAsString)
+      own.updateSettings(resolvedRorSettingsFile.contentAsString(UTF_8))
       nodeDataInitializer.foreach(own.initNode(_))
       super.beforeAll()
     } catch {

@@ -39,6 +39,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch.DataStr
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.ScalaOps.toRootLowerCase
 
 class DataStreamsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
     extends RuleBaseDecoderWithoutAssociatedFields[DataStreamsRule] {
@@ -95,7 +96,7 @@ private object DataStreamsDecodersHelper {
       case DataStreamName.Wildcard => Right(())
     }
 
-    private def isLowerCase(value: NonEmptyString) = value.value.toLowerCase == value.value
+    private def isLowerCase(value: NonEmptyString) = value.value.toRootLowerCase == value.value
   }
 
   implicit def dataStreamNameValueDecoder(

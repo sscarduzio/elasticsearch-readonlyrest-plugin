@@ -22,7 +22,7 @@ import org.gradle.tooling.GradleConnector
 import tech.beshu.ror.utils.misc.FileLocks
 
 import java.io.{ByteArrayOutputStream, File as JFile}
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import scala.collection.mutable
 import scala.util.Try
@@ -169,7 +169,7 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
   }
 
   private def nestedBuildFailureMessage(task: String, output: ByteArrayOutputStream): String = {
-    val text = output.toString(StandardCharsets.UTF_8)
+    val text = output.toString(UTF_8)
     val maxChars = 20000
     val tail = if (text.length > maxChars) "[...]\n" + text.takeRight(maxChars) else text
     s"The nested Gradle build of [$task] failed. Its output:\n$tail"

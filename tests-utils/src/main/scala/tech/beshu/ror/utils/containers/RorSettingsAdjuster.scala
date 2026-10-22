@@ -21,6 +21,8 @@ import tech.beshu.ror.utils.containers.ContainerOps.*
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 
+import java.nio.charset.StandardCharsets.UTF_8
+
 object RorSettingsAdjuster {
 
   private val hostPlaceholder = "HOST"
@@ -35,9 +37,9 @@ object RorSettingsAdjuster {
 
   def adjustUsingDependencies(source: File, startedDependencies: StartedClusterDependencies): File = {
     val settingsWithResolvedDependencies = startedDependencies.values
-      .foldLeft(source.contentAsString)(replacePlaceholder)
+      .foldLeft(source.contentAsString(UTF_8))(replacePlaceholder)
 
-    createTempFile.overwrite(settingsWithResolvedDependencies)
+    createTempFile.overwrite(settingsWithResolvedDependencies)(charset = UTF_8)
   }
 
   private def replacePlaceholder(fileContent: String, dependency: StartedDependency): String = {

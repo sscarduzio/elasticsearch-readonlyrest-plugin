@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.utils.Hasher
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.SuppressForbidden
 
 import java.nio.charset.Charset
 
@@ -97,9 +98,12 @@ object AuthKeyHashingRule {
 
   object HashedCredentials {
 
+    private val hashCharset = charsetOfConfiguredHashes()
+
     // The hashes in the user settings are made with the JVM default charset. Do not change it to a
     // fixed charset: a non-ASCII password would then stop matching its configured hash.
-    private val hashCharset = Charset.defaultCharset
+    @SuppressForbidden(reason = "The hashes in the user settings depend on the JVM default charset")
+    private def charsetOfConfiguredHashes(): Charset = Charset.defaultCharset
 
     final case class HashedUserAndPassword(hash: NonEmptyString) extends HashedCredentials
 

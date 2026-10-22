@@ -16,6 +16,7 @@
  */
 plugins {
     id "readonlyrest.base-common-conventions"
+    id "readonlyrest.forbidden-apis-conventions"
 
     id "com.github.maiflai.scalatest"    version "0.33"
     id "com.gradleup.shadow"             version "9.3.0"
@@ -40,7 +41,7 @@ dependencies {
     api group: 'org.ow2.asm',                   name: 'asm',                              version: '9.11.1'
     api group: 'org.ow2.asm',                   name: 'asm-util',                         version: '9.11.1'
     api group: 'io.kevinlee',                   name: 'just-semver-core_3',               version: '1.1.1'
-    api group: 'com.lihaoyi',                   name: 'os-lib_3',                         version: '0.11.6'
+    api group: 'com.lihaoyi',                   name: 'os-lib_3',                         version: '0.11.8'
     api group: 'com.github.pathikrit',          name: 'better-files_3',                   version: '3.9.2'
     api group: 'io.circe',                      name: 'circe-core_3',                     version: '0.14.16'
     api group: 'io.circe',                      name: 'circe-generic_3',                  version: '0.14.16'

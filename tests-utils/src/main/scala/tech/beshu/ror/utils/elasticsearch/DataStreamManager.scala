@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
-import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -63,7 +62,7 @@ class DataStreamManager(client: RestClient, esVersion: String)
   def modifyDataStreams(body: JSON): JsonResponse = {
     val request = new HttpPost(client.from(s"/_data_stream/_modify"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(body)))
+    request.setEntity(stringEntity(ujson.write(body)))
     call(request, new JsonResponse(_))
   }
 
