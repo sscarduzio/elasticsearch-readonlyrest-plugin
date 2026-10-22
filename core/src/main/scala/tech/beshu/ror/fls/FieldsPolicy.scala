@@ -18,6 +18,7 @@ package tech.beshu.ror.fls
 
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.accesscontrol.matchers.WildcardPattern
 import tech.beshu.ror.constants
 
 class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
@@ -53,37 +54,12 @@ object FieldsPolicy {
 
   private class EnhancedDocumentField(field: DocumentField) {
 
-    val fieldPartPatterns: List[FieldPartPattern] =
+    // ES `_source` filtering treats `?` literally, so `?` is not a wildcard here.
+    val fieldPartPatterns: List[WildcardPattern] =
       field.value.value
         .split("\\.")
         .toList
-        .map(new FieldPartPattern(_))
-
-  }
-
-  // One dot-separated part of a configured field name. `*` matches any characters, and every other character
-  // matches only itself. The field name can come from the request, so matching does not backtrack.
-  private final class FieldPartPattern(part: String) {
-    private val literals = part.split("\\*", -1).toList
-
-    def matches(fieldPart: String): Boolean = literals match {
-      case exact :: Nil =>
-        fieldPart == exact
-      case prefix :: rest =>
-        val suffix = rest.last
-        val end = fieldPart.length - suffix.length
-        prefix.length <= end && fieldPart.startsWith(prefix) && fieldPart.endsWith(suffix) &&
-        containsInOrder(fieldPart, rest.init, from = prefix.length, end)
-      case Nil =>
-        false
-    }
-
-    private def containsInOrder(value: String, infixes: List[String], from: Int, end: Int): Boolean = infixes match {
-      case Nil             => true
-      case infix :: others =>
-        val index = value.indexOf(infix, from)
-        index >= 0 && index + infix.length <= end && containsInOrder(value, others, index + infix.length, end)
-    }
+        .map(new WildcardPattern(_, singleCharWildcard = false))
 
   }
 

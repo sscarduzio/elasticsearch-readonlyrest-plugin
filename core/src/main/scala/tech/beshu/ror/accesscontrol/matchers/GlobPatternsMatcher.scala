@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import com.hrakaroo.glob.{GlobPattern, MatchingEngine}
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
@@ -32,7 +31,7 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
   override val patterns: Iterable[String] = values.map(matchable.show)
 
   private val ignoreCase: Boolean = caseSensitivity == CaseSensitivity.Disabled
-  private val compiled: Compiled = Compiled.from(patterns, ignoreCase, globPatternFlags(caseSensitivity))
+  private val compiled: Compiled = Compiled.from(patterns, ignoreCase)
 
   override def `match`[B <: A](value: B): Boolean = {
     if (compiled.matchAll) true
@@ -43,18 +42,18 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
       matchesPrefix(norm) ||
       matchesSuffix(norm) ||
       matchesInfix(norm) ||
-      matchesComplex(raw) // raw (not norm): the glob engine handles case-insensitivity via globFlags
+      matchesComplex(norm)
     }
   }
 
   // `Array.existsWith` (ScalaOps) is an allocation-free indexed `while` with an inlined predicate,
-  // calling the same `String.startsWith`/`endsWith`/`indexOf`/glob-engine methods (JIT intrinsics)
+  // calling the same `String.startsWith`/`endsWith`/`indexOf`/`WildcardPattern` methods (JIT intrinsics)
   // the previous `Iterable.exists` closures used — without the closure + iterator allocations.
   private def matchesExact(norm: String): Boolean = compiled.exact.contains(norm)
   private def matchesPrefix(norm: String): Boolean = compiled.prefixes.existsWith(norm.startsWith)
   private def matchesSuffix(norm: String): Boolean = compiled.suffixes.existsWith(norm.endsWith)
   private def matchesInfix(norm: String): Boolean = compiled.infixes.existsWith(norm.indexOf(_) >= 0)
-  private def matchesComplex(raw: String): Boolean = compiled.complex.existsWith(_.matches(raw))
+  private def matchesComplex(norm: String): Boolean = compiled.complex.existsWith(_.matches(norm))
 
   override def `match`[B: Conversion](value: B): Boolean = {
     val conv = implicitly[Conversion[B]]
@@ -74,11 +73,6 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
     else items.iterator.filter(b => `match`(conversion(b))).toCovariantSet
   }
 
-  private def globPatternFlags(cs: CaseSensitivity): Int = cs match {
-    case CaseSensitivity.Enabled  => 0
-    case CaseSensitivity.Disabled => GlobPattern.CASE_INSENSITIVE
-  }
-
 }
 
 private[matchers] object GlobPatternsMatcher {
@@ -96,12 +90,12 @@ private[matchers] object GlobPatternsMatcher {
       val prefixes: Array[String],
       val suffixes: Array[String],
       val infixes: Array[String],
-      val complex: Array[MatchingEngine]
+      val complex: Array[WildcardPattern]
   )
 
   private object Compiled {
 
-    def from(patterns: Iterable[String], ignoreCase: Boolean, globFlags: Int): Compiled = {
+    def from(patterns: Iterable[String], ignoreCase: Boolean): Compiled = {
       def norm(s: String) = if (ignoreCase) s.toLowerCase else s
       val kinds = patterns.iterator.map(Kind.of).toVector
       new Compiled(
@@ -110,7 +104,9 @@ private[matchers] object GlobPatternsMatcher {
         prefixes = kinds.collect { case Kind.Prefix(p) => norm(p) }.toArray,
         suffixes = kinds.collect { case Kind.Suffix(p) => norm(p) }.toArray,
         infixes = kinds.collect { case Kind.Infix(p) => norm(p) }.toArray,
-        complex = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }.toArray
+        complex = kinds.collect { case Kind.Complex(p) =>
+          new WildcardPattern(norm(p), singleCharWildcard = true)
+        }.toArray
       )
     }
 
@@ -118,7 +114,7 @@ private[matchers] object GlobPatternsMatcher {
 
   // Structural classification of a glob pattern. Pure prefix/suffix/infix shapes
   // can be matched with String.startsWith / endsWith / contains; only Complex
-  // patterns need the glob engine.
+  // patterns need a WildcardPattern.
   private enum Kind {
     case All
     case Exact(pattern: String)

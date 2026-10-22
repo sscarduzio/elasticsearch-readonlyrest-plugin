@@ -17,26 +17,27 @@
 package tech.beshu.ror.unit.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import org.scalatest.concurrent.TimeLimits
+import org.scalactic.anyvals.PosInt
 import org.scalatest.matchers.should.Matchers.*
-import org.scalatest.time.{Second, Span}
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.constants
 import tech.beshu.ror.fls.FieldsPolicy
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class FieldsPolicyTests extends AnyWordSpec with TimeLimits {
+class FieldsPolicyTests extends AnyWordSpec with ScalaCheckDrivenPropertyChecks {
+
+  override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
+    PropertyCheckConfiguration(
+      minSuccessful = 50000,
+      workers = PosInt.ensuringValid(Runtime.getRuntime.availableProcessors())
+    )
 
   "A FieldMatcher" should {
     "work in whitelist mode" in {
-      val fields = UniqueNonEmptyList.of(
-        DocumentField("it*re*bus1"),
-        DocumentField("item.*Date")
-      )
-      val fieldsRestrictions = FieldsRestrictions(fields, AccessMode.Whitelist)
-      val matcher = new FieldsPolicy(fieldsRestrictions)
+      val matcher = policy(AccessMode.Whitelist, "it*re*bus1", "item.*Date")
 
       matcher.canKeep("itemresobus2resobus1") should be(true)
       matcher.canKeep("item.endDate") should be(true)
@@ -45,12 +46,7 @@ class FieldsPolicyTests extends AnyWordSpec with TimeLimits {
       matcher.canKeep("item.endDate1") should be(false)
     }
     "work in blacklist mode" in {
-      val fields = UniqueNonEmptyList.of(
-        DocumentField("it*re*bus1"),
-        DocumentField("item.*Date")
-      )
-      val fieldsRestrictions = FieldsRestrictions(fields, AccessMode.Blacklist)
-      val matcher = new FieldsPolicy(fieldsRestrictions)
+      val matcher = policy(AccessMode.Blacklist, "it*re*bus1", "item.*Date")
 
       matcher.canKeep("itemresobus2resobus1") should be(false)
       matcher.canKeep("item.endDate") should be(false)
@@ -92,12 +88,30 @@ class FieldsPolicyTests extends AnyWordSpec with TimeLimits {
       "the field name contains a line terminator" in {
         policy(AccessMode.Blacklist, "secret*").canKeep("secret\nx") should be(false)
       }
-      "the field name is long and almost matches a pattern with many wildcards" in {
-        failAfter(Span(1, Second)) {
-          policy(AccessMode.Blacklist, "*a*a*a*a*b").canKeep("a" * 200) should be(true)
+    }
+    "match like a reference glob for each dot-separated part" in {
+      forAll(WildcardPatternTests.genPatternAndValue(singleCharWildcard = false)) { case (pattern, field) =>
+        whenever(pattern.nonEmpty) {
+          List(AccessMode.Whitelist, AccessMode.Blacklist).foreach { mode =>
+            withClue(s"mode=$mode: ") {
+              policy(mode, pattern).canKeep(field) should be(expected(mode, pattern, field))
+            }
+          }
         }
       }
     }
+  }
+
+  private def expected(mode: AccessMode, pattern: String, field: String): Boolean = {
+    val patternParts = pattern.split("\\.").toList
+    val fieldParts = field.split("\\.").toList
+    def partsMatch = patternParts.zip(fieldParts).forall { case (p, f) =>
+      WildcardPatternTests.referenceMatches(p, singleCharWildcard = false, f)
+    }
+    constants.FIELDS_ALWAYS_ALLOW.contains(field) || (mode match {
+      case AccessMode.Whitelist => fieldParts.length <= patternParts.length && partsMatch
+      case AccessMode.Blacklist => !(patternParts.length <= fieldParts.length && partsMatch)
+    })
   }
 
   private def policy(mode: AccessMode, fields: String*) =
