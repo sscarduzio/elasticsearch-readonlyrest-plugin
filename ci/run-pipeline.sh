@@ -295,9 +295,8 @@ task_publish_pre_builds_docker_images() {
 # Call this task one time for a whole run. It dispatches ONE ROR KBN pre-build for all the
 # versions, then waits for it in the same shell. A failed ROR KBN build fails this task, and
 # another call of it places a new order.
-# Branches: ROR_KBN_TARGET_BRANCH and ROR_KBN_FALLBACK_BRANCH apply to the ROR KBN repo (not e2e).
-# FALLBACK defaults to empty on purpose: outside CI there is no base branch, and the fallback chain
-# in the e2e clone function already includes `develop` and `master`.
+# Branches: ROR_KBN_TARGET_BRANCH names the ROR KBN branch. The e2e repo picks its branch for both.
+# FALLBACK may be empty: outside CI there is no base branch.
 task_order_e2e_kbn_images() {
   order_e2e_kbn_images \
     "${E2E_ELK_VERSIONS:?E2E_ELK_VERSIONS is not set — the caller passes the ELK versions to order}" \

@@ -27,6 +27,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/log.sh"
 E2E_TESTS_REPO="https://github.com/beshu-tech/readonlyrest-e2e-tests.git"
 # Path to the shared helpers in the e2e tests clone.
 E2E_PREBUILD_IMAGES_LIB="ci/prebuild-images-lib.sh"
+# The script of the e2e repo that checks out its branch for our branches.
+E2E_CHECKOUT_BRANCH="ci/checkout-matching-branch.sh"
 
 # Per-run image tag. Every entry point reads it from here, so they all name the same images.
 e2e_run_tag() {
@@ -37,49 +39,28 @@ e2e_run_tag() {
   echo "run-$1"
 }
 
-# Clones the e2e tests repo into a temp dir and prints the path. Try the target branch first, then
-# the fallback, then `develop`, then `master`. The fallback branch matters: a change based on
-# `develop` must use the `develop` suite, not `master`.
+# Clones the e2e tests repo into a temporary directory, and prints its path. The e2e repo picks its
+# branch for our two branches: the target, and the fallback this change is based on. Its script for
+# that is on its default branch, which the clone takes.
 clone_e2e_tests_repo() {
   if [ "$#" -ne 2 ]; then
     ci_log "Usage: clone_e2e_tests_repo <target branch> <fallback branch>"
     return 1
   fi
 
-  local TARGET_BRANCH=$1
-  local FALLBACK_BRANCH=$2
   local E2E_DIR
   E2E_DIR=$(mktemp -d) || return 2
 
-  local GIT_CONFIG_ARGS=()
-  if [ -n "${ROR_GH_TOKEN:-}" ]; then
-    local GIT_BASIC_AUTH XTRACE_WAS_ENABLED=false
-    [[ $- == *x* ]] && XTRACE_WAS_ENABLED=true && set +x
-    GIT_BASIC_AUTH=$(printf '%s:%s' x-access-token "$ROR_GH_TOKEN" | base64 | tr -d '\n')
-    [ -n "${GITHUB_ACTIONS:-}" ] && echo "::add-mask::$GIT_BASIC_AUTH" >&2
-    [ "$XTRACE_WAS_ENABLED" = true ] && set -x
-    GIT_CONFIG_ARGS=(-c "http.https://github.com/.extraheader=AUTHORIZATION: basic $GIT_BASIC_AUTH")
+  if ! git clone --quiet --depth 1 "$E2E_TESTS_REPO" "$E2E_DIR" >&2; then
+    ci_log "Cannot clone $E2E_TESTS_REPO."
+    return 3
   fi
-
-  local CANDIDATES=("$TARGET_BRANCH")
-  local BRANCH
-  for BRANCH in "$FALLBACK_BRANCH" develop master; do
-    [ -n "$BRANCH" ] && ! printf '%s\n' "${CANDIDATES[@]}" | grep -qxF "$BRANCH" && CANDIDATES+=("$BRANCH")
-  done
-
-  for BRANCH in "${CANDIDATES[@]}"; do
-    # Clean the temp dir before each attempt (git refuses to clone into a non-empty dir).
-    rm -rf "${E2E_DIR:?}" && mkdir -p "$E2E_DIR" || return 2
-    if git "${GIT_CONFIG_ARGS[@]}" clone --depth 1 --branch "$BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" >/dev/null; then
-      ci_log "Cloned branch $BRANCH of the e2e tests repo into $E2E_DIR."
-      echo "$E2E_DIR"
-      return 0
-    fi
-    ci_log "Cannot clone branch '$BRANCH' of the e2e tests repo."
-  done
-
-  ci_log "Cannot clone any of these e2e repo branches: ${CANDIDATES[*]}."
-  return 3
+  if [ ! -x "$E2E_DIR/$E2E_CHECKOUT_BRANCH" ]; then
+    ci_log "$E2E_TESTS_REPO has no $E2E_CHECKOUT_BRANCH on its default branch."
+    return 3
+  fi
+  "$E2E_DIR/$E2E_CHECKOUT_BRANCH" "$1" "$2" >&2 || return 3
+  echo "$E2E_DIR"
 }
 
 # Load the ROR KBN pre-build helpers (dispatch_kbn_prebuild_image and wait_for_kbn_prebuild_images)
@@ -180,7 +161,8 @@ _report_kbn_order_failure() {
 # Args: <elk versions> <target branch> <fallback branch> <build id>
 #   elk versions    — the ELK versions to order (space-separated X.Y.Z)
 #   target branch   — branch to build the ROR KBN plugin from
-#   fallback branch — branch to use when the target branch is missing in the e2e repo
+#   fallback branch — branch this change is based on. The e2e repo picks its branch for the two
+#                     branches.
 #   build id        — names the images this order produces; see the header
 order_e2e_kbn_images() {
   if [ "$#" -ne 4 ]; then
@@ -300,8 +282,9 @@ run_e2e_against_dev_images() {
 # and build_e2e_es_image published the ROR ES one.
 # Args: <elk version> <target branch> <fallback branch> <build id>
 #   elk version     — ELK version to test (X.Y.Z)
-#   target branch   — branch for the e2e suite
-#   fallback branch — branch to use when target branch is missing in the e2e repo
+#   target branch   — branch of this change
+#   fallback branch — branch this change is based on. The e2e repo picks its branch for the two
+#                     branches.
 #   build id        — names the images to test; see the header
 run_e2e_tests() {
   if [ "$#" -ne 4 ]; then
