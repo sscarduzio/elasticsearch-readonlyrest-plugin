@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBloc
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.es.EsServices
@@ -131,8 +131,8 @@ object BenchmarkSupport {
     override def remoteClustersConfigured(implicit id: RequestId): Boolean = false
     override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = Set.empty
     override def indexOrAliasUuids(indexOrAlias: IndexOrAlias)(implicit id: RequestId): Set[IndexUuid] = Set.empty
-    override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty)
-    override def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty)
+    override def remoteClusterContent(cluster: ClusterName.Full)(implicit id: RequestId): Task[RemoteClusterContent] =
+      Task.now(RemoteClusterContent.empty)
     override def legacyTemplates(implicit id: RequestId): Set[Template.LegacyTemplate] = Set.empty
     override def indexTemplates(implicit id: RequestId): Set[Template.IndexTemplate] = Set.empty
     override def componentTemplates(implicit id: RequestId): Set[Template.ComponentTemplate] = Set.empty

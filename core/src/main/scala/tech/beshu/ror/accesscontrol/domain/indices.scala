@@ -648,6 +648,15 @@ final class FullRemoteIndexWithAliases(
 
 }
 
+final case class RemoteClusterContent(
+    indices: Set[FullRemoteIndexWithAliases],
+    dataStreams: Set[DataStreamName.FullRemoteDataStreamWithAliases]
+)
+
+object RemoteClusterContent {
+  val empty: RemoteClusterContent = RemoteClusterContent(Set.empty, Set.empty)
+}
+
 sealed trait IndexAttribute extends EnumEntry
 
 object IndexAttribute extends Enum[IndexAttribute] {

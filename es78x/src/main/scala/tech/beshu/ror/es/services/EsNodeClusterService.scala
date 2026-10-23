@@ -126,14 +126,35 @@ class EsNodeClusterService(
   ): LocalIndicesSnapshot =
     localClusterSnapshotAtomic.get().indices
 
-  override def allRemoteIndicesAndAliases(
+  override def remoteClusterContent(cluster: ClusterName.Full)(
       implicit id: RequestId
-  ): Task[Set[FullRemoteIndexWithAliases]] = {
+  ): Task[RemoteClusterContent] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
-        provideAllRemoteIndices(remoteClusterService)
+        RemoteClusterCalls.guarded(
+          cluster = cluster,
+          skipUnavailable = isSkipUnavailable(remoteClusterService, cluster),
+          emptyResult = RemoteClusterContent.empty
+        ) {
+          resolveRemoteIndicesUsing(remoteClusterService.getRemoteClusterClient(threadPool, cluster.value.value))
+            .map { response =>
+              val metadata = response.getState.metadata()
+              RemoteClusterContent(
+                indices = metadata
+                  .indices()
+                  .asSafeValues
+                  .flatMap(toFullRemoteIndexWithAliases(_, cluster))
+                  .toCovariantSet,
+                dataStreams = metadata
+                  .dataStreams()
+                  .asSafeValues
+                  .flatMap(toFullRemoteDataStreamWithAliases(_, cluster))
+                  .toCovariantSet
+              )
+            }
+        }
       case None =>
-        Task.now(Set.empty)
+        Task.now(RemoteClusterContent.empty)
     }
   }
 
@@ -146,16 +167,6 @@ class EsNodeClusterService(
       implicit id: RequestId
   ): LocalDataStreamsSnapshot =
     localClusterSnapshotAtomic.get().dataStreams
-
-  override def allRemoteDataStreamsAndAliases(
-      implicit id: RequestId
-  ): Task[Set[FullRemoteDataStreamWithAliases]] =
-    remoteClusterServiceSupplier.get() match {
-      case Some(remoteClusterService) =>
-        provideAllRemoteDataStreams(remoteClusterService)
-      case None =>
-        Task.now(Set.empty)
-    }
 
   override def legacyTemplates(
       implicit id: RequestId
@@ -296,80 +307,6 @@ class EsNodeClusterService(
         blockAllDocsReturned(documents)
       }
       .map(results => zip(results, documents))
-  }
-
-  private def provideAllRemoteDataStreams(remoteClusterService: RemoteClusterService)(
-      implicit requestId: RequestId
-  ) = {
-    val remoteClusterFullNames =
-      remoteClusterService.getRegisteredRemoteClusterNames.asSafeSet
-        .flatMap(ClusterName.Full.fromString)
-
-    Task
-      .parSequenceUnordered(
-        remoteClusterFullNames.map(resolveAllRemoteDataStreams(_, remoteClusterService))
-      )
-      .map(_.flatten.toCovariantSet)
-  }
-
-  private def resolveAllRemoteDataStreams(
-      remoteClusterName: ClusterName.Full,
-      remoteClusterService: RemoteClusterService
-  )(
-      implicit requestId: RequestId
-  ): Task[List[FullRemoteDataStreamWithAliases]] = {
-    RemoteClusterCalls.guarded(
-      cluster = remoteClusterName,
-      skipUnavailable = isSkipUnavailable(remoteClusterService, remoteClusterName),
-      emptyResult = List.empty[FullRemoteDataStreamWithAliases]
-    ) {
-      resolveRemoteIndicesUsing(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterName.value.value))
-        .map { response =>
-          response.getState
-            .metadata()
-            .dataStreams()
-            .asSafeValues
-            .flatMap { dataStream =>
-              toFullRemoteDataStreamWithAliases(dataStream, remoteClusterName)
-            }
-            .toList
-        }
-    }
-  }
-
-  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService)(
-      implicit requestId: RequestId
-  ) = {
-    val remoteClusterFullNames =
-      remoteClusterService.getRegisteredRemoteClusterNames.asSafeSet
-        .flatMap(ClusterName.Full.fromString)
-
-    Task
-      .parSequenceUnordered(
-        remoteClusterFullNames.map(resolveAllRemoteIndices(_, remoteClusterService))
-      )
-      .map(_.flatten.toCovariantSet)
-  }
-
-  private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full, remoteClusterService: RemoteClusterService)(
-      implicit requestId: RequestId
-  ) = {
-    RemoteClusterCalls.guarded(
-      cluster = remoteClusterName,
-      skipUnavailable = isSkipUnavailable(remoteClusterService, remoteClusterName),
-      emptyResult = List.empty[FullRemoteIndexWithAliases]
-    ) {
-      resolveRemoteIndicesUsing(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterName.value.value))
-        .map { response =>
-          response.getState
-            .metadata()
-            .indices()
-            .asSafeValues
-            .flatMap { indexMetadata =>
-              toFullRemoteIndexWithAliases(indexMetadata, remoteClusterName)
-            }
-        }
-    }
   }
 
   private def isSkipUnavailable(remoteClusterService: RemoteClusterService, remoteClusterName: ClusterName.Full) =

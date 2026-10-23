@@ -511,21 +511,24 @@ object MockEsServices {
 
     override def allRemoteClusterNames(
         implicit id: RequestId
-    ): Set[ClusterName.Full] = allRemoteClusterNames
+    ): Set[ClusterName.Full] =
+      allRemoteClusterNames ++
+        allRemoteIndicesAndAliases.map(_.clusterName) ++
+        allRemoteDataStreamsAndAliases.map(_.clusterName)
 
     override def indexOrAliasUuids(indexOrAlias: IndexOrAlias)(
         implicit id: RequestId
     ): Set[IndexUuid] = Set.empty
 
-    override def allRemoteIndicesAndAliases(
+    override def remoteClusterContent(cluster: ClusterName.Full)(
         implicit id: RequestId
-    ): Task[Set[FullRemoteIndexWithAliases]] =
-      Task.now(allRemoteIndicesAndAliases)
-
-    override def allRemoteDataStreamsAndAliases(
-        implicit id: RequestId
-    ): Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
-      Task.now(allRemoteDataStreamsAndAliases)
+    ): Task[RemoteClusterContent] =
+      Task.now(
+        RemoteClusterContent(
+          indices = allRemoteIndicesAndAliases.filter(_.clusterName == cluster),
+          dataStreams = allRemoteDataStreamsAndAliases.filter(_.clusterName == cluster)
+        )
+      )
 
     override def allSnapshots(
         implicit id: RequestId

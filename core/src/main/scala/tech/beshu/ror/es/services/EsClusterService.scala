@@ -47,13 +47,19 @@ trait EsClusterService {
       implicit id: RequestId
   ): Set[IndexUuid]
 
+  def remoteClusterContent(cluster: ClusterName.Full)(
+      implicit id: RequestId
+  ): Task[RemoteClusterContent]
+
   def allRemoteIndicesAndAliases(
       implicit id: RequestId
-  ): Task[Set[FullRemoteIndexWithAliases]]
+  ): Task[Set[FullRemoteIndexWithAliases]] =
+    allRemoteClustersContent.map(_.flatMap(_.indices).toCovariantSet)
 
   def allRemoteDataStreamsAndAliases(
       implicit id: RequestId
-  ): Task[Set[FullRemoteDataStreamWithAliases]]
+  ): Task[Set[FullRemoteDataStreamWithAliases]] =
+    allRemoteClustersContent.map(_.flatMap(_.dataStreams).toCovariantSet)
 
   def localIndicesSnapshot(
       implicit id: RequestId
@@ -104,6 +110,11 @@ trait EsClusterService {
   protected[services] def allDataStreamsAndAliases(
       implicit id: RequestId
   ): Set[FullLocalDataStreamWithAliases]
+
+  private def allRemoteClustersContent(
+      implicit id: RequestId
+  ): Task[List[RemoteClusterContent]] =
+    Task.parTraverseUnordered(allRemoteClusterNames.toList)(remoteClusterContent)
 
 }
 
@@ -293,14 +304,9 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
       action = (_, id) => underlying.allSnapshots(id)
     )
 
-  private lazy val cacheableAllRemoteIndicesAndAliases =
-    new AsyncCacheableAction[Unit, Set[FullRemoteIndexWithAliases]](
-      action = (_, requestId) => underlying.allRemoteIndicesAndAliases(requestId)
-    )
-
-  private lazy val cacheableAllRemoteDataStreamsAndAliases =
-    new AsyncCacheableAction[Unit, Set[FullRemoteDataStreamWithAliases]](
-      action = (_, requestId) => underlying.allRemoteDataStreamsAndAliases(requestId)
+  private lazy val cacheableRemoteClusterContent =
+    new AsyncCacheableAction[ClusterName.Full, RemoteClusterContent](
+      action = (cluster, requestId) => underlying.remoteClusterContent(cluster)(requestId)
     )
 
   private lazy val cacheableSnapshotIndices =
@@ -339,10 +345,10 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
   ): Set[IndexUuid] =
     cacheableIndexOrAliasUuids.call(indexOrAlias)
 
-  override def allRemoteIndicesAndAliases(
+  override def remoteClusterContent(cluster: ClusterName.Full)(
       implicit id: RequestId
-  ): Task[Set[FullRemoteIndexWithAliases]] =
-    cacheableAllRemoteIndicesAndAliases.call(())
+  ): Task[RemoteClusterContent] =
+    cacheableRemoteClusterContent.call(cluster)
 
   override def localIndicesSnapshot(
       implicit id: RequestId
@@ -353,11 +359,6 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
       implicit id: RequestId
   ): LocalDataStreamsSnapshot =
     cacheableLocalDataStreamsSnapshot.call(())
-
-  override def allRemoteDataStreamsAndAliases(
-      implicit id: RequestId
-  ): Task[Set[FullRemoteDataStreamWithAliases]] =
-    cacheableAllRemoteDataStreamsAndAliases.call(())
 
   override def legacyTemplates(
       implicit id: RequestId

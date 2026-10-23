@@ -22,6 +22,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWithAliases
 import tech.beshu.ror.es.services.EsClusterService.*
 import tech.beshu.ror.es.services.{CacheableEsClusterServiceDecorator, EsClusterService}
 import tech.beshu.ror.syntax.*
@@ -137,31 +139,59 @@ class CacheableEsClusterServiceDecoratorTest extends AnyWordSpec with MockFactor
       }
     }
 
-    "allRemoteIndicesAndAliases is called" should {
-      "call underlying only once for repeated calls" in {
-        val decorator = decoratorWith { svc =>
-          (svc.allRemoteIndicesAndAliases(_: RequestId)).expects(*).returning(Task.now(Set.empty)).once()
-        }
-        val result = for {
-          _ <- decorator.allRemoteIndicesAndAliases
-          _ <- decorator.allRemoteIndicesAndAliases
-          _ <- decorator.allRemoteIndicesAndAliases
-        } yield ()
-        result.runSyncUnsafe()
-      }
-    }
+    "remote indices and data streams are read" should {
+      val esUs = ClusterName.Full.fromNes(nes("es_us"))
+      val esUk = ClusterName.Full.fromNes(nes("es_uk"))
+      val esUsIndex =
+        new FullRemoteIndexWithAliases(esUs, IndexName.Full(nes("us-index")), IndexAttribute.Opened, Set.empty)
+      val esUkIndex =
+        new FullRemoteIndexWithAliases(esUk, IndexName.Full(nes("uk-index")), IndexAttribute.Opened, Set.empty)
+      val esUsDataStream = FullRemoteDataStreamWithAliases(
+        clusterName = esUs,
+        dataStreamName = DataStreamName.Full.fromNes(nes("us-ds")),
+        aliasesNames = Set.empty,
+        backingIndices = Set(IndexName.Full(nes(".ds-us-ds-000001")))
+      )
 
-    "allRemoteDataStreamsAndAliases is called" should {
-      "call underlying only once for repeated calls" in {
+      "call underlying only once per cluster" in {
         val decorator = decoratorWith { svc =>
-          (svc.allRemoteDataStreamsAndAliases(_: RequestId)).expects(*).returning(Task.now(Set.empty)).once()
+          (svc.allRemoteClusterNames(_: RequestId)).expects(*).returning(Set(esUs, esUk)).once()
+          (svc
+            .remoteClusterContent(_: ClusterName.Full)(_: RequestId))
+            .expects(esUs, *)
+            .returning(Task.now(RemoteClusterContent(Set(esUsIndex), Set(esUsDataStream))))
+            .once()
+          (svc
+            .remoteClusterContent(_: ClusterName.Full)(_: RequestId))
+            .expects(esUk, *)
+            .returning(Task.now(RemoteClusterContent(Set(esUkIndex), Set.empty)))
+            .once()
         }
         val result = for {
-          _ <- decorator.allRemoteDataStreamsAndAliases
-          _ <- decorator.allRemoteDataStreamsAndAliases
-          _ <- decorator.allRemoteDataStreamsAndAliases
-        } yield ()
-        result.runSyncUnsafe()
+          indices1 <- decorator.allRemoteIndicesAndAliases
+          dataStreams1 <- decorator.allRemoteDataStreamsAndAliases
+          indices2 <- decorator.allRemoteIndicesAndAliases
+          dataStreams2 <- decorator.allRemoteDataStreamsAndAliases
+          esUsContent <- decorator.remoteClusterContent(esUs)
+        } yield (indices1, dataStreams1, indices2, dataStreams2, esUsContent)
+        val (indices1, dataStreams1, indices2, dataStreams2, esUsContent) = result.runSyncUnsafe()
+
+        assert(indices1 == Set(esUsIndex, esUkIndex))
+        assert(indices2 == indices1)
+        assert(dataStreams1 == Set(esUsDataStream))
+        assert(dataStreams2 == dataStreams1)
+        assert(esUsContent == RemoteClusterContent(Set(esUsIndex), Set(esUsDataStream)))
+      }
+      "call underlying for no cluster when no remote cluster is registered" in {
+        val decorator = decoratorWith { svc =>
+          (svc.allRemoteClusterNames(_: RequestId)).expects(*).returning(Set.empty).once()
+        }
+        val result = for {
+          indices <- decorator.allRemoteIndicesAndAliases
+          dataStreams <- decorator.allRemoteDataStreamsAndAliases
+        } yield (indices, dataStreams)
+
+        assert(result.runSyncUnsafe() == (Set.empty, Set.empty))
       }
     }
 
