@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import com.hrakaroo.glob.{GlobPattern, MatchingEngine}
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
@@ -48,7 +47,7 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
   }
 
   // `Array.existsWith` (ScalaOps) is an allocation-free indexed `while` with an inlined predicate,
-  // calling the same `String.startsWith`/`endsWith`/`indexOf`/glob-engine methods (JIT intrinsics)
+  // calling the same `String.startsWith`/`endsWith`/`indexOf`/`WildcardPattern` methods (JIT intrinsics)
   // the previous `Iterable.exists` closures used — without the closure + iterator allocations.
   private def matchesExact(norm: String): Boolean = compiled.exact.contains(norm)
   private def matchesPrefix(norm: String): Boolean = compiled.prefixes.existsWith(norm.startsWith)
@@ -91,7 +90,7 @@ private[matchers] object GlobPatternsMatcher {
       val prefixes: Array[String],
       val suffixes: Array[String],
       val infixes: Array[String],
-      val complex: Array[MatchingEngine]
+      val complex: Array[WildcardPattern]
   )
 
   private object Compiled {
@@ -105,8 +104,9 @@ private[matchers] object GlobPatternsMatcher {
         prefixes = kinds.collect { case Kind.Prefix(p) => norm(p) }.toArray,
         suffixes = kinds.collect { case Kind.Suffix(p) => norm(p) }.toArray,
         infixes = kinds.collect { case Kind.Infix(p) => norm(p) }.toArray,
-        // Flags 0, not GlobPattern.CASE_INSENSITIVE: the glob engine folds case with the JVM default locale
-        complex = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(norm(p), '*', '?', 0) }.toArray
+        complex = kinds.collect { case Kind.Complex(p) =>
+          new WildcardPattern(norm(p), singleCharWildcard = true)
+        }.toArray
       )
     }
 
@@ -114,7 +114,7 @@ private[matchers] object GlobPatternsMatcher {
 
   // Structural classification of a glob pattern. Pure prefix/suffix/infix shapes
   // can be matched with String.startsWith / endsWith / contains; only Complex
-  // patterns need the glob engine.
+  // patterns need a WildcardPattern.
   private enum Kind {
     case All
     case Exact(pattern: String)
