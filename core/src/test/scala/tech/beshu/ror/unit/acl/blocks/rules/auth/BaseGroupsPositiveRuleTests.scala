@@ -194,7 +194,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = Some(User.Id("user1")),
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL (Authentication unexpected error)")
+            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL (dummy-throwing rule error)")
           )
         }
       }
@@ -344,6 +344,35 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                   permittedGroupsLogic =
                     resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                   usersDefinitions = NonEmptyList.of(
+                    UserDef(
+                      usernames = userIdPatterns("user1"),
+                      mode = WithoutGroupsMapping(
+                        authenticationRule.permitting(User.Id("user1")),
+                        groups("g1")
+                      )
+                    )
+                  )
+                ),
+                loggedUser = None,
+                preferredGroupId = None
+              )(
+                blockContextAssertion = defaultOutputBlockContextAssertion(
+                  user = User.Id("user1"),
+                  group = GroupId("g1"),
+                  availableGroups = UniqueList.of(group("g1"))
+                )
+              )
+            }
+            "authentication rule of the first user definition throws an exception and the next one matches" in {
+              assertMatchRule(
+                settings = GroupsRulesSettings(
+                  permittedGroupsLogic =
+                    resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
+                  usersDefinitions = NonEmptyList.of(
+                    UserDef(
+                      usernames = userIdPatterns("user1"),
+                      mode = WithoutGroupsMapping(authenticationRule.throwing, groups("g1"))
+                    ),
                     UserDef(
                       usernames = userIdPatterns("user1"),
                       mode = WithoutGroupsMapping(
@@ -567,8 +596,70 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
               )
             )
           }
+          "the rule of the first user definition throws an exception and the next one matches" in {
+            assertMatchRule(
+              settings = GroupsRulesSettings(
+                permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
+                usersDefinitions = NonEmptyList.of(
+                  UserDef(
+                    usernames = userIdPatterns("user1"),
+                    mode = WithGroupsMapping(SingleRule(authRule.throwing), noGroupMappingFrom("g1"))
+                  ),
+                  UserDef(
+                    usernames = userIdPatterns("user1"),
+                    mode = WithGroupsMapping(
+                      SingleRule(authRule.permitting(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
+                      noGroupMappingFrom("g1")
+                    )
+                  )
+                )
+              ),
+              loggedUser = None,
+              preferredGroupId = None
+            )(
+              blockContextAssertion = defaultOutputBlockContextAssertion(
+                user = User.Id("user1"),
+                group = GroupId("g1"),
+                availableGroups = UniqueList.of(group("g1"))
+              )
+            )
+          }
         }
         "separate authentication and authorization rules are used" when {
+          "the authorization rule of the first user definition throws an exception and the next one matches" in {
+            assertMatchRule(
+              settings = GroupsRulesSettings(
+                permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
+                usersDefinitions = NonEmptyList.of(
+                  UserDef(
+                    usernames = userIdPatterns("user1"),
+                    mode = WithGroupsMapping(
+                      SeparateRules(authenticationRule.permitting(User.Id("user1")), authorizationRule.throwing),
+                      noGroupMappingFrom("g1")
+                    )
+                  ),
+                  UserDef(
+                    usernames = userIdPatterns("user1"),
+                    mode = WithGroupsMapping(
+                      SeparateRules(
+                        authenticationRule.permitting(User.Id("user1")),
+                        authorizationRule.permitting(NonEmptyList.of(group("remote_group")))
+                      ),
+                      noGroupMappingFrom("g1")
+                    )
+                  )
+                )
+              ),
+              loggedUser = None,
+              preferredGroupId = None
+            )(
+              blockContextAssertion = defaultOutputBlockContextAssertion(
+                user = User.Id("user1"),
+                group = GroupId("g1"),
+                availableGroups = UniqueList.of(group("g1"))
+              )
+            )
+          }
           "user can be matched and user can be authorized in external system and locally" in {
             assertMatchRule(
               settings = GroupsRulesSettings(

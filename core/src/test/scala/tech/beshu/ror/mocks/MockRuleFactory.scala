@@ -58,6 +58,25 @@ trait MockRuleFactory {
       Task.fromTry(Failure(new Exception("sth went wrong")))
   }
 
+  protected def throwingAuthenticationRule(ruleName: String): Rule =
+    new Rule.AuthenticationRule with AuthenticationImpersonationCustomSupport {
+      override val name: Rule.Name = Rule.Name(ruleName)
+
+      override def localUsers: LocalUsers = LocalUsers.NotAvailable
+      override implicit def userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Disabled
+
+      override protected def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.fromTry(Failure(new Exception("sth went wrong")))
+    }
+
+  protected def throwingAuthorizationRule(ruleName: String): Rule =
+    new Rule.AuthorizationRule with AuthorizationImpersonationCustomSupport {
+      override val name: Rule.Name = Rule.Name(ruleName)
+
+      override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.fromTry(Failure(new Exception("sth went wrong")))
+    }
+
   protected def passingAuthRule(
       ruleName: String,
       userId: User.Id,

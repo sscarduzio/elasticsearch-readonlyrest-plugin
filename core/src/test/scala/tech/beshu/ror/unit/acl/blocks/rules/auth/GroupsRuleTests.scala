@@ -209,6 +209,14 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
         Task.now(Denied(GroupsAuthorizationFailed("mocked - authz in authz rule fail")))
     }
 
+    // Throws before it returns a Task
+    val throwing: AuthorizationRule = new AuthorizationRule with AuthorizationImpersonationCustomSupport {
+      override val name: Rule.Name = Rule.Name("dummy-throwing")
+
+      override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        throw new Exception("Sth went wrong")
+    }
+
   }
 
   object authRule {
@@ -257,6 +265,23 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
 
       override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Denied(GroupsAuthorizationFailed("mocked - authz in auth fail")))
+    }
+
+    val throwing: AuthRule = new AuthRule
+      with AuthenticationRule
+      with AuthorizationRule
+      with AuthorizationImpersonationCustomSupport
+      with AuthenticationImpersonationCustomSupport {
+      override val name: Rule.Name = Rule.Name("dummy-throwing")
+
+      override val localUsers: LocalUsers = LocalUsers.NotAvailable
+      override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
+
+      override protected def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.raiseError(new Exception("Sth went wrong"))
+
+      override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.raiseError(new Exception("Sth went wrong"))
     }
 
   }

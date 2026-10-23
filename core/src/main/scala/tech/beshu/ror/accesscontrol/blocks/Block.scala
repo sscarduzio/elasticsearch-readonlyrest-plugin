@@ -181,16 +181,11 @@ class Block(
 
   private def checkRule[B <: BlockContext: BlockContextUpdater](rule: Rule, blockContext: B) = {
     implicit val blockContextImpl: B = blockContext
-    val ruleDecision = rule
-      .check[B](blockContext)
+    val ruleDecision = Task
+      .defer(rule.check[B](blockContext))
       .recover { case e =>
         logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
-        val cause = rule match {
-          case _: Rule.AuthenticationRule => Cause.AuthenticationFailed("Unexpected error")
-          case _: Rule.AuthorizationRule  => Cause.GroupsAuthorizationFailed("Unexpected error")
-          case _: Rule.RegularRule        => Cause.NotAuthorized
-        }
-        Decision.Denied[B](cause)
+        Decision.Denied[B](Cause.ruleError(rule))
       }
     lift[B](ruleDecision)
       .flatTap { decision =>

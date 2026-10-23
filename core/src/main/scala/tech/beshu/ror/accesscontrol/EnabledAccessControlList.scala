@@ -402,6 +402,7 @@ class EnabledAccessControlList(
       case _: Denied.Cause.OtherFailure          => false
       case _: Denied.Cause.AuthenticationFailure => false
       case _: Denied.Cause.AuthorizationFailure  => false
+      case _: Denied.Cause.RuleError             => false
     }
   }
 
@@ -411,6 +412,7 @@ class EnabledAccessControlList(
       case _: Denied.Cause.OtherFailure          => false
       case _: Denied.Cause.AuthenticationFailure => false
       case _: Denied.Cause.AuthorizationFailure  => false
+      case _: Denied.Cause.RuleError             => false
     }
   }
 
@@ -421,6 +423,7 @@ class EnabledAccessControlList(
       case _: Denied.Cause.OtherFailure           => false
       case _: Denied.Cause.AuthenticationFailure  => false
       case _: Denied.Cause.AuthorizationFailure   => false
+      case _: Denied.Cause.RuleError              => false
     }
   }
 

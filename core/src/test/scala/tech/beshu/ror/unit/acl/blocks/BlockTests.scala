@@ -36,6 +36,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.mocks.{MockRequestContext, MockRuleFactory}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{*, given}
@@ -108,9 +109,66 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           )
           assertDenied(rulesHistory(2))(
             hasRuleName = Rule.Name("r3"),
-            hasCause = NotAuthorized
+            hasCause = Cause.RuleError(Rule.Name("r3"))
           )
           rulesHistory should have size 3
+        }
+      }
+      "one of rules throws exception and the history is shown" in {
+        val block = new Block(
+          name = Block.Name("test_block"),
+          policy = Block.Policy.Allow,
+          rules = NonEmptyList.fromListUnsafe(
+            passingRule("r1") :: throwingRule("r2") :: passingRule("r3") :: Nil
+          ),
+          audit = Block.Audit.Enabled(),
+        )
+        val requestContext = MockRequestContext.indices
+        val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
+
+        val (decision, blockHistory) = result
+        decision should be(Decision.Denied(Cause.RuleError(Rule.Name("r2"))))
+        val historyShow = blockHistoryShow[GeneralIndexRequestBlockContext](
+          using headerShow
+        )
+        val shown = historyShow.show(blockHistory)
+        shown should include("NOT_MATCHED (RULE_ERROR (r2))")
+        shown should include("r1->true, r2->error")
+      }
+      "an authentication rule throws exception" in {
+        val block = new Block(
+          name = Block.Name("test_block"),
+          policy = Block.Policy.Allow,
+          rules = NonEmptyList.fromListUnsafe(throwingAuthenticationRule("auth") :: passingRule("r1") :: Nil),
+          audit = Block.Audit.Enabled(),
+        )
+        val requestContext = MockRequestContext.indices
+        val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
+
+        inside(result) { case (Decision.Denied(_), BlockHistory.Denied(_, Decision.Denied(_), rulesHistory)) =>
+          assertDenied(rulesHistory(0))(
+            hasRuleName = Rule.Name("auth"),
+            hasCause = Cause.AuthenticationFailed("auth rule error")
+          )
+          rulesHistory should have size 1
+        }
+      }
+      "an authorization rule throws exception" in {
+        val block = new Block(
+          name = Block.Name("test_block"),
+          policy = Block.Policy.Allow,
+          rules = NonEmptyList.fromListUnsafe(throwingAuthorizationRule("authz") :: passingRule("r1") :: Nil),
+          audit = Block.Audit.Enabled(),
+        )
+        val requestContext = MockRequestContext.indices
+        val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
+
+        inside(result) { case (Decision.Denied(_), BlockHistory.Denied(_, Decision.Denied(_), rulesHistory)) =>
+          assertDenied(rulesHistory(0))(
+            hasRuleName = Rule.Name("authz"),
+            hasCause = Cause.GroupsAuthorizationFailed("authz rule error")
+          )
+          rulesHistory should have size 1
         }
       }
     }

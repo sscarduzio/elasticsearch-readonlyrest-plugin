@@ -20,6 +20,7 @@ import cats.Monad
 import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.syntax.*
 
@@ -50,6 +51,15 @@ object Decision {
       final case class IndexNotFound(allowedClusters: Set[ClusterName.Full]) extends OtherFailure
       case object AliasNotFound extends OtherFailure
       case object TemplateNotFound extends OtherFailure
+
+      final case class RuleError(rule: Rule.Name) extends Cause
+
+      def ruleError(rule: Rule): Cause = rule match {
+        case _: Rule.AuthenticationRule => AuthenticationFailed(s"${rule.name.value} rule error")
+        case _: Rule.AuthorizationRule  => GroupsAuthorizationFailed(s"${rule.name.value} rule error")
+        case _: Rule.RegularRule        => RuleError(rule.name)
+      }
+
     }
 
   }

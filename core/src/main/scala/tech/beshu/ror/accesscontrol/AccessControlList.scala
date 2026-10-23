@@ -103,7 +103,7 @@ object AccessControlList {
         case Denied.Cause.ImpersonationNotSupported =>
           ForbiddenCause.ImpersonationNotSupported
         case _: Denied.Cause.OtherFailure | _: Denied.Cause.AuthenticationFailure |
-            _: Denied.Cause.AuthorizationFailure =>
+            _: Denied.Cause.AuthorizationFailure | _: Denied.Cause.RuleError =>
           ForbiddenCause.OperationNotAllowed
       }
     }

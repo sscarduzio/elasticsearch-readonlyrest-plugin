@@ -174,7 +174,6 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
       availableGroups: UniqueNonEmptyList[Group],
       mode: Mode
   ): Task[Either[Cause, B]] = {
-    implicit val blockContextImpl: B = blockContext
     val result = for {
       newBlockContext <- checkRule(authnRule, blockContext, mode)
       fullyUpdatedBlockContext <- updateBlockContextWithLoggedUser(
@@ -184,10 +183,6 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
       )
     } yield fullyUpdatedBlockContext.withBlockMetadata(_.withAvailableGroups(UniqueList.from(availableGroups)))
     result.value
-      .onErrorRecover { case ex =>
-        logger.debug(s"Authentication unexpected error", ex)
-        Left(AuthenticationFailed("Authentication unexpected error"))
-      }
   }
 
   private def authenticateAndAuthorize[B <: BlockContext: BlockContextUpdater](
@@ -198,7 +193,6 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
       availableGroups: UniqueNonEmptyList[Group],
       mode: Mode
   ): Task[Either[Cause, B]] = {
-    implicit val blockContextImpl: B = blockContext
     val result = for {
       newBlockContext <- checkRule(authRule, blockContext, mode)
       updatedBlockContextWithAuthnData <- updateBlockContextWithLoggedUser(
@@ -214,10 +208,6 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
       )
     } yield fullyUpdatedBlockContext
     result.value
-      .onErrorRecover { case ex =>
-        logger.debug(s"Authentication or/and Authorization unexpected error", ex)
-        Left(GroupsAuthorizationFailed("Auth unexpected error"))
-      }
   }
 
   private def authenticateAndAuthorize[B <: BlockContext: BlockContextUpdater](
@@ -229,7 +219,6 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
       availableGroups: UniqueNonEmptyList[Group],
       mode: Mode
   ): Task[Either[Cause, B]] = {
-    implicit val blockContextImpl: B = blockContext
     val result = for {
       blockContextAfterAuthn <- checkRule(authnRule, blockContext, mode)
       updatedBlockContextAfterAuthn <- updateBlockContextWithLoggedUser(
@@ -237,10 +226,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
         blockContext,
         allowedUserMatcher
       )
-      blockContextAfterAuthz <- EitherT(authzRule.check(updatedBlockContextAfterAuthn).map {
-        case Decision.Permitted(bc) => Right(bc)
-        case Decision.Denied(cause) => Left(cause)
-      })
+      blockContextAfterAuthz <- checkRuleRecoveringError(authzRule, updatedBlockContextAfterAuthn)
       updatedBlockContextAfterAuthz <- updateBlockContextWithAllowedGroups(
         blockContextAfterAuthz,
         updatedBlockContextAfterAuthn,
@@ -249,10 +235,6 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
       )
     } yield updatedBlockContextAfterAuthz
     result.value
-      .onErrorRecover { case ex =>
-        logger.debug(s"Authentication or/and Authorization unexpected error", ex)
-        Left(GroupsAuthorizationFailed("Auth unexpected error"))
-      }
   }
 
   private def updateBlockContextWithLoggedUser[B <: BlockContext: BlockContextUpdater](
@@ -322,16 +304,29 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
       )
   }
 
-  private def checkRule[B <: BlockContext: BlockContextUpdater](rule: Rule, blockContext: B, mode: Mode) = EitherT {
+  private def checkRule[B <: BlockContext: BlockContextUpdater](rule: Rule, blockContext: B, mode: Mode) = {
     val initialBlockContext = mode match {
       case Mode.WithGroupsMapping(_, _)    => blockContext.withBlockMetadata(_.clearCurrentGroup)
       case Mode.WithoutGroupsMapping(_, _) => blockContext
     }
-    rule
-      .check(initialBlockContext)
+    checkRuleRecoveringError(rule, initialBlockContext)
+  }
+
+  // An error of one user definition's rule must not stop the check of the next user definitions
+  private def checkRuleRecoveringError[B <: BlockContext: BlockContextUpdater](
+      rule: Rule,
+      blockContext: B
+  ): EitherT[Task, Cause, B] = EitherT {
+    implicit val blockContextImpl: B = blockContext
+    Task
+      .defer(rule.check(blockContext))
       .map {
         case fulfilled: Decision.Permitted[B] => Right(fulfilled.context)
         case Decision.Denied(cause)           => Left(cause)
+      }
+      .onErrorRecover { case ex =>
+        logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${ex.getMessage}", ex)
+        Left(Cause.ruleError(rule))
       }
   }
 
