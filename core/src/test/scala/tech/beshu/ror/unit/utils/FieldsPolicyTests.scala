@@ -24,6 +24,7 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.fls.FieldsPolicy
+import tech.beshu.ror.utils.WildcardPatternGenerators.{genPatternAndInstance, genStarText}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class FieldsPolicyTests extends AnyWordSpec with ScalaCheckDrivenPropertyChecks {
@@ -90,14 +91,13 @@ class FieldsPolicyTests extends AnyWordSpec with ScalaCheckDrivenPropertyChecks 
     }
     "hide in blacklist mode and keep in whitelist mode each field name made from the configured name" in {
       // Each `*` becomes text without a dot, so the field has the same dot-separated parts as the configured name.
-      val starText = WildcardPatternTests.genStarText.map(_.replace(".", "") + "a")
-      forAll(WildcardPatternTests.genPatternAndInstance(singleCharWildcard = false, starText)) {
-        case (pattern, field) =>
-          whenever(pattern.nonEmpty) {
-            policy(AccessMode.Whitelist, pattern).canKeep(field) should be(true)
-            policy(AccessMode.Blacklist, pattern).canKeep(field) should be(false)
-            policy(AccessMode.Blacklist, pattern).canKeep(s"$field.child") should be(false)
-          }
+      val starText = genStarText.map(_.replace(".", "") + "a")
+      forAll(genPatternAndInstance(singleCharWildcard = false, starText)) { case (pattern, field) =>
+        whenever(pattern.nonEmpty) {
+          policy(AccessMode.Whitelist, pattern).canKeep(field) should be(true)
+          policy(AccessMode.Blacklist, pattern).canKeep(field) should be(false)
+          policy(AccessMode.Blacklist, pattern).canKeep(s"$field.child") should be(false)
+        }
       }
     }
   }
