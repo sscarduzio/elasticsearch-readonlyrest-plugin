@@ -57,7 +57,6 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import java.util.function.Supplier
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.util.{Failure, Success, Try}
 
 class EsNodeClusterService(
     nodeName: String,
@@ -318,15 +317,15 @@ class EsNodeClusterService(
   )(
       implicit requestId: RequestId
   ): Task[List[FullRemoteDataStreamWithAliases]] = {
-    getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
-      case Failure(_) =>
-        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
-        Task.now(List.empty)
-      case Success(client) =>
-        resolveRemoteIndicesUsing(client)
-          .map { response =>
-            remoteDataStreamsFrom(response, remoteClusterName)
-          }
+    RemoteClusterCalls.guarded(
+      cluster = remoteClusterName,
+      skipUnavailable = isSkipUnavailable(remoteClusterService, remoteClusterName),
+      emptyResult = List.empty[FullRemoteDataStreamWithAliases]
+    ) {
+      resolveRemoteIndicesUsing(getRemoteClusterClient(remoteClusterService, remoteClusterName))
+        .map { response =>
+          remoteDataStreamsFrom(response, remoteClusterName)
+        }
     }
   }
 
@@ -377,18 +376,18 @@ class EsNodeClusterService(
   private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full, remoteClusterService: RemoteClusterService)(
       implicit requestId: RequestId
   ) = {
-    getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
-      case Failure(_) =>
-        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
-        Task.now(List.empty)
-      case Success(client) =>
-        resolveRemoteIndicesUsing(client)
-          .map { response =>
-            response.getIndices.asSafeList
-              .flatMap { resolvedIndex =>
-                toFullRemoteIndexWithAliases(resolvedIndex, remoteClusterName)
-              }
-          }
+    RemoteClusterCalls.guarded(
+      cluster = remoteClusterName,
+      skipUnavailable = isSkipUnavailable(remoteClusterService, remoteClusterName),
+      emptyResult = List.empty[FullRemoteIndexWithAliases]
+    ) {
+      resolveRemoteIndicesUsing(getRemoteClusterClient(remoteClusterService, remoteClusterName))
+        .map { response =>
+          response.getIndices.asSafeList
+            .flatMap { resolvedIndex =>
+              toFullRemoteIndexWithAliases(resolvedIndex, remoteClusterName)
+            }
+        }
     }
   }
 
@@ -396,14 +395,15 @@ class EsNodeClusterService(
       remoteClusterService: RemoteClusterService,
       remoteClusterName: ClusterName.Full
   ) = {
-    Try(
-      remoteClusterService.getRemoteClusterClient(
-        remoteClusterName.value.value,
-        scheduler,
-        DisconnectedStrategy.RECONNECT_IF_DISCONNECTED
-      )
+    remoteClusterService.getRemoteClusterClient(
+      remoteClusterName.value.value,
+      scheduler,
+      DisconnectedStrategy.RECONNECT_UNLESS_SKIP_UNAVAILABLE
     )
   }
+
+  private def isSkipUnavailable(remoteClusterService: RemoteClusterService, remoteClusterName: ClusterName.Full) =
+    remoteClusterService.isSkipUnavailable(remoteClusterName.value.value)
 
   private def resolveRemoteIndicesUsing(client: RemoteClusterClient) = {
     import tech.beshu.ror.es.utils.ThreadContextOps.*

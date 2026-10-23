@@ -101,6 +101,7 @@ class CrossClusterCallsSuite
   private lazy val user3SearchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
   private lazy val user4SearchManager = new SearchManager(basicAuthClient("dev4", "test"), esVersionUsed)
   private lazy val user5SearchManager = new SearchManager(basicAuthClient("dev5", "test"), esVersionUsed)
+  private lazy val user8SearchManager = new SearchManager(basicAuthClient("dev8", "test"), esVersionUsed)
   private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
   private lazy val user2IndexManager = new IndexManager(basicAuthClient("dev2", "test"), esVersionUsed)
   private lazy val user3IndexManager = new IndexManager(basicAuthClient("dev3", "test"), esVersionUsed)
@@ -108,6 +109,24 @@ class CrossClusterCallsSuite
   private lazy val user6IndexManager = new IndexManager(basicAuthClient("dev6", "test"), esVersionUsed)
   private lazy val user7IndexManager = new IndexManager(basicAuthClient("dev7", "test"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
+  private lazy val adminClusterManager = new ClusterManager(basicAuthClient("admin", "container"), esVersionUsed)
+
+  // The alias points to a closed port. It does not stop a container, so the other tests are not affected.
+  private def withUnavailableRemoteCluster(skipUnavailable: Boolean)(test: => Unit): Unit = {
+    def remoteClusterSettings(seeds: ujson.Value, skip: ujson.Value) =
+      ujson.Obj(
+        "persistent" -> ujson.Obj(
+          "cluster.remote.unavailable.seeds" -> seeds,
+          "cluster.remote.unavailable.skip_unavailable" -> skip
+        )
+      )
+
+    adminClusterManager
+      .putSettings(remoteClusterSettings(ujson.Arr("127.0.0.1:1"), ujson.read(skipUnavailable.toString)))
+      .force()
+    try test
+    finally adminClusterManager.putSettings(remoteClusterSettings(ujson.Null, ujson.Null)).force()
+  }
 
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {
@@ -302,6 +321,37 @@ class CrossClusterCallsSuite
           "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" in {
             val result = user4SearchManager.search("p*:service2*")
             result should have statusCode 403
+          }
+        }
+      }
+    }
+  }
+
+  "A cluster _search for remote index pattern" when {
+    "one of the remote clusters is unavailable" should {
+      "return 200 with the indices of the other remote clusters" when {
+        "the unavailable cluster has skip_unavailable: true" in {
+          withUnavailableRemoteCluster(skipUnavailable = true) {
+            eventually {
+              val result = user8SearchManager.search("private1:audit_*")
+              result should have statusCode 200
+              result.searchHits.map(i => i("_index").str).toSet should be(
+                Set("private1:audit_2020-03-26", "private1:audit_2020-03-27")
+              )
+            }
+          }
+        }
+      }
+      "return 403 and log the name of the unavailable cluster" when {
+        "the unavailable cluster has skip_unavailable: false" in {
+          withUnavailableRemoteCluster(skipUnavailable = false) {
+            eventually {
+              val result = user8SearchManager.search("private1:audit_*")
+              result should have statusCode 403
+              val logs = targetEs.container.getLogs
+              logs should include("Cannot get indices of remote cluster [unavailable]")
+              logs should include("RULE_ERROR (indices)")
+            }
           }
         }
       }

@@ -55,7 +55,6 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.function.Supplier
 import scala.jdk.CollectionConverters.*
-import scala.util.{Failure, Success, Try}
 
 class EsNodeClusterService(
     nodeName: String,
@@ -276,23 +275,26 @@ class EsNodeClusterService(
   private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full, remoteClusterService: RemoteClusterService)(
       implicit requestId: RequestId
   ) = {
-    Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterName.value.value)) match {
-      case Failure(_) =>
-        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
-        Task.now(List.empty)
-      case Success(client) =>
-        resolveRemoteIndicesUsing(client)
-          .map { response =>
-            response.getState
-              .metaData()
-              .indices()
-              .asSafeValues
-              .flatMap { indexMetadata =>
-                toFullRemoteIndexWithAliases(indexMetadata, remoteClusterName)
-              }
-          }
+    RemoteClusterCalls.guarded(
+      cluster = remoteClusterName,
+      skipUnavailable = isSkipUnavailable(remoteClusterService, remoteClusterName),
+      emptyResult = List.empty[FullRemoteIndexWithAliases]
+    ) {
+      resolveRemoteIndicesUsing(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterName.value.value))
+        .map { response =>
+          response.getState
+            .metaData()
+            .indices()
+            .asSafeValues
+            .flatMap { indexMetadata =>
+              toFullRemoteIndexWithAliases(indexMetadata, remoteClusterName)
+            }
+        }
     }
   }
+
+  private def isSkipUnavailable(remoteClusterService: RemoteClusterService, remoteClusterName: ClusterName.Full) =
+    remoteClusterService.isSkipUnavailable(remoteClusterName.value.value)
 
   private def resolveRemoteIndicesUsing(client: Client) = {
     import tech.beshu.ror.es.utils.ThreadContextOps.*
