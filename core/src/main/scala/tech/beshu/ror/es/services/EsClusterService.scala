@@ -51,15 +51,15 @@ trait EsClusterService {
       implicit id: RequestId
   ): Task[RemoteClusterContent]
 
-  def allRemoteIndicesAndAliases(
+  def remoteIndicesAndAliases(clusters: Set[ClusterName.Full])(
       implicit id: RequestId
   ): Task[Set[FullRemoteIndexWithAliases]] =
-    allRemoteClustersContent.map(_.flatMap(_.indices).toCovariantSet)
+    remoteClustersContent(clusters).map(_.flatMap(_.indices).toCovariantSet)
 
-  def allRemoteDataStreamsAndAliases(
+  def remoteDataStreamsAndAliases(clusters: Set[ClusterName.Full])(
       implicit id: RequestId
   ): Task[Set[FullRemoteDataStreamWithAliases]] =
-    allRemoteClustersContent.map(_.flatMap(_.dataStreams).toCovariantSet)
+    remoteClustersContent(clusters).map(_.flatMap(_.dataStreams).toCovariantSet)
 
   def localIndicesSnapshot(
       implicit id: RequestId
@@ -111,10 +111,10 @@ trait EsClusterService {
       implicit id: RequestId
   ): Set[FullLocalDataStreamWithAliases]
 
-  private def allRemoteClustersContent(
+  private def remoteClustersContent(clusters: Set[ClusterName.Full])(
       implicit id: RequestId
   ): Task[List[RemoteClusterContent]] =
-    Task.parTraverseUnordered(allRemoteClusterNames.toList)(remoteClusterContent)
+    Task.parTraverseUnordered(clusters.toList)(remoteClusterContent)
 
 }
 

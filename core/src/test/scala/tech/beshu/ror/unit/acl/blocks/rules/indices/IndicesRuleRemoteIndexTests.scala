@@ -210,6 +210,37 @@ trait IndicesRuleRemoteIndexTests {
             allAllowedClusters = Set(clusterName("etl1"))
           )
         }
+        "a remote cluster that the request does not name fails" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("*:logs-*")),
+            requestIndices = Set(requestedIndex("prod:*")),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(
+                  allRemoteIndicesAndAliases = Set(fullRemoteIndexWithAliases("prod", "logs-1")),
+                  failingClusters = Map(clusterName("netflow") -> netflowError)
+                )
+              )
+            ),
+            filteredRequestedIndices = Set(requestedIndex("prod:logs-1")),
+            allAllowedClusters = Set(clusterName("prod"))
+          )
+        }
+      }
+    }
+    "fail with an error" when {
+      "a remote cluster that the request names fails" in {
+        assertErrorRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("*:logs-*")),
+          requestIndices = Set(requestedIndex("*:*")),
+          esServices = MockEsServices.`with`(
+            MockEsClusterService(
+              allRemoteIndicesAndAliases = Set(fullRemoteIndexWithAliases("prod", "logs-1")),
+              failingClusters = Map(clusterName("netflow") -> netflowError)
+            )
+          ),
+          expectedError = netflowError
+        )
       }
     }
     "not match" when {
@@ -278,5 +309,7 @@ trait IndicesRuleRemoteIndexTests {
       }
     }
   }
+
+  private lazy val netflowError = new IllegalStateException("Remote cluster [netflow] is unavailable")
 
 }

@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusteri
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.BaseIndicesProcessor.IndicesManager
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote as RemoteIndexName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
@@ -30,7 +31,8 @@ import scala.collection.mutable
 
 class RemoteIndicesManager(
     requestContext: RequestContext,
-    override val allowedIndicesMatcher: PatternsMatcher[RemoteIndexName]
+    override val allowedIndicesMatcher: PatternsMatcher[RemoteIndexName],
+    clusters: Set[ClusterName.Full]
 ) extends IndicesManager[RemoteIndexName] {
 
   private implicit val implicitRequestId: RequestId = requestContext.id.toRequestId
@@ -38,13 +40,16 @@ class RemoteIndicesManager(
   private val indexAttributesFromRequest = requestContext.indexAttributes
 
   private lazy val cachedRemoteIndices =
-    clusterService.allRemoteIndicesAndAliases.map { all =>
-      indexAttributesFromRequest match {
-        case IndexAttributeFilter.All    => all
-        case IndexAttributeFilter.Opened => all.filter(_.attribute == IndexAttribute.Opened)
-        case IndexAttributeFilter.Closed => all.filter(_.attribute == IndexAttribute.Closed)
+    clusterService
+      .remoteIndicesAndAliases(clusters)
+      .map { all =>
+        indexAttributesFromRequest match {
+          case IndexAttributeFilter.All    => all
+          case IndexAttributeFilter.Opened => all.filter(_.attribute == IndexAttribute.Opened)
+          case IndexAttributeFilter.Closed => all.filter(_.attribute == IndexAttribute.Closed)
+        }
       }
-    }.memoize
+      .memoize
 
   private lazy val cachedAllIndicesAndAliases: Task[Set[RemoteIndexName]] =
     cachedRemoteIndices.map(_.flatMap(_.all)).memoize
@@ -53,7 +58,8 @@ class RemoteIndicesManager(
     cachedRemoteIndices.map(_.map(_.index)).memoize
 
   private lazy val cachedAllAliases: Task[Set[RemoteIndexName]] =
-    clusterService.allRemoteIndicesAndAliases
+    clusterService
+      .remoteIndicesAndAliases(clusters)
       .map(_.flatMap(_.aliases))
       .memoize
 
@@ -61,13 +67,16 @@ class RemoteIndicesManager(
     cachedRemoteIndices.map(indicesPerAliasMapFrom).memoize
 
   private lazy val cachedRemoteDataStreams =
-    clusterService.allRemoteDataStreamsAndAliases.map { all =>
-      indexAttributesFromRequest match {
-        case IndexAttributeFilter.Closed => Set.empty[FullRemoteDataStreamWithAliases]
-        case IndexAttributeFilter.Opened => all
-        case IndexAttributeFilter.All    => all
+    clusterService
+      .remoteDataStreamsAndAliases(clusters)
+      .map { all =>
+        indexAttributesFromRequest match {
+          case IndexAttributeFilter.Closed => Set.empty[FullRemoteDataStreamWithAliases]
+          case IndexAttributeFilter.Opened => all
+          case IndexAttributeFilter.All    => all
+        }
       }
-    }.memoize
+      .memoize
 
   private lazy val cachedAllDataStreamsAndAliases: Task[Set[RemoteIndexName]] =
     cachedRemoteDataStreams.map(_.flatMap(_.all)).memoize
@@ -76,7 +85,8 @@ class RemoteIndicesManager(
     cachedRemoteDataStreams.map(_.map(_.dataStream)).memoize
 
   private lazy val cachedAllDataStreamAliases: Task[Set[RemoteIndexName]] =
-    clusterService.allRemoteDataStreamsAndAliases
+    clusterService
+      .remoteDataStreamsAndAliases(clusters)
       .map(_.flatMap(_.aliases))
       .memoize
 

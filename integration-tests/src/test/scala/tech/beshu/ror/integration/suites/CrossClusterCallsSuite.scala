@@ -341,12 +341,27 @@ class CrossClusterCallsSuite
             }
           }
         }
-      }
-      "return 403 and log the name of the unavailable cluster" when {
-        "the unavailable cluster has skip_unavailable: false" in {
+        "the unavailable cluster has skip_unavailable: false and the pattern does not match it" in {
           withUnavailableRemoteCluster(skipUnavailable = false) {
+            // The 403 shows that ROR uses the unavailable cluster
+            eventually {
+              user8SearchManager.search("*:audit_*") should have statusCode 403
+            }
             eventually {
               val result = user8SearchManager.search("private1:audit_*")
+              result should have statusCode 200
+              result.searchHits.map(i => i("_index").str).toSet should be(
+                Set("private1:audit_2020-03-26", "private1:audit_2020-03-27")
+              )
+            }
+          }
+        }
+      }
+      "return 403 and log the name of the unavailable cluster" when {
+        "the unavailable cluster has skip_unavailable: false and the pattern matches it" in {
+          withUnavailableRemoteCluster(skipUnavailable = false) {
+            eventually {
+              val result = user8SearchManager.search("*:audit_*")
               result should have statusCode 403
               val logs = targetEs.container.getLogs
               logs should include("Cannot get indices of remote cluster [unavailable]")

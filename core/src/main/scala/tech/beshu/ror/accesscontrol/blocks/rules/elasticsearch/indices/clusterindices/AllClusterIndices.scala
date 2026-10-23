@@ -25,8 +25,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRu
 }
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestId, RequestedIndex}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.es.services.EsClusterService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -109,11 +112,12 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       requestedIndices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName.Remote]],
       determinedKibanaIndex: Option[KibanaIndexName]
   ): Task[ProcessResult] = {
+    given RequestId = requestContext.id.toRequestId
     implicit val indicesManager: RemoteIndicesManager = new RemoteIndicesManager(
       requestContext,
-      allowedIndices.remoteMatcher
+      allowedIndices.remoteMatcher,
+      requestedRemoteClusters(requestContext.esServices.clusterService, requestedIndices)
     )
-    implicit val requestContextImpl: RequestContext = requestContext
     logger.debug(
       s"Checking remote indices (allowed: [${allowedIndices.remote.show}], requested: [${requestedIndices.show}])"
     )
@@ -127,6 +131,16 @@ trait AllClusterIndices extends BaseIndicesProcessor {
           ProcessResult.Failed.Other
       }
   }
+
+  private def requestedRemoteClusters(
+      clusterService: EsClusterService,
+      requestedIndices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName.Remote]]
+  )(
+      implicit id: RequestId
+  ): Set[ClusterName.Full] =
+    PatternsMatcher
+      .create(requestedIndices.toList.map(_.name.cluster))
+      .filter(clusterService.allRemoteClusterNames)
 
   private def splitIntoRequestedRemoteAndLocalIndices(indices: Iterable[RequestedIndex[ClusterIndexName]]) = {
     val remoteIndices = Set.newBuilder[RequestedIndex[ClusterIndexName.Remote]]
