@@ -159,10 +159,12 @@ described_platforms() {
 }
 
 # 0 when the description file $1 holds every platform in the comma-separated list $2, 1 when it lacks
-# one, 2 when it holds no description. A wanted linux/arm64 matches an entry linux/arm64/v8.
+# one or the list is empty, 2 when it holds no description. A wanted linux/arm64 matches an entry
+# linux/arm64/v8.
 image_has_platforms() {
   local present wanted platform line found
   present=$(described_platforms "$1") || return 2
+  [ -n "$(printf '%s' "$2" | tr -d ',[:space:]')" ] || return 1
   IFS=',' read -r -a wanted <<< "$2"
   for platform in "${wanted[@]}"; do
     [ -n "$platform" ] || continue
@@ -230,7 +232,12 @@ es_build_platforms() {
     ci_log "Cannot read from Gradle the platforms of the build for ES $1."
     return 1
   fi
-  tr -d '[:space:]' < "$file"
+  local platforms
+  if ! platforms=$(tr -d '[:space:]' < "$file" 2>/dev/null) || [ -z "$platforms" ]; then
+    ci_log "Gradle wrote no platforms for the build of ES $1 to $file."
+    return 1
+  fi
+  printf '%s\n' "$platforms"
 }
 
 # Runs a command again after a failure. The delay doubles each time.
@@ -380,16 +387,19 @@ retag_dev_image() {
 #
 # Tags produced:
 #   - <esVersion>-ror-<pluginVersion>   the version tag. Every branch writes it, so a build with
-#                                       PUBLISH_VERSION_TAG=false leaves it out. A skipped build gets it
-#                                       from the commit tag, which an e2e build can have written alone.
-#   - <esVersion>-ror-<gitShortSha>     the commit tag, pushed by the same Gradle build. The short SHA
-#                                       has 12 characters: git's default length differs between a
-#                                       shallow clone and a full one.
+#                                       PUBLISH_VERSION_TAG=false leaves it out. A skip behaves like a
+#                                       build: a build of this commit writes the version tag, so a skip
+#                                       makes it from the commit tag.
+#   - <esVersion>-ror-<gitShortSha>     the commit tag, pushed by the same Gradle build. The short SHA is
+#                                       the first 12 characters of the commit: `git rev-parse --short`
+#                                       gives a minimum length, which differs between a shallow clone
+#                                       and a full one.
 #   - <esVersion>-ror-<imageTag>        optional alias to the commit tag, when an image tag arg is given
 #
-# The image gets the label com.readonlyrest.revision=<full commit>. After the tags, the published tag
-# is read again: another revision or a missing platform returns 8, a registry that does not answer
-# returns 7, and an answer without an image description returns 9.
+# The image gets the label com.readonlyrest.revision=<full commit>. After the tags, the published tag,
+# and the version tag when the run writes it, are read again: another revision or a missing platform
+# returns 8, a registry that does not answer returns 7, and an answer without an image description
+# returns 9.
 #
 # The build is for the standard platforms, linux/amd64 and linux/arm64. A comma-separated list in
 # ROR_CUSTOM_DOCKER_PLATFORMS replaces them. A module can fix its platforms, and the checks expect
@@ -416,10 +426,11 @@ publish_ror_es_prebuild_plugin() {
   local ROR_VERSION GIT_SHA GIT_REVISION
   ROR_VERSION=$(gradle_property pluginVersion) || return 1
   # The commit names the source of the image, so a missing one must stop the build with the cause.
-  if ! GIT_SHA=$(git rev-parse --short=12 HEAD) || ! GIT_REVISION=$(git rev-parse HEAD); then
+  if ! GIT_REVISION=$(git rev-parse HEAD); then
     ci_log "Cannot read the commit of the checkout. The image tag would then name no source."
     return 1
   fi
+  GIT_SHA=$(printf '%s' "$GIT_REVISION" | cut -c1-12)
 
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 
@@ -469,13 +480,17 @@ publish_ror_es_prebuild_plugin() {
     fi
     PUBLISHED_TAG="${ES_VERSION}-ror-${IMAGE_TAG}"
   fi
-  local CHECK_STATUS=0
-  check_published_dev_image "${ES_DEV_IMAGE_REPO}:${PUBLISHED_TAG}" "$GIT_REVISION" "$BUILD_PLATFORMS" || CHECK_STATUS=$?
-  case $CHECK_STATUS in
-    0) ;;
-    7 | 8) return "$CHECK_STATUS" ;;
-    *) return 9 ;;
-  esac
+  local CHECKED_TAGS=$PUBLISHED_TAG CHECKED_TAG CHECK_STATUS
+  [ "$WRITE_VERSION_TAG" != "false" ] && CHECKED_TAGS="$CHECKED_TAGS $VERSION_TAG"
+  for CHECKED_TAG in $CHECKED_TAGS; do
+    CHECK_STATUS=0
+    check_published_dev_image "${ES_DEV_IMAGE_REPO}:${CHECKED_TAG}" "$GIT_REVISION" "$BUILD_PLATFORMS" || CHECK_STATUS=$?
+    case $CHECK_STATUS in
+      0) ;;
+      7 | 8) return "$CHECK_STATUS" ;;
+      *) return 9 ;;
+    esac
+  done
 }
 
 # The tag of one published version, from a ROR version $1 and an ES version $2. The release docs
