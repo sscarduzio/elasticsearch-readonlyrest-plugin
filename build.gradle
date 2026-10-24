@@ -59,6 +59,12 @@ tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
     dependsOn it.findRorTaskForEsVersion('pushRorPreBuildDockerImage')
 }
 
+// Writes the platforms that publishEsRorPreBuildDockerImage builds for -PesVersion to build/docker-platforms.txt.
+// Usage: ./gradlew printEsDockerPlatforms -PesVersion=7.7.1 -PdockerPlatforms=linux/amd64,linux/arm64 --quiet
+tasks.register("printEsDockerPlatforms", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion('writeDockerPlatforms')
+}
+
 // Usage: ./gradlew printEsModules -PesMajor=8 --quiet
 tasks.register("printEsModules", PrintEsModulesTask)
 

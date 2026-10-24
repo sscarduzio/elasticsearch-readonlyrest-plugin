@@ -46,11 +46,15 @@ def dockerCliDefaults = { Exec t ->
     t.workingDir = 'build/docker-image'
 }
 def commonBuildArgs = ['--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', 'ES_VERSION=' + esVersion]
+// The platforms of a push. A module can fix them with ext.dockerPlatforms.
+def dockerPlatformsOfBuild = { ->
+    project.hasProperty('dockerPlatforms') ? project.property('dockerPlatforms') : 'linux/amd64,linux/arm64'
+}
+
 // -PadditionalImageTag adds one more full image name to the same push, and -PimageLabel one label
 // <name>=<value>.
 def buildxPushArgs = { List<String> tags ->
-    def platforms = project.hasProperty('dockerPlatforms') ? project.property('dockerPlatforms') : 'linux/amd64,linux/arm64'
-    def cmd = ['buildx', 'build', '--platform', platforms] + commonBuildArgs
+    def cmd = ['buildx', 'build', '--platform', dockerPlatformsOfBuild()] + commonBuildArgs
     def allTags = tags + (project.hasProperty('additionalImageTag') ? [project.property('additionalImageTag')] : [])
     if (allTags.isEmpty()) {
         throw new GradleException('The push names no image: -PwriteVersionTag=false needs -PadditionalImageTag.')
@@ -224,9 +228,21 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
     dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
     dockerCliDefaults(delegate)
     environment 'SOURCE_DATE_EPOCH', sourceDateEpoch
-    // -PwriteVersionTag=false: no version tag. Every branch writes that tag, so a build for the tests of
-    // one branch leaves it out.
+    // -PwriteVersionTag=false: the push writes no version tag.
     args = buildxPushArgs(project.findProperty('writeVersionTag') == 'false' ? [] : [preBuildDockerImageVersion])
+}
+
+// Writes the platforms that a push of this module builds to build/docker-platforms.txt of the root project.
+tasks.register('writeDockerPlatforms') {
+    group = 'docker'
+    def platforms = dockerPlatformsOfBuild()
+    def file = rootProject.layout.buildDirectory.file('docker-platforms.txt')
+    outputs.upToDateWhen { false }
+    doLast {
+        def out = file.get().asFile
+        out.parentFile.mkdirs()
+        out.text = platforms + '\n'
+    }
 }
 
 tasks.register('localRorDockerImage', Exec) {

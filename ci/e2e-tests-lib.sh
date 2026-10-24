@@ -218,11 +218,7 @@ order_e2e_kbn_images() {
 }
 
 # Publishes this repo's ROR ES dev image under the per-run tag. Call it one time for each ELK
-# version.
-#
-# It goes through publish_ror_es_prebuild_plugin, as a plain pre-build publish does, so the
-# sha-frozen-image skip applies: if the image for this commit already exists, that helper only adds
-# the tag in the registry.
+# version. The skip and the tags are the ones of publish_ror_es_prebuild_plugin.
 # Args: <elk version> <build id>
 build_e2e_es_image() {
   if [ "$#" -ne 2 ]; then
@@ -234,8 +230,6 @@ build_e2e_es_image() {
   RUN_TAG=$(e2e_run_tag "$2") || return $?
 
   ci_log "Building the ROR ES dev image: ELK $1, run tag $RUN_TAG."
-  # Every branch shares the version tag <esVersion>-ror-<pluginVersion>, so an image for the tests of
-  # one branch must not change it.
   PUBLISH_VERSION_TAG=false publish_ror_es_prebuild_plugin "$1" "$RUN_TAG"
 }
 
