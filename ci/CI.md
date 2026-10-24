@@ -409,7 +409,9 @@ discover                       publish the e2e module matrix
   module. It uses the same `publish_ror_es_prebuild_plugin` helper as the standalone pre-build task,
   so the sha-frozen-image skip still applies. It builds for `linux/amd64` only, the platform of the
   `e2e_tests` runner (`ROR_CUSTOM_DOCKER_PLATFORMS`). The skip reuses an image only when it holds
-  every platform of the build.
+  every platform of the build and its label `com.readonlyrest.revision` names the full commit. The
+  job writes no version tag `<esVersion>-ror-<pluginVersion>`, which every branch shares. After the
+  alias, it reads the run tag again and stops when that tag holds another commit or fewer platforms.
 - `e2e_tests` runs once per version, in parallel. Both images exist when it starts. It clones the
   suite, starts the stack and runs Cypress.
 
@@ -647,9 +649,10 @@ ES image build, and every image the e2e stack takes from the cache.
 
 Two more things stay off the mirror by themselves, and both must remain so:
 
-- `docker manifest inspect` (`docker_image_state`) and `docker buildx imagetools create`. They read
-  a tag we pushed seconds ago. Both run in the CLI, which reads neither `buildkitd.toml` nor any of
-  the variables above, so both address Docker Hub by themselves.
+- `docker manifest inspect` (`docker_image_state`), `docker buildx imagetools inspect`
+  (`read_registry_image`) and `docker buildx imagetools create`. They read a tag we pushed seconds
+  ago. All three run in the CLI, which reads neither `buildkitd.toml` nor any of the variables above,
+  so all three address Docker Hub by themselves.
 - Every push. A pull-through cache is read-only, so `beshultd/*` images go to Docker Hub.
 
 ### The `container:` image

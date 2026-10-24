@@ -126,18 +126,45 @@ docker_image_exists() {
   [ "$(docker_image_state "$1")" = present ]
 }
 
-# True only when the registry holds the image $1 with every platform in the comma-separated list $2.
-# False also when it cannot answer, or when the image is not a manifest list. The platforms come
-# from the manifest list of the image, so nothing is pulled. A wanted linux/arm64 matches an entry
+# The label that names the full commit of the sources of a dev image.
+ROR_REVISION_LABEL="com.readonlyrest.revision"
+
+# The Go template that describes an image: one line <os>/<arch>[/<variant>] <revision label> for each
+# platform. An image with one platform is one image; with more platforms it is a map of images. The
+# template needs no jq, which a self-hosted runner may not have.
+ROR_IMAGE_DESCRIPTION_TEMPLATE='{{- if eq (slice (printf "%T" .Image) 0 3) "map" -}}
+{{- range $platform, $image := .Image -}}{{$platform}} {{index $image.Config.Labels "'"$ROR_REVISION_LABEL"'"}}{{"\n"}}{{- end -}}
+{{- else -}}
+{{.Image.OS}}/{{.Image.Architecture}}{{with .Image.Variant}}/{{.}}{{end}} {{index .Image.Config.Labels "'"$ROR_REVISION_LABEL"'"}}{{"\n"}}
+{{- end -}}'
+
+# Writes the description of the registry image $1 to the file $2. It reads the manifests, so nothing
+# is pulled.
+write_image_description() {
+  docker buildx imagetools inspect "$1" --format "$ROR_IMAGE_DESCRIPTION_TEMPLATE" > "$2"
+}
+
+# Reads the registry image $1 into the description file $2. The --retry-if function $3 decides which
+# failure gets another attempt. The registry messages go to the log, not into the file. The status is
+# the status of the last read.
+read_registry_image() {
+  retry_with_backoff --retry-if "$3" write_image_description "$1" "$2" >&2
+}
+
+# The platforms of the description file $1, one per line. Fails when the file holds no platform line.
+described_platforms() {
+  local platforms
+  platforms=$(awk '$1 ~ /^[^\/]+\/[^\/]+/ { print $1 }' "$1")
+  [ -n "$platforms" ] && printf '%s\n' "$platforms"
+}
+
+# 0 when the description file $1 holds every platform in the comma-separated list $2, 1 when it lacks
+# one or the list is empty, 2 when it holds no description. A wanted linux/arm64 matches an entry
 # linux/arm64/v8.
-docker_image_has_platforms() {
-  local image=$1 present wanted platform line found
-  if ! present=$(retry_with_backoff --retry-if is_docker_registry_error \
-       docker buildx imagetools inspect "$image" \
-       --format '{{range .Manifest.Manifests}}{{.Platform.OS}}/{{.Platform.Architecture}}{{with .Platform.Variant}}/{{.}}{{end}}{{"\n"}}{{end}}' \
-       2>/dev/null); then
-    return 1
-  fi
+image_has_platforms() {
+  local present wanted platform line found
+  present=$(described_platforms "$1") || return 2
+  [ -n "$(printf '%s' "$2" | tr -d ',[:space:]')" ] || return 1
   IFS=',' read -r -a wanted <<< "$2"
   for platform in "${wanted[@]}"; do
     [ -n "$platform" ] || continue
@@ -149,6 +176,68 @@ docker_image_has_platforms() {
     done <<< "$present"
     [ "$found" = true ] || return 1
   done
+}
+
+# 0 when every platform in the description file $1 has the revision label $2, 1 when one has no label
+# or another revision, 2 when the file holds no description.
+image_has_revision() {
+  local revisions
+  described_platforms "$1" > /dev/null || return 2
+  revisions=$(awk '$1 ~ /^[^\/]+\/[^\/]+/ { print ($2 == "" ? "-" : $2) }' "$1" | sort -u)
+  [ "$revisions" = "$2" ]
+}
+
+# True when the registry image $1 holds the commit $2 for every platform in the comma-separated list
+# $3. Any failure, also a registry that does not answer, is false: then the caller builds.
+dev_image_is_current() (
+  local description
+  description=$(mktemp) || exit 1
+  trap 'rm -f "$description"' EXIT
+  read_registry_image "$1" "$description" is_docker_registry_error &&
+    image_has_platforms "$description" "$3" &&
+    image_has_revision "$description" "$2"
+)
+
+# Checks that the registry image $1 holds the commit $2 for every platform in the comma-separated list
+# $3, and logs the cause when it does not. 0: it does. 7: the registry gave no answer. 8: another
+# revision, or a platform is missing. 2: the answer holds no description of the image.
+check_published_dev_image() (
+  local description status=0
+  description=$(mktemp) || exit 1
+  trap 'rm -f "$description"' EXIT
+  if ! read_registry_image "$1" "$description" is_docker_registry_error_or_not_visible_yet; then
+    ci_log "Cannot read $1 from the registry, so this run cannot check that it holds commit $2."
+    exit 7
+  fi
+  image_has_revision "$description" "$2" || status=$?
+  case $status in
+    0) ;;
+    1) ci_log "$1 holds another revision, not commit $2 (label $ROR_REVISION_LABEL)."; exit 8 ;;
+    *) ci_log "The registry answer for $1 holds no description of the image."; exit 2 ;;
+  esac
+  image_has_platforms "$description" "$3" || status=$?
+  case $status in
+    0) ;;
+    1) ci_log "$1 does not hold every platform of $3."; exit 8 ;;
+    *) ci_log "The registry answer for $1 holds no description of the image."; exit 2 ;;
+  esac
+)
+
+# Prints the platforms that the build for ES version $1 produces when it is asked for the
+# comma-separated list $2. Gradle owns the answer, because a module can fix its platforms.
+es_build_platforms() {
+  local file="$ROR_REPO_ROOT/build/docker-platforms.txt"
+  rm -f "$file"
+  if ! (cd "$ROR_REPO_ROOT" && ./gradlew -q printEsDockerPlatforms "-PesVersion=$1" "-PdockerPlatforms=$2" </dev/null >&2); then
+    ci_log "Cannot read from Gradle the platforms of the build for ES $1."
+    return 1
+  fi
+  local platforms
+  if ! platforms=$(tr -d '[:space:]' < "$file" 2>/dev/null) || [ -z "$platforms" ]; then
+    ci_log "Gradle wrote no platforms for the build of ES $1 to $file."
+    return 1
+  fi
+  printf '%s\n' "$platforms"
 }
 
 # Runs a command again after a failure. The delay doubles each time.
@@ -254,6 +343,12 @@ is_docker_registry_error() {
     "$1"
 }
 
+# A --retry-if function for a read right after a push: the registry can show a new tag some seconds
+# later.
+is_docker_registry_error_or_not_visible_yet() {
+  is_docker_registry_error "$1" || grep -Eqi 'not found|manifest unknown' "$1"
+}
+
 # Force-remove every container belonging to THIS CI job, scoped by the ror.ci-job=$ROR_CI_JOB_ID label so we
 # never touch a sibling CI job sharing the self-hosted Docker daemon. Single source of truth for "kill
 # this CI job's containers" — used by run-pipeline.sh's SIGTERM trap, the pipeline's always() cleanup
@@ -284,19 +379,31 @@ retag_dev_image() {
 
 # Build & publish the ROR ES pre-build Docker image for the given ES version.
 #
-# To avoid rebuilding when the sources have not changed, every build is frozen under an immutable,
-# source-identified tag <esVersion>-ror-<gitShortSha>. Before building we probe that tag in the registry:
-# if it already holds every platform of this build, the Gradle build (the expensive build+push) is
-# skipped. Setting FORCE_REBUILD=true bypasses the skip.
+# To avoid rebuilding when the sources have not changed, every build is frozen under its commit tag
+# <esVersion>-ror-<gitShortSha>. Before building we read that tag from the registry: when it holds every
+# platform of this build, and its revision label names this commit, the Gradle build (the expensive
+# build+push) is skipped. A commit tag without the label, or with another revision, is not trusted.
+# A registry that does not answer also means a build. Setting FORCE_REBUILD=true bypasses the skip.
 #
-# Tags produced (all but the Gradle push are cheap registry-side manifest copies):
-#   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
-#   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
-#   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
+# Tags produced:
+#   - <esVersion>-ror-<pluginVersion>   the version tag. Every branch writes it, so a build with
+#                                       PUBLISH_VERSION_TAG=false leaves it out. A skip behaves like a
+#                                       build: a build of this commit writes the version tag, so a skip
+#                                       makes it from the commit tag.
+#   - <esVersion>-ror-<gitShortSha>     the commit tag, pushed by the same Gradle build. The short SHA is
+#                                       the first 12 characters of the commit: `git rev-parse --short`
+#                                       gives a minimum length, which differs between a shallow clone
+#                                       and a full one.
+#   - <esVersion>-ror-<imageTag>        optional alias to the commit tag, when an image tag arg is given
+#
+# The image gets the label com.readonlyrest.revision=<full commit>. After the tags, the published tag,
+# and the version tag when the run writes it, are read again: another revision or a missing platform
+# returns 8, a registry that does not answer returns 7, and an answer without an image description
+# returns 9.
 #
 # The build is for the standard platforms, linux/amd64 and linux/arm64. A comma-separated list in
-# ROR_CUSTOM_DOCKER_PLATFORMS replaces them. The modules for ES before 7.8 build linux/amd64 only, so
-# a publish for the standard platforms never skips their build.
+# ROR_CUSTOM_DOCKER_PLATFORMS replaces them. A module can fix its platforms, and the checks expect
+# the platforms that the build produces.
 publish_ror_es_prebuild_plugin() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     ci_log "Usage: publish_ror_es_prebuild_plugin <ES version> [image tag]"
@@ -316,48 +423,74 @@ publish_ror_es_prebuild_plugin() {
     return 3
   fi
 
-  local ROR_VERSION GIT_SHA
+  local ROR_VERSION GIT_SHA GIT_REVISION
   ROR_VERSION=$(gradle_property pluginVersion) || return 1
   # The commit names the source of the image, so a missing one must stop the build with the cause.
-  if ! GIT_SHA=$(git rev-parse --short HEAD); then
+  if ! GIT_REVISION=$(git rev-parse HEAD); then
     ci_log "Cannot read the commit of the checkout. The image tag would then name no source."
     return 1
   fi
+  GIT_SHA=$(printf '%s' "$GIT_REVISION" | cut -c1-12)
 
   local SOURCE_TAG="${ES_VERSION}-ror-${GIT_SHA}"
 
   # Normalize workflow and shell inputs before comparing.
   local FORCE_REBUILD_NORM=${FORCE_REBUILD:-false}
   FORCE_REBUILD_NORM=${FORCE_REBUILD_NORM,,}
-  local PLATFORMS
+  local WRITE_VERSION_TAG=${PUBLISH_VERSION_TAG:-true}
+  WRITE_VERSION_TAG=${WRITE_VERSION_TAG,,}
+  local PLATFORMS BUILD_PLATFORMS
   PLATFORMS=$(printf '%s' "${ROR_CUSTOM_DOCKER_PLATFORMS:-}" | tr -d '[:space:]')
   PLATFORMS=${PLATFORMS:-linux/amd64,linux/arm64}
+  BUILD_PLATFORMS=$(es_build_platforms "$ES_VERSION" "$PLATFORMS") || return 1
 
-  ci_log "Publishing the ROR pre-build image for ES $ES_VERSION, platforms $PLATFORMS (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG})."
+  ci_log "Publishing the ROR pre-build image for ES $ES_VERSION, platforms $BUILD_PLATFORMS (source ${ES_DEV_IMAGE_REPO}:${SOURCE_TAG})."
 
-  if [ "$FORCE_REBUILD_NORM" != "true" ] && docker_image_has_platforms "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" "$PLATFORMS"; then
-    ci_log "The sources did not change. The image for this commit holds $PLATFORMS, so this run skips the build."
+  local SKIPPED=false
+  if [ "$FORCE_REBUILD_NORM" != "true" ] &&
+     dev_image_is_current "${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" "$GIT_REVISION" "$BUILD_PLATFORMS"; then
+    ci_log "The sources did not change. The image for this commit holds $BUILD_PLATFORMS of $GIT_REVISION, so this run skips the build."
+    SKIPPED=true
   else
     # A registry can answer 429 to the pull or the push. Only that failure is repeated.
-    # One buildx push writes both tags, so the commit tag always names this build's image.
+    # One buildx push writes the tags and the label, so the commit tag always names this build's image.
     if ! retry_with_backoff --retry-if is_docker_registry_error \
          ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
-         "-PdockerPlatforms=$PLATFORMS" \
-         "-PadditionalImageTag=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
+         "-PdockerPlatforms=$BUILD_PLATFORMS" \
+         "-PadditionalImageTag=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" \
+         "-PimageLabel=${ROR_REVISION_LABEL}=${GIT_REVISION}" \
+         "-PwriteVersionTag=$WRITE_VERSION_TAG" </dev/null; then
       ci_log "Cannot publish the ROR pre-build image for ES $ES_VERSION."
       return 4
     fi
   fi
 
-  # Apply the optional caller-supplied alias on BOTH paths (built or skipped). The caller fetches the image
-  # by this tag, so it must exist and point at this commit's image: we always derive it from SOURCE_TAG
-  # (the commit identity), and the imagetools exit status guarantees it was created before we return.
+  # On BOTH paths (built or skipped), make the tags that the build did not write, then check that the
+  # published tag holds this commit. The caller fetches the image by that tag, and the e2e jobs test it.
+  local VERSION_TAG="${ES_VERSION}-ror-${ROR_VERSION}"
+  if [ "$SKIPPED" = true ] && [ "$WRITE_VERSION_TAG" != "false" ] && ! retag_dev_image "$SOURCE_TAG" "$VERSION_TAG"; then
+    ci_log "Cannot tag the ROR pre-build image as ${ES_DEV_IMAGE_REPO}:${VERSION_TAG}."
+    return 6
+  fi
+  local PUBLISHED_TAG=$SOURCE_TAG
   if [ -n "$IMAGE_TAG" ]; then
     if ! retag_dev_image "$SOURCE_TAG" "${ES_VERSION}-ror-${IMAGE_TAG}"; then
       ci_log "Cannot tag the ROR pre-build image as ${ES_DEV_IMAGE_REPO}:${ES_VERSION}-ror-${IMAGE_TAG}."
       return 6
     fi
+    PUBLISHED_TAG="${ES_VERSION}-ror-${IMAGE_TAG}"
   fi
+  local CHECKED_TAGS=$PUBLISHED_TAG CHECKED_TAG CHECK_STATUS
+  [ "$WRITE_VERSION_TAG" != "false" ] && CHECKED_TAGS="$CHECKED_TAGS $VERSION_TAG"
+  for CHECKED_TAG in $CHECKED_TAGS; do
+    CHECK_STATUS=0
+    check_published_dev_image "${ES_DEV_IMAGE_REPO}:${CHECKED_TAG}" "$GIT_REVISION" "$BUILD_PLATFORMS" || CHECK_STATUS=$?
+    case $CHECK_STATUS in
+      0) ;;
+      7 | 8) return "$CHECK_STATUS" ;;
+      *) return 9 ;;
+    esac
+  done
 }
 
 # The tag of one published version, from a ROR version $1 and an ES version $2. The release docs
