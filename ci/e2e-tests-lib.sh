@@ -234,7 +234,9 @@ build_e2e_es_image() {
   RUN_TAG=$(e2e_run_tag "$2") || return $?
 
   ci_log "Building the ROR ES dev image: ELK $1, run tag $RUN_TAG."
-  publish_ror_es_prebuild_plugin "$1" "$RUN_TAG"
+  # Every branch shares the version tag <esVersion>-ror-<pluginVersion>, so an image for the tests of
+  # one branch must not change it.
+  PUBLISH_VERSION_TAG=false publish_ror_es_prebuild_plugin "$1" "$RUN_TAG"
 }
 
 # Run the Cypress test suite from an already-cloned e2e tests repo, against this run's dev images

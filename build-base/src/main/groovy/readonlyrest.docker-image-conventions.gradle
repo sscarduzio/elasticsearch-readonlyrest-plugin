@@ -46,11 +46,17 @@ def dockerCliDefaults = { Exec t ->
     t.workingDir = 'build/docker-image'
 }
 def commonBuildArgs = ['--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', 'ES_VERSION=' + esVersion]
+// -PadditionalImageTag adds one more full image name to the same push, and -PimageLabel one label
+// <name>=<value>.
 def buildxPushArgs = { List<String> tags ->
     def platforms = project.hasProperty('dockerPlatforms') ? project.property('dockerPlatforms') : 'linux/amd64,linux/arm64'
     def cmd = ['buildx', 'build', '--platform', platforms] + commonBuildArgs
-    tags.each { cmd += ['-t', it] }
-    if (project.hasProperty('additionalImageTag')) cmd += ['-t', project.property('additionalImageTag')]
+    def allTags = tags + (project.hasProperty('additionalImageTag') ? [project.property('additionalImageTag')] : [])
+    if (allTags.isEmpty()) {
+        throw new GradleException('The push names no image: -PwriteVersionTag=false needs -PadditionalImageTag.')
+    }
+    allTags.each { cmd += ['-t', it] }
+    if (project.hasProperty('imageLabel')) cmd += ['--label', project.property('imageLabel')]
     cmd + ['--output', 'type=image,push=true,rewrite-timestamp=true', '.']
 }
 
@@ -218,7 +224,9 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
     dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
     dockerCliDefaults(delegate)
     environment 'SOURCE_DATE_EPOCH', sourceDateEpoch
-    args = buildxPushArgs([preBuildDockerImageVersion])
+    // -PwriteVersionTag=false: no version tag. Every branch writes that tag, so a build for the tests of
+    // one branch leaves it out.
+    args = buildxPushArgs(project.findProperty('writeVersionTag') == 'false' ? [] : [preBuildDockerImageVersion])
 }
 
 tasks.register('localRorDockerImage', Exec) {
