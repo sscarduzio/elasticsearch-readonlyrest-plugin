@@ -112,10 +112,10 @@ class CrossClusterCallsSuite
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val adminClusterManager = new ClusterManager(basicAuthClient("admin", "container"), esVersionUsed)
 
-  // The alias points to a closed port. It does not stop a container, so the other tests are not affected.
   private def occurrences(part: String, text: String): Int =
     text.split(Pattern.quote(part), -1).length - 1
 
+  // The alias points to a closed port. It does not stop a container, so the other tests are not affected.
   private def withUnavailableRemoteCluster(skipUnavailable: Boolean)(test: => Unit): Unit = {
     def remoteClusterSettings(seeds: ujson.Value, skip: ujson.Value) =
       ujson.Obj(

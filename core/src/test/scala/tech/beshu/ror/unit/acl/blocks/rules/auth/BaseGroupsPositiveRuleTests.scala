@@ -398,32 +398,40 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
               )
             }
             "authentication rule of the first user definition throws an exception and the next one matches" in {
-              assertMatchRule(
-                settings = GroupsRulesSettings(
-                  permittedGroupsLogic =
-                    resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
-                  usersDefinitions = NonEmptyList.of(
-                    UserDef(
-                      usernames = userIdPatterns("user1"),
-                      mode = WithoutGroupsMapping(authenticationRule.throwing, groups("g1"))
-                    ),
-                    UserDef(
-                      usernames = userIdPatterns("user1"),
-                      mode = WithoutGroupsMapping(
-                        authenticationRule.permitting(User.Id("user1")),
-                        groups("g1")
-                      )
+              val settings = GroupsRulesSettings(
+                permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
+                usersDefinitions = NonEmptyList.of(
+                  UserDef(
+                    usernames = userIdPatterns("user1"),
+                    mode = WithoutGroupsMapping(authenticationRule.throwing, groups("g1"))
+                  ),
+                  UserDef(
+                    usernames = userIdPatterns("user1"),
+                    mode = WithoutGroupsMapping(
+                      authenticationRule.permitting(User.Id("user1")),
+                      groups("g1")
                     )
                   )
-                ),
-                loggedUser = None,
-                preferredGroupId = None
-              )(
-                blockContextAssertion = defaultOutputBlockContextAssertion(
-                  user = User.Id("user1"),
-                  group = GroupId("g1"),
-                  availableGroups = UniqueList.of(group("g1"))
                 )
+              )
+              val ruleLoggerName = createRule(settings, CaseSensitivity.Enabled).getClass.getName
+
+              val events = captureLogEvents(ruleLoggerName) {
+                assertMatchRule(
+                  settings = settings,
+                  loggedUser = None,
+                  preferredGroupId = None
+                )(
+                  blockContextAssertion = defaultOutputBlockContextAssertion(
+                    user = User.Id("user1"),
+                    group = GroupId("g1"),
+                    availableGroups = UniqueList.of(group("g1"))
+                  )
+                )
+              }
+
+              events.filter(_.message.contains("inner rule matching got errors")).map(_.level) should be(
+                List(Level.WARN)
               )
             }
             "authentication rule also matches and case insensitivity is configured" in {
