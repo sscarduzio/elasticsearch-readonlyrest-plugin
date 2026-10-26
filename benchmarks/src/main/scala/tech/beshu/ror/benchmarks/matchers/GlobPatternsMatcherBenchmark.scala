@@ -42,6 +42,10 @@ class GlobPatternsMatcherBenchmark {
   private var fewCaseSensitive: PatternsMatcher[String] = scala.compiletime.uninitialized
   private var manyCaseSensitive: PatternsMatcher[String] = scala.compiletime.uninitialized
   private var manyCaseInsensitive: PatternsMatcher[String] = scala.compiletime.uninitialized
+  private var manyComplex: PatternsMatcher[String] = scala.compiletime.uninitialized
+  private var manyComplexWithSingleChar: PatternsMatcher[String] = scala.compiletime.uninitialized
+  private var manyWildcards: PatternsMatcher[String] = scala.compiletime.uninitialized
+  private var longAlmostMatch: String = scala.compiletime.uninitialized
   private var candidates: Array[String] = scala.compiletime.uninitialized
   private var candidatesList: List[String] = scala.compiletime.uninitialized
 
@@ -50,6 +54,14 @@ class GlobPatternsMatcherBenchmark {
     fewCaseSensitive = createMatcher(fewPatterns, Matchable.caseSensitiveStringMatchable)
     manyCaseSensitive = createMatcher(manyPatterns, Matchable.caseSensitiveStringMatchable)
     manyCaseInsensitive = createMatcher(manyPatterns, Matchable.caseInsensitiveStringMatchable)
+    manyComplex = PatternsMatcher.create[String]((0 until manyPatterns).map(idx => s"index-*-$idx"))(
+      using Matchable.caseSensitiveStringMatchable
+    )
+    manyComplexWithSingleChar = PatternsMatcher.create[String]((0 until manyPatterns).map(idx => s"index-$idx-?*"))(
+      using Matchable.caseSensitiveStringMatchable
+    )
+    manyWildcards = PatternsMatcher.create[String](List("*a*a*a*a*a*c*b"))(using Matchable.caseSensitiveStringMatchable)
+    longAlmostMatch = "a" * 10000 + "b"
     candidates = createCandidates()
     candidatesList = candidates.toList
   }
@@ -62,6 +74,17 @@ class GlobPatternsMatcherBenchmark {
 
   @Benchmark
   def matchEach_manyPatterns_caseInsensitive(bh: Blackhole): Unit = matchAll(manyCaseInsensitive, bh)
+
+  @Benchmark
+  def matchEach_manyComplexPatterns_caseSensitive(bh: Blackhole): Unit = matchAll(manyComplex, bh)
+
+  @Benchmark
+  def matchEach_manyComplexPatternsWithSingleChar_caseSensitive(bh: Blackhole): Unit =
+    matchAll(manyComplexWithSingleChar, bh)
+
+  // A backtracking glob does not end on this value.
+  @Benchmark
+  def matchLongAlmostMatch_manyWildcards(bh: Blackhole): Unit = bh.consume(manyWildcards.`match`(longAlmostMatch))
 
   @Benchmark
   def filterAll_manyPatterns_caseSensitive(bh: Blackhole): Unit =
