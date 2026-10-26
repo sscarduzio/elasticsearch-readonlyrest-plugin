@@ -31,7 +31,8 @@ import tech.beshu.ror.utils.containers.images.{ReadonlyRestWithEnabledXpackSecur
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.elasticsearch.IndexManager.MatchingIndices
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, OsUtils, Version}
 
 import java.util.regex.Pattern
 import scala.concurrent.duration.*
@@ -366,19 +367,22 @@ class CrossClusterCallsSuite
           }
         }
       }
-      "return 403 and log the name of the unavailable cluster" when {
-        "the unavailable cluster has skip_unavailable: false and the pattern matches it" in {
-          withUnavailableRemoteCluster(skipUnavailable = false) {
-            // Other tests write the same history entry, so only new entries count
-            val historyEntry = "RULE_ERROR (indices)"
-            val errorLine = "Cannot get indices of remote cluster [unavailable]"
-            val logsBefore = targetEs.container.getLogs
-            eventually {
-              val result = user8SearchManager.search("*:audit_*")
-              result should have statusCode 403
-              val logs = targetEs.container.getLogs
-              occurrences(historyEntry, logs) should be > occurrences(historyEntry, logsBefore)
-              occurrences(errorLine, logs) should be > occurrences(errorLine, logsBefore)
+      // On Windows, ES runs as a native process, so there are no container logs to read
+      if (OsUtils.currentOs == CurrentOs.OtherThanWindows) {
+        "return 403 and log the name of the unavailable cluster" when {
+          "the unavailable cluster has skip_unavailable: false and the pattern matches it" in {
+            withUnavailableRemoteCluster(skipUnavailable = false) {
+              // Other tests write the same history entry, so only new entries count
+              val historyEntry = "RULE_ERROR (indices)"
+              val errorLine = "Cannot get indices of remote cluster [unavailable]"
+              val logsBefore = targetEs.container.getLogs
+              eventually {
+                val result = user8SearchManager.search("*:audit_*")
+                result should have statusCode 403
+                val logs = targetEs.container.getLogs
+                occurrences(historyEntry, logs) should be > occurrences(historyEntry, logsBefore)
+                occurrences(errorLine, logs) should be > occurrences(errorLine, logsBefore)
+              }
             }
           }
         }
