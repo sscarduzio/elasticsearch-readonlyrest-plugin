@@ -98,17 +98,22 @@ class RemoteClusterCallsTests extends AnyWordSpec with Matchers with Inside {
       run(task) should be(Success(Right(List("index1"))))
       started should be(true)
     }
-    "log a skip at WARN only once in the warning interval" in {
-      // Other tests skip other clusters, so this cluster has no earlier warning
-      val skippedCluster = ClusterName.Full.fromString("remote_skipped_twice").get
+    "log a skip at WARN only when the cluster becomes unavailable" in {
+      // Other tests use other clusters, so this cluster is not skipped before the test
+      val flappingCluster = ClusterName.Full.fromString("remote_flapping").get
+      def call(task: Task[List[String]]) =
+        run(RemoteClusterCalls.guarded(flappingCluster, true, List.empty[String])(task))
 
       val events = captureLogEvents(RemoteClusterCalls.getClass.getName) {
-        run(RemoteClusterCalls.guarded(skippedCluster, true, List.empty[String])(failingCall))
-        run(RemoteClusterCalls.guarded(skippedCluster, true, List.empty[String])(failingCall))
+        call(failingCall)
+        call(failingCall)
+        call(Task.now(List("index1")))
+        call(failingCall)
       }
 
-      val skipEvents = events.filter(_.message.contains("[remote_skipped_twice] is skipped"))
-      skipEvents.map(_.level) should be(List(Level.WARN, Level.DEBUG))
+      events.filter(_.message.contains("[remote_flapping]")).map(_.level) should be(
+        List(Level.WARN, Level.DEBUG, Level.INFO, Level.WARN)
+      )
     }
     "not read skip_unavailable when the call succeeds" in {
       def skipUnavailable: Boolean = fail("skip_unavailable must not be read")

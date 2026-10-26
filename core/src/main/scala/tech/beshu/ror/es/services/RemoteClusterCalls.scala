@@ -17,28 +17,29 @@
 package tech.beshu.ror.es.services
 
 import monix.eval.Task
+import monix.execution.atomic.Atomic
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.services.EsClusterService.{RemoteClusterLookupError, messageOf}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
+import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
 /** Applies one failure policy to a call to a remote cluster. The call starts when the Task runs and has a timeout. When
   * the call fails and the cluster has `skip_unavailable: true`, the cluster gives no results, the same as in ES. Else the
   * result is a [[EsClusterService.RemoteClusterLookupError]], which names the cluster and the cause.
+  *
+  * The first skip of a cluster is logged at WARN and the next skips at DEBUG. The first successful call after the skips
+  * is logged at INFO. Thus one outage of a cluster gives one WARN line.
   */
 object RemoteClusterCalls extends RequestIdAwareLogging {
 
   val callTimeout: FiniteDuration = 10.seconds
 
-  // While a skipped cluster is down, each request skips it. Only the first skip in this interval is logged at WARN.
-  val skipWarningInterval: FiniteDuration = 1.minute
-
-  private val lastSkipWarningNanos = new ConcurrentHashMap[ClusterName.Full, java.lang.Long]()
+  private val skippedClusters = Atomic(Set.empty[ClusterName.Full])
 
   def guarded[A](
       cluster: ClusterName.Full,
@@ -60,7 +61,10 @@ object RemoteClusterCalls extends RequestIdAwareLogging {
           } else {
             Left(RemoteClusterLookupError(cluster, ex))
           },
-        Right(_)
+        result => {
+          if (markAvailable(cluster)) logger.info(s"Remote cluster [${cluster.show}] is available again")
+          Right(result)
+        }
       )
   }
 
@@ -69,25 +73,17 @@ object RemoteClusterCalls extends RequestIdAwareLogging {
   ): Unit = {
     val message =
       s"Remote cluster [${cluster.show}] is skipped, because it has skip_unavailable: true. Cause: ${messageOf(ex)}"
-    if (isFirstSkipInInterval(cluster)) logger.warn(message)
+    if (markSkipped(cluster)) logger.warn(message)
     else logger.debug(message)
   }
 
-  private def isFirstSkipInInterval(cluster: ClusterName.Full): Boolean = {
-    val now = System.nanoTime()
-    var first = false
-    lastSkipWarningNanos.compute(
-      cluster,
-      (_, last) =>
-        if (last == null || now - last >= skipWarningInterval.toNanos) {
-          first = true
-          now
-        } else {
-          last
-        }
-    )
-    first
-  }
+  // True when the cluster was available before
+  private def markSkipped(cluster: ClusterName.Full): Boolean =
+    skippedClusters.transformAndExtract(clusters => (!clusters.contains(cluster), clusters + cluster))
+
+  // True when the cluster was skipped before
+  private def markAvailable(cluster: ClusterName.Full): Boolean =
+    skippedClusters.transformAndExtract(clusters => (clusters.contains(cluster), clusters - cluster))
 
   private def isSkipUnavailable(cluster: ClusterName.Full, skipUnavailable: => Boolean)(
       implicit id: RequestId
