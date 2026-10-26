@@ -239,7 +239,8 @@ trait IndicesRuleRemoteIndexTests {
               failingClusters = Map(clusterName("netflow") -> netflowError)
             )
           ),
-          expectedError = netflowError
+          expectedErrorMessage =
+            "Cannot get indices of remote cluster [netflow]: Remote cluster [netflow] is unavailable"
         )
       }
     }

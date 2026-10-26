@@ -35,7 +35,13 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.es.EsServices
-import tech.beshu.ror.es.services.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
+import tech.beshu.ror.es.services.EsClusterService.{
+  Document,
+  DocumentsAccessibility,
+  IndexOrAlias,
+  IndexUuid,
+  RemoteClusterLookupError
+}
 import tech.beshu.ror.es.services.{ApiKeyService, EsClusterService, ServiceAccountTokenService}
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.mocks.MockRequestContext.roAction
@@ -526,15 +532,17 @@ object MockEsServices {
 
     override def remoteClusterContent(cluster: ClusterName.Full)(
         implicit id: RequestId
-    ): Task[RemoteClusterContent] =
+    ): Task[Either[RemoteClusterLookupError, RemoteClusterContent]] =
       failingClusters.get(cluster) match {
         case Some(error) =>
-          Task.raiseError(error)
+          Task.now(Left(RemoteClusterLookupError(cluster, error)))
         case None =>
           Task.now(
-            RemoteClusterContent(
-              indices = allRemoteIndicesAndAliases.filter(_.clusterName == cluster),
-              dataStreams = allRemoteDataStreamsAndAliases.filter(_.clusterName == cluster)
+            Right(
+              RemoteClusterContent(
+                indices = allRemoteIndicesAndAliases.filter(_.clusterName == cluster),
+                dataStreams = allRemoteDataStreamsAndAliases.filter(_.clusterName == cluster)
+              )
             )
           )
       }

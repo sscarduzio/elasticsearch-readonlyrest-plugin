@@ -125,7 +125,7 @@ class EsNodeClusterService(
 
   override def remoteClusterContent(cluster: ClusterName.Full)(
       implicit id: RequestId
-  ): Task[RemoteClusterContent] = {
+  ): Task[Either[RemoteClusterLookupError, RemoteClusterContent]] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         RemoteClusterCalls.guarded(
@@ -147,7 +147,7 @@ class EsNodeClusterService(
             }
         }
       case None =>
-        Task.now(RemoteClusterContent.empty)
+        Task.now(Right(RemoteClusterContent.empty))
     }
   }
 

@@ -104,10 +104,10 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
       requestIndices: Set[RequestedIndex[ClusterIndexName]],
       esServices: EsServices,
-      expectedError: Throwable
+      expectedErrorMessage: String
   ): Unit = {
     val result = checkIndexRequest(configured, requestIndices, Some(esServices), identity).attempt.runSyncUnsafe()
-    result should be(Left(expectedError))
+    result.left.map(_.getMessage) should be(Left(expectedErrorMessage))
   }
 
   private def assertRuleForIndexRequest(

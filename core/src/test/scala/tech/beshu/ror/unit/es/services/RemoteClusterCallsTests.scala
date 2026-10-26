@@ -18,18 +18,19 @@ package tech.beshu.ror.unit.es.services
 
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
+import org.apache.logging.log4j.Level
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.services.RemoteClusterCalls
-import tech.beshu.ror.es.services.RemoteClusterCalls.RemoteClusterLookupException
+import tech.beshu.ror.utils.LogEventsCapture.captureLogEvents
 
 import java.io.IOException
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.*
-import scala.util.{Failure, Success}
+import scala.util.Success
 
 class RemoteClusterCallsTests extends AnyWordSpec with Matchers with Inside {
 
@@ -41,56 +42,73 @@ class RemoteClusterCallsTests extends AnyWordSpec with Matchers with Inside {
     "return the result of a call that succeeds" in {
       val result = run(RemoteClusterCalls.guarded(cluster, false, List.empty[String])(Task.now(List("index1"))))
 
-      result should be(Success(List("index1")))
+      result should be(Success(Right(List("index1"))))
     }
     "return the empty result when the call fails and skip_unavailable is true" in {
       val result = run(RemoteClusterCalls.guarded(cluster, true, List.empty[String])(failingCall))
 
-      result should be(Success(List.empty))
+      result should be(Success(Right(List.empty)))
     }
-    "fail with an error that names the cluster when the call fails and skip_unavailable is false" in {
+    "return an error that names the cluster when the call fails and skip_unavailable is false" in {
       val result = run(RemoteClusterCalls.guarded(cluster, false, List.empty[String])(failingCall))
 
-      inside(result) { case Failure(ex: RemoteClusterLookupException) =>
-        ex.getMessage should be("Cannot get indices of remote cluster [remote_a]")
-        ex.getCause shouldBe an[IOException]
-        ex.getCause.getMessage should be("connection refused")
+      inside(result) { case Success(Left(error)) =>
+        error.cluster should be(cluster)
+        error.message should be("Cannot get indices of remote cluster [remote_a]: connection refused")
+        error.cause shouldBe an[IOException]
+        error.cause.getMessage should be("connection refused")
       }
     }
     "apply the same policy when the call throws before it returns a Task" in {
       def throwingCall: Task[List[String]] = throw new IllegalStateException("no such remote cluster")
 
-      run(RemoteClusterCalls.guarded(cluster, true, List.empty[String])(throwingCall)) should be(Success(List.empty))
+      run(RemoteClusterCalls.guarded(cluster, true, List.empty[String])(throwingCall)) should be(
+        Success(Right(List.empty))
+      )
       inside(run(RemoteClusterCalls.guarded(cluster, false, List.empty[String])(throwingCall))) {
-        case Failure(ex: RemoteClusterLookupException) =>
-          ex.getMessage should be("Cannot get indices of remote cluster [remote_a]")
-          ex.getCause.getMessage should be("no such remote cluster")
+        case Success(Left(error)) =>
+          error.message should be("Cannot get indices of remote cluster [remote_a]: no such remote cluster")
+          error.cause.getMessage should be("no such remote cluster")
       }
     }
     "apply the same policy when the call times out" in {
-      inside(runWithTimeout(skipUnavailable = false)) { case Some(Failure(ex: RemoteClusterLookupException)) =>
-        ex.getMessage should be("Cannot get indices of remote cluster [remote_a]")
-        ex.getCause shouldBe a[TimeoutException]
-        ex.getCause.getMessage should be("timed out after 10 seconds")
+      inside(runWithTimeout(skipUnavailable = false)) { case Some(Success(Left(error))) =>
+        error.message should be("Cannot get indices of remote cluster [remote_a]: timed out after 10 seconds")
+        error.cause shouldBe a[TimeoutException]
+        error.cause.getMessage should be("timed out after 10 seconds")
       }
-      runWithTimeout(skipUnavailable = true) should be(Some(Success(List.empty)))
+      runWithTimeout(skipUnavailable = true) should be(Some(Success(Right(List.empty))))
     }
     "treat skip_unavailable as false when it cannot be read" in {
       def skipUnavailable: Boolean = throw new IllegalStateException("cannot read the setting")
 
       val result = run(RemoteClusterCalls.guarded(cluster, skipUnavailable, List.empty[String])(failingCall))
 
-      result shouldBe a[Failure[?]]
-      result.failed.get shouldBe a[RemoteClusterLookupException]
+      inside(result) { case Success(Left(error)) =>
+        error.cause.getMessage should be("connection refused")
+      }
     }
-    "start the call before the Task runs" in {
+    "start the call when the Task runs" in {
       var started = false
       def call: Task[List[String]] = { started = true; Task.now(List("index1")) }
 
       val task = RemoteClusterCalls.guarded(cluster, false, List.empty[String])(call)
 
+      started should be(false)
+      run(task) should be(Success(Right(List("index1"))))
       started should be(true)
-      run(task) should be(Success(List("index1")))
+    }
+    "log a skip at WARN only once in the warning interval" in {
+      // Other tests skip other clusters, so this cluster has no earlier warning
+      val skippedCluster = ClusterName.Full.fromString("remote_skipped_twice").get
+
+      val events = captureLogEvents(RemoteClusterCalls.getClass.getName) {
+        run(RemoteClusterCalls.guarded(skippedCluster, true, List.empty[String])(failingCall))
+        run(RemoteClusterCalls.guarded(skippedCluster, true, List.empty[String])(failingCall))
+      }
+
+      val skipEvents = events.filter(_.message.contains("[remote_skipped_twice] is skipped"))
+      skipEvents.map(_.level) should be(List(Level.WARN, Level.DEBUG))
     }
     "not read skip_unavailable when the call succeeds" in {
       def skipUnavailable: Boolean = fail("skip_unavailable must not be read")
@@ -98,7 +116,7 @@ class RemoteClusterCallsTests extends AnyWordSpec with Matchers with Inside {
       val result =
         run(RemoteClusterCalls.guarded(cluster, skipUnavailable, List.empty[String])(Task.now(List("index1"))))
 
-      result should be(Success(List("index1")))
+      result should be(Success(Right(List("index1"))))
     }
   }
 

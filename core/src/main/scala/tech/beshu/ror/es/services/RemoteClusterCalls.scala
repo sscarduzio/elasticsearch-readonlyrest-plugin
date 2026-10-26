@@ -19,23 +19,26 @@ package tech.beshu.ror.es.services
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.es.services.EsClusterService.{RemoteClusterLookupError, messageOf}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
-/** Applies one failure policy to a call to a remote cluster. The call starts at once and has a timeout. When the call fails and the
-  * cluster has `skip_unavailable: true`, the cluster gives no results, the same as in ES. Else the call fails with
-  * [[RemoteClusterCalls.RemoteClusterLookupException]], which names the cluster.
+/** Applies one failure policy to a call to a remote cluster. The call starts when the Task runs and has a timeout. When
+  * the call fails and the cluster has `skip_unavailable: true`, the cluster gives no results, the same as in ES. Else the
+  * result is a [[EsClusterService.RemoteClusterLookupError]], which names the cluster and the cause.
   */
 object RemoteClusterCalls extends RequestIdAwareLogging {
 
   val callTimeout: FiniteDuration = 10.seconds
 
-  final class RemoteClusterLookupException(cluster: ClusterName.Full, cause: Throwable)
-      extends Exception(s"Cannot get indices of remote cluster [${cluster.show}]", cause)
+  // While a skipped cluster is down, each request skips it. Only the first skip in this interval is logged at WARN.
+  val skipWarningInterval: FiniteDuration = 1.minute
+
+  private val lastSkipWarningNanos = new ConcurrentHashMap[ClusterName.Full, java.lang.Long]()
 
   def guarded[A](
       cluster: ClusterName.Full,
@@ -45,27 +48,46 @@ object RemoteClusterCalls extends RequestIdAwareLogging {
       call: => Task[A]
   )(
       implicit id: RequestId
-  ): Task[A] = {
-    startNow(call)
+  ): Task[Either[RemoteClusterLookupError, A]] = {
+    Task
+      .defer(call)
       .timeoutTo(callTimeout, Task.raiseError(new TimeoutException(s"timed out after ${callTimeout.toString}")))
-      .onErrorHandleWith { ex =>
-        if (isSkipUnavailable(cluster, skipUnavailable)) {
-          logger.warn(
-            s"Remote cluster [${cluster.show}] is skipped, because it has skip_unavailable: true. Cause: ${messageOf(ex)}"
-          )
-          Task.now(emptyResult)
-        } else {
-          Task.raiseError(new RemoteClusterLookupException(cluster, ex))
-        }
-      }
+      .redeem(
+        ex =>
+          if (isSkipUnavailable(cluster, skipUnavailable)) {
+            logSkipped(cluster, ex)
+            Right(emptyResult)
+          } else {
+            Left(RemoteClusterLookupError(cluster, ex))
+          },
+        Right(_)
+      )
   }
 
-  // The call starts on the caller thread, because ES keeps the request headers in a thread-local ThreadContext.
-  private def startNow[A](call: => Task[A]): Task[A] =
-    Try(call) match {
-      case Success(task) => task
-      case Failure(ex)   => Task.raiseError(ex)
-    }
+  private def logSkipped(cluster: ClusterName.Full, ex: Throwable)(
+      implicit id: RequestId
+  ): Unit = {
+    val message =
+      s"Remote cluster [${cluster.show}] is skipped, because it has skip_unavailable: true. Cause: ${messageOf(ex)}"
+    if (isFirstSkipInInterval(cluster)) logger.warn(message)
+    else logger.debug(message)
+  }
+
+  private def isFirstSkipInInterval(cluster: ClusterName.Full): Boolean = {
+    val now = System.nanoTime()
+    var first = false
+    lastSkipWarningNanos.compute(
+      cluster,
+      (_, last) =>
+        if (last == null || now - last >= skipWarningInterval.toNanos) {
+          first = true
+          now
+        } else {
+          last
+        }
+    )
+    first
+  }
 
   private def isSkipUnavailable(cluster: ClusterName.Full, skipUnavailable: => Boolean)(
       implicit id: RequestId
@@ -79,6 +101,4 @@ object RemoteClusterCalls extends RequestIdAwareLogging {
     }
   }
 
-  private def messageOf(ex: Throwable): String =
-    Option(ex.getMessage).getOrElse(ex.getClass.getSimpleName)
 }

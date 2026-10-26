@@ -33,6 +33,7 @@ import tech.beshu.ror.utils.elasticsearch.IndexManager.MatchingIndices
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
+import java.util.regex.Pattern
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -112,6 +113,9 @@ class CrossClusterCallsSuite
   private lazy val adminClusterManager = new ClusterManager(basicAuthClient("admin", "container"), esVersionUsed)
 
   // The alias points to a closed port. It does not stop a container, so the other tests are not affected.
+  private def occurrences(part: String, text: String): Int =
+    text.split(Pattern.quote(part), -1).length - 1
+
   private def withUnavailableRemoteCluster(skipUnavailable: Boolean)(test: => Unit): Unit = {
     def remoteClusterSettings(seeds: ujson.Value, skip: ujson.Value) =
       ujson.Obj(
@@ -333,10 +337,15 @@ class CrossClusterCallsSuite
         "the unavailable cluster has skip_unavailable: true" in {
           withUnavailableRemoteCluster(skipUnavailable = true) {
             eventually {
-              val result = user8SearchManager.search("private1:audit_*")
+              val result = user8SearchManager.search("*:audit_*")
               result should have statusCode 200
               result.searchHits.map(i => i("_index").str).toSet should be(
-                Set("private1:audit_2020-03-26", "private1:audit_2020-03-27")
+                Set(
+                  "private1:audit_2020-03-26",
+                  "private1:audit_2020-03-27",
+                  "private2:audit_2020-03-26",
+                  "private2:audit_2020-03-27"
+                )
               )
             }
           }
@@ -360,12 +369,16 @@ class CrossClusterCallsSuite
       "return 403 and log the name of the unavailable cluster" when {
         "the unavailable cluster has skip_unavailable: false and the pattern matches it" in {
           withUnavailableRemoteCluster(skipUnavailable = false) {
+            // Other tests write the same history entry, so only new entries count
+            val historyEntry = "RULE_ERROR (indices)"
+            val errorLine = "Cannot get indices of remote cluster [unavailable]"
+            val logsBefore = targetEs.container.getLogs
             eventually {
               val result = user8SearchManager.search("*:audit_*")
               result should have statusCode 403
               val logs = targetEs.container.getLogs
-              logs should include("Cannot get indices of remote cluster [unavailable]")
-              logs should include("RULE_ERROR (indices)")
+              occurrences(historyEntry, logs) should be > occurrences(historyEntry, logsBefore)
+              occurrences(errorLine, logs) should be > occurrences(errorLine, logsBefore)
             }
           }
         }

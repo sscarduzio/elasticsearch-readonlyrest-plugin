@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.Inside
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -30,7 +31,11 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
-class CacheableEsClusterServiceDecoratorTest extends AnyWordSpec with MockFactory with WithDummyRequestIdSupport {
+class CacheableEsClusterServiceDecoratorTest
+    extends AnyWordSpec
+    with MockFactory
+    with Inside
+    with WithDummyRequestIdSupport {
 
   "CacheableEsClusterServiceDecorator" when {
 
@@ -158,12 +163,12 @@ class CacheableEsClusterServiceDecoratorTest extends AnyWordSpec with MockFactor
           (svc
             .remoteClusterContent(_: ClusterName.Full)(_: RequestId))
             .expects(esUs, *)
-            .returning(Task.now(RemoteClusterContent(Set(esUsIndex), Set(esUsDataStream))))
+            .returning(Task.now(Right(RemoteClusterContent(Set(esUsIndex), Set(esUsDataStream)))))
             .once()
           (svc
             .remoteClusterContent(_: ClusterName.Full)(_: RequestId))
             .expects(esUk, *)
-            .returning(Task.now(RemoteClusterContent(Set(esUkIndex), Set.empty)))
+            .returning(Task.now(Right(RemoteClusterContent(Set(esUkIndex), Set.empty))))
             .once()
         }
         val result = for {
@@ -179,14 +184,14 @@ class CacheableEsClusterServiceDecoratorTest extends AnyWordSpec with MockFactor
         assert(indices2 == indices1)
         assert(dataStreams1 == Set(esUsDataStream))
         assert(dataStreams2 == dataStreams1)
-        assert(esUsContent == RemoteClusterContent(Set(esUsIndex), Set(esUsDataStream)))
+        assert(esUsContent == Right(RemoteClusterContent(Set(esUsIndex), Set(esUsDataStream))))
       }
       "call underlying only for the given clusters" in {
         val decorator = decoratorWith { svc =>
           (svc
             .remoteClusterContent(_: ClusterName.Full)(_: RequestId))
             .expects(esUk, *)
-            .returning(Task.now(RemoteClusterContent(Set(esUkIndex), Set.empty)))
+            .returning(Task.now(Right(RemoteClusterContent(Set(esUkIndex), Set.empty))))
             .once()
         }
         val result = for {
@@ -195,6 +200,44 @@ class CacheableEsClusterServiceDecoratorTest extends AnyWordSpec with MockFactor
         } yield (indices, dataStreams)
 
         assert(result.runSyncUnsafe() == (Set(esUkIndex), Set.empty))
+      }
+      "call underlying only once per cluster when the call fails" in {
+        val error = RemoteClusterLookupError(esUs, new IllegalStateException("cluster is unavailable"))
+        val decorator = decoratorWith { svc =>
+          (svc
+            .remoteClusterContent(_: ClusterName.Full)(_: RequestId))
+            .expects(esUs, *)
+            .returning(Task.now(Left(error)))
+            .once()
+        }
+        val result = for {
+          indices <- decorator.remoteIndicesAndAliases(Set(esUs)).attempt
+          dataStreams <- decorator.remoteDataStreamsAndAliases(Set(esUs)).attempt
+        } yield (indices, dataStreams)
+
+        val (indices, dataStreams) = result.runSyncUnsafe()
+        List(indices, dataStreams).foreach { result =>
+          inside(result) { case Left(ex: RemoteClusterLookupException) =>
+            assert(ex.error == error)
+            assert(ex.getMessage == "Cannot get indices of remote cluster [es_us]: cluster is unavailable")
+          }
+        }
+      }
+      "call underlying again when the call throws an unexpected exception" in {
+        val exception = new IllegalStateException("unexpected")
+        val decorator = decoratorWith { svc =>
+          (svc
+            .remoteClusterContent(_: ClusterName.Full)(_: RequestId))
+            .expects(esUs, *)
+            .returning(Task.raiseError(exception))
+            .twice()
+        }
+        val result = for {
+          indices <- decorator.remoteIndicesAndAliases(Set(esUs)).attempt
+          dataStreams <- decorator.remoteDataStreamsAndAliases(Set(esUs)).attempt
+        } yield (indices, dataStreams)
+
+        assert(result.runSyncUnsafe() == (Left(exception), Left(exception)))
       }
       "call underlying for no cluster when no cluster is given" in {
         val decorator = decoratorWith(_ => ())

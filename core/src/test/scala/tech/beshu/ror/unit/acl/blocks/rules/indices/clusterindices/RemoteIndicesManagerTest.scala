@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.IndexAttribute.{Closed, Opened}
 import tech.beshu.ror.accesscontrol.domain.IndexAttributeFilter
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.es.services.EsClusterService.RemoteClusterLookupError
 import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
 import tech.beshu.ror.syntax.*
 
@@ -228,7 +229,7 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
 
     override def remoteClusterContent(cluster: ClusterName.Full)(
         implicit id: RequestId
-    ): Task[RemoteClusterContent] = {
+    ): Task[Either[RemoteClusterLookupError, RemoteClusterContent]] = {
       calls.merge(cluster, 1, _ + _)
       super.remoteClusterContent(cluster)
     }

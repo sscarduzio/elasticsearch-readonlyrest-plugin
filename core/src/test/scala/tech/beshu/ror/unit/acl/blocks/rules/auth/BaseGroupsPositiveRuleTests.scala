@@ -17,6 +17,8 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
+import org.apache.logging.log4j.Level
+import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
@@ -28,6 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic.PositiveGroupsLogic
+import tech.beshu.ror.utils.LogEventsCapture.captureLogEvents
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -195,6 +198,37 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             loggedUser = Some(User.Id("user1")),
             preferredGroupId = None,
             denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL (dummy-throwing rule error)")
+          )
+        }
+        "auth rules of many user definitions throw an exception" in {
+          val settings = GroupsRulesSettings(
+            permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
+            usersDefinitions = NonEmptyList.of(
+              UserDef(
+                usernames = userIdPatterns("user1"),
+                mode = WithoutGroupsMapping(authenticationRule.throwing, groups("g1"))
+              ),
+              UserDef(
+                usernames = userIdPatterns("user2"),
+                mode = WithoutGroupsMapping(authenticationRule.throwing, groups("g1"))
+              )
+            )
+          )
+          val ruleLoggerName = createRule(settings, CaseSensitivity.Enabled).getClass.getName
+
+          val events = captureLogEvents(ruleLoggerName) {
+            assertNotMatchRule(
+              settings = settings,
+              loggedUser = None,
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("{user1,user2}:AUTH_FAIL (dummy-throwing rule error)")
+            )
+          }
+
+          val errors = events.filter(_.level == Level.ERROR)
+          errors.map(_.message) should have size 1
+          errors.head.message should include(
+            "inner rule matching got errors [dummy-throwing: Sth went wrong; dummy-throwing: Sth went wrong]"
           )
         }
       }

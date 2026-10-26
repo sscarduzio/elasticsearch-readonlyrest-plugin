@@ -30,7 +30,13 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.es.EsServices
 import tech.beshu.ror.es.services.EsClusterService
-import tech.beshu.ror.es.services.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
+import tech.beshu.ror.es.services.EsClusterService.{
+  Document,
+  DocumentsAccessibility,
+  IndexOrAlias,
+  IndexUuid,
+  RemoteClusterLookupError
+}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -131,8 +137,10 @@ object BenchmarkSupport {
     override def remoteClustersConfigured(implicit id: RequestId): Boolean = false
     override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = Set.empty
     override def indexOrAliasUuids(indexOrAlias: IndexOrAlias)(implicit id: RequestId): Set[IndexUuid] = Set.empty
-    override def remoteClusterContent(cluster: ClusterName.Full)(implicit id: RequestId): Task[RemoteClusterContent] =
-      Task.now(RemoteClusterContent.empty)
+    override def remoteClusterContent(cluster: ClusterName.Full)(
+        implicit id: RequestId
+    ): Task[Either[RemoteClusterLookupError, RemoteClusterContent]] =
+      Task.now(Right(RemoteClusterContent.empty))
     override def legacyTemplates(implicit id: RequestId): Set[Template.LegacyTemplate] = Set.empty
     override def indexTemplates(implicit id: RequestId): Set[Template.IndexTemplate] = Set.empty
     override def componentTemplates(implicit id: RequestId): Set[Template.ComponentTemplate] = Set.empty
