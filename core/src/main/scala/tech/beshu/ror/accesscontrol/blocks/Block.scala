@@ -185,7 +185,7 @@ class Block(
       .defer(rule.check[B](blockContext))
       .recover { case e =>
         logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
-        Decision.Denied[B](Cause.ruleError(rule))
+        Decision.Denied[B](Cause.RuleError(rule.name))
       }
     lift[B](ruleDecision)
       .flatTap { decision =>

@@ -334,7 +334,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
       }
       .onErrorRecover { case ex =>
         logger.debug(s"${name.show}: ${rule.name.show} rule matching got an error ${ex.getMessage}", ex)
-        Left(UserDefFailure(Cause.ruleError(rule), Some(UserDefFailure.InnerRuleError(rule.name, ex))))
+        Left(UserDefFailure(Cause.RuleError(rule.name), Some(UserDefFailure.InnerRuleError(rule.name, ex))))
       }
   }
 

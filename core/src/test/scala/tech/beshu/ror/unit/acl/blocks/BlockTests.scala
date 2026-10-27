@@ -148,10 +148,15 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         inside(result) { case (Decision.Denied(_), BlockHistory.Denied(_, Decision.Denied(_), rulesHistory)) =>
           assertDenied(rulesHistory(0))(
             hasRuleName = Rule.Name("auth"),
-            hasCause = Cause.AuthenticationFailed("auth rule error")
+            hasCause = Cause.RuleError(Rule.Name("auth"))
           )
           rulesHistory should have size 1
         }
+        val shown = blockHistoryShow[GeneralIndexRequestBlockContext](
+          using headerShow
+        ).show(result._2)
+        shown should include("NOT_MATCHED (RULE_ERROR (auth))")
+        shown should include("auth->error")
       }
       "an authorization rule throws exception" in {
         val block = new Block(
@@ -166,10 +171,15 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         inside(result) { case (Decision.Denied(_), BlockHistory.Denied(_, Decision.Denied(_), rulesHistory)) =>
           assertDenied(rulesHistory(0))(
             hasRuleName = Rule.Name("authz"),
-            hasCause = Cause.GroupsAuthorizationFailed("authz rule error")
+            hasCause = Cause.RuleError(Rule.Name("authz"))
           )
           rulesHistory should have size 1
         }
+        val shown = blockHistoryShow[GeneralIndexRequestBlockContext](
+          using headerShow
+        ).show(result._2)
+        shown should include("NOT_MATCHED (RULE_ERROR (authz))")
+        shown should include("authz->error")
       }
     }
     "be permitted and contain all rules history from the block" in {

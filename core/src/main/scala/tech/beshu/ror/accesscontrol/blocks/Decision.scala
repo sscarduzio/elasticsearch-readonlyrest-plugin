@@ -54,12 +54,6 @@ object Decision {
 
       final case class RuleError(rule: Rule.Name) extends Cause
 
-      def ruleError(rule: Rule): Cause = rule match {
-        case _: Rule.AuthenticationRule => AuthenticationFailed(s"${rule.name.value} rule error")
-        case _: Rule.AuthorizationRule  => GroupsAuthorizationFailed(s"${rule.name.value} rule error")
-        case _: Rule.RegularRule        => RuleError(rule.name)
-      }
-
     }
 
   }

@@ -197,7 +197,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = Some(User.Id("user1")),
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL (dummy-throwing rule error)")
+            denialCause = GroupsAuthorizationFailed("user1:RULE_ERROR (dummy-throwing)")
           )
         }
         "auth rules of many user definitions throw an exception" in {
@@ -221,7 +221,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
               settings = settings,
               loggedUser = None,
               preferredGroupId = None,
-              denialCause = GroupsAuthorizationFailed("{user1,user2}:AUTH_FAIL (dummy-throwing rule error)")
+              denialCause = GroupsAuthorizationFailed("{user1,user2}:RULE_ERROR (dummy-throwing)")
             )
           }
 
