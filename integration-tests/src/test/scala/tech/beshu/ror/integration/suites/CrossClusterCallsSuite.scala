@@ -367,6 +367,27 @@ class CrossClusterCallsSuite
           }
         }
       }
+      // The rule finds no index, so ROR changes the request to a local index that does not exist
+      "return 200 with no hits" when {
+        "the request names only the unavailable cluster, with an index pattern, and it has skip_unavailable: true" in {
+          withUnavailableRemoteCluster(skipUnavailable = true) {
+            eventually {
+              val result = user8SearchManager.search("unavailable:audit_*")
+              result should have statusCode 200
+              result.searchHits should be(empty)
+            }
+          }
+        }
+      }
+      "return 404" when {
+        "the request names only the unavailable cluster, with a full index name, and it has skip_unavailable: true" in {
+          withUnavailableRemoteCluster(skipUnavailable = true) {
+            eventually {
+              user8SearchManager.search("unavailable:audit_1") should have statusCode 404
+            }
+          }
+        }
+      }
       // On Windows, ES runs as a native process, so there are no container logs to read
       if (OsUtils.currentOs == CurrentOs.OtherThanWindows) {
         "return 403 and log the name of the unavailable cluster" when {
