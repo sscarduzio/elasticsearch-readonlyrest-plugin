@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.Ca
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestId, RequestedIndex}
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.accesscontrol.matchers.WildcardPattern
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.services.EsClusterService
 import tech.beshu.ror.implicits.*
@@ -137,10 +137,18 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       requestedIndices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName.Remote]]
   )(
       implicit id: RequestId
-  ): Set[ClusterName.Full] =
-    PatternsMatcher
-      .create(requestedIndices.toList.filterNot(_.excluded).map(_.name.cluster))
-      .filter(clusterService.allRemoteClusterNames)
+  ): Set[ClusterName.Full] = {
+    // An index must match an included pattern, so an excluded pattern does not need the indices of its cluster
+    val included = requestedIndices.toList.filterNot(_.excluded).map(_.name.cluster)
+    // ES reads only "*" as a wildcard in the cluster part, so "?" must select only a cluster with "?" in its name
+    val (fullNames, patterns) = included.partitionMap {
+      case full: ClusterName.Full       => Left(full)
+      case pattern: ClusterName.Pattern => Right(new WildcardPattern(pattern.value.value, singleCharWildcard = false))
+    }
+    clusterService.allRemoteClusterNames.filter { cluster =>
+      fullNames.contains(cluster) || patterns.exists(_.matches(cluster.value.value))
+    }
+  }
 
   private def splitIntoRequestedRemoteAndLocalIndices(indices: Iterable[RequestedIndex[ClusterIndexName]]) = {
     val remoteIndices = Set.newBuilder[RequestedIndex[ClusterIndexName.Remote]]

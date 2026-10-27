@@ -226,6 +226,19 @@ trait IndicesRuleRemoteIndexTests {
             allAllowedClusters = Set(clusterName("prod"))
           )
         }
+        "the request names a cluster pattern with \"*\" and the settings name the full cluster" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("prod1:logs*")),
+            requestIndices = Set(requestedIndex("prod*:logs*")),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(allRemoteIndicesAndAliases = Set(fullRemoteIndexWithAliases("prod1", "logs-1")))
+              )
+            ),
+            filteredRequestedIndices = Set(requestedIndex("prod1:logs-1")),
+            allAllowedClusters = Set(clusterName("prod1"))
+          )
+        }
         "a remote cluster that the request names only in an exclusion fails" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("*:logs-*")),
@@ -261,6 +274,18 @@ trait IndicesRuleRemoteIndexTests {
       }
     }
     "not match" when {
+      "the request names a cluster with \"?\", because ES does not read \"?\" as a wildcard in the cluster name" in {
+        assertNotMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("prod1:logs*")),
+          requestIndices = Set(requestedIndex("prod?:logs*")),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(allRemoteIndicesAndAliases = Set(fullRemoteIndexWithAliases("prod1", "logs-1")))
+            )
+          ),
+          allAllowedClusters = Set(clusterName("prod1"))
+        )
+      }
       "not allowed cluster indices are being called" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*-logs-smg-stats-*"), indexNameVar("etl*:*-logs-smg-stats-*")),
