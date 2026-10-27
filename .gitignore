@@ -1,6 +1,7 @@
 .idea/
 .gradle/
-build*/
+build/
+build.broken*/
 out/
 tmp/*
 *.swp
