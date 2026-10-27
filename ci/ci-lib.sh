@@ -285,13 +285,13 @@ retag_dev_image() {
 # Build & publish the ROR ES pre-build Docker image for the given ES version.
 #
 # To avoid rebuilding when the sources have not changed, every build is frozen under an immutable,
-# source-identified tag <esVersion>-ror-<gitShortSha>. Before building we probe that tag in the registry:
+# source-identified tag <esVersion>-ror-<12-char SHA>. Before building we probe that tag in the registry:
 # if it already holds every platform of this build, the Gradle build (the expensive build+push) is
 # skipped. Setting FORCE_REBUILD=true bypasses the skip.
 #
 # Tags produced (all but the Gradle push are cheap registry-side manifest copies):
 #   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
-#   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
+#   - <esVersion>-ror-<12-char SHA>     immutable source identity, frozen from canonical (probed for the skip)
 #   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
 #
 # The build is for the standard platforms, linux/amd64 and linux/arm64. A comma-separated list in
@@ -319,7 +319,9 @@ publish_ror_es_prebuild_plugin() {
   local ROR_VERSION GIT_SHA
   ROR_VERSION=$(gradle_property pluginVersion) || return 1
   # The commit names the source of the image, so a missing one must stop the build with the cause.
-  if ! GIT_SHA=$(git rev-parse --short HEAD); then
+  # The length is fixed: git makes a plain --short longer in a clone with more objects, so a shallow
+  # and a full clone of one commit would write two different tags.
+  if ! GIT_SHA=$(git rev-parse --short=12 HEAD); then
     ci_log "Cannot read the commit of the checkout. The image tag would then name no source."
     return 1
   fi
