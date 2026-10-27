@@ -139,7 +139,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       implicit id: RequestId
   ): Set[ClusterName.Full] =
     PatternsMatcher
-      .create(requestedIndices.toList.map(_.name.cluster))
+      .create(requestedIndices.toList.filterNot(_.excluded).map(_.name.cluster))
       .filter(clusterService.allRemoteClusterNames)
 
   private def splitIntoRequestedRemoteAndLocalIndices(indices: Iterable[RequestedIndex[ClusterIndexName]]) = {

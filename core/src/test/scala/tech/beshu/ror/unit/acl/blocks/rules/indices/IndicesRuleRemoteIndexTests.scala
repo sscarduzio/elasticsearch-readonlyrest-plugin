@@ -226,6 +226,22 @@ trait IndicesRuleRemoteIndexTests {
             allAllowedClusters = Set(clusterName("prod"))
           )
         }
+        "a remote cluster that the request names only in an exclusion fails" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("*:logs-*")),
+            requestIndices = Set(requestedIndex("prod:*"), requestedIndex("-netflow:*")),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(
+                  allRemoteIndicesAndAliases = Set(fullRemoteIndexWithAliases("prod", "logs-1")),
+                  failingClusters = Map(clusterName("netflow") -> netflowError)
+                )
+              )
+            ),
+            filteredRequestedIndices = Set(requestedIndex("prod:logs-1")),
+            allAllowedClusters = Set(clusterName("prod"))
+          )
+        }
       }
     }
     "fail with an error" when {
