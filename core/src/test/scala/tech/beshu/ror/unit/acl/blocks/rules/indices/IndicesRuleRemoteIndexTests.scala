@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.NonEmptySet
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockEsServices
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
@@ -349,6 +350,14 @@ trait IndicesRuleRemoteIndexTests {
           allAllowedClusters = Set.empty
         )
       }
+    }
+  }
+
+  "The ES wildcard pattern of a remote cluster name pattern" should {
+    "read \"?\" as a plain character" in {
+      val pattern = ClusterName.Pattern.fromString("prod?*").get.esWildcardPattern
+      pattern.matches("prod1") should be(false)
+      pattern.matches("prod?1") should be(true)
     }
   }
 

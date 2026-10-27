@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
+import tech.beshu.ror.accesscontrol.matchers.WildcardPattern
 import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
 import tech.beshu.ror.accesscontrol.request.BaseEsContext
 import tech.beshu.ror.syntax.*
@@ -251,7 +252,11 @@ object ClusterIndexName {
         val local: Full = Full(NonEmptyString.unsafeFrom("(local)"))
       }
 
-      final case class Pattern private (value: NonEmptyString) extends ClusterName with EagerHashCode
+      final case class Pattern private (value: NonEmptyString) extends ClusterName with EagerHashCode {
+        // ES reads only "*" as a wildcard in the cluster part, so "?" matches only itself
+        private[ror] lazy val esWildcardPattern: WildcardPattern =
+          new WildcardPattern(value.value, singleCharWildcard = false)
+      }
 
       object Pattern {
 
