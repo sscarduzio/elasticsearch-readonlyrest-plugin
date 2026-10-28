@@ -21,13 +21,11 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local as LocalIndexName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.{
-  FullLocalDataStreamWithAliases,
-  FullRemoteDataStreamWithAliases
-}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.utils.{AsyncCacheableAction, SyncCacheableAction}
 import tech.beshu.ror.es.services.EsClusterService.*
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.drainToMap
 
@@ -47,13 +45,9 @@ trait EsClusterService {
       implicit id: RequestId
   ): Set[IndexUuid]
 
-  def allRemoteIndicesAndAliases(
+  def remoteClusterContent(cluster: ClusterName.Full)(
       implicit id: RequestId
-  ): Task[Set[FullRemoteIndexWithAliases]]
-
-  def allRemoteDataStreamsAndAliases(
-      implicit id: RequestId
-  ): Task[Set[FullRemoteDataStreamWithAliases]]
+  ): Task[Either[RemoteClusterLookupError, RemoteClusterContent]]
 
   def localIndicesSnapshot(
       implicit id: RequestId
@@ -112,6 +106,15 @@ object EsClusterService {
   type Document = DocumentWithIndex
   type DocumentsAccessibility = Map[DocumentWithIndex, DocumentAccessibility]
   type IndexUuid = String
+
+  // An expected failure of a call to a remote cluster. It is a value, so the result of the call is cached also when the
+  // call fails.
+  final case class RemoteClusterLookupError(cluster: ClusterName.Full, cause: Throwable) {
+    def message: String = s"Cannot get indices of remote cluster [${cluster.show}]: ${messageOf(cause)}"
+  }
+
+  private[services] def messageOf(ex: Throwable): String =
+    Option(ex.getMessage).getOrElse(ex.getClass.getSimpleName)
 
   final class LocalIndicesSnapshot(val raw: Set[FullLocalIndexWithAliases]) {
 
@@ -293,14 +296,9 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
       action = (_, id) => underlying.allSnapshots(id)
     )
 
-  private lazy val cacheableAllRemoteIndicesAndAliases =
-    new AsyncCacheableAction[Unit, Set[FullRemoteIndexWithAliases]](
-      action = (_, requestId) => underlying.allRemoteIndicesAndAliases(requestId)
-    )
-
-  private lazy val cacheableAllRemoteDataStreamsAndAliases =
-    new AsyncCacheableAction[Unit, Set[FullRemoteDataStreamWithAliases]](
-      action = (_, requestId) => underlying.allRemoteDataStreamsAndAliases(requestId)
+  private lazy val cacheableRemoteClusterContent =
+    new AsyncCacheableAction[ClusterName.Full, Either[RemoteClusterLookupError, RemoteClusterContent]](
+      action = (cluster, requestId) => underlying.remoteClusterContent(cluster)(requestId)
     )
 
   private lazy val cacheableSnapshotIndices =
@@ -339,10 +337,10 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
   ): Set[IndexUuid] =
     cacheableIndexOrAliasUuids.call(indexOrAlias)
 
-  override def allRemoteIndicesAndAliases(
+  override def remoteClusterContent(cluster: ClusterName.Full)(
       implicit id: RequestId
-  ): Task[Set[FullRemoteIndexWithAliases]] =
-    cacheableAllRemoteIndicesAndAliases.call(())
+  ): Task[Either[RemoteClusterLookupError, RemoteClusterContent]] =
+    cacheableRemoteClusterContent.call(cluster)
 
   override def localIndicesSnapshot(
       implicit id: RequestId
@@ -353,11 +351,6 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
       implicit id: RequestId
   ): LocalDataStreamsSnapshot =
     cacheableLocalDataStreamsSnapshot.call(())
-
-  override def allRemoteDataStreamsAndAliases(
-      implicit id: RequestId
-  ): Task[Set[FullRemoteDataStreamWithAliases]] =
-    cacheableAllRemoteDataStreamsAndAliases.call(())
 
   override def legacyTemplates(
       implicit id: RequestId

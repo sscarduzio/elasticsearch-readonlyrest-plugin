@@ -431,8 +431,9 @@ trait LogsShowInstances extends cats.instances.AllInstances {
 
   implicit def ruleHistoryShow[B <: BlockContext]: Show[RuleHistory[B]] = Show.show { h =>
     s"${h.rule.show}->${h.decision match {
-        case Decision.Permitted(_) => "true"
-        case Decision.Denied(_)    => "false"
+        case Decision.Permitted(_)               => "true"
+        case Decision.Denied(Cause.RuleError(_)) => "error"
+        case Decision.Denied(_)                  => "false"
       }}"
   }
 
@@ -476,6 +477,7 @@ trait LogsShowInstances extends cats.instances.AllInstances {
     case Cause.IndexNotFound(_)                   => "IDX_NOT_FOUND"
     case Cause.AliasNotFound                      => "ALIAS_NOT_FOUND"
     case Cause.TemplateNotFound                   => "TPL_NOT_FOUND"
+    case Cause.RuleError(rule)                    => s"RULE_ERROR (${rule.show})"
   }
 
   object CauseFormatting {

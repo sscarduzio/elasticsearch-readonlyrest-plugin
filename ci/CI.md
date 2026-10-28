@@ -455,11 +455,9 @@ Both sides address the images by a per-run tag (`run-<build id>`). `ci_setup` cr
 and passes it down as a job output. No other job may derive it again. A partial re-run bumps the run
 attempt but does not re-run `ci_setup`, and the two sides would then name different images.
 
-Branch resolution — both other repos are asked for the branch of this PR first. The e2e clone then
-tries the base branch, `develop`, `master`; the base branch matters, because a change based on
-`develop` must use the `develop` suite, not `master`. The ROR KBN branch name is passed through as
-it is: if the KBN repo has no such branch, its pre-build workflow falls back to `develop` on its
-own side.
+Branch resolution — this repo passes its branch names, and each other repo picks its own branch for
+them. The e2e repo gets the branch of this PR and its base branch. The ROR KBN repo gets the branch
+of this PR.
 
 Module selection follows the [test matrix policy](#test-matrix-policy). Job names are built from
 the module, not the ES version, so branch-protection checks survive a version bump. The same
