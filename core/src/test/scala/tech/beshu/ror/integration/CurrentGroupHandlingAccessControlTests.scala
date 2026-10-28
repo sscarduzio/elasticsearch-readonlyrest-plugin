@@ -21,6 +21,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.Allowed
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -30,6 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.JwtUtils.*
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.nio.charset.StandardCharsets.UTF_8
 
@@ -81,6 +83,10 @@ class CurrentGroupHandlingAccessControlTests
        |      name: "jwt1"
        |      groups: ["group2", "group3"]
        |
+       |  - name: "User 8 block"
+       |    users: ["user8"]
+       |    groups: ["group2", "group3"]
+       |
        |  users:
        |  - username: user1
        |    groups: ["group1", "group2", "group3"]
@@ -115,6 +121,16 @@ class CurrentGroupHandlingAccessControlTests
        |    jwt_auth:
        |      name: "jwt1"
        |      groups: ["group1", "group2"]
+       |
+       |  - username: user8
+       |    groups:
+       |      - group1: [kbn_group1]
+       |      - group2: [kbn_group2]
+       |      - group3: [kbn_group2]
+       |    ror_kbn_authentication: "kbn1"
+       |    ror_kbn_authorization:
+       |      name: "kbn1"
+       |      groups: ["kbn_group1", "kbn_group2"]
        |
        |  ror_kbn:
        |  - name: kbn1
@@ -392,6 +408,28 @@ class CurrentGroupHandlingAccessControlTests
         val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
         inside(switchTenancyResponse) { case Allowed(userMetadata @ UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
+        }
+      }
+    }
+    "allow a regular request with a local current group" when {
+      "groups rule with ror_kbn_authentication and ror_kbn_authorization is used (with local groups mapping)" in {
+        val jwt = Jwt(
+          Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes(UTF_8)),
+          claims = List(
+            "user" := "user8",
+            "groups" := List("kbn_group1", "kbn_group2", "kbn_group3")
+          )
+        )
+        val request = MockRequestContext.indices.withHeaders(
+          bearerHeader(jwt),
+          currentGroupHeader("group3")
+        )
+        val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
+        inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+          blockContext.block.name should be(Block.Name("User 8 block"))
+          blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user8"))))
+          blockContext.blockMetadata.currentGroupId should be(Some(GroupId("group3")))
+          blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group2"), group("group3")))
         }
       }
     }

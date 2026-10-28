@@ -234,7 +234,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
         blockContext,
         allowedUserMatcher
       )
-      blockContextAfterAuthz <- checkRuleRecoveringError(authzRule, updatedBlockContextAfterAuthn)
+      blockContextAfterAuthz <- checkRule(authzRule, updatedBlockContextAfterAuthn, mode)
       updatedBlockContextAfterAuthz <- updateBlockContextWithAllowedGroups(
         blockContextAfterAuthz,
         updatedBlockContextAfterAuthn,
