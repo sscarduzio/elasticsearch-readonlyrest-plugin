@@ -45,3 +45,8 @@ readonlyrest:
       type: allow
       auth_key: dev7:test
       indices: [ "*", "nonexistingcluster*:*" ]
+
+    - name: "Dev8 with access to audit indices on all remote clusters"
+      type: allow
+      auth_key: dev8:test
+      indices: [ "*:audit_*" ]

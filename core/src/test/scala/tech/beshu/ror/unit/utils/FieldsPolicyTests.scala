@@ -89,6 +89,12 @@ class FieldsPolicyTests extends AnyWordSpec with ScalaCheckDrivenPropertyChecks 
         policy(AccessMode.Blacklist, "secret*").canKeep("secret\nx") should be(false)
       }
     }
+    "match `?` only to itself, as ES `_source` filtering does" in {
+      policy(AccessMode.Whitelist, "a?b").canKeep("a?b") should be(true)
+      policy(AccessMode.Whitelist, "a?b").canKeep("acb") should be(false)
+      policy(AccessMode.Blacklist, "a?b").canKeep("a?b") should be(false)
+      policy(AccessMode.Blacklist, "a?b").canKeep("acb") should be(true)
+    }
     "hide in blacklist mode and keep in whitelist mode each field name made from the configured name" in {
       // Each `*` becomes text without a dot, so the field has the same dot-separated parts as the configured name.
       val starText = genStarText.map(_.replace(".", "") + "a")

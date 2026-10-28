@@ -25,8 +25,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRu
 }
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestId, RequestedIndex}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.es.services.EsClusterService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -109,23 +111,52 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       requestedIndices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName.Remote]],
       determinedKibanaIndex: Option[KibanaIndexName]
   ): Task[ProcessResult] = {
-    implicit val indicesManager: RemoteIndicesManager = new RemoteIndicesManager(
-      requestContext,
-      allowedIndices.remoteMatcher
-    )
-    implicit val requestContextImpl: RequestContext = requestContext
-    logger.debug(
-      s"Checking remote indices (allowed: [${allowedIndices.remote.show}], requested: [${requestedIndices.show}])"
-    )
-    canPass(requestContext, determinedKibanaIndex, requestedIndices)
-      .map {
-        case CanPass.Yes(narrowedIndices) =>
-          ProcessResult.Ok(narrowedIndices)
-        case CanPass.No(Some(Reason.IndexNotExist)) =>
-          ProcessResult.Failed.IndexNotFound
-        case CanPass.No(_) =>
-          ProcessResult.Failed.Other
+    given RequestId = requestContext.id.toRequestId
+    RemoteIndicesManager
+      .create(
+        requestContext,
+        allowedIndices.remoteMatcher,
+        requestedRemoteClusters(requestContext.esServices.clusterService, allowedIndices, requestedIndices)
+      )
+      .flatMap {
+        case Left(error) =>
+          Task.now(ProcessResult.Failed.ClusterUnavailable(error.cluster))
+        case Right(manager) =>
+          implicit val indicesManager: RemoteIndicesManager = manager
+          logger.debug(
+            s"Checking remote indices (allowed: [${allowedIndices.remote.show}], requested: [${requestedIndices.show}])"
+          )
+          canPass(requestContext, determinedKibanaIndex, requestedIndices)
+            .map {
+              case CanPass.Yes(narrowedIndices) =>
+                ProcessResult.Ok(narrowedIndices)
+              case CanPass.No(Some(Reason.IndexNotExist)) =>
+                ProcessResult.Failed.IndexNotFound
+              case CanPass.No(_) =>
+                ProcessResult.Failed.Other
+            }
       }
+  }
+
+  private def requestedRemoteClusters(
+      clusterService: EsClusterService,
+      allowedIndices: AllowedClusterIndices,
+      requestedIndices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName.Remote]]
+  )(
+      implicit id: RequestId
+  ): Set[ClusterName.Full] = {
+    // An index must match an included pattern, so an excluded pattern does not need the indices of its cluster
+    val included = requestedIndices.toList.filterNot(_.excluded).map(_.name.cluster)
+    val (fullNames, patterns) = included.partitionMap {
+      case full: ClusterName.Full       => Left(full)
+      case pattern: ClusterName.Pattern => Right(pattern.esWildcardPattern)
+    }
+    val requestedClusters = clusterService.allRemoteClusterNames.filter { cluster =>
+      fullNames.contains(cluster) || patterns.exists(_.matches(cluster.value.value))
+    }
+    // No index of a cluster that no allowed pattern names can be allowed. Thus ROR does not ask that cluster, and the
+    // result of the rule does not depend on it.
+    allowedIndices.remoteClusterNamesMatcher.filter(requestedClusters)
   }
 
   private def splitIntoRequestedRemoteAndLocalIndices(indices: Iterable[RequestedIndex[ClusterIndexName]]) = {
@@ -144,11 +175,13 @@ trait AllClusterIndices extends BaseIndicesProcessor {
 
 object AllClusterIndices {
 
-  implicit def processResultSemigroup: Semigroup[ProcessResult] = Semigroup.instance {
-    case (ProcessResult.Ok(indices1), ProcessResult.Ok(indices2)) => ProcessResult.Ok(indices1 ++ indices2)
-    case (ok @ ProcessResult.Ok(_), _: ProcessResult.Failed)      => ok
-    case (_: ProcessResult.Failed, ok @ ProcessResult.Ok(_))      => ok
-    case (failed: ProcessResult.Failed, _: ProcessResult.Failed)  => failed
+  implicit val processResultSemigroup: Semigroup[ProcessResult] = Semigroup.instance {
+    case (unavailable: ProcessResult.Failed.ClusterUnavailable, _) => unavailable
+    case (_, unavailable: ProcessResult.Failed.ClusterUnavailable) => unavailable
+    case (ProcessResult.Ok(indices1), ProcessResult.Ok(indices2))  => ProcessResult.Ok(indices1 ++ indices2)
+    case (ok @ ProcessResult.Ok(_), _: ProcessResult.Failed)       => ok
+    case (_: ProcessResult.Failed, ok @ ProcessResult.Ok(_))       => ok
+    case (failed: ProcessResult.Failed, _: ProcessResult.Failed)   => failed
   }
 
 }

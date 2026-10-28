@@ -35,7 +35,13 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.es.EsServices
-import tech.beshu.ror.es.services.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
+import tech.beshu.ror.es.services.EsClusterService.{
+  Document,
+  DocumentsAccessibility,
+  IndexOrAlias,
+  IndexUuid,
+  RemoteClusterLookupError
+}
 import tech.beshu.ror.es.services.{ApiKeyService, EsClusterService, ServiceAccountTokenService}
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.mocks.MockRequestContext.roAction
@@ -459,7 +465,8 @@ object MockEsServices {
         legacyTemplates: Set[Template.LegacyTemplate] = Set.empty,
         indexTemplates: Set[Template.IndexTemplate] = Set.empty,
         componentTemplates: Set[Template.ComponentTemplate] = Set.empty,
-        allRemoteClusterNames: Set[ClusterName.Full] = Set.empty
+        allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
+        failingClusters: Map[ClusterName.Full, Throwable] = Map.empty
     ): MockEsClusterService =
       new MockEsClusterService(
         allIndicesAndAliases = allIndicesAndAliases,
@@ -469,7 +476,8 @@ object MockEsServices {
         legacyTemplates = legacyTemplates,
         indexTemplates = indexTemplates,
         componentTemplates = componentTemplates,
-        allRemoteClusterNames = allRemoteClusterNames
+        allRemoteClusterNames = allRemoteClusterNames,
+        failingClusters = failingClusters
       )
 
   }
@@ -482,7 +490,8 @@ object MockEsServices {
       private val legacyTemplates: Set[Template.LegacyTemplate] = Set.empty,
       private val indexTemplates: Set[Template.IndexTemplate] = Set.empty,
       private val componentTemplates: Set[Template.ComponentTemplate] = Set.empty,
-      private val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty
+      private val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
+      private val failingClusters: Map[ClusterName.Full, Throwable] = Map.empty
   ) extends EsClusterService {
 
     override def remoteClustersConfigured(
@@ -511,21 +520,32 @@ object MockEsServices {
 
     override def allRemoteClusterNames(
         implicit id: RequestId
-    ): Set[ClusterName.Full] = allRemoteClusterNames
+    ): Set[ClusterName.Full] =
+      allRemoteClusterNames ++
+        allRemoteIndicesAndAliases.map(_.clusterName) ++
+        allRemoteDataStreamsAndAliases.map(_.clusterName) ++
+        failingClusters.keySet
 
     override def indexOrAliasUuids(indexOrAlias: IndexOrAlias)(
         implicit id: RequestId
     ): Set[IndexUuid] = Set.empty
 
-    override def allRemoteIndicesAndAliases(
+    override def remoteClusterContent(cluster: ClusterName.Full)(
         implicit id: RequestId
-    ): Task[Set[FullRemoteIndexWithAliases]] =
-      Task.now(allRemoteIndicesAndAliases)
-
-    override def allRemoteDataStreamsAndAliases(
-        implicit id: RequestId
-    ): Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
-      Task.now(allRemoteDataStreamsAndAliases)
+    ): Task[Either[RemoteClusterLookupError, RemoteClusterContent]] =
+      failingClusters.get(cluster) match {
+        case Some(error) =>
+          Task.now(Left(RemoteClusterLookupError(cluster, error)))
+        case None =>
+          Task.now(
+            Right(
+              RemoteClusterContent(
+                indices = allRemoteIndicesAndAliases.filter(_.clusterName == cluster),
+                dataStreams = allRemoteDataStreamsAndAliases.filter(_.clusterName == cluster)
+              )
+            )
+          )
+      }
 
     override def allSnapshots(
         implicit id: RequestId

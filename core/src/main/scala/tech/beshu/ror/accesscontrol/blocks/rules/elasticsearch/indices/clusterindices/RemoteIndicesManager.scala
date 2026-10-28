@@ -19,72 +19,70 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusteri
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.BaseIndicesProcessor.IndicesManager
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote as RemoteIndexName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.es.services.EsClusterService.RemoteClusterLookupError
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.drainToMap
 
 import scala.collection.mutable
 
-class RemoteIndicesManager(
+class RemoteIndicesManager private (
     requestContext: RequestContext,
-    override val allowedIndicesMatcher: PatternsMatcher[RemoteIndexName]
+    override val allowedIndicesMatcher: PatternsMatcher[RemoteIndexName],
+    contents: List[RemoteClusterContent]
 ) extends IndicesManager[RemoteIndexName] {
 
-  private implicit val implicitRequestId: RequestId = requestContext.id.toRequestId
-  private val clusterService = requestContext.esServices.clusterService
   private val indexAttributesFromRequest = requestContext.indexAttributes
 
-  private lazy val cachedRemoteIndices =
-    clusterService.allRemoteIndicesAndAliases.map { all =>
-      indexAttributesFromRequest match {
-        case IndexAttributeFilter.All    => all
-        case IndexAttributeFilter.Opened => all.filter(_.attribute == IndexAttribute.Opened)
-        case IndexAttributeFilter.Closed => all.filter(_.attribute == IndexAttribute.Closed)
-      }
-    }.memoize
+  private lazy val allRemoteIndices: Set[FullRemoteIndexWithAliases] = contents.flatMap(_.indices).toCovariantSet
+
+  private lazy val remoteIndices: Set[FullRemoteIndexWithAliases] =
+    indexAttributesFromRequest match {
+      case IndexAttributeFilter.All    => allRemoteIndices
+      case IndexAttributeFilter.Opened => allRemoteIndices.filter(_.attribute == IndexAttribute.Opened)
+      case IndexAttributeFilter.Closed => allRemoteIndices.filter(_.attribute == IndexAttribute.Closed)
+    }
 
   private lazy val cachedAllIndicesAndAliases: Task[Set[RemoteIndexName]] =
-    cachedRemoteIndices.map(_.flatMap(_.all)).memoize
+    Task.eval(remoteIndices.flatMap(_.all)).memoize
 
   private lazy val cachedAllIndices: Task[Set[RemoteIndexName]] =
-    cachedRemoteIndices.map(_.map(_.index)).memoize
+    Task.eval(remoteIndices.map(_.index)).memoize
 
   private lazy val cachedAllAliases: Task[Set[RemoteIndexName]] =
-    clusterService.allRemoteIndicesAndAliases
-      .map(_.flatMap(_.aliases))
-      .memoize
+    Task.eval(allRemoteIndices.flatMap(_.aliases)).memoize
 
   private lazy val cachedIndicesPerAliasMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
-    cachedRemoteIndices.map(indicesPerAliasMapFrom).memoize
+    Task.eval(indicesPerAliasMapFrom(remoteIndices)).memoize
 
-  private lazy val cachedRemoteDataStreams =
-    clusterService.allRemoteDataStreamsAndAliases.map { all =>
-      indexAttributesFromRequest match {
-        case IndexAttributeFilter.Closed => Set.empty[FullRemoteDataStreamWithAliases]
-        case IndexAttributeFilter.Opened => all
-        case IndexAttributeFilter.All    => all
-      }
-    }.memoize
+  private lazy val allRemoteDataStreams: Set[FullRemoteDataStreamWithAliases] =
+    contents.flatMap(_.dataStreams).toCovariantSet
+
+  private lazy val remoteDataStreams: Set[FullRemoteDataStreamWithAliases] =
+    indexAttributesFromRequest match {
+      case IndexAttributeFilter.Closed => Set.empty[FullRemoteDataStreamWithAliases]
+      case IndexAttributeFilter.Opened => allRemoteDataStreams
+      case IndexAttributeFilter.All    => allRemoteDataStreams
+    }
 
   private lazy val cachedAllDataStreamsAndAliases: Task[Set[RemoteIndexName]] =
-    cachedRemoteDataStreams.map(_.flatMap(_.all)).memoize
+    Task.eval(remoteDataStreams.flatMap(_.all)).memoize
 
   private lazy val cachedAllDataStreams: Task[Set[RemoteIndexName]] =
-    cachedRemoteDataStreams.map(_.map(_.dataStream)).memoize
+    Task.eval(remoteDataStreams.map(_.dataStream)).memoize
 
   private lazy val cachedAllDataStreamAliases: Task[Set[RemoteIndexName]] =
-    clusterService.allRemoteDataStreamsAndAliases
-      .map(_.flatMap(_.aliases))
-      .memoize
+    Task.eval(allRemoteDataStreams.flatMap(_.aliases)).memoize
 
   private lazy val cachedDataStreamsPerAliasMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
-    cachedRemoteDataStreams.map(dataStreamsPerAliasMapFrom).memoize
+    Task.eval(dataStreamsPerAliasMapFrom(remoteDataStreams)).memoize
 
   private lazy val cachedBackingIndicesPerDataStreamMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
-    cachedRemoteDataStreams.map(backingIndicesPerDataStreamMapFrom).memoize
+    Task.eval(backingIndicesPerDataStreamMapFrom(remoteDataStreams)).memoize
 
   override def allIndicesAndAliases(
       implicit id: RequestId
@@ -165,6 +163,30 @@ class RemoteIndicesManager(
       }
     }
     collected.drainToMap
+  }
+
+}
+
+object RemoteIndicesManager {
+
+  // ES fails a search that names an unavailable cluster with skip_unavailable: false. Thus one failed cluster gives no
+  // manager, and the caller decides what the search gets.
+  def create(
+      requestContext: RequestContext,
+      allowedIndicesMatcher: PatternsMatcher[RemoteIndexName],
+      clusters: Set[ClusterName.Full]
+  ): Task[Either[RemoteClusterLookupError, RemoteIndicesManager]] = {
+    given RequestId = requestContext.id.toRequestId
+    val clusterService = requestContext.esServices.clusterService
+    Task
+      .parTraverse(clusters.toList)(cluster => clusterService.remoteClusterContent(cluster))
+      .map { results =>
+        results
+          .collectFirst { case Left(error) => error }
+          .toLeft(
+            new RemoteIndicesManager(requestContext, allowedIndicesMatcher, results.collect { case Right(c) => c })
+          )
+      }
   }
 
 }

@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.DocumentField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
+import tech.beshu.ror.accesscontrol.matchers.WildcardPattern
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -423,7 +424,12 @@ object FieldLevelSecurity {
   )
 
   object FieldsRestrictions {
-    final case class DocumentField(value: NonEmptyString)
+
+    final case class DocumentField(value: NonEmptyString) {
+      // ES `_source` filtering treats `?` literally, so `?` is not a wildcard here.
+      private[ror] lazy val fieldPartPatterns: List[WildcardPattern] =
+        value.value.split("\\.").toList.map(new WildcardPattern(_, singleCharWildcard = false))
+    }
 
     sealed trait AccessMode
 

@@ -18,49 +18,31 @@ package tech.beshu.ror.fls
 
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
-import tech.beshu.ror.accesscontrol.matchers.WildcardPattern
 import tech.beshu.ror.constants
 
 class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
-
-  private val enhancedFields = fieldsRestrictions.documentFields.toList.map(new FieldsPolicy.EnhancedDocumentField(_))
 
   def canKeep(field: String): Boolean = {
     constants.FIELDS_ALWAYS_ALLOW.contains(field) || {
       fieldsRestrictions.mode match {
         case AccessMode.Whitelist =>
-          enhancedFields.exists(f => whitelistMatch(f, field))
+          fieldsRestrictions.documentFields.exists(f => whitelistMatch(f, field))
         case AccessMode.Blacklist =>
-          !enhancedFields.exists(f => blacklistMatch(f, field))
+          !fieldsRestrictions.documentFields.exists(f => blacklistMatch(f, field))
       }
     }
   }
 
-  private def whitelistMatch(enhancedField: FieldsPolicy.EnhancedDocumentField, field: String): Boolean = {
+  private def whitelistMatch(documentField: DocumentField, field: String): Boolean = {
     val fieldParts = field.split("\\.").toList
-    fieldParts.length <= enhancedField.fieldPartPatterns.length &&
-    fieldParts.zip(enhancedField.fieldPartPatterns).forall { case (fieldPart, pattern) => pattern.matches(fieldPart) }
+    fieldParts.length <= documentField.fieldPartPatterns.length &&
+    fieldParts.zip(documentField.fieldPartPatterns).forall { case (fieldPart, pattern) => pattern.matches(fieldPart) }
   }
 
-  private def blacklistMatch(enhancedField: FieldsPolicy.EnhancedDocumentField, field: String): Boolean = {
+  private def blacklistMatch(documentField: DocumentField, field: String): Boolean = {
     val fieldParts = field.split("\\.").toList
-    enhancedField.fieldPartPatterns.length <= fieldParts.length &&
-    enhancedField.fieldPartPatterns.zip(fieldParts).forall { case (pattern, fieldPart) => pattern.matches(fieldPart) }
-  }
-
-}
-
-object FieldsPolicy {
-
-  private class EnhancedDocumentField(field: DocumentField) {
-
-    // ES `_source` filtering treats `?` literally, so `?` is not a wildcard here.
-    val fieldPartPatterns: List[WildcardPattern] =
-      field.value.value
-        .split("\\.")
-        .toList
-        .map(new WildcardPattern(_, singleCharWildcard = false))
-
+    documentField.fieldPartPatterns.length <= fieldParts.length &&
+    documentField.fieldPartPatterns.zip(fieldParts).forall { case (pattern, fieldPart) => pattern.matches(fieldPart) }
   }
 
 }

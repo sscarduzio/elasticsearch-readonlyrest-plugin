@@ -31,7 +31,8 @@ import tech.beshu.ror.utils.containers.images.{ReadonlyRestWithEnabledXpackSecur
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.elasticsearch.IndexManager.MatchingIndices
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
+import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, OsUtils, Version}
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -101,6 +102,7 @@ class CrossClusterCallsSuite
   private lazy val user3SearchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
   private lazy val user4SearchManager = new SearchManager(basicAuthClient("dev4", "test"), esVersionUsed)
   private lazy val user5SearchManager = new SearchManager(basicAuthClient("dev5", "test"), esVersionUsed)
+  private lazy val user8SearchManager = new SearchManager(basicAuthClient("dev8", "test"), esVersionUsed)
   private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
   private lazy val user2IndexManager = new IndexManager(basicAuthClient("dev2", "test"), esVersionUsed)
   private lazy val user3IndexManager = new IndexManager(basicAuthClient("dev3", "test"), esVersionUsed)
@@ -108,6 +110,31 @@ class CrossClusterCallsSuite
   private lazy val user6IndexManager = new IndexManager(basicAuthClient("dev6", "test"), esVersionUsed)
   private lazy val user7IndexManager = new IndexManager(basicAuthClient("dev7", "test"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
+  private lazy val adminClusterManager = new ClusterManager(basicAuthClient("admin", "container"), esVersionUsed)
+
+  // ES fails a search that names an unavailable cluster with skip_unavailable: false. The status is 502 in ES 8.19 and
+  // 500 in ES 7.17, so the test checks the type of the ES error.
+  private def assertUnavailableClusterError(result: SearchManager#SearchResult): Unit = {
+    result.responseCode should be >= 500
+    result.responseJson("error")("type").str should be("connect_transport_exception")
+  }
+
+  // The alias points to a closed port. It does not stop a container, so the other tests are not affected.
+  private def withUnavailableRemoteCluster(skipUnavailable: Boolean)(test: => Unit): Unit = {
+    def remoteClusterSettings(seeds: ujson.Value, skip: ujson.Value) =
+      ujson.Obj(
+        "persistent" -> ujson.Obj(
+          "cluster.remote.unavailable.seeds" -> seeds,
+          "cluster.remote.unavailable.skip_unavailable" -> skip
+        )
+      )
+
+    adminClusterManager
+      .putSettings(remoteClusterSettings(ujson.Arr("127.0.0.1:1"), ujson.read(skipUnavailable.toString)))
+      .force()
+    try test
+    finally adminClusterManager.putSettings(remoteClusterSettings(ujson.Null, ujson.Null)).force()
+  }
 
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {
@@ -302,6 +329,100 @@ class CrossClusterCallsSuite
           "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" in {
             val result = user4SearchManager.search("p*:service2*")
             result should have statusCode 403
+          }
+        }
+      }
+    }
+  }
+
+  "A cluster _search for remote index pattern" when {
+    "one of the remote clusters is unavailable" should {
+      "return 200 with the indices of the other remote clusters" when {
+        "the unavailable cluster has skip_unavailable: true" in {
+          withUnavailableRemoteCluster(skipUnavailable = true) {
+            eventually {
+              val result = user8SearchManager.search("*:audit_*")
+              result should have statusCode 200
+              result.searchHits.map(i => i("_index").str).toSet should be(
+                Set(
+                  "private1:audit_2020-03-26",
+                  "private1:audit_2020-03-27",
+                  "private2:audit_2020-03-26",
+                  "private2:audit_2020-03-27"
+                )
+              )
+            }
+          }
+        }
+        "the unavailable cluster has skip_unavailable: false and the pattern does not match it" in {
+          withUnavailableRemoteCluster(skipUnavailable = false) {
+            // The failed search shows that ES uses the unavailable cluster
+            eventually {
+              assertUnavailableClusterError(user8SearchManager.search("*:audit_*"))
+            }
+            eventually {
+              val result = user8SearchManager.search("private1:audit_*")
+              result should have statusCode 200
+              result.searchHits.map(i => i("_index").str).toSet should be(
+                Set("private1:audit_2020-03-26", "private1:audit_2020-03-27")
+              )
+            }
+          }
+        }
+      }
+      "return 200 with no hits" when {
+        "the request names only the unavailable cluster, with an index pattern, and it has skip_unavailable: true" in {
+          withUnavailableRemoteCluster(skipUnavailable = true) {
+            // The rule finds no index, so ROR changes the request to a local index that does not exist
+            eventually {
+              val result = user8SearchManager.search("unavailable:audit_*")
+              result should have statusCode 200
+              result.searchHits should be(empty)
+            }
+          }
+        }
+        "the request names only the unavailable cluster, with a full index name, and it has skip_unavailable: true" in {
+          withUnavailableRemoteCluster(skipUnavailable = true) {
+            eventually {
+              val result = user8SearchManager.search("unavailable:audit_1")
+              result should have statusCode 200
+              result.searchHits should be(empty)
+            }
+          }
+        }
+      }
+      "fail only the search of an _msearch that names the unavailable cluster, as ES does" when {
+        "the unavailable cluster has skip_unavailable: false" in {
+          withUnavailableRemoteCluster(skipUnavailable = false) {
+            eventually {
+              val result = user8SearchManager.mSearch(
+                """{"index":"private1:audit_*"}""",
+                """{"query" : {"match_all" : {}}}""",
+                """{"index":"unavailable:audit_*"}""",
+                """{"query" : {"match_all" : {}}}"""
+              )
+              result should have statusCode 200
+              result.responses.size should be(2)
+              result.responses(0)("hits")("hits").arr.map(_("_index").str).toSet should be(
+                Set("private1:audit_2020-03-26", "private1:audit_2020-03-27")
+              )
+              result.responses(1)("status").num.toInt should be >= 500
+              result.responses(1)("error")("type").str should be("connect_transport_exception")
+            }
+          }
+        }
+      }
+      // On Windows, ES runs as a native process, so there are no container logs to read
+      if (OsUtils.currentOs == CurrentOs.OtherThanWindows) {
+        "return the error of ES, not 403, and log the name of the unavailable cluster" when {
+          "the unavailable cluster has skip_unavailable: false and the pattern matches it" in {
+            withUnavailableRemoteCluster(skipUnavailable = false) {
+              val warnLine = "Remote cluster [unavailable] is unavailable, and it has skip_unavailable: false"
+              eventually {
+                assertUnavailableClusterError(user8SearchManager.search("*:audit_*"))
+                targetEs.container.getLogs should include(warnLine)
+              }
+            }
           }
         }
       }

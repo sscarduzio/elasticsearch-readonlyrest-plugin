@@ -36,6 +36,7 @@ import org.elasticsearch.snapshots.{SnapshotId, SnapshotInfo}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import org.elasticsearch.transport.RemoteClusterService.DisconnectedStrategy
+import org.joor.Reflect
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{
@@ -58,7 +59,6 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import java.util.function.Supplier
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.util.{Failure, Success, Try}
 
 class EsNodeClusterService(
     nodeName: String,
@@ -131,14 +131,28 @@ class EsNodeClusterService(
   ): LocalIndicesSnapshot =
     localClusterSnapshotAtomic.get().indices
 
-  override def allRemoteIndicesAndAliases(
+  override def remoteClusterContent(cluster: ClusterName.Full)(
       implicit id: RequestId
-  ): Task[Set[FullRemoteIndexWithAliases]] = {
+  ): Task[Either[RemoteClusterLookupError, RemoteClusterContent]] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
-        provideAllRemoteIndices(remoteClusterService)
+        RemoteClusterCalls.guarded(
+          cluster = cluster,
+          skipUnavailable = isSkipUnavailable(remoteClusterService, cluster),
+          emptyResult = RemoteClusterContent.empty
+        ) {
+          resolveRemoteIndicesUsing(getRemoteClusterClient(remoteClusterService, cluster))
+            .map { response =>
+              RemoteClusterContent(
+                indices = response.getIndices.asSafeList
+                  .flatMap(toFullRemoteIndexWithAliases(_, cluster))
+                  .toCovariantSet,
+                dataStreams = remoteDataStreamsFrom(response, cluster).toCovariantSet
+              )
+            }
+        }
       case None =>
-        Task.now(Set.empty)
+        Task.now(Right(RemoteClusterContent.empty))
     }
   }
 
@@ -151,16 +165,6 @@ class EsNodeClusterService(
       implicit id: RequestId
   ): LocalDataStreamsSnapshot =
     localClusterSnapshotAtomic.get().dataStreams
-
-  override def allRemoteDataStreamsAndAliases(
-      implicit id: RequestId
-  ): Task[Set[FullRemoteDataStreamWithAliases]] =
-    remoteClusterServiceSupplier.get() match {
-      case Some(remoteClusterService) =>
-        provideAllRemoteDataStreams(remoteClusterService)
-      case None =>
-        Task.now(Set.empty)
-    }
 
   override def legacyTemplates(
       implicit id: RequestId
@@ -291,38 +295,6 @@ class EsNodeClusterService(
       .map(results => zip(results, documents))
   }
 
-  private def provideAllRemoteDataStreams(remoteClusterService: RemoteClusterService)(
-      implicit requestId: RequestId
-  ) = {
-    val remoteClusterFullNames =
-      remoteClusterService.getRegisteredRemoteClusterNames.asSafeSet
-        .flatMap(ClusterName.Full.fromString)
-
-    Task
-      .parSequenceUnordered(
-        remoteClusterFullNames.map(resolveAllRemoteDataStreams(_, remoteClusterService))
-      )
-      .map(_.flatten.toCovariantSet)
-  }
-
-  private def resolveAllRemoteDataStreams(
-      remoteClusterName: ClusterName.Full,
-      remoteClusterService: RemoteClusterService
-  )(
-      implicit requestId: RequestId
-  ): Task[List[FullRemoteDataStreamWithAliases]] = {
-    getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
-      case Failure(_) =>
-        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
-        Task.now(List.empty)
-      case Success(client) =>
-        resolveRemoteIndicesUsing(client)
-          .map { response =>
-            remoteDataStreamsFrom(response, remoteClusterName)
-          }
-    }
-  }
-
   private def remoteDataStreamsFrom(
       response: ResolveIndexAction.Response,
       remoteClusterName: ClusterName.Full
@@ -353,50 +325,28 @@ class EsNodeClusterService(
       }
   }
 
-  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService)(
-      implicit requestId: RequestId
-  ) = {
-    val remoteClusterFullNames =
-      remoteClusterService.getRegisteredRemoteClusterNames.asSafeSet
-        .flatMap(ClusterName.Full.fromString)
-
-    Task
-      .parSequenceUnordered(
-        remoteClusterFullNames.map(resolveAllRemoteIndices(_, remoteClusterService))
-      )
-      .map(_.flatten.toCovariantSet)
-  }
-
-  private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full, remoteClusterService: RemoteClusterService)(
-      implicit requestId: RequestId
-  ) = {
-    getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
-      case Failure(_) =>
-        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
-        Task.now(List.empty)
-      case Success(client) =>
-        resolveRemoteIndicesUsing(client)
-          .map { response =>
-            response.getIndices.asSafeList
-              .flatMap { resolvedIndex =>
-                toFullRemoteIndexWithAliases(resolvedIndex, remoteClusterName)
-              }
-          }
-    }
-  }
-
   private def getRemoteClusterClient(
       remoteClusterService: RemoteClusterService,
       remoteClusterName: ClusterName.Full
   ) = {
-    Try(
-      remoteClusterService.getRemoteClusterClient(
-        remoteClusterName.value.value,
-        scheduler,
-        DisconnectedStrategy.RECONNECT_IF_DISCONNECTED
-      )
+    remoteClusterService.getRemoteClusterClient(
+      remoteClusterName.value.value,
+      scheduler,
+      DisconnectedStrategy.RECONNECT_UNLESS_SKIP_UNAVAILABLE
     )
   }
+
+  // ES 9.2 returns Boolean and ES 9.3 returns Optional[Boolean]. An empty Optional means cross-project mode, where ES skips
+  // an unavailable cluster.
+  private def isSkipUnavailable(remoteClusterService: RemoteClusterService, remoteClusterName: ClusterName.Full) =
+    Reflect.on(remoteClusterService).call("isSkipUnavailable", remoteClusterName.value.value).get[AnyRef]() match {
+      case value: java.lang.Boolean     => value.booleanValue()
+      case value: java.util.Optional[?] => value.map(_ == java.lang.Boolean.TRUE).orElse(true)
+      case other                        =>
+        throw new IllegalStateException(
+          s"Unexpected result of RemoteClusterService.isSkipUnavailable: ${other.toString}"
+        )
+    }
 
   private def resolveRemoteIndicesUsing(client: RemoteClusterClient) = {
     import tech.beshu.ror.es.utils.ThreadContextOps.*
