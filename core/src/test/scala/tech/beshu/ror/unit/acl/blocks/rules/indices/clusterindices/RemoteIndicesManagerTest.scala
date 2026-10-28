@@ -196,7 +196,25 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
 
       indices shouldBe Set(remoteIndex("es_us", "logs-us"), remoteIndex("es_eu", "logs-eu"))
       dataStreams shouldBe Set.empty[RemoteIndexName]
-      clusterService.contentCalls shouldBe Map(clusterName("es_us") -> 2, clusterName("es_eu") -> 2)
+      clusterService.contentCalls shouldBe Map(clusterName("es_us") -> 1, clusterName("es_eu") -> 1)
+    }
+    "give the failed cluster, when one of the given clusters fails" in {
+      val requestContext = requestContextWith(
+        MockEsServices.MockEsClusterService(
+          allRemoteIndicesAndAliases = Set(fullRemoteIndexWithAliases("es_us", "logs-us", Opened)),
+          failingClusters = Map(clusterName("netflow") -> new IllegalStateException("netflow is unavailable"))
+        )
+      )
+
+      val result = RemoteIndicesManager
+        .create(
+          requestContext,
+          PatternsMatcher.create(Set(remoteIndex("*", "*"))),
+          Set(clusterName("es_us"), clusterName("netflow"))
+        )
+        .runSyncUnsafe()
+
+      result.left.map(_.cluster) shouldBe Left(clusterName("netflow"))
     }
   }
 
@@ -213,7 +231,10 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
       allowed: RemoteIndexName = remoteIndex("es_us", "*"),
       clusters: Set[ClusterName.Full] = Set(clusterName("es_us"))
   ): RemoteIndicesManager =
-    new RemoteIndicesManager(requestContext, PatternsMatcher.create(Set(allowed)), clusters)
+    RemoteIndicesManager.create(requestContext, PatternsMatcher.create(Set(allowed)), clusters).runSyncUnsafe() match {
+      case Right(manager) => manager
+      case Left(error)    => fail(error.message)
+    }
 
   private final class CountingRemoteClusterService(
       remoteIndices: Set[FullRemoteIndexWithAliases] = Set.empty,

@@ -21,10 +21,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local as LocalIndexName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.{
-  FullLocalDataStreamWithAliases,
-  FullRemoteDataStreamWithAliases
-}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.utils.{AsyncCacheableAction, SyncCacheableAction}
 import tech.beshu.ror.es.services.EsClusterService.*
@@ -51,16 +48,6 @@ trait EsClusterService {
   def remoteClusterContent(cluster: ClusterName.Full)(
       implicit id: RequestId
   ): Task[Either[RemoteClusterLookupError, RemoteClusterContent]]
-
-  def remoteIndicesAndAliases(clusters: Set[ClusterName.Full])(
-      implicit id: RequestId
-  ): Task[Set[FullRemoteIndexWithAliases]] =
-    remoteClustersContent(clusters).map(_.flatMap(_.indices).toCovariantSet)
-
-  def remoteDataStreamsAndAliases(clusters: Set[ClusterName.Full])(
-      implicit id: RequestId
-  ): Task[Set[FullRemoteDataStreamWithAliases]] =
-    remoteClustersContent(clusters).map(_.flatMap(_.dataStreams).toCovariantSet)
 
   def localIndicesSnapshot(
       implicit id: RequestId
@@ -112,16 +99,6 @@ trait EsClusterService {
       implicit id: RequestId
   ): Set[FullLocalDataStreamWithAliases]
 
-  private def remoteClustersContent(clusters: Set[ClusterName.Full])(
-      implicit id: RequestId
-  ): Task[List[RemoteClusterContent]] =
-    Task.parTraverseUnordered(clusters.toList) { cluster =>
-      remoteClusterContent(cluster).flatMap {
-        case Right(content) => Task.now(content)
-        case Left(error)    => Task.raiseError(new RemoteClusterLookupException(error))
-      }
-    }
-
 }
 
 object EsClusterService {
@@ -135,9 +112,6 @@ object EsClusterService {
   final case class RemoteClusterLookupError(cluster: ClusterName.Full, cause: Throwable) {
     def message: String = s"Cannot get indices of remote cluster [${cluster.show}]: ${messageOf(cause)}"
   }
-
-  final class RemoteClusterLookupException(val error: RemoteClusterLookupError)
-      extends Exception(error.message, error.cause)
 
   private[services] def messageOf(ex: Throwable): String =
     Option(ex.getMessage).getOrElse(ex.getClass.getSimpleName)

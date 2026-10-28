@@ -100,16 +100,6 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       allAllowedClusters
     )
 
-  protected def assertErrorRuleForIndexRequest(
-      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
-      requestIndices: Set[RequestedIndex[ClusterIndexName]],
-      esServices: EsServices,
-      expectedErrorMessage: String
-  ): Unit = {
-    val result = checkIndexRequest(configured, requestIndices, Some(esServices), identity).attempt.runSyncUnsafe()
-    result.left.map(_.getMessage) should be(Left(expectedErrorMessage))
-  }
-
   private def assertRuleForIndexRequest(
       configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
       requestIndices: Set[RequestedIndex[ClusterIndexName]],
@@ -133,11 +123,11 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
     }
   }
 
-  private def checkIndexRequest(
+  protected def checkIndexRequest(
       configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
       requestIndices: Set[RequestedIndex[ClusterIndexName]],
       esServices: Option[EsServices],
-      modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext
+      modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity
   ): Task[Decision[GeneralIndexRequestBlockContext]] = {
     val rule = createIndicesRule(configuredValues)
     val requestContext = MockRequestContext.indices
@@ -207,6 +197,25 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       modifyBlockContext: FilterableMultiRequestBlockContext => FilterableMultiRequestBlockContext,
       allowed: List[Indices]
   ): Unit = {
+    val result = checkMultiIndexRequest(configuredValues, indexPacks, esServices, modifyBlockContext).runSyncUnsafe()
+    if (isMatched) {
+      inside(result) { case Permitted(blockContext: FilterableMultiRequestBlockContext) =>
+        assertBlockContext(blockContext)(
+          indexPacks = allowed,
+          kibanaPolicy = blockContext.blockMetadata.kibanaPolicy
+        )
+      }
+    } else {
+      result should be(Denied(Cause.IndexNotFound(Set(ClusterName.Full.local))))
+    }
+  }
+
+  protected def checkMultiIndexRequest(
+      configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      indexPacks: List[Indices],
+      esServices: Option[EsServices],
+      modifyBlockContext: FilterableMultiRequestBlockContext => FilterableMultiRequestBlockContext = identity
+  ): Task[Decision[FilterableMultiRequestBlockContext]] = {
     val rule = new IndicesRule(
       settings = IndicesRule.Settings(configuredValues, mustInvolveIndices = false),
       identifierGenerator = RandomBasedUniqueIdentifierGenerator
@@ -241,17 +250,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       indexPacks = indexPacks,
       filter = None
     )
-    val result = rule.check(blockContext).runSyncUnsafe()
-    if (isMatched) {
-      inside(result) { case Permitted(blockContext: FilterableMultiRequestBlockContext) =>
-        assertBlockContext(blockContext)(
-          indexPacks = allowed,
-          kibanaPolicy = blockContext.blockMetadata.kibanaPolicy
-        )
-      }
-    } else {
-      result should be(Denied(Cause.IndexNotFound(Set(ClusterName.Full.local))))
-    }
+    rule.check(blockContext)
   }
 
   protected def assertMatchRuleForTemplateRequest(

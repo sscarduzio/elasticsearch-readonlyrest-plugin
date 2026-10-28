@@ -104,6 +104,11 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
           case ProcessResult.Failed.IndexNotFound =>
             val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allowedIndices)
             Denied(Cause.IndexNotFound(allowedClusters))
+          case ProcessResult.Failed.ClusterUnavailable(cluster) =>
+            val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allowedIndices)
+            Permitted(
+              blockContext.withIndices(nonexistentIndexOn(cluster), allowedIndices.all).withClusters(allowedClusters)
+            )
           case ProcessResult.Failed.Other =>
             reject()
         }
@@ -134,7 +139,9 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
                   ) map {
                     case ProcessResult.Ok(narrowedIndices)  => Right(Indices.Found(narrowedIndices) :: currentList)
                     case ProcessResult.Failed.IndexNotFound => Right(Indices.NotFound :: currentList)
-                    case ProcessResult.Failed.Other         => Left(())
+                    case ProcessResult.Failed.ClusterUnavailable(cluster) =>
+                      Right(Indices.Found(nonexistentIndexOn(cluster)) :: currentList)
+                    case ProcessResult.Failed.Other => Left(())
                   }
                 case Indices.NotFound =>
                   Task.now(Right(Indices.NotFound :: currentList))
@@ -155,6 +162,12 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
         }
     }
   }
+
+  // ES fails the search that names an unavailable cluster with skip_unavailable: false. In a multi-request, ES fails only
+  // that search. A nonexistent index on the cluster makes ES give the same result. If the cluster is available again
+  // when ES runs the search, the search gets no data, because the index does not exist.
+  private def nonexistentIndexOn(cluster: ClusterName.Full): Set[RequestedIndex[ClusterIndexName]] =
+    Set(RequestedIndex(ClusterIndexName.Remote.randomNonexistentIndex(cluster), excluded = false))
 
   private def processAliasRequest(blockContext: AliasRequestBlockContext): Task[Decision[AliasRequestBlockContext]] = {
     if (matchAll) {
@@ -184,11 +197,11 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
                 getAllowedClusterNames(blockContext.requestContext, allowedIndices)
               )
             )
-          case (ProcessResult.Failed.Other, _) =>
+          case (ProcessResult.Failed.Other | ProcessResult.Failed.ClusterUnavailable(_), _) =>
             reject()
           case (_, ProcessResult.Failed.IndexNotFound) =>
             Denied(Cause.AliasNotFound)
-          case (_, ProcessResult.Failed.Other) =>
+          case (_, ProcessResult.Failed.Other | ProcessResult.Failed.ClusterUnavailable(_)) =>
             reject()
         }
       }
@@ -279,6 +292,7 @@ object IndicesRule {
 
     object Failed {
       case object IndexNotFound extends Failed
+      final case class ClusterUnavailable(cluster: ClusterName.Full) extends Failed
       case object Other extends Failed
     }
 

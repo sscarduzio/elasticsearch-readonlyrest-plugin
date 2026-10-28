@@ -112,27 +112,35 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       determinedKibanaIndex: Option[KibanaIndexName]
   ): Task[ProcessResult] = {
     given RequestId = requestContext.id.toRequestId
-    implicit val indicesManager: RemoteIndicesManager = new RemoteIndicesManager(
-      requestContext,
-      allowedIndices.remoteMatcher,
-      requestedRemoteClusters(requestContext.esServices.clusterService, requestedIndices)
-    )
-    logger.debug(
-      s"Checking remote indices (allowed: [${allowedIndices.remote.show}], requested: [${requestedIndices.show}])"
-    )
-    canPass(requestContext, determinedKibanaIndex, requestedIndices)
-      .map {
-        case CanPass.Yes(narrowedIndices) =>
-          ProcessResult.Ok(narrowedIndices)
-        case CanPass.No(Some(Reason.IndexNotExist)) =>
-          ProcessResult.Failed.IndexNotFound
-        case CanPass.No(_) =>
-          ProcessResult.Failed.Other
+    RemoteIndicesManager
+      .create(
+        requestContext,
+        allowedIndices.remoteMatcher,
+        requestedRemoteClusters(requestContext.esServices.clusterService, allowedIndices, requestedIndices)
+      )
+      .flatMap {
+        case Left(error) =>
+          Task.now(ProcessResult.Failed.ClusterUnavailable(error.cluster))
+        case Right(manager) =>
+          implicit val indicesManager: RemoteIndicesManager = manager
+          logger.debug(
+            s"Checking remote indices (allowed: [${allowedIndices.remote.show}], requested: [${requestedIndices.show}])"
+          )
+          canPass(requestContext, determinedKibanaIndex, requestedIndices)
+            .map {
+              case CanPass.Yes(narrowedIndices) =>
+                ProcessResult.Ok(narrowedIndices)
+              case CanPass.No(Some(Reason.IndexNotExist)) =>
+                ProcessResult.Failed.IndexNotFound
+              case CanPass.No(_) =>
+                ProcessResult.Failed.Other
+            }
       }
   }
 
   private def requestedRemoteClusters(
       clusterService: EsClusterService,
+      allowedIndices: AllowedClusterIndices,
       requestedIndices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName.Remote]]
   )(
       implicit id: RequestId
@@ -143,9 +151,12 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       case full: ClusterName.Full       => Left(full)
       case pattern: ClusterName.Pattern => Right(pattern.esWildcardPattern)
     }
-    clusterService.allRemoteClusterNames.filter { cluster =>
+    val requestedClusters = clusterService.allRemoteClusterNames.filter { cluster =>
       fullNames.contains(cluster) || patterns.exists(_.matches(cluster.value.value))
     }
+    // No index of a cluster that no allowed pattern names can be allowed. Thus ROR does not ask that cluster, and the
+    // result of the rule does not depend on it.
+    allowedIndices.remoteClusterNamesMatcher.filter(requestedClusters)
   }
 
   private def splitIntoRequestedRemoteAndLocalIndices(indices: Iterable[RequestedIndex[ClusterIndexName]]) = {
@@ -164,11 +175,13 @@ trait AllClusterIndices extends BaseIndicesProcessor {
 
 object AllClusterIndices {
 
-  implicit def processResultSemigroup: Semigroup[ProcessResult] = Semigroup.instance {
-    case (ProcessResult.Ok(indices1), ProcessResult.Ok(indices2)) => ProcessResult.Ok(indices1 ++ indices2)
-    case (ok @ ProcessResult.Ok(_), _: ProcessResult.Failed)      => ok
-    case (_: ProcessResult.Failed, ok @ ProcessResult.Ok(_))      => ok
-    case (failed: ProcessResult.Failed, _: ProcessResult.Failed)  => failed
+  implicit val processResultSemigroup: Semigroup[ProcessResult] = Semigroup.instance {
+    case (unavailable: ProcessResult.Failed.ClusterUnavailable, _) => unavailable
+    case (_, unavailable: ProcessResult.Failed.ClusterUnavailable) => unavailable
+    case (ProcessResult.Ok(indices1), ProcessResult.Ok(indices2))  => ProcessResult.Ok(indices1 ++ indices2)
+    case (ok @ ProcessResult.Ok(_), _: ProcessResult.Failed)       => ok
+    case (_: ProcessResult.Failed, ok @ ProcessResult.Ok(_))       => ok
+    case (failed: ProcessResult.Failed, _: ProcessResult.Failed)   => failed
   }
 
 }

@@ -34,7 +34,6 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, OsUtils, Version}
 
-import java.util.regex.Pattern
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -113,8 +112,12 @@ class CrossClusterCallsSuite
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val adminClusterManager = new ClusterManager(basicAuthClient("admin", "container"), esVersionUsed)
 
-  private def occurrences(part: String, text: String): Int =
-    text.split(Pattern.quote(part), -1).length - 1
+  // ES fails a search that names an unavailable cluster with skip_unavailable: false. The status is 502 in ES 8.19 and
+  // 500 in ES 7.17, so the test checks the type of the ES error.
+  private def assertUnavailableClusterError(result: SearchManager#SearchResult): Unit = {
+    result.responseCode should be >= 500
+    result.responseJson("error")("type").str should be("connect_transport_exception")
+  }
 
   // The alias points to a closed port. It does not stop a container, so the other tests are not affected.
   private def withUnavailableRemoteCluster(skipUnavailable: Boolean)(test: => Unit): Unit = {
@@ -353,9 +356,9 @@ class CrossClusterCallsSuite
         }
         "the unavailable cluster has skip_unavailable: false and the pattern does not match it" in {
           withUnavailableRemoteCluster(skipUnavailable = false) {
-            // The 403 shows that ROR uses the unavailable cluster
+            // The failed search shows that ES uses the unavailable cluster
             eventually {
-              user8SearchManager.search("*:audit_*") should have statusCode 403
+              assertUnavailableClusterError(user8SearchManager.search("*:audit_*"))
             }
             eventually {
               val result = user8SearchManager.search("private1:audit_*")
@@ -388,21 +391,36 @@ class CrossClusterCallsSuite
           }
         }
       }
+      "fail only the search of an _msearch that names the unavailable cluster, as ES does" when {
+        "the unavailable cluster has skip_unavailable: false" in {
+          withUnavailableRemoteCluster(skipUnavailable = false) {
+            eventually {
+              val result = user8SearchManager.mSearch(
+                """{"index":"private1:audit_*"}""",
+                """{"query" : {"match_all" : {}}}""",
+                """{"index":"unavailable:audit_*"}""",
+                """{"query" : {"match_all" : {}}}"""
+              )
+              result should have statusCode 200
+              result.responses.size should be(2)
+              result.responses(0)("hits")("hits").arr.map(_("_index").str).toSet should be(
+                Set("private1:audit_2020-03-26", "private1:audit_2020-03-27")
+              )
+              result.responses(1)("status").num.toInt should be >= 500
+              result.responses(1)("error")("type").str should be("connect_transport_exception")
+            }
+          }
+        }
+      }
       // On Windows, ES runs as a native process, so there are no container logs to read
       if (OsUtils.currentOs == CurrentOs.OtherThanWindows) {
-        "return 403 and log the name of the unavailable cluster" when {
+        "return the error of ES, not 403, and log the name of the unavailable cluster" when {
           "the unavailable cluster has skip_unavailable: false and the pattern matches it" in {
             withUnavailableRemoteCluster(skipUnavailable = false) {
-              // Other tests write the same history entry, so only new entries count
-              val historyEntry = "RULE_ERROR (indices)"
-              val errorLine = "Cannot get indices of remote cluster [unavailable]"
-              val logsBefore = targetEs.container.getLogs
+              val warnLine = "Remote cluster [unavailable] is unavailable, and it has skip_unavailable: false"
               eventually {
-                val result = user8SearchManager.search("*:audit_*")
-                result should have statusCode 403
-                val logs = targetEs.container.getLogs
-                occurrences(historyEntry, logs) should be > occurrences(historyEntry, logsBefore)
-                occurrences(errorLine, logs) should be > occurrences(errorLine, logsBefore)
+                assertUnavailableClusterError(user8SearchManager.search("*:audit_*"))
+                targetEs.container.getLogs should include(warnLine)
               }
             }
           }

@@ -32,14 +32,16 @@ import scala.util.{Failure, Success, Try}
   * the call fails and the cluster has `skip_unavailable: true`, the cluster gives no results, the same as in ES. Else the
   * result is a [[EsClusterService.RemoteClusterLookupError]], which names the cluster and the cause.
   *
-  * The first skip of a cluster is logged at WARN and the next skips at DEBUG. The first successful call after the skips
-  * is logged at INFO. Thus one outage of a cluster gives one WARN line.
+  * The first failure of a cluster is logged at WARN and the next failures at DEBUG. A change of `skip_unavailable` during
+  * the failures gives one more WARN line, because the result of the requests changes. The first successful call after
+  * the failures is logged at INFO. Thus one outage of a cluster gives one WARN line.
   */
 object RemoteClusterCalls extends RequestIdAwareLogging {
 
   val callTimeout: FiniteDuration = 10.seconds
 
-  private val skippedClusters = Atomic(Set.empty[ClusterName.Full])
+  // The value of skip_unavailable at the last failure of each unavailable cluster
+  private val unavailableClusters = Atomic(Map.empty[ClusterName.Full, Boolean])
 
   def guarded[A](
       cluster: ClusterName.Full,
@@ -56,9 +58,19 @@ object RemoteClusterCalls extends RequestIdAwareLogging {
       .redeem(
         ex =>
           if (isSkipUnavailable(cluster, skipUnavailable)) {
-            logSkipped(cluster, ex)
+            logUnavailable(
+              cluster,
+              skipUnavailable = true,
+              s"Remote cluster [${cluster.show}] is skipped, because it has skip_unavailable: true. Cause: ${messageOf(ex)}"
+            )
             Right(emptyResult)
           } else {
+            logUnavailable(
+              cluster,
+              skipUnavailable = false,
+              s"Remote cluster [${cluster.show}] is unavailable, and it has skip_unavailable: false. " +
+                s"The searches that name it fail. Cause: ${messageOf(ex)}"
+            )
             Left(RemoteClusterLookupError(cluster, ex))
           },
         result => {
@@ -68,22 +80,21 @@ object RemoteClusterCalls extends RequestIdAwareLogging {
       )
   }
 
-  private def logSkipped(cluster: ClusterName.Full, ex: Throwable)(
+  private def logUnavailable(cluster: ClusterName.Full, skipUnavailable: Boolean, message: String)(
       implicit id: RequestId
-  ): Unit = {
-    val message =
-      s"Remote cluster [${cluster.show}] is skipped, because it has skip_unavailable: true. Cause: ${messageOf(ex)}"
-    if (markSkipped(cluster)) logger.warn(message)
+  ): Unit =
+    if (markUnavailable(cluster, skipUnavailable)) logger.warn(message)
     else logger.debug(message)
-  }
 
-  // True when the cluster was available before
-  private def markSkipped(cluster: ClusterName.Full): Boolean =
-    skippedClusters.transformAndExtract(clusters => (!clusters.contains(cluster), clusters + cluster))
+  // True when the cluster was available before, or had the other value of skip_unavailable
+  private def markUnavailable(cluster: ClusterName.Full, skipUnavailable: Boolean): Boolean =
+    unavailableClusters.transformAndExtract { clusters =>
+      (!clusters.get(cluster).contains(skipUnavailable), clusters.updated(cluster, skipUnavailable))
+    }
 
-  // True when the cluster was skipped before
+  // True when the cluster was unavailable before
   private def markAvailable(cluster: ClusterName.Full): Boolean =
-    skippedClusters.transformAndExtract(clusters => (clusters.contains(cluster), clusters - cluster))
+    unavailableClusters.transformAndExtract(clusters => (clusters.contains(cluster), clusters - cluster))
 
   private def isSkipUnavailable(cluster: ClusterName.Full, skipUnavailable: => Boolean)(
       implicit id: RequestId

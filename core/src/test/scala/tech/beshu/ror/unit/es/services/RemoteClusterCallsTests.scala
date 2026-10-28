@@ -115,6 +115,43 @@ class RemoteClusterCallsTests extends AnyWordSpec with Matchers with Inside {
         List(Level.WARN, Level.DEBUG, Level.INFO, Level.WARN)
       )
     }
+    "log a failure with skip_unavailable: false at WARN only when the cluster becomes unavailable" in {
+      // Other tests use other clusters, so this cluster is not unavailable before the test
+      val flappingCluster = ClusterName.Full.fromString("remote_flapping_not_skipped").get
+      def call(task: Task[List[String]]) =
+        run(RemoteClusterCalls.guarded(flappingCluster, false, List.empty[String])(task))
+
+      val events = captureLogEvents(RemoteClusterCalls.getClass.getName) {
+        call(failingCall)
+        call(failingCall)
+        call(Task.now(List("index1")))
+        call(failingCall)
+      }
+
+      val clusterEvents = events.filter(_.message.contains("[remote_flapping_not_skipped]"))
+      clusterEvents.map(_.level) should be(List(Level.WARN, Level.DEBUG, Level.INFO, Level.WARN))
+      clusterEvents.head.message should include(
+        "Remote cluster [remote_flapping_not_skipped] is unavailable, and it has skip_unavailable: false. " +
+          "The searches that name it fail. Cause: connection refused"
+      )
+    }
+    "log one more failure at WARN when skip_unavailable changes while the cluster is unavailable" in {
+      // Other tests use other clusters, so this cluster is not unavailable before the test
+      val changingCluster = ClusterName.Full.fromString("remote_changing").get
+      def call(skipUnavailable: Boolean) =
+        run(RemoteClusterCalls.guarded(changingCluster, skipUnavailable, List.empty[String])(failingCall))
+
+      val events = captureLogEvents(RemoteClusterCalls.getClass.getName) {
+        call(skipUnavailable = true)
+        call(skipUnavailable = true)
+        call(skipUnavailable = false)
+        call(skipUnavailable = false)
+      }
+
+      events.filter(_.message.contains("[remote_changing]")).map(_.level) should be(
+        List(Level.WARN, Level.DEBUG, Level.WARN, Level.DEBUG)
+      )
+    }
     "not read skip_unavailable when the call succeeds" in {
       def skipUnavailable: Boolean = fail("skip_unavailable must not be read")
 
