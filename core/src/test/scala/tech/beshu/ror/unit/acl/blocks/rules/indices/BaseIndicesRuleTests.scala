@@ -163,6 +163,29 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
     rule.check(blockContext)
   }
 
+  protected def checkAliasRequest(
+      configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      indices: Set[RequestedIndex[ClusterIndexName]],
+      aliases: Set[RequestedIndex[ClusterIndexName]],
+      esServices: EsServices
+  ): Task[Decision[AliasRequestBlockContext]] = {
+    val rule = createIndicesRule(configuredValues)
+    val requestContext = MockRequestContext.indices.copy(
+      action = Action("indices:admin/aliases/get"),
+      esServices = esServices
+    )
+    val blockContext = AliasRequestBlockContext(
+      block = mock[Block],
+      requestContext = requestContext,
+      blockMetadata = BlockMetadata.from(requestContext),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      aliases = aliases,
+      indices = indices
+    )
+    rule.check(blockContext)
+  }
+
   protected def assertMatchRuleForMultiIndexRequest(
       configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
       indexPacks: List[Indices],

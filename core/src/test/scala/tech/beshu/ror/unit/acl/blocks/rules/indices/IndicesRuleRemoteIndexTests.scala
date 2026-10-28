@@ -20,6 +20,7 @@ import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
+  AliasRequestBlockContext,
   FilterableMultiRequestBlockContext,
   GeneralIndexRequestBlockContext
 }
@@ -460,6 +461,35 @@ trait IndicesRuleRemoteIndexTests {
           inside(blockContext.indexPacks) { case netflowPack :: Nil =>
             assertNonexistentIndexOn(clusterName("netflow"), netflowPack)
           }
+        }
+      }
+    }
+  }
+
+  "An IndicesRule for an alias request with remote indices" should {
+    "match with only a nonexistent index on the unavailable remote cluster, so that ES rejects the request" when {
+      "the indices name the unavailable cluster" in {
+        val result = checkAliasRequest(
+          configuredValues = NonEmptySet.of(indexNameVar("*:logs-*")),
+          indices = Set(requestedIndex("netflow:logs-*")),
+          aliases = Set(requestedIndex("prod:logs-alias")),
+          esServices = prodAvailableAndNetflowUnavailable
+        ).runSyncUnsafe()
+        inside(result) { case Permitted(blockContext: AliasRequestBlockContext) =>
+          assertNonexistentIndexOn(clusterName("netflow"), blockContext.indices)
+          assertNonexistentIndexOn(clusterName("netflow"), blockContext.aliases)
+        }
+      }
+      "the aliases name the unavailable cluster, and the rule does not allow the indices" in {
+        val result = checkAliasRequest(
+          configuredValues = NonEmptySet.of(indexNameVar("*:logs-*")),
+          indices = Set(requestedIndex("secret")),
+          aliases = Set(requestedIndex("netflow:logs-*")),
+          esServices = prodAvailableAndNetflowUnavailable
+        ).runSyncUnsafe()
+        inside(result) { case Permitted(blockContext: AliasRequestBlockContext) =>
+          assertNonexistentIndexOn(clusterName("netflow"), blockContext.indices)
+          assertNonexistentIndexOn(clusterName("netflow"), blockContext.aliases)
         }
       }
     }

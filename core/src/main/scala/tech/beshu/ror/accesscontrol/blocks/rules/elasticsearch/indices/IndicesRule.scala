@@ -188,20 +188,29 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
           kibanaIndexFrom(blockContext)
         )
       } yield {
+        // ES rejects each alias request that names a remote index, so a nonexistent index on the unavailable cluster
+        // gives that ES error. It replaces also the other part, so that ES gets no index that the rule did not allow.
+        def clusterUnavailable(cluster: ClusterName.Full) =
+          Permitted(blockContext.withIndices(nonexistentIndexOn(cluster)).withAliases(nonexistentIndexOn(cluster)))
+
         (indicesResult, aliasesResult) match {
           case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
             Permitted(blockContext.withIndices(indices).withAliases(aliases))
+          case (ProcessResult.Failed.ClusterUnavailable(cluster), _) =>
+            clusterUnavailable(cluster)
+          case (_, ProcessResult.Failed.ClusterUnavailable(cluster)) =>
+            clusterUnavailable(cluster)
           case (ProcessResult.Failed.IndexNotFound, _) =>
             Denied(
               Cause.IndexNotFound(
                 getAllowedClusterNames(blockContext.requestContext, allowedIndices)
               )
             )
-          case (ProcessResult.Failed.Other | ProcessResult.Failed.ClusterUnavailable(_), _) =>
+          case (ProcessResult.Failed.Other, _) =>
             reject()
           case (_, ProcessResult.Failed.IndexNotFound) =>
             Denied(Cause.AliasNotFound)
-          case (_, ProcessResult.Failed.Other | ProcessResult.Failed.ClusterUnavailable(_)) =>
+          case (_, ProcessResult.Failed.Other) =>
             reject()
         }
       }
