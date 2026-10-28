@@ -87,6 +87,14 @@ class CurrentGroupHandlingAccessControlTests
        |    users: ["user8"]
        |    groups: ["group2", "group3"]
        |
+       |  - name: "User 9 block"
+       |    users: ["user9"]
+       |    groups: ["group1", "group2"]
+       |
+       |  - name: "User 10 block"
+       |    users: ["user10"]
+       |    groups: ["group1", "group2"]
+       |
        |  users:
        |  - username: user1
        |    groups: ["group1", "group2", "group3"]
@@ -127,6 +135,23 @@ class CurrentGroupHandlingAccessControlTests
        |      - group1: [kbn_group1]
        |      - group2: [kbn_group2]
        |      - group3: [kbn_group2]
+       |    ror_kbn_authentication: "kbn1"
+       |    ror_kbn_authorization:
+       |      name: "kbn1"
+       |      groups: ["kbn_group1", "kbn_group2"]
+       |
+       |  - username: user9
+       |    groups:
+       |      - group1: [kbn_group1]
+       |      - group2: [kbn_group2]
+       |    ror_kbn_auth:
+       |      name: "kbn1"
+       |      groups: ["kbn_group1", "kbn_group2"]
+       |
+       |  - username: user10
+       |    groups:
+       |      - group1: [kbn_group1]
+       |      - group2: [kbn_group2]
        |    ror_kbn_authentication: "kbn1"
        |    ror_kbn_authorization:
        |      name: "kbn1"
@@ -432,6 +457,39 @@ class CurrentGroupHandlingAccessControlTests
           blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group2"), group("group3")))
         }
       }
+    }
+    "allow a regular request only with a local current group that the token maps to" when {
+      "groups rule with ror_kbn_auth is used (with local groups mapping)" in {
+        assertOnlyMappedCurrentGroupIsAllowed(user = "user9", blockName = "User 9 block")
+      }
+      "groups rule with ror_kbn_authentication and ror_kbn_authorization is used (with local groups mapping)" in {
+        assertOnlyMappedCurrentGroupIsAllowed(user = "user10", blockName = "User 10 block")
+      }
+    }
+  }
+
+  // The token has only kbn_group1, so the user has group1 and does not have group2
+  private def assertOnlyMappedCurrentGroupIsAllowed(user: String, blockName: String): Unit = {
+    val jwt = Jwt(
+      Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes(UTF_8)),
+      claims = List(
+        "user" := user,
+        "groups" := List("kbn_group1")
+      )
+    )
+    def request(currentGroup: String) =
+      MockRequestContext.indices.withHeaders(bearerHeader(jwt), currentGroupHeader(currentGroup))
+
+    val (mappedGroupResult, _) = acl.handleRegularRequest(request("group1")).runSyncUnsafe()
+    inside(mappedGroupResult) { case RegularRequestResult.Allowed(blockContext) =>
+      blockContext.block.name should be(Block.Name(blockName))
+      blockContext.blockMetadata.currentGroupId should be(Some(GroupId("group1")))
+      blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group1")))
+    }
+
+    val (notMappedGroupResult, _) = acl.handleRegularRequest(request("group2")).runSyncUnsafe()
+    inside(notMappedGroupResult) { case RegularRequestResult.ForbiddenByMismatched(detailedCauses) =>
+      detailedCauses(Block.Name(blockName)).toString should include("Current group is not allowed")
     }
   }
 

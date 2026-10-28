@@ -276,6 +276,12 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
           externalGroupsMappedToLocalGroups,
           potentiallyAvailableGroups
         )
+        // The inner rules ran without the current group, so only the mapped groups show if the user has it
+        _ <- Either.cond(
+          destinationBlockContext.isCurrentGroupEligible(GroupIds.from(availableLocalGroups)),
+          (),
+          GroupsAuthorizationFailed("Current group is not allowed")
+        )
       } yield {
         def requiredData: BlockMetadata => BlockMetadata = { metadata =>
           metadata.withAvailableGroups(UniqueList.from(availableLocalGroups))
