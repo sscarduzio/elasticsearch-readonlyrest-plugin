@@ -58,6 +58,14 @@ trait MockRuleFactory {
       Task.fromTry(Failure(new Exception("sth went wrong")))
   }
 
+  // Throws before it returns a Task
+  protected def synchronouslyThrowingRule(ruleName: String): RegularRule = new RegularRule {
+    override val name: Rule.Name = Rule.Name(ruleName)
+
+    override protected def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      throw new Exception("sth went wrong")
+  }
+
   protected def throwingAuthenticationRule(ruleName: String): Rule =
     new Rule.AuthenticationRule with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name(ruleName)

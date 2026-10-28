@@ -235,6 +235,14 @@ trait IndicesRuleRemoteIndexTests {
             allAllowedClusters = Set(clusterName("prod"))
           )
         }
+        "a remote cluster that the requested cluster pattern does not match fails" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("*:logs-*")),
+            requestIndices = Set(requestedIndex("prod*:*")),
+            esServices = Some(prodAvailableAndNetflowUnavailable),
+            filteredRequestedIndices = Set(requestedIndex("prod:logs-1"))
+          )
+        }
         "a remote cluster that no allowed pattern names fails" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("prod:logs-*")),
@@ -313,10 +321,27 @@ trait IndicesRuleRemoteIndexTests {
           allAllowedClusters = Set(clusterName("prod"))
         )
       }
-      "the request names a cluster with \"?\", because ES does not read \"?\" as a wildcard in the cluster name" in {
+      "the request names only a skipped remote cluster" in {
+        // A skipped cluster gives no indices, the same as an available cluster without indices
+        assertNotMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("*:logs-*")),
+          requestIndices = Set(requestedIndex("netflow:logs-*")),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allRemoteIndicesAndAliases = Set(fullRemoteIndexWithAliases("prod", "logs-1")),
+                allRemoteClusterNames = Set(clusterName("netflow"))
+              )
+            )
+          ),
+          allAllowedClusters = Set(clusterName("prod"), clusterName("netflow"))
+        )
+      }
+      "the request names a cluster pattern with \"?\", because ES does not read \"?\" as a wildcard in the cluster name" in {
+        // Without "*", the cluster part is a full cluster name, so the request needs "*" to give a pattern
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("prod1:logs*")),
-          requestIndices = Set(requestedIndex("prod?:logs*")),
+          requestIndices = Set(requestedIndex("prod?*:logs*")),
           esServices = Some(
             MockEsServices.`with`(
               MockEsClusterService(allRemoteIndicesAndAliases = Set(fullRemoteIndexWithAliases("prod1", "logs-1")))
