@@ -341,16 +341,16 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name, 
   private def logInnerRuleErrors(errors: List[UserDefFailure.InnerRuleError], ruleMatched: Boolean)(
       implicit id: RequestId
   ): Unit = errors match {
-    case Nil             =>
-    case firstError :: _ =>
+    case Nil =>
+    case _   =>
       val details = errors
         .map(e => s"${e.rule.show}: ${Option(e.error.getMessage).getOrElse(e.error.getClass.getSimpleName)}")
         .mkString("; ")
       // When a later user definition matches, the errors are logged at WARN. Thus a broken service of one user definition
       // does not give an ERROR line on each allowed request.
       val message = s"${name.show}: inner rule matching got errors [$details]"
-      if (ruleMatched) logger.warn(message, firstError.error)
-      else logger.error(message, firstError.error)
+      if (ruleMatched) logger.warn(message)
+      else logger.error(message)
   }
 
   private def mapExternalGroupsToLocalGroups(groupMappings: GroupMappings, externalGroup: UniqueList[Group]) = {

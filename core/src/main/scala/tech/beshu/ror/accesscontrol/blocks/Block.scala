@@ -184,7 +184,7 @@ class Block(
     val ruleDecision = Task
       .defer(rule.check[B](blockContext))
       .recover { case e =>
-        logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
+        logger.errorEx(s"${name.show}: ${rule.name.show} rule matching got an error", e)
         Decision.Denied[B](Cause.RuleError(rule.name))
       }
     lift[B](ruleDecision)
