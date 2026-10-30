@@ -47,8 +47,15 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindReques
         results.asScala.toList match {
           case Nil            => throw new IllegalStateException("LDAP - expected at least one result")
           case requestId :: _ =>
+            // processRequestsAsync returns when each request has a result. The SDK gives that result to
+            // the listener only when the server answers or the connection closes. A cancelled request
+            // (timeout) or a request that the SDK could not send has its result only in the request ID.
             if (requestId.isCancelled) Task.now(Left(new SearchResult(requestId.get())))
-            else searchResultListener.result
+            else
+              searchResultListener.receivedResult match {
+                case Some(result) => Task.now(result)
+                case None         => Task.delay(Left(new SearchResult(requestId.get())))
+              }
         }
       }
   }
@@ -84,7 +91,8 @@ object UnboundidLdapConnectionPool {
       // nothing to do
     }
 
-    def result: Task[Either[SearchResult, List[SearchResultEntry]]] = Task.fromFuture(promise.future)
+    // The promise is only ever completed with success.
+    def receivedResult: Option[Either[SearchResult, List[SearchResultEntry]]] = promise.future.value.map(_.get)
   }
 
 }
