@@ -52,6 +52,10 @@ jobs:
   # `if:` cannot read the `env` context.
   ci_setup:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The base branch flag reads the PR.
+      pull-requests: read
     outputs:
       image:                      ${{ steps.toolchains.outputs.image }}
       is_release_branch:          ${{ steps.flags.outputs.is_release_branch }}
@@ -77,10 +81,12 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
           BRANCH: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           source ci/ci-lib.sh
           BASE_BRANCH=$BRANCH
-          [ "$EVENT" = pull_request ] && BASE_BRANCH=$(base_branch_of_pull_request "$BASE_REF")
+          [ "$EVENT" = pull_request ] && BASE_BRANCH=$(base_branch_of_pull_request "$BASE_REF" "$PR_NUMBER")
           MERGE_BACK=false
           [ "$IS_DEVELOP_PUSH" = "true" ] && [ -z "$MANUAL_ACTION" ] \
             && is_merge_back_of_master && MERGE_BACK=true

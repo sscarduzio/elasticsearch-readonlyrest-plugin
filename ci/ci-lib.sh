@@ -92,35 +92,38 @@ is_merge_back_of_master() {
   [ "$here_tree" = "$master_tree" ]
 }
 
-# Prints the branch that the code of a pull request run is based on.
+# Prints the base branch of the code that a pull request run tests.
 #
 # The run tests HEAD: the merge commit that GitHub builds from the PR and the tip of its base
 # branch. The base_ref of the event can name another branch. When the base of the PR changes a
 # few seconds before a push, the event of the push can carry the old base, and GitHub builds the
-# merge commit on the new one. The e2e tests and the ROR KBN plugin of the old base then run
-# against the code of the new base.
+# merge commit on the new one.
 #
-# The first parent of HEAD is the tip of the base branch at the build. The branch whose tip is that
-# commit wins, and base_ref goes first. When no tip matches, because the base branch moved after
-# the build or origin did not answer, base_ref is the only fact left.
+# The PR names its base branch and the commit of that branch that GitHub merges onto. When that
+# commit is the first parent of HEAD, HEAD is built on the base of the PR. When it is not, the PR
+# changed after this event, for example on a re-run after a later change of base, and base_ref
+# names the base of HEAD. When the API does not answer, base_ref is the only fact left.
+#
+# Needs GH_TOKEN, with read access to the pull requests of GITHUB_REPOSITORY.
 base_branch_of_pull_request() {
-  local base_ref=$1 base_tip tips branch
+  local base_ref=$1 pr=$2 api_url pr_json pr_base pr_base_commit head_base_commit
+  api_url="${GITHUB_API_URL:-https://api.github.com}/repos/${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is not set}/pulls/$pr"
+  if ! pr_json=$(curl -sSf --max-time 30 --retry 2 -H "Authorization: Bearer ${GH_TOKEN:?GH_TOKEN is not set}" \
+    -H 'Accept: application/vnd.github+json' "$api_url") || ! pr_base=$(jq -er .base.ref <<<"$pr_json"); then
+    ci_log "Cannot read PR #$pr. The base branch is '$base_ref'."
+    printf '%s\n' "$base_ref"
+    return 0
+  fi
+  pr_base_commit=$(jq -r '.base.sha // ""' <<<"$pr_json")
   # The checkout is shallow, so HEAD^1 does not resolve. The commit object still names its parents.
-  base_tip=$(git cat-file -p HEAD | awk '/^parent / { print $2; exit }')
-  tips=$(git ls-remote --heads origin "refs/heads/$base_ref" refs/heads/develop refs/heads/master) || {
-    ci_log "Cannot read the branches of origin. The base branch is '$base_ref'."
-    tips=""
-  }
-  for branch in "$base_ref" develop master; do
-    if [ -n "$base_tip" ] && grep -qxF "$base_tip"$'\t'"refs/heads/$branch" <<<"$tips"; then
-      [ "$branch" != "$base_ref" ] &&
-        ci_log "The event names '$base_ref', but HEAD is built on the tip of '$branch'."
-      printf '%s\n' "$branch"
-      return 0
-    fi
-  done
-  ci_log "No branch tip is the base of HEAD ($base_tip). The base branch is '$base_ref'."
-  printf '%s\n' "$base_ref"
+  head_base_commit=$(git cat-file -p HEAD | awk '/^parent / { print $2; exit }')
+
+  if [ "$pr_base" != "$base_ref" ] && [ -n "$head_base_commit" ] && [ "$pr_base_commit" = "$head_base_commit" ]; then
+    ci_log "The event names '$base_ref', but HEAD is built on '$pr_base', the base of the PR."
+    printf '%s\n' "$pr_base"
+  else
+    printf '%s\n' "$base_ref"
+  fi
 }
 
 # Asks a registry about one image. Prints `present` or `absent`, and fails when it cannot ask, so
