@@ -215,6 +215,7 @@ Two orchestration rules worth knowing before editing conditions:
   | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks` |
   | `manual_action` | — the chosen action, `''` on an automatic run | `discover`, `unit_tests_windows` |
   | `unique_build_id` | — `<run id>-<run attempt>`, the tag of every dev image of this run | the e2e jobs |
+  | `base_branch` | — the branch that the code under test is based on, see `base_branch_of_pull_request` | the e2e jobs |
 
   Every job `if:` reads one of these and compares it against `'true'`. `manual_action` is the
   exception: it holds an action name, so its readers compare it against one. `discover` picks a
@@ -457,7 +458,7 @@ attempt but does not re-run `ci_setup`, and the two sides would then name differ
 
 Branch resolution — this repo passes its branch names, and each other repo picks its own branch for
 them. The e2e repo gets the branch of this PR and its base branch. The ROR KBN repo gets the branch
-of this PR.
+of this PR. The base branch is the branch that the merge commit under test is built on.
 
 Module selection follows the [test matrix policy](#test-matrix-policy). Job names are built from
 the module, not the ES version, so branch-protection checks survive a version bump. The same

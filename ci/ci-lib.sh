@@ -92,6 +92,37 @@ is_merge_back_of_master() {
   [ "$here_tree" = "$master_tree" ]
 }
 
+# Prints the branch that the code of a pull request run is based on.
+#
+# The run tests HEAD: the merge commit that GitHub builds from the PR and the tip of its base
+# branch. The base_ref of the event can name another branch. When the base of the PR changes a
+# few seconds before a push, the event of the push can carry the old base, and GitHub builds the
+# merge commit on the new one. The e2e tests and the ROR KBN plugin of the old base then run
+# against the code of the new base.
+#
+# The first parent of HEAD is the tip of the base branch at the build. The branch whose tip is that
+# commit wins, and base_ref goes first. When no tip matches, because the base branch moved after
+# the build or origin did not answer, base_ref is the only fact left.
+base_branch_of_pull_request() {
+  local base_ref=$1 base_tip tips branch
+  # The checkout is shallow, so HEAD^1 does not resolve. The commit object still names its parents.
+  base_tip=$(git cat-file -p HEAD | awk '/^parent / { print $2; exit }')
+  tips=$(git ls-remote --heads origin "refs/heads/$base_ref" refs/heads/develop refs/heads/master) || {
+    ci_log "Cannot read the branches of origin. The base branch is '$base_ref'."
+    tips=""
+  }
+  for branch in "$base_ref" develop master; do
+    if [ -n "$base_tip" ] && grep -qxF "$base_tip"$'\t'"refs/heads/$branch" <<<"$tips"; then
+      [ "$branch" != "$base_ref" ] &&
+        ci_log "The event names '$base_ref', but HEAD is built on the tip of '$branch'."
+      printf '%s\n' "$branch"
+      return 0
+    fi
+  done
+  ci_log "No branch tip is the base of HEAD ($base_tip). The base branch is '$base_ref'."
+  printf '%s\n' "$base_ref"
+}
+
 # Asks a registry about one image. Prints `present` or `absent`, and fails when it cannot ask, so
 # no caller reads an unreachable registry as an image that does not exist.
 #
