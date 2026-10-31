@@ -92,31 +92,42 @@ is_merge_back_of_master() {
   [ "$here_tree" = "$master_tree" ]
 }
 
-# Prints the branch that HEAD, the merge commit of a pull request run, is built on.
-# base_ref of the event can name the old base, when the base of the PR changes just before a push.
-# The base that the PR names now can be newer than HEAD, on a re-run. So the base of the PR counts
-# only when the PR merges onto the first parent of HEAD. When the PR cannot be read, base_ref stays.
+# Prints the branch that HEAD, the merge commit of a pull request run, is built on: the base that
+# the PR had at the time GitHub built HEAD. base_ref of the event is not enough. It can name the old
+# base, when the base of the PR changes just before a push. The base that the PR names now is not
+# enough either: a re-run tests an old HEAD, from before a later change of base. The base changes
+# of the PR, with their times, give the answer for both. When the PR cannot be read, base_ref stays.
 #
 # Needs GH_TOKEN, with read access to the pull requests of GITHUB_REPOSITORY.
 base_branch_of_pull_request() {
-  local base_ref=$1 pr=$2 api_url pr_json pr_base pr_base_commit head_base_commit
-  api_url="${GITHUB_API_URL:-https://api.github.com}/repos/${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is not set}/pulls/$pr"
-  if ! pr_json=$(curl -sSf --max-time 30 --retry 2 -H "Authorization: Bearer ${GH_TOKEN:?GH_TOKEN is not set}" \
-    -H 'Accept: application/vnd.github+json' "$api_url") || ! pr_base=$(jq -er .base.ref <<<"$pr_json"); then
-    ci_log "Cannot read PR #$pr. The base branch is '$base_ref'."
+  local base_ref=$1 pr=$2 repository=${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is not set} query built_at request response base
+  # shellcheck disable=SC2016 # GraphQL variables, not shell ones
+  query='query($owner: String!, $name: String!, $pr: Int!) {
+    repository(owner: $owner, name: $name) { pullRequest(number: $pr) { baseRefName
+      timelineItems(itemTypes: [BASE_REF_CHANGED_EVENT], last: 100) {
+        nodes { ... on BaseRefChangedEvent { createdAt previousRefName currentRefName } } } } } }'
+  # GitHub sets the commit time of a merge commit to the time it builds it.
+  built_at=$(git show -s --format=%ct HEAD)
+
+  # The last base change up to built_at names the base. With no such change, the base before the
+  # first change does, and with no change at all, the base of the PR.
+  if ! request=$(jq -cn --arg query "$query" --arg repository "$repository" --arg pr "$pr" \
+      '{query: $query, variables: {owner: ($repository | split("/")[0]), name: ($repository | split("/")[1]), pr: ($pr | tonumber)}}') ||
+    ! response=$(curl -sSf --max-time 30 --retry 2 -H "Authorization: Bearer ${GH_TOKEN:?GH_TOKEN is not set}" \
+      -H 'Content-Type: application/json' -d "$request" "${GITHUB_GRAPHQL_URL:-https://api.github.com/graphql}") ||
+    ! base=$(jq -er --argjson built_at "$built_at" '.data.repository.pullRequest
+      | .timelineItems.nodes as $changes
+      | ([$changes[] | select((.createdAt | fromdateiso8601) <= $built_at)] | last | .currentRefName)
+        // $changes[0].previousRefName // .baseRefName' <<<"$response"); then
+    ci_log "Cannot read the base changes of PR #$pr. The base branch is '$base_ref'."
     printf '%s\n' "$base_ref"
     return 0
   fi
-  pr_base_commit=$(jq -r '.base.sha // ""' <<<"$pr_json")
-  # In a shallow checkout HEAD^1 does not resolve, but the commit object still names its parents.
-  head_base_commit=$(git cat-file -p HEAD | awk '/^parent / { print $2; exit }')
 
-  if [ "$pr_base" != "$base_ref" ] && [ -n "$head_base_commit" ] && [ "$pr_base_commit" = "$head_base_commit" ]; then
-    ci_log "The event names '$base_ref', but HEAD is built on '$pr_base', the base of the PR."
-    printf '%s\n' "$pr_base"
-  else
-    printf '%s\n' "$base_ref"
+  if [ "$base" != "$base_ref" ]; then
+    ci_log "The event names '$base_ref', but HEAD is built on '$base'."
   fi
+  printf '%s\n' "$base"
 }
 
 # Asks a registry about one image. Prints `present` or `absent`, and fails when it cannot ask, so
