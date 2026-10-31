@@ -52,6 +52,10 @@ jobs:
   # `if:` cannot read the `env` context.
   ci_setup:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To read the base branch of the PR.
+      pull-requests: read
     outputs:
       image:                      ${{ steps.toolchains.outputs.image }}
       is_release_branch:          ${{ steps.flags.outputs.is_release_branch }}
@@ -60,6 +64,7 @@ jobs:
       is_automatic_run:           ${{ steps.flags.outputs.is_automatic_run }}
       manual_action:              ${{ steps.flags.outputs.manual_action }}
       unique_build_id:            ${{ github.run_id }}-${{ github.run_attempt }}
+      base_branch:                ${{ steps.flags.outputs.base_branch }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -73,8 +78,15 @@ jobs:
           IS_DEVELOP_PUSH: ${{ github.ref == 'refs/heads/develop' }}
           IS_EPIC_BRANCH: ${{ contains(github.head_ref || github.ref_name, 'epic/') }}
           MANUAL_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.actionToPerform || '' }}
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BRANCH: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           source ci/ci-lib.sh
+          BASE_BRANCH=$BRANCH
+          [ "$EVENT" = pull_request ] && BASE_BRANCH=$(base_branch_of_pull_request "$BASE_REF" "$PR_NUMBER")
           MERGE_BACK=false
           [ "$IS_DEVELOP_PUSH" = "true" ] && [ -z "$MANUAL_ACTION" ] \
             && is_merge_back_of_master && MERGE_BACK=true
@@ -85,6 +97,7 @@ jobs:
             echo "manual_action=$MANUAL_ACTION"
             echo "is_automatic_run=$([ -z "$MANUAL_ACTION" ] && echo true || echo false)"
             echo "is_merge_back=$MERGE_BACK"
+            echo "base_branch=$BASE_BRANCH"
           } >> "$GITHUB_OUTPUT"
 
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
@@ -518,7 +531,7 @@ jobs:
           ROR_TASK: order_e2e_kbn_images
           E2E_ELK_VERSIONS: ${{ steps.versions.outputs.elk_versions }}
           ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
+          ROR_KBN_FALLBACK_BRANCH: ${{ needs.ci_setup.outputs.base_branch }}
           E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           ROR_KBN_WAIT_TIMEOUT_SECONDS: 7200
@@ -618,7 +631,7 @@ jobs:
           ROR_TASK: run_e2e_tests
           E2E_ES_MODULE: ${{ matrix.ES_MODULE }}
           E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
+          E2E_FALLBACK_BRANCH: ${{ needs.ci_setup.outputs.base_branch }}
           E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
