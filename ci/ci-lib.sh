@@ -92,17 +92,10 @@ is_merge_back_of_master() {
   [ "$here_tree" = "$master_tree" ]
 }
 
-# Prints the base branch of the code that a pull request run tests.
-#
-# The run tests HEAD: the merge commit that GitHub builds from the PR and the tip of its base
-# branch. The base_ref of the event can name another branch. When the base of the PR changes a
-# few seconds before a push, the event of the push can carry the old base, and GitHub builds the
-# merge commit on the new one.
-#
-# The PR names its base branch and the commit of that branch that GitHub merges onto. When that
-# commit is the first parent of HEAD, HEAD is built on the base of the PR. When it is not, the PR
-# changed after this event, for example on a re-run after a later change of base, and base_ref
-# names the base of HEAD. When the API does not answer, base_ref is the only fact left.
+# Prints the branch that HEAD, the merge commit of a pull request run, is built on.
+# base_ref of the event can name the old base, when the base of the PR changes just before a push.
+# The base that the PR names now can be newer than HEAD, on a re-run. So the base of the PR counts
+# only when the PR merges onto the first parent of HEAD. When the PR cannot be read, base_ref stays.
 #
 # Needs GH_TOKEN, with read access to the pull requests of GITHUB_REPOSITORY.
 base_branch_of_pull_request() {
@@ -115,7 +108,7 @@ base_branch_of_pull_request() {
     return 0
   fi
   pr_base_commit=$(jq -r '.base.sha // ""' <<<"$pr_json")
-  # The checkout is shallow, so HEAD^1 does not resolve. The commit object still names its parents.
+  # In a shallow checkout HEAD^1 does not resolve, but the commit object still names its parents.
   head_base_commit=$(git cat-file -p HEAD | awk '/^parent / { print $2; exit }')
 
   if [ "$pr_base" != "$base_ref" ] && [ -n "$head_base_commit" ] && [ "$pr_base_commit" = "$head_base_commit" ]; then

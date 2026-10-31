@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # The base branch flag reads the PR.
+      # To read the base branch of the PR.
       pull-requests: read
     outputs:
       image:                      ${{ steps.toolchains.outputs.image }}
