@@ -31,25 +31,6 @@ import scala.language.postfixOps
 
 class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAll with Inside {
 
-  private val baseDn = "dc=example,dc=com"
-
-  private val server = {
-    val config = new InMemoryDirectoryServerConfig(baseDn)
-    config.setListenerConfigs(InMemoryListenerConfig.createLDAPConfig("ldap", 0))
-    new InMemoryDirectoryServer(config)
-  }
-
-  override protected def beforeAll(): Unit = {
-    super.beforeAll()
-    server.startListening()
-    server.add(s"dn: $baseDn", "objectClass: top", "objectClass: domain", "dc: example")
-  }
-
-  override protected def afterAll(): Unit = {
-    server.shutDown(true)
-    super.afterAll()
-  }
-
   "An UnboundidLdapConnectionPool" should {
     "return the entries of a search" in {
       withPool() { pool =>
@@ -69,6 +50,25 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         }
       }
     }
+  }
+
+  private val baseDn = "dc=example,dc=com"
+
+  private val server = {
+    val config = new InMemoryDirectoryServerConfig(baseDn)
+    config.setListenerConfigs(InMemoryListenerConfig.createLDAPConfig("ldap", 0))
+    new InMemoryDirectoryServer(config)
+  }
+
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    server.startListening()
+    server.add(s"dn: $baseDn", "objectClass: top", "objectClass: domain", "dc: example")
+  }
+
+  override protected def afterAll(): Unit = {
+    server.shutDown(true)
+    super.afterAll()
   }
 
   private def withPool(healthCheck: LDAPConnectionPoolHealthCheck = new LDAPConnectionPoolHealthCheck)(
