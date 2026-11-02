@@ -32,7 +32,9 @@ object DockerImageCreator extends StrictLogging {
   def create(elasticsearch: Elasticsearch): ImageFromDockerfile = {
     val imageDescription = elasticsearch.toDockerImageDescription
     val stableTag = s"ror-it-es:${imageDescription.imageTag}"
-    // Not deleteOnExit: the integration-tests build removes the labeled images after the test run.
+    // The image stays until the integration-tests build removes the labeled images after the last test
+    // JVM. No test removes it earlier: another test JVM can build the same image at that time, and Docker
+    // then fails that build with "No such image".
     copyFilesFrom(imageDescription, to = new ImageFromDockerfile(stableTag, /* deleteOnExit = */ false))
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         val dockerfile = builder
