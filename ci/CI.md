@@ -307,11 +307,13 @@ does not fan out over it: it has no matrix of its own, and one dispatch covers e
 `build_ror` reads no matrix here — it reads `needs.e2e_build_es_images.result == 'skipped'`, because
 it must tell "no e2e in this run" from "e2e failed".
 
-The ELK version of a module is not in the matrix. Every job that needs it derives it from the
-module, with `e2e_elk_version_for_module` in `ci/e2e-tests-lib.sh`
-(`:esXXXx:printNewestEsVersionForModule`): `e2e_order_kbn_images` resolves all of them in one step,
-because its single dispatch covers every version, and the two fan-out jobs each resolve their own
-row. `discover` stays at one Gradle call, so no test job waits for a lookup only e2e needs.
+The ELK version of a module is not in the matrix. It comes from the module, with
+`e2e_elk_version_for_module` in `ci/e2e-tests-lib.sh` (`:esXXXx:printNewestEsVersionForModule`).
+`e2e_order_kbn_images` resolves all of them in one step, because its single dispatch covers every
+version, and gives them to `e2e_tests` as the output `elk_version_of_module`. `e2e_tests` runs on the
+host, without the Gradle cache of the toolchains image, so it runs no Gradle. `e2e_build_es_images`
+resolves its own row. `discover` stays at one Gradle call, so no test job waits for a lookup only e2e
+needs.
 
 It is the workflow, not the build, that picks which matrix a run takes: only the workflow knows the
 branch and the event. `discover` needs the toolchains image for gradle, so it runs after

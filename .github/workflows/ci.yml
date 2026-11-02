@@ -488,6 +488,9 @@ jobs:
     runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 150
+    outputs:
+      # A JSON object: the ELK version of each e2e module.
+      elk_version_of_module: ${{ steps.versions.outputs.elk_version_of_module }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -506,12 +509,17 @@ jobs:
           set -e
           source ci/e2e-tests-lib.sh
           VERSIONS=""
+          VERSION_OF_MODULE='{}'
           for module in $E2E_ES_MODULES; do
             version=$(e2e_elk_version_for_module "$module") || exit $?
             echo ">>> $module -> ELK $version"
             VERSIONS="${VERSIONS:+$VERSIONS }$version"
+            VERSION_OF_MODULE=$(jq -c --arg m "$module" --arg v "$version" '. + {($m): $v}' <<<"$VERSION_OF_MODULE")
           done
-          echo "elk_versions=$VERSIONS" >> "$GITHUB_OUTPUT"
+          {
+            echo "elk_versions=$VERSIONS"
+            echo "elk_version_of_module=$VERSION_OF_MODULE"
+          } >> "$GITHUB_OUTPUT"
       - name: order_e2e_kbn_images
         id: order
         env:
@@ -591,10 +599,9 @@ jobs:
     # The one Linux job with no container: Cypress reads the ports the compose stack of the e2e repo
     # publishes on the HOST, and the localhost of a job container is not the host. The image also
     # holds no node, yarn or Cypress browser. So there is no toolchains-image Gradle home here, and
-    # gradle runs once, to derive the ELK version of this row's module.
+    # the job runs no Gradle: it takes the ELK version of its module from e2e_order_kbn_images.
     env:
-      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
-      GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
+      E2E_ELK_VERSION: ${{ fromJSON(needs.e2e_order_kbn_images.outputs.elk_version_of_module)[matrix.ES_MODULE] }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.e2e_matrix) }}
@@ -610,9 +617,6 @@ jobs:
         run: ci/free-host-disk.sh
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: '24.11.0' }
-      # run_e2e_tests derives E2E_ELK_VERSION from the module, and that is a Gradle call.
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
-        with: { distribution: temurin, java-version: '17' }
       - name: run_e2e_tests
         env:
           ROR_TASK: run_e2e_tests
