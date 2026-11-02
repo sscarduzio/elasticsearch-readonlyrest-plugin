@@ -60,7 +60,6 @@ object UnboundidLdapConnectionPool {
 
   private object SearchOutcome {
     final case class Completed(searchResult: SearchResult, entries: List[SearchResultEntry]) extends SearchOutcome
-    // The search timed out, or the SDK could not send it.
     final case class Aborted(ldapResult: LDAPResult) extends SearchOutcome
   }
 
@@ -76,12 +75,12 @@ object UnboundidLdapConnectionPool {
         .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
         .flatMap { results =>
           results.asScala.toList match {
-            case Nil            => throw new IllegalStateException("LDAP - expected at least one result")
+            case Nil            => Task.raiseError(new IllegalStateException("LDAP - expected at least one result"))
             case requestId :: _ =>
               // processRequestsAsync returns when each request has a result. The SDK gives that result to
               // the listener only when the server answers or the connection closes. A cancelled request
               // (timeout) or a request that the SDK could not send has its result only in the request ID.
-              if (requestId.isCancelled) Task.now(SearchOutcome.Aborted(requestId.get()))
+              if (requestId.isCancelled) Task.delay(SearchOutcome.Aborted(requestId.get()))
               else
                 searchResultListener.result match {
                   case Some(result) => Task.now(SearchOutcome.Completed(result, searchResultListener.entries))
