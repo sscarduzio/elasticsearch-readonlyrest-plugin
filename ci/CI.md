@@ -215,7 +215,7 @@ Two orchestration rules worth knowing before editing conditions:
   | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks` |
   | `manual_action` | — the chosen action, `''` on an automatic run | `discover`, `unit_tests_windows` |
   | `unique_build_id` | — `<run id>-<run attempt>`, the tag of every dev image of this run | the e2e jobs |
-  | `base_branch` | — the branch that the code under test is based on, see `base_branch_of_pull_request` | the e2e jobs |
+  | `base_branch` | — the branch that the code under test is based on, see `.github/scripts/base-branch-of-pull-request.sh` | the e2e jobs |
 
   Every job `if:` reads one of these and compares it against `'true'`. `manual_action` is the
   exception: it holds an action name, so its readers compare it against one. `discover` picks a

@@ -72,6 +72,8 @@ jobs:
         run: ci/free-host-disk.sh
       - id: toolchains
         uses: ./.github/actions/resolve-toolchains-image
+      - name: Test the base-branch rule
+        run: .github/scripts/tests/base-branch-of-pull-request.test.sh
       - id: flags
         env:
           IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}
@@ -85,8 +87,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           source ci/ci-lib.sh
-          BASE_BRANCH=$BRANCH
-          [ "$EVENT" = pull_request ] && BASE_BRANCH=$(base_branch_of_pull_request "$BASE_REF" "$PR_NUMBER")
+          if [ "$EVENT" = pull_request ]; then
+            BASE_BRANCH=$(.github/scripts/base-branch-of-pull-request.sh "$BASE_REF" "$PR_NUMBER")
+          else
+            BASE_BRANCH=$BRANCH
+          fi
           MERGE_BACK=false
           [ "$IS_DEVELOP_PUSH" = "true" ] && [ -z "$MANUAL_ACTION" ] \
             && is_merge_back_of_master && MERGE_BACK=true
