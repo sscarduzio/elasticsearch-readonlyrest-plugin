@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
-# Tests for .github/scripts/base-branch-of-pull-request.sh. A wrong answer runs the e2e tests of another
-# branch. Each case plays the history of a PR in a local origin: branch commits, base changes and the
-# merge commit that GitHub builds, each at a given time. The tool runs in a shallow checkout of that
-# merge commit. A fake gh answers the GitHub API with the base changes of the case.
-#
-# Run: .github/scripts/tests/base-branch-of-pull-request.test.sh
+# Each case plays the history of a PR in a local origin, then runs the script in a shallow checkout
+# of the merge commit, with a fake gh.
 
 set -euo pipefail
 
@@ -23,10 +19,8 @@ fail() {
     exit 1
 }
 
-# The fake gh answers a query for PR 1 of owner/repo with the base that the PR names now
-# (FAKE_PR_BASE) and the base changes in FAKE_CHANGES. Like gh, it prints a GraphQL error and fails
-# for a PR that it cannot find. FAKE_API_DOWN=true makes every call fail, and FAKE_REPLY replaces the
-# reply.
+# The fake gh knows PR 1 of owner/repo only. FAKE_API_DOWN=true fails every call, and FAKE_REPLY
+# replaces the reply.
 mkdir -p "$TEST_ROOT/bin"
 cat >"$TEST_ROOT/bin/gh" <<'FAKE'
 #!/usr/bin/env bash

@@ -140,7 +140,14 @@ run_core_tests() {
     || { dump_hs_err_files; return 1; }
 }
 
+# The scripts in .github/scripts run on Linux runners only.
+run_script_tests() {
+  ci_log "Running the tests of the GitHub Actions scripts."
+  find .github/scripts/tests -name '*.test.sh' -print0 | xargs -0 -n1 bash
+}
+
 task_core_tests() {
+  is_windows || run_script_tests
   run_core_tests
 }
 

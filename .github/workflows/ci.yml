@@ -72,8 +72,6 @@ jobs:
         run: ci/free-host-disk.sh
       - id: toolchains
         uses: ./.github/actions/resolve-toolchains-image
-      - name: Test the base-branch rule
-        run: .github/scripts/tests/base-branch-of-pull-request.test.sh
       - id: flags
         env:
           IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}

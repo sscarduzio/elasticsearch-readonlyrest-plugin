@@ -66,7 +66,7 @@ that stops the plugin reading `/usr/share/elasticsearch` to verify its own patch
 | `toolchains_verify` | sanity-checks the toolchains image | always (stops the run early when the image is broken) |
 | `discover` | decides which tests this run covers, and derives every matrix: the ES majors to build, and the ES modules each test matrix covers; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
-| `unit_tests_linux` | the unit suites: core, audit, build-base, and the `ror-tools` CLI | pushes + PRs |
+| `unit_tests_linux` | the unit suites: core, audit, build-base, the `ror-tools` CLI, and the tests in `.github/scripts/tests` | pushes + PRs |
 | `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
 | `it_linux` | integration tests, one job per selected ES module | module selection follows the [test matrix policy](#test-matrix-policy) |
 | `it_windows` | integration tests on native-Windows ES | module selection follows the [test matrix policy](#test-matrix-policy) |
