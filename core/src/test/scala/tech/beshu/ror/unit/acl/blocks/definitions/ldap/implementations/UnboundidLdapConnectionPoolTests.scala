@@ -94,6 +94,21 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         }
       }
     }
+    "keep the permit until a cancelled LDAP call ends" in {
+      withSingleThreadScheduler { callerScheduler =>
+        withPool() { pool =>
+          val second = requestHold.whileHeld {
+            val first = startSearch(pool, callerScheduler)
+            requestHold.awaitHeldRequests(1)
+            first.cancel.runSyncUnsafe(5 seconds)
+            val second = startSearch(pool, callerScheduler)
+            requestHold.countNewHeldRequests(during = 1 second) should be(0)
+            second
+          }
+          inside(resultOf(second)) { case Right(entries) => entries.map(_.getDN) should be(List(baseDn)) }
+        }
+      }
+    }
   }
 
   private val baseDn = "dc=example,dc=com"

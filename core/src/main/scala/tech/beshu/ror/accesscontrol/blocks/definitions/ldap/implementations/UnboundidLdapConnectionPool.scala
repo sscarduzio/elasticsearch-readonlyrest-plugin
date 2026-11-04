@@ -82,11 +82,11 @@ class UnboundidLdapConnectionPool private (
       }
   }
 
-  // The UnboundID SDK calls block the thread until the LDAP server answers or the timeout expires.
-  // The blocking scheduler has no thread limit, and the pool opens a new connection when all are in use.
-  // The permits keep the parallel calls at the pool size, so a slow LDAP server does not get more connections.
+  // Runs a blocking SDK call on the blocking scheduler, with no more parallel calls than the pool size.
+  // Without the limit, a slow LDAP server gets a new connection for each extra call.
+  // A cancelled call keeps its permit until the SDK call ends, because cancellation cannot stop a blocked thread.
   private def blockingSdkCall[A](call: Task[A]): Task[A] =
-    callPermits.withPermit(doPrivileged(call)(RorSchedulers.blockingScheduler))
+    callPermits.withPermit(doPrivileged(call)(RorSchedulers.blockingScheduler)).uncancelable
 }
 
 object UnboundidLdapConnectionPool {
