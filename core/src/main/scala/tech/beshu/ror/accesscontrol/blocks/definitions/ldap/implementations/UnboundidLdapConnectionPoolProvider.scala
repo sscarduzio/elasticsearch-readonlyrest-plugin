@@ -25,7 +25,7 @@ import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.UrlWithAuthority
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{
   BindingTestError,
@@ -259,38 +259,52 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
     } else {
       for {
         _ <- resolveHostnames(connectionConfig)
-        ldapConnection <- establishLdapConnection(connectionConfig)
-        _ <- EitherT {
-          retryBackoffEither(
-            source = ldapConnection.use { connection =>
-              testBinding(connection, connectionConfig)
-            },
-            maxRetries = 2,
-            firstDelay = 500 millis,
-            backOffScaler = 1
-          )
-        }
+        _ <- EitherT(testLdapBinding(connectionConfig))
       } yield ()
     }
   }
 
-  private def establishLdapConnection(connectionConfig: LdapConnectionConfig) = {
-    EitherT {
-      val serverSet = createLdapServerSet(connectionConfig)
-      val connectionTimeout = connectionConfig.connectionTimeout.value.plus(3 seconds)
-      onBlockingScheduler {
+  // The binding test connects once and retries the bind on the same connection.
+  private def testLdapBinding(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
+    val connectionTimeout = connectionConfig.connectionTimeout.value.plus(3 seconds)
+    connectionWithin(createLdapServerSet(connectionConfig), connectionTimeout).use {
+      case Right(connection) =>
+        retryBackoffEither(
+          source = testBinding(connection, connectionConfig),
+          maxRetries = 2,
+          firstDelay = 500 millis,
+          backOffScaler = 1
+        )
+      case Left(ex) =>
         Task {
-          Either
-            .catchOnly[LDAPException](serverSet.getConnection)
-            .map(conn => Resource.make(Task(conn))(c => onBlockingScheduler(Task.delay(c.close()))))
-            .left
-            .map { ex =>
-              noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
-              CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod)
-            }
+          noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
+          Left(CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod))
         }
-      }.timeout(connectionTimeout)
     }
+  }
+
+  // Each `use` connects to the server set, and the connection is closed after the use. The use fails with a
+  // `TimeoutException` when no connection comes within `timeout`. A connection that comes later is closed then.
+  private[ror] def connectionWithin(
+      serverSet: ServerSet,
+      timeout: FiniteDuration
+  ): Resource[Task, Either[LDAPException, LDAPConnection]] = {
+    Resource
+      .make(onBlockingScheduler(Task(Either.catchOnly[LDAPException](serverSet.getConnection))).start)(
+        closeWhenItComes
+      )
+      .evalMap(_.join.timeout(timeout))
+  }
+
+  // A timeout or a cancel cannot stop the SDK call, so the close does not wait for the connection.
+  private def closeWhenItComes(connecting: Fiber[Either[LDAPException, LDAPConnection]]): Task[Unit] = {
+    connecting.join
+      .flatMap {
+        case Right(connection) => onBlockingScheduler(Task.delay(connection.close()))
+        case Left(_)           => Task.unit
+      }
+      .attempt
+      .startAndForget
   }
 
   private def createLdapServerSet(connectionConfig: LdapConnectionConfig) = {

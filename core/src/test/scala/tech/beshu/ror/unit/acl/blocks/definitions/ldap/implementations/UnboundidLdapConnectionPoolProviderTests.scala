@@ -16,11 +16,16 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
+import com.unboundid.ldap.listener.interceptor.{InMemoryInterceptedSimpleBindRequest, InMemoryOperationInterceptor}
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
+import com.unboundid.ldap.sdk.{LDAPConnection, LDAPException, ResultCode, ServerSet}
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
@@ -35,11 +40,17 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{
 }
 import tech.beshu.ror.utils.RefinedUtils.*
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+import java.util.concurrent.{CountDownLatch, TimeUnit, TimeoutException}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
+import scala.util.{Failure, Try}
 
-class UnboundidLdapConnectionPoolProviderTests extends AnyWordSpec with BeforeAndAfterAll with CallerSchedulerSupport {
+class UnboundidLdapConnectionPoolProviderTests
+    extends AnyWordSpec
+    with BeforeAndAfterAll
+    with Eventually
+    with CallerSchedulerSupport {
 
   "An UnboundidLdapConnectionPoolProvider" should {
     "not block the threads of the calling scheduler while the binding test waits for the LDAP server" in {
@@ -71,14 +82,55 @@ class UnboundidLdapConnectionPoolProviderTests extends AnyWordSpec with BeforeAn
         }
       }
     }
+    "retry a failed bind of the binding test on the same open connection" in {
+      withPoolProvider { poolProvider =>
+        val result = bindFailures.whileFailing(1) {
+          UnboundidLdapConnectionPoolProvider
+            .connectWithOptionalBindingTest(poolProvider, connectionConfig)
+            .runSyncUnsafe(30 seconds)
+        }
+        result should matchPattern { case Right(_) => }
+      }
+    }
+    "give the use an open connection and close it after the use" in {
+      val serverSet = new DelayedServerSet
+      serverSet.release()
+      val connectedInUse = UnboundidLdapConnectionPoolProvider
+        .connectionWithin(serverSet, 5 seconds)
+        .use(result => Task(result.map(_.isConnected)))
+        .runSyncUnsafe(10 seconds)
+      connectedInUse should be(Right(true))
+      eventually {
+        serverSet.createdConnection.map(_.isConnected) should be(Some(false))
+      }
+    }
+    "close a connection that comes after the connection timeout" in {
+      val serverSet = new DelayedServerSet
+      val result = Try {
+        UnboundidLdapConnectionPoolProvider
+          .connectionWithin(serverSet, 100 millis)
+          .use(_ => Task.unit)
+          .runSyncUnsafe(10 seconds)
+      }
+      result should matchPattern { case Failure(_: TimeoutException) => }
+      serverSet.release()
+      eventually {
+        serverSet.createdConnection.map(_.isConnected) should be(Some(false))
+      }
+    }
   }
 
+  override implicit val patienceConfig: PatienceConfig =
+    PatienceConfig(timeout = scaled(Span(10, Seconds)), interval = scaled(Span(50, Millis)))
+
   private val requestHold = new RequestHold
+  private val bindFailures = new BindFailures
 
   private val server = {
     val config = new InMemoryDirectoryServerConfig("dc=example,dc=com")
     config.setListenerConfigs(InMemoryListenerConfig.createLDAPConfig("ldap", 0))
     config.addInMemoryOperationInterceptor(requestHold)
+    config.addInMemoryOperationInterceptor(bindFailures)
     new InMemoryDirectoryServer(config)
   }
 
@@ -111,6 +163,44 @@ class UnboundidLdapConnectionPoolProviderTests extends AnyWordSpec with BeforeAn
     val poolProvider = new UnboundidLdapConnectionPoolProvider
     try test(poolProvider)
     finally poolProvider.close().runSyncUnsafe(30 seconds)
+  }
+
+  // `getConnection` connects to the test server only after the test calls `release`.
+  private class DelayedServerSet extends ServerSet {
+    private val released = new CountDownLatch(1)
+    private val connection = new AtomicReference(Option.empty[LDAPConnection])
+
+    def release(): Unit = released.countDown()
+
+    def createdConnection: Option[LDAPConnection] = connection.get()
+
+    override def getConnection: LDAPConnection = {
+      if (!released.await(10, TimeUnit.SECONDS)) {
+        throw new LDAPException(ResultCode.TIMEOUT, "The test does not release the connection")
+      }
+      val created = new LDAPConnection("127.0.0.1", server.getListenPort)
+      connection.set(Some(created))
+      created
+    }
+
+  }
+
+  // Inside `whileFailing`, the server rejects the given number of simple binds.
+  private class BindFailures extends InMemoryOperationInterceptor {
+    private val remaining = new AtomicInteger(0)
+
+    def whileFailing[A](count: Int)(block: => A): A = {
+      remaining.set(count)
+      try block
+      finally remaining.set(0)
+    }
+
+    override def processSimpleBindRequest(request: InMemoryInterceptedSimpleBindRequest): Unit = {
+      if (remaining.getAndUpdate(left => math.max(left - 1, 0)) > 0) {
+        throw new LDAPException(ResultCode.UNAVAILABLE, "The test rejects this bind")
+      }
+    }
+
   }
 
 }
