@@ -35,9 +35,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 
 import java.util.concurrent.{CountDownLatch, Semaphore, TimeUnit}
-import scala.concurrent.Await
 import scala.concurrent.duration.*
+import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
+import scala.util.Try
 
 class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAll with Inside {
 
@@ -61,26 +62,20 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
       }
     }
     "not block the threads of the calling scheduler while the LDAP server does not answer" in {
-      val callerScheduler = Scheduler.singleThread("ldap-test-caller")
-      try
+      withSingleThreadScheduler { callerScheduler =>
         withPool() { pool =>
-          val (searchResult, bindResult) = requestHold.whileHeld {
-            // The calling scheduler has one thread for two LDAP calls.
-            val search = searchTask(pool, 30 seconds).executeAsync.runToFuture(callerScheduler)
-            val bind = pool.asyncBind(new SimpleBindRequest()).executeAsync.runToFuture(callerScheduler)
+          val (search, bind) = requestHold.whileHeld {
+            val calls = (startSearch(pool, callerScheduler), startBind(pool, callerScheduler))
             requestHold.awaitHeldRequests(2)
-            Task
-              .eval("other task")
-              .executeAsync
-              .runSyncUnsafe(5 seconds)(callerScheduler, CanBlock.permit) should be("other task")
-            (search, bind)
+            runsOtherTask(callerScheduler) should be(true)
+            calls
           }
-          inside(Await.result(searchResult, 30 seconds)) { case Right(entries) =>
+          inside(resultOf(search)) { case Right(entries) =>
             entries.map(_.getDN) should be(List(baseDn))
           }
-          Await.result(bindResult, 30 seconds).getResultCode should be(ResultCode.SUCCESS)
+          resultOf(bind).getResultCode should be(ResultCode.SUCCESS)
         }
-      finally callerScheduler.shutdown()
+      }
     }
   }
 
@@ -115,6 +110,12 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
     finally connectionPool.close()
   }
 
+  private def withSingleThreadScheduler(test: Scheduler => Unit): Unit = {
+    val scheduler = Scheduler.singleThread("ldap-test-caller")
+    try test(scheduler)
+    finally scheduler.shutdown()
+  }
+
   private def search(pool: UnboundidLdapConnectionPool) = {
     searchTask(pool)
       // A bound for the test only: without it, a search that never completes blocks the suite.
@@ -124,6 +125,21 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
   private def searchTask(pool: UnboundidLdapConnectionPool, timeout: FiniteDuration = 5 seconds) = {
     pool.process(new SearchRequest(_, baseDn, SearchScope.BASE, "(objectClass=*)"), Refined.unsafeApply(timeout))
   }
+
+  // The search timeout is longer than the wait in `awaitHeldRequests`, so a held search does not time out first.
+  private def startSearch(pool: UnboundidLdapConnectionPool, scheduler: Scheduler) = {
+    searchTask(pool, 30 seconds).executeAsync.runToFuture(scheduler)
+  }
+
+  private def startBind(pool: UnboundidLdapConnectionPool, scheduler: Scheduler) = {
+    pool.asyncBind(new SimpleBindRequest()).executeAsync.runToFuture(scheduler)
+  }
+
+  private def runsOtherTask(scheduler: Scheduler): Boolean = {
+    Try(Task.unit.executeAsync.runSyncUnsafe(5 seconds)(scheduler, CanBlock.permit)).isSuccess
+  }
+
+  private def resultOf[A](call: Future[A]): A = Await.result(call, 30 seconds)
 
   // The pool calls the check after it finds the connection open, and returns the connection when the check passes.
   // The server closes the connection at that moment, so the SDK cannot register or send the search request.
