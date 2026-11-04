@@ -47,10 +47,11 @@ object SchedulerContextRestore {
 
     override def clockMonotonic(unit: TimeUnit): Long = underlying.clockMonotonic(unit)
 
-    override def withExecutionModel(em: ExecutionModel): Scheduler = underlying.withExecutionModel(em)
+    override def withExecutionModel(em: ExecutionModel): Scheduler =
+      new ContextRestoringScheduler(underlying.withExecutionModel(em))
 
     override def withUncaughtExceptionReporter(r: UncaughtExceptionReporter): Scheduler =
-      underlying.withUncaughtExceptionReporter(r)
+      new ContextRestoringScheduler(underlying.withUncaughtExceptionReporter(r))
 
     private def wrap(r: Runnable): Runnable = { () =>
       onContextSwitch.apply().foreach(_.apply())
