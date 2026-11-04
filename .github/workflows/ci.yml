@@ -489,8 +489,7 @@ jobs:
     container: *toolchains_container
     timeout-minutes: 150
     outputs:
-      # A JSON object: the ELK version of each e2e module.
-      elk_version_of_module: ${{ steps.versions.outputs.elk_version_of_module }}
+      elk_version_by_module: ${{ steps.versions.outputs.elk_version_by_module }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -508,23 +507,18 @@ jobs:
         run: |
           set -e
           source ci/e2e-tests-lib.sh
-          VERSIONS=""
-          VERSION_OF_MODULE='{}'
+          ELK_VERSION_BY_MODULE='{}'
           for module in $E2E_ES_MODULES; do
             version=$(e2e_elk_version_for_module "$module") || exit $?
             echo ">>> $module -> ELK $version"
-            VERSIONS="${VERSIONS:+$VERSIONS }$version"
-            VERSION_OF_MODULE=$(jq -c --arg m "$module" --arg v "$version" '. + {($m): $v}' <<<"$VERSION_OF_MODULE")
+            ELK_VERSION_BY_MODULE=$(jq -c --arg m "$module" --arg v "$version" '. + {($m): $v}' <<<"$ELK_VERSION_BY_MODULE")
           done
-          {
-            echo "elk_versions=$VERSIONS"
-            echo "elk_version_of_module=$VERSION_OF_MODULE"
-          } >> "$GITHUB_OUTPUT"
+          echo "elk_version_by_module=$ELK_VERSION_BY_MODULE" >> "$GITHUB_OUTPUT"
       - name: order_e2e_kbn_images
         id: order
         env:
           ROR_TASK: order_e2e_kbn_images
-          E2E_ELK_VERSIONS: ${{ steps.versions.outputs.elk_versions }}
+          ELK_VERSION_BY_MODULE: ${{ steps.versions.outputs.elk_version_by_module }}
           ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
           E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
@@ -534,6 +528,8 @@ jobs:
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
+          E2E_ELK_VERSIONS=$(jq -r '[.[]] | join(" ")' <<<"$ELK_VERSION_BY_MODULE")
+          export E2E_ELK_VERSIONS
           source ci/configure-docker.sh
           ci/run-pipeline.sh
 
@@ -598,10 +594,9 @@ jobs:
     timeout-minutes: 120
     # The one Linux job with no container: Cypress reads the ports the compose stack of the e2e repo
     # publishes on the HOST, and the localhost of a job container is not the host. The image also
-    # holds no node, yarn or Cypress browser. So there is no toolchains-image Gradle home here, and
-    # the job runs no Gradle: it takes the ELK version of its module from e2e_order_kbn_images.
+    # holds no node, yarn or Cypress browser.
     env:
-      E2E_ELK_VERSION: ${{ fromJSON(needs.e2e_order_kbn_images.outputs.elk_version_of_module)[matrix.ES_MODULE] }}
+      E2E_ELK_VERSION: ${{ fromJSON(needs.e2e_order_kbn_images.outputs.elk_version_by_module)[matrix.ES_MODULE] }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.e2e_matrix) }}

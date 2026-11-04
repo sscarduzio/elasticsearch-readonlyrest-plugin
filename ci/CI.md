@@ -310,8 +310,7 @@ it must tell "no e2e in this run" from "e2e failed".
 The ELK version of a module is not in the matrix. It comes from the module, with
 `e2e_elk_version_for_module` in `ci/e2e-tests-lib.sh` (`:esXXXx:printNewestEsVersionForModule`).
 `e2e_order_kbn_images` resolves all of them in one step, because its single dispatch covers every
-version, and gives them to `e2e_tests` as the output `elk_version_of_module`. `e2e_tests` runs on the
-host, without the Gradle cache of the toolchains image, so it runs no Gradle. `e2e_build_es_images`
+version, and gives them to `e2e_tests` as the output `elk_version_by_module`. `e2e_build_es_images`
 resolves its own row. `discover` stays at one Gradle call, so no test job waits for a lookup only e2e
 needs.
 
