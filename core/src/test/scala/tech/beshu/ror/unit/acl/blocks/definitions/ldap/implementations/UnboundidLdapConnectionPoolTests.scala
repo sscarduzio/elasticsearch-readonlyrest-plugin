@@ -16,16 +16,26 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
+import com.unboundid.ldap.listener.interceptor.{
+  InMemoryInterceptedSearchRequest,
+  InMemoryInterceptedSimpleBindRequest,
+  InMemoryOperationInterceptor
+}
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
 import com.unboundid.ldap.sdk.*
 import eu.timepit.refined.api.Refined
+import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
+import monix.execution.schedulers.CanBlock
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPool
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 
+import java.util.concurrent.{CountDownLatch, Semaphore, TimeUnit}
+import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -50,13 +60,38 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         }
       }
     }
+    "not block the threads of the calling scheduler while the LDAP server does not answer" in {
+      val callerScheduler = Scheduler.singleThread("ldap-test-caller")
+      try
+        withPool() { pool =>
+          val (searchResult, bindResult) = requestHold.whileHeld {
+            // The calling scheduler has one thread for two LDAP calls.
+            val search = searchTask(pool, 30 seconds).executeAsync.runToFuture(callerScheduler)
+            val bind = pool.asyncBind(new SimpleBindRequest()).executeAsync.runToFuture(callerScheduler)
+            requestHold.awaitHeldRequests(2)
+            Task
+              .eval("other task")
+              .executeAsync
+              .runSyncUnsafe(5 seconds)(callerScheduler, CanBlock.permit) should be("other task")
+            (search, bind)
+          }
+          inside(Await.result(searchResult, 30 seconds)) { case Right(entries) =>
+            entries.map(_.getDN) should be(List(baseDn))
+          }
+          Await.result(bindResult, 30 seconds).getResultCode should be(ResultCode.SUCCESS)
+        }
+      finally callerScheduler.shutdown()
+    }
   }
 
   private val baseDn = "dc=example,dc=com"
 
+  private val requestHold = new RequestHold
+
   private val server = {
     val config = new InMemoryDirectoryServerConfig(baseDn)
     config.setListenerConfigs(InMemoryListenerConfig.createLDAPConfig("ldap", 0))
+    config.addInMemoryOperationInterceptor(requestHold)
     new InMemoryDirectoryServer(config)
   }
 
@@ -81,10 +116,13 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
   }
 
   private def search(pool: UnboundidLdapConnectionPool) = {
-    pool
-      .process(new SearchRequest(_, baseDn, SearchScope.BASE, "(objectClass=*)"), Refined.unsafeApply(5 seconds))
+    searchTask(pool)
       // A bound for the test only: without it, a search that never completes blocks the suite.
       .runSyncUnsafe(30 seconds)
+  }
+
+  private def searchTask(pool: UnboundidLdapConnectionPool, timeout: FiniteDuration = 5 seconds) = {
+    pool.process(new SearchRequest(_, baseDn, SearchScope.BASE, "(objectClass=*)"), Refined.unsafeApply(timeout))
   }
 
   // The pool calls the check after it finds the connection open, and returns the connection when the check passes.
@@ -99,6 +137,36 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         while (connection.isConnected && System.nanoTime() < deadline) Thread.sleep(10)
         droppedConnection = !connection.isConnected
       }
+    }
+
+  }
+
+  // Inside `whileHeld`, the server holds each search and simple bind and does not answer it.
+  private class RequestHold extends InMemoryOperationInterceptor {
+    private val heldRequests = new Semaphore(0)
+    @volatile private var release = Option.empty[CountDownLatch]
+
+    def whileHeld[A](block: => A): A = {
+      val latch = new CountDownLatch(1)
+      release = Some(latch)
+      try block
+      finally {
+        release = None
+        latch.countDown()
+      }
+    }
+
+    def awaitHeldRequests(count: Int): Unit = {
+      if (!heldRequests.tryAcquire(count, 10, TimeUnit.SECONDS)) fail(s"The server does not hold $count requests")
+    }
+
+    override def processSearchRequest(request: InMemoryInterceptedSearchRequest): Unit = hold()
+
+    override def processSimpleBindRequest(request: InMemoryInterceptedSimpleBindRequest): Unit = hold()
+
+    private def hold(): Unit = release.foreach { latch =>
+      heldRequests.release()
+      latch.await()
     }
 
   }

@@ -38,4 +38,8 @@ object RorSchedulers {
     TracingScheduler(Scheduler.fixedPool("ror-rest-api-executor", 10))
   )
 
+  val ldapScheduler: Scheduler = new ContextRestoringScheduler(
+    TracingScheduler(Scheduler.io("ror-ldap"))
+  )
+
 }

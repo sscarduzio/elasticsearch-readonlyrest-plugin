@@ -19,6 +19,8 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 import com.unboundid.ldap.sdk.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
+import tech.beshu.ror.boot.RorSchedulers
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -30,7 +32,7 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindReques
 
   import UnboundidLdapConnectionPool.*
 
-  def asyncBind(request: BindRequest): Task[BindResult] = {
+  def asyncBind(request: BindRequest): Task[BindResult] = onLdapScheduler {
     bindRequestUser match {
       case BindRequestUser.Anonymous        => Task(connectionPool.bind(request))
       case BindRequestUser.CustomUser(_, _) => Task(connectionPool.bindAndRevertAuthentication(request))
@@ -41,7 +43,7 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindReques
       requestCreator: AsyncSearchResultListener => LDAPRequest,
       timeout: PositiveFiniteDuration
   ): Task[Either[SearchResult, List[SearchResultEntry]]] = {
-    UnboundidAsyncSearch.run(connectionPool, requestCreator, timeout).map {
+    processSearch(requestCreator, timeout).map {
       case SearchOutcome.Completed(result, entries) if result.getResultCode == ResultCode.SUCCESS => Right(entries)
       case SearchOutcome.Completed(result, _)                                                     => Left(result)
       case SearchOutcome.Aborted(result) => Left(new SearchResult(result))
@@ -52,6 +54,33 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindReques
     Task.delay(connectionPool.close())
   }
 
+  private def processSearch(
+      requestCreator: AsyncSearchResultListener => LDAPRequest,
+      timeout: PositiveFiniteDuration
+  ): Task[SearchOutcome] = onLdapScheduler {
+    val searchResultListener = new UnboundidSearchResultListener
+    Task(requestCreator(searchResultListener))
+      .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
+      .flatMap { results =>
+        results.asScala.toList match {
+          case Nil            => Task.raiseError(new IllegalStateException("LDAP - expected at least one result"))
+          case requestId :: _ =>
+            // processRequestsAsync returns when each request has a result. The SDK gives that result to
+            // the listener only when the server answers or the connection closes. A cancelled request
+            // (timeout) or a request that the SDK could not send has its result only in the request ID.
+            if (requestId.isCancelled) Task.delay(SearchOutcome.Aborted(requestId.get()))
+            else
+              searchResultListener.result match {
+                case Some(result) => Task.now(SearchOutcome.Completed(result, searchResultListener.entries))
+                case None         => Task.delay(SearchOutcome.Aborted(requestId.get()))
+              }
+        }
+      }
+  }
+
+  // The UnboundID SDK calls block the thread until the LDAP server answers or the timeout expires.
+  private def onLdapScheduler[A](call: Task[A]): Task[A] =
+    doPrivileged(call)(RorSchedulers.ldapScheduler)
 }
 
 object UnboundidLdapConnectionPool {
@@ -61,35 +90,6 @@ object UnboundidLdapConnectionPool {
   private object SearchOutcome {
     final case class Completed(searchResult: SearchResult, entries: List[SearchResultEntry]) extends SearchOutcome
     final case class Aborted(ldapResult: LDAPResult) extends SearchOutcome
-  }
-
-  private object UnboundidAsyncSearch {
-
-    def run(
-        connectionPool: LDAPConnectionPool,
-        requestCreator: AsyncSearchResultListener => LDAPRequest,
-        timeout: PositiveFiniteDuration
-    ): Task[SearchOutcome] = {
-      val searchResultListener = new UnboundidSearchResultListener
-      Task(requestCreator(searchResultListener))
-        .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
-        .flatMap { results =>
-          results.asScala.toList match {
-            case Nil            => Task.raiseError(new IllegalStateException("LDAP - expected at least one result"))
-            case requestId :: _ =>
-              // processRequestsAsync returns when each request has a result. The SDK gives that result to
-              // the listener only when the server answers or the connection closes. A cancelled request
-              // (timeout) or a request that the SDK could not send has its result only in the request ID.
-              if (requestId.isCancelled) Task.delay(SearchOutcome.Aborted(requestId.get()))
-              else
-                searchResultListener.result match {
-                  case Some(result) => Task.now(SearchOutcome.Completed(result, searchResultListener.entries))
-                  case None         => Task.delay(SearchOutcome.Aborted(requestId.get()))
-                }
-          }
-        }
-    }
-
   }
 
   private class UnboundidSearchResultListener extends com.unboundid.ldap.sdk.AsyncSearchResultListener {
