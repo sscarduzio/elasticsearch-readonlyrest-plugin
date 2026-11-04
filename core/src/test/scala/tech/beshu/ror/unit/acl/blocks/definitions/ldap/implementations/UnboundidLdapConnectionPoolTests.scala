@@ -123,6 +123,16 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         bindDns should be(List(userDn, serviceDn))
       }
     }
+    "not block the threads of the calling scheduler while the SDK waits for a health check to close the pool" in {
+      withSingleThreadScheduler { callerScheduler =>
+        withPoolInBackgroundCheck { (pool, backgroundCheck) =>
+          val closing = startOn(callerScheduler, pool.close())
+          runsOtherTask(callerScheduler) should be(true)
+          backgroundCheck.release()
+          resultOf(closing) should be(())
+        }
+      }
+    }
   }
 
   private val baseDn = "dc=example,dc=com"
@@ -183,6 +193,22 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
     finally connectionPool.close()
   }
 
+  // `withPool` cannot use this check: its `finally` closes the SDK pool, and the close waits for the check.
+  private def withPoolInBackgroundCheck(test: (UnboundidLdapConnectionPool, BlockedBackgroundCheck) => Unit): Unit = {
+    val backgroundCheck = new BlockedBackgroundCheck
+    val connectionPool = new LDAPConnectionPool(new LDAPConnection("localhost", server.getListenPort), 1)
+    connectionPool.setHealthCheck(backgroundCheck)
+    connectionPool.setHealthCheckIntervalMillis(10)
+    val pool = UnboundidLdapConnectionPool.create(connectionPool, BindRequestUser.Anonymous).runSyncUnsafe()
+    try {
+      backgroundCheck.awaitStarted()
+      test(pool, backgroundCheck)
+    } finally {
+      backgroundCheck.release()
+      connectionPool.close()
+    }
+  }
+
   private def withSingleThreadScheduler(test: Scheduler => Unit): Unit = {
     val scheduler = Scheduler.singleThread("ldap-test-caller")
     try test(scheduler)
@@ -233,6 +259,28 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         val deadline = System.nanoTime() + 10.seconds.toNanos
         while (connection.isConnected && System.nanoTime() < deadline) Thread.sleep(10)
         droppedConnection = !connection.isConnected
+      }
+    }
+
+  }
+
+  // The background check of the pool waits until the test calls `release`.
+  private class BlockedBackgroundCheck extends LDAPConnectionPoolHealthCheck {
+    private val started = new CountDownLatch(1)
+    private val released = new CountDownLatch(1)
+
+    def awaitStarted(): Unit = {
+      if (!started.await(10, TimeUnit.SECONDS)) fail("The pool does not run its background check")
+    }
+
+    def release(): Unit = released.countDown()
+
+    // The SDK close can interrupt the threads of the pool, so the wait ignores interrupts.
+    override def ensureConnectionValidForContinuedUse(connection: LDAPConnection): Unit = {
+      started.countDown()
+      while (released.getCount > 0) {
+        try released.await()
+        catch { case _: InterruptedException => () }
       }
     }
 

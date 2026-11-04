@@ -55,7 +55,8 @@ class UnboundidLdapConnectionPool private (
   }
 
   def close(): Task[Unit] = {
-    Task.delay(connectionPool.close())
+    // The SDK close blocks until the pool threads stop.
+    onBlockingScheduler(Task.delay(connectionPool.close()))
   }
 
   private def processSearch(
@@ -86,7 +87,10 @@ class UnboundidLdapConnectionPool private (
   // Without the limit, a slow LDAP server gets a new connection for each extra call.
   // A cancelled call keeps its permit until the SDK call ends, because cancellation cannot stop a blocked thread.
   private def blockingSdkCall[A](call: Task[A]): Task[A] =
-    callPermits.withPermit(doPrivileged(call)(RorSchedulers.blockingScheduler)).uncancelable
+    callPermits.withPermit(onBlockingScheduler(call)).uncancelable
+
+  private def onBlockingScheduler[A](call: Task[A]): Task[A] =
+    doPrivileged(call)(RorSchedulers.blockingScheduler)
 }
 
 object UnboundidLdapConnectionPool {
