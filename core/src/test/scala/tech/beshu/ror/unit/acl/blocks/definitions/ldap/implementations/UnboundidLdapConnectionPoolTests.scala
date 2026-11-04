@@ -16,19 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
-import com.unboundid.ldap.listener.interceptor.{
-  InMemoryInterceptedSearchRequest,
-  InMemoryInterceptedSimpleBindRequest,
-  InMemoryOperationInterceptor
-}
+import com.unboundid.ldap.listener.interceptor.{InMemoryInterceptedSimpleBindRequest, InMemoryOperationInterceptor}
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
 import com.unboundid.ldap.sdk.*
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
-import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
-import monix.execution.schedulers.CanBlock
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
@@ -37,13 +31,16 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
 
-import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch, Semaphore, TimeUnit}
+import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch, TimeUnit}
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
-import scala.util.Try
 
-class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAll with Inside {
+class UnboundidLdapConnectionPoolTests
+    extends AnyWordSpec
+    with BeforeAndAfterAll
+    with Inside
+    with CallerSchedulerSupport {
 
   "An UnboundidLdapConnectionPool" should {
     "return the entries of a search" in {
@@ -209,12 +206,6 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
     }
   }
 
-  private def withSingleThreadScheduler(test: Scheduler => Unit): Unit = {
-    val scheduler = Scheduler.singleThread("ldap-test-caller")
-    try test(scheduler)
-    finally scheduler.shutdown()
-  }
-
   private def search(pool: UnboundidLdapConnectionPool) = {
     searchTask(pool)
       // A bound for the test only: without it, a search that never completes blocks the suite.
@@ -237,16 +228,6 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
   private def bind(pool: UnboundidLdapConnectionPool, dn: String, password: String) = {
     pool.asyncBind(new SimpleBindRequest(dn, password)).runSyncUnsafe(30 seconds)
   }
-
-  private def startOn[A](scheduler: Scheduler, call: Task[A]): Fiber[A] = {
-    call.start.runSyncUnsafe(5 seconds)(scheduler, CanBlock.permit)
-  }
-
-  private def runsOtherTask(scheduler: Scheduler): Boolean = {
-    Try(Task.unit.executeAsync.runSyncUnsafe(5 seconds)(scheduler, CanBlock.permit)).isSuccess
-  }
-
-  private def resultOf[A](call: Fiber[A]): A = call.join.runSyncUnsafe(30 seconds)
 
   // The pool calls the check after it finds the connection open, and returns the connection when the check passes.
   // The server closes the connection at that moment, so the SDK cannot register or send the search request.
@@ -282,43 +263,6 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         try released.await()
         catch { case _: InterruptedException => () }
       }
-    }
-
-  }
-
-  // Inside `whileHeld`, the server holds each search and simple bind and does not answer it.
-  private class RequestHold extends InMemoryOperationInterceptor {
-    private val heldRequests = new Semaphore(0)
-    @volatile private var release = Option.empty[CountDownLatch]
-
-    def whileHeld[A](block: => A): A = {
-      heldRequests.drainPermits()
-      val latch = new CountDownLatch(1)
-      release = Some(latch)
-      try block
-      finally {
-        release = None
-        latch.countDown()
-      }
-    }
-
-    def awaitHeldRequests(count: Int): Unit = {
-      if (!heldRequests.tryAcquire(count, 10, TimeUnit.SECONDS)) fail(s"The server does not hold $count requests")
-    }
-
-    // Waits for `during`, then returns the number of held requests that `awaitHeldRequests` did not count.
-    def countNewHeldRequests(during: FiniteDuration): Int = {
-      Thread.sleep(during.toMillis)
-      heldRequests.availablePermits()
-    }
-
-    override def processSearchRequest(request: InMemoryInterceptedSearchRequest): Unit = hold()
-
-    override def processSimpleBindRequest(request: InMemoryInterceptedSimpleBindRequest): Unit = hold()
-
-    private def hold(): Unit = release.foreach { latch =>
-      heldRequests.release()
-      latch.await()
     }
 
   }

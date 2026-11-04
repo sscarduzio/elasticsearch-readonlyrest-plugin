@@ -43,6 +43,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.{Address, PlainTextSecret}
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
+import tech.beshu.ror.boot.RorSchedulers
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
@@ -71,8 +73,7 @@ class UnboundidLdapConnectionPoolProvider {
   def close(): Task[Unit] = poolOfPools.close
 
   private def createConnectionPool(connectionConfig: LdapConnectionConfig): Task[UnboundidLdapConnectionPool] = retry {
-    Task
-      .delay(createLdapConnectionPoolFrom(connectionConfig))
+    onBlockingScheduler(Task.delay(createLdapConnectionPoolFrom(connectionConfig)))
       .flatMap(UnboundidLdapConnectionPool.create(_, connectionConfig.bindRequestUser))
   }
 
@@ -277,15 +278,17 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
     EitherT {
       val serverSet = createLdapServerSet(connectionConfig)
       val connectionTimeout = connectionConfig.connectionTimeout.value.plus(3 seconds)
-      Task {
-        Either
-          .catchOnly[LDAPException](serverSet.getConnection)
-          .map(conn => Resource.make(Task(conn))(c => Task.delay(c.close())))
-          .left
-          .map { ex =>
-            noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
-            CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod)
-          }
+      onBlockingScheduler {
+        Task {
+          Either
+            .catchOnly[LDAPException](serverSet.getConnection)
+            .map(conn => Resource.make(Task(conn))(c => onBlockingScheduler(Task.delay(c.close()))))
+            .left
+            .map { ex =>
+              noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
+              CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod)
+            }
+        }
       }.timeout(connectionTimeout)
     }
   }
@@ -359,7 +362,7 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
       connectionConfig: LdapConnectionConfig
   ): Task[Either[ConnectionError, Unit]] = {
     val bindReq = bindRequest(connectionConfig.bindRequestUser)
-    Task(connection.bind(bindReq))
+    onBlockingScheduler(Task(connection.bind(bindReq)))
       .map { bindResult =>
         Either.cond(
           bindResult.getResultCode == ResultCode.SUCCESS,
@@ -373,6 +376,9 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
     case BindRequestUser.Anonymous                => new SimpleBindRequest()
     case BindRequestUser.CustomUser(dn, password) => new SimpleBindRequest(dn.value.value, password.value.value)
   }
+
+  private def onBlockingScheduler[A](call: Task[A]): Task[A] =
+    doPrivileged(call)(RorSchedulers.blockingScheduler)
 
   sealed trait ConnectionError
 
