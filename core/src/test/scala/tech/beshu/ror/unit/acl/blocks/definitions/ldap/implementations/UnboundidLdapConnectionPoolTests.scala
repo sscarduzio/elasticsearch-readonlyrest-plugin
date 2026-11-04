@@ -24,6 +24,7 @@ import com.unboundid.ldap.listener.interceptor.{
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
 import com.unboundid.ldap.sdk.*
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
@@ -31,11 +32,14 @@ import monix.execution.schedulers.CanBlock
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPool
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
+import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
 
-import java.util.concurrent.{CountDownLatch, Semaphore, TimeUnit}
+import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch, Semaphore, TimeUnit}
 import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -109,16 +113,35 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         }
       }
     }
+    "authenticate the pool connection as the service account again after a user bind" in {
+      withPool(bindRequestUser = serviceAccount) { pool =>
+        val bindDns = bindDnLog.recordedDuring {
+          bind(pool, userDn, userPassword).getResultCode should be(ResultCode.SUCCESS)
+        }
+        bindDns should be(List(userDn, serviceDn))
+      }
+    }
   }
 
   private val baseDn = "dc=example,dc=com"
+  private val serviceDn = s"cn=service,$baseDn"
+  private val servicePassword = "service-password"
+  private val userDn = s"cn=user,$baseDn"
+  private val userPassword = "user-password"
+
+  private lazy val serviceAccount = BindRequestUser.CustomUser(
+    Dn(NonEmptyString.unsafeFrom(serviceDn)),
+    PlainTextSecret(NonEmptyString.unsafeFrom(servicePassword))
+  )
 
   private val requestHold = new RequestHold
+  private val bindDnLog = new BindDnLog
 
   private val server = {
     val config = new InMemoryDirectoryServerConfig(baseDn)
     config.setListenerConfigs(InMemoryListenerConfig.createLDAPConfig("ldap", 0))
     config.addInMemoryOperationInterceptor(requestHold)
+    config.addInMemoryOperationInterceptor(bindDnLog)
     new InMemoryDirectoryServer(config)
   }
 
@@ -126,6 +149,14 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
     super.beforeAll()
     server.startListening()
     server.add(s"dn: $baseDn", "objectClass: top", "objectClass: domain", "dc: example")
+    server.add(
+      s"dn: $serviceDn",
+      "objectClass: person",
+      "cn: service",
+      "sn: service",
+      s"userPassword: $servicePassword"
+    )
+    server.add(s"dn: $userDn", "objectClass: person", "cn: user", "sn: user", s"userPassword: $userPassword")
   }
 
   override protected def afterAll(): Unit = {
@@ -135,11 +166,17 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
 
   private def withPool(
       healthCheck: LDAPConnectionPoolHealthCheck = new LDAPConnectionPoolHealthCheck,
-      poolSize: Int = 1
+      poolSize: Int = 1,
+      bindRequestUser: BindRequestUser = BindRequestUser.Anonymous
   )(test: UnboundidLdapConnectionPool => Unit): Unit = {
-    val connectionPool = new LDAPConnectionPool(new LDAPConnection("localhost", server.getListenPort), 1, poolSize)
+    val connection = bindRequestUser match {
+      case BindRequestUser.Anonymous                => new LDAPConnection("localhost", server.getListenPort)
+      case BindRequestUser.CustomUser(dn, password) =>
+        new LDAPConnection("localhost", server.getListenPort, dn.value.value, password.value.value)
+    }
+    val connectionPool = new LDAPConnectionPool(connection, 1, poolSize)
     connectionPool.setHealthCheck(healthCheck)
-    val pool = UnboundidLdapConnectionPool.create(connectionPool, BindRequestUser.Anonymous).runSyncUnsafe()
+    val pool = UnboundidLdapConnectionPool.create(connectionPool, bindRequestUser).runSyncUnsafe()
     try test(pool)
     finally connectionPool.close()
   }
@@ -167,6 +204,10 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
 
   private def startBind(pool: UnboundidLdapConnectionPool, scheduler: Scheduler) = {
     startOn(scheduler, pool.asyncBind(new SimpleBindRequest()))
+  }
+
+  private def bind(pool: UnboundidLdapConnectionPool, dn: String, password: String) = {
+    pool.asyncBind(new SimpleBindRequest(dn, password)).runSyncUnsafe(30 seconds)
   }
 
   private def startOn[A](scheduler: Scheduler, call: Task[A]): Fiber[A] = {
@@ -228,6 +269,22 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
     private def hold(): Unit = release.foreach { latch =>
       heldRequests.release()
       latch.await()
+    }
+
+  }
+
+  // `recordedDuring` returns the DNs of the simple binds that the server gets while its block runs.
+  private class BindDnLog extends InMemoryOperationInterceptor {
+    private val bindDns = new ConcurrentLinkedQueue[String]
+
+    def recordedDuring(block: => Unit): List[String] = {
+      bindDns.clear()
+      block
+      bindDns.asScala.toList
+    }
+
+    override def processSimpleBindRequest(request: InMemoryInterceptedSimpleBindRequest): Unit = {
+      bindDns.add(request.getRequest.getBindDN)
     }
 
   }
