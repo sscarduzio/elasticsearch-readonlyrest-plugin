@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk.*
+import monix.catnap.Semaphore
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 import tech.beshu.ror.boot.RorSchedulers
@@ -27,12 +28,15 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import java.util.concurrent.atomic.AtomicReference
 import scala.jdk.CollectionConverters.*
 
-class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindRequestUser: BindRequestUser)
-    extends RequestIdAwareLogging {
+class UnboundidLdapConnectionPool private (
+    connectionPool: LDAPConnectionPool,
+    bindRequestUser: BindRequestUser,
+    callPermits: Semaphore[Task]
+) extends RequestIdAwareLogging {
 
   import UnboundidLdapConnectionPool.*
 
-  def asyncBind(request: BindRequest): Task[BindResult] = onBlockingScheduler {
+  def asyncBind(request: BindRequest): Task[BindResult] = blockingSdkCall {
     bindRequestUser match {
       case BindRequestUser.Anonymous        => Task(connectionPool.bind(request))
       case BindRequestUser.CustomUser(_, _) => Task(connectionPool.bindAndRevertAuthentication(request))
@@ -57,7 +61,7 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindReques
   private def processSearch(
       requestCreator: AsyncSearchResultListener => LDAPRequest,
       timeout: PositiveFiniteDuration
-  ): Task[SearchOutcome] = onBlockingScheduler {
+  ): Task[SearchOutcome] = blockingSdkCall {
     val searchResultListener = new UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
@@ -79,11 +83,21 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindReques
   }
 
   // The UnboundID SDK calls block the thread until the LDAP server answers or the timeout expires.
-  private def onBlockingScheduler[A](call: Task[A]): Task[A] =
-    doPrivileged(call)(RorSchedulers.blockingScheduler)
+  // The blocking scheduler has no thread limit, and the pool opens a new connection when all are in use.
+  // The permits keep the parallel calls at the pool size, so a slow LDAP server does not get more connections.
+  private def blockingSdkCall[A](call: Task[A]): Task[A] =
+    callPermits.withPermit(doPrivileged(call)(RorSchedulers.blockingScheduler))
 }
 
 object UnboundidLdapConnectionPool {
+
+  def create(
+      connectionPool: LDAPConnectionPool,
+      bindRequestUser: BindRequestUser
+  ): Task[UnboundidLdapConnectionPool] = {
+    Semaphore[Task](connectionPool.getMaximumAvailableConnections.toLong)
+      .map(new UnboundidLdapConnectionPool(connectionPool, bindRequestUser, _))
+  }
 
   private sealed trait SearchOutcome
 

@@ -24,7 +24,7 @@ import com.unboundid.ldap.listener.interceptor.{
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
 import com.unboundid.ldap.sdk.*
 import eu.timepit.refined.api.Refined
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.CanBlock
@@ -36,7 +36,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 
 import java.util.concurrent.{CountDownLatch, Semaphore, TimeUnit}
 import scala.concurrent.duration.*
-import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -63,7 +62,7 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
     }
     "not block the threads of the calling scheduler while the LDAP server does not answer" in {
       withSingleThreadScheduler { callerScheduler =>
-        withPool() { pool =>
+        withPool(poolSize = 2) { pool =>
           val (search, bind) = requestHold.whileHeld {
             val calls = (startSearch(pool, callerScheduler), startBind(pool, callerScheduler))
             requestHold.awaitHeldRequests(2)
@@ -74,6 +73,24 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
             entries.map(_.getDN) should be(List(baseDn))
           }
           resultOf(bind).getResultCode should be(ResultCode.SUCCESS)
+        }
+      }
+    }
+    "run at most as many LDAP calls in parallel as the pool size" in {
+      withSingleThreadScheduler { callerScheduler =>
+        withPool(poolSize = 2) { pool =>
+          val (searches, binds) = requestHold.whileHeld {
+            val calls =
+              (List.fill(3)(startSearch(pool, callerScheduler)), List.fill(2)(startBind(pool, callerScheduler)))
+            requestHold.awaitHeldRequests(2)
+            requestHold.countNewHeldRequests(during = 1 second) should be(0)
+            runsOtherTask(callerScheduler) should be(true)
+            calls
+          }
+          searches.map(resultOf).foreach { result =>
+            inside(result) { case Right(entries) => entries.map(_.getDN) should be(List(baseDn)) }
+          }
+          binds.map(resultOf).foreach(_.getResultCode should be(ResultCode.SUCCESS))
         }
       }
     }
@@ -101,12 +118,14 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
     super.afterAll()
   }
 
-  private def withPool(healthCheck: LDAPConnectionPoolHealthCheck = new LDAPConnectionPoolHealthCheck)(
-      test: UnboundidLdapConnectionPool => Unit
-  ): Unit = {
-    val connectionPool = new LDAPConnectionPool(new LDAPConnection("localhost", server.getListenPort), 1)
+  private def withPool(
+      healthCheck: LDAPConnectionPoolHealthCheck = new LDAPConnectionPoolHealthCheck,
+      poolSize: Int = 1
+  )(test: UnboundidLdapConnectionPool => Unit): Unit = {
+    val connectionPool = new LDAPConnectionPool(new LDAPConnection("localhost", server.getListenPort), 1, poolSize)
     connectionPool.setHealthCheck(healthCheck)
-    try test(new UnboundidLdapConnectionPool(connectionPool, BindRequestUser.Anonymous))
+    val pool = UnboundidLdapConnectionPool.create(connectionPool, BindRequestUser.Anonymous).runSyncUnsafe()
+    try test(pool)
     finally connectionPool.close()
   }
 
@@ -128,18 +147,22 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
 
   // The search timeout is longer than the wait in `awaitHeldRequests`, so a held search does not time out first.
   private def startSearch(pool: UnboundidLdapConnectionPool, scheduler: Scheduler) = {
-    searchTask(pool, 30 seconds).executeAsync.runToFuture(scheduler)
+    startOn(scheduler, searchTask(pool, 30 seconds))
   }
 
   private def startBind(pool: UnboundidLdapConnectionPool, scheduler: Scheduler) = {
-    pool.asyncBind(new SimpleBindRequest()).executeAsync.runToFuture(scheduler)
+    startOn(scheduler, pool.asyncBind(new SimpleBindRequest()))
+  }
+
+  private def startOn[A](scheduler: Scheduler, call: Task[A]): Fiber[A] = {
+    call.start.runSyncUnsafe(5 seconds)(scheduler, CanBlock.permit)
   }
 
   private def runsOtherTask(scheduler: Scheduler): Boolean = {
     Try(Task.unit.executeAsync.runSyncUnsafe(5 seconds)(scheduler, CanBlock.permit)).isSuccess
   }
 
-  private def resultOf[A](call: Future[A]): A = Await.result(call, 30 seconds)
+  private def resultOf[A](call: Fiber[A]): A = call.join.runSyncUnsafe(30 seconds)
 
   // The pool calls the check after it finds the connection open, and returns the connection when the check passes.
   // The server closes the connection at that moment, so the SDK cannot register or send the search request.
@@ -163,6 +186,7 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
     @volatile private var release = Option.empty[CountDownLatch]
 
     def whileHeld[A](block: => A): A = {
+      heldRequests.drainPermits()
       val latch = new CountDownLatch(1)
       release = Some(latch)
       try block
@@ -174,6 +198,12 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
 
     def awaitHeldRequests(count: Int): Unit = {
       if (!heldRequests.tryAcquire(count, 10, TimeUnit.SECONDS)) fail(s"The server does not hold $count requests")
+    }
+
+    // Waits for `during`, then returns the number of held requests that `awaitHeldRequests` did not count.
+    def countNewHeldRequests(during: FiniteDuration): Int = {
+      Thread.sleep(during.toMillis)
+      heldRequests.availablePermits()
     }
 
     override def processSearchRequest(request: InMemoryInterceptedSearchRequest): Unit = hold()
