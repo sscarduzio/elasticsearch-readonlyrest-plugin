@@ -32,7 +32,7 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindReques
 
   import UnboundidLdapConnectionPool.*
 
-  def asyncBind(request: BindRequest): Task[BindResult] = onLdapScheduler {
+  def asyncBind(request: BindRequest): Task[BindResult] = onBlockingScheduler {
     bindRequestUser match {
       case BindRequestUser.Anonymous        => Task(connectionPool.bind(request))
       case BindRequestUser.CustomUser(_, _) => Task(connectionPool.bindAndRevertAuthentication(request))
@@ -57,7 +57,7 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindReques
   private def processSearch(
       requestCreator: AsyncSearchResultListener => LDAPRequest,
       timeout: PositiveFiniteDuration
-  ): Task[SearchOutcome] = onLdapScheduler {
+  ): Task[SearchOutcome] = onBlockingScheduler {
     val searchResultListener = new UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
@@ -79,8 +79,8 @@ class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool, bindReques
   }
 
   // The UnboundID SDK calls block the thread until the LDAP server answers or the timeout expires.
-  private def onLdapScheduler[A](call: Task[A]): Task[A] =
-    doPrivileged(call)(RorSchedulers.ldapScheduler)
+  private def onBlockingScheduler[A](call: Task[A]): Task[A] =
+    doPrivileged(call)(RorSchedulers.blockingScheduler)
 }
 
 object UnboundidLdapConnectionPool {
