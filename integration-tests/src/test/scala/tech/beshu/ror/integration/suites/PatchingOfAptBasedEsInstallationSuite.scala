@@ -358,10 +358,7 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
 
     def start(): Task[Unit] = Task.delay(esContainer.start())
 
-    def stop(): Task[Unit] = for {
-      _ <- Task.delay(esContainer.stop())
-      _ <- Task.delay(esContainer.removeImage())
-    } yield ()
+    def stop(): Task[Unit] = Task.delay(esContainer.stop())
 
     def getLogs: String = dockerLogsCollector.getLogs
 

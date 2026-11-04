@@ -60,7 +60,6 @@ class EsClusterContainer private[containers] (
 
   override protected def stopActions: List[() => Unit] =
     clusterNodes.map(node => () => node.stop()) ++
-      clusterNodes.map(node => () => node.removeImage()) ++
       aStartedDependencies.values.map(dependency => () => dependency.container.stop())
 
   def resolvedRorSettings(config: String): String = {
