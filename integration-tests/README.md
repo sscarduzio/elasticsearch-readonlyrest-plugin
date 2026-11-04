@@ -56,3 +56,4 @@ The variables and properties below are optional.
 | `-PesVersion` | module's newest | Exact ES version override. |
 | `-PshardCount` / `-PshardIndex` | `1` / — | Suite sharding: a disjoint partition of the suites across K independent invocations. `shardedTest -PshardCount=K` spawns the K children. |
 | `-PitTestHeap` | `512m` | Test-worker JVM heap. |
+| `-PkeepItDockerImages` | unset | Keep the Docker images that the suites build. Without it, `test` and `shardedTest` remove them after the run (CI does not). Set it when another run uses the same Docker daemon at the same time: the removal breaks the image builds of that run. |
