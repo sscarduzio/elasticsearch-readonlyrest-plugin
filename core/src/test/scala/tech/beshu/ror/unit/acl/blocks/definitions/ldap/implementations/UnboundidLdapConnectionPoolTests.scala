@@ -64,21 +64,23 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         }
       }
     }
-    "not block the threads of the calling scheduler while the LDAP server does not answer" in {
-      withSingleThreadScheduler { callerScheduler =>
-        withPool(poolSize = 2) { pool =>
-          val (search, bind) = requestHold.whileHeld {
+    "not block the threads of the calling scheduler while the LDAP server does not answer" when {
+      def testWith(bindRequestUser: BindRequestUser): Unit = withSingleThreadScheduler { callerScheduler =>
+        withPool(poolSize = 2, bindRequestUser = bindRequestUser) { pool =>
+          val (searchCall, bindCall) = requestHold.whileHeld {
             val calls = (startSearch(pool, callerScheduler), startBind(pool, callerScheduler))
             requestHold.awaitHeldRequests(2)
             runsOtherTask(callerScheduler) should be(true)
             calls
           }
-          inside(resultOf(search)) { case Right(entries) =>
+          inside(resultOf(searchCall)) { case Right(entries) =>
             entries.map(_.getDN) should be(List(baseDn))
           }
-          resultOf(bind).getResultCode should be(ResultCode.SUCCESS)
+          resultOf(bindCall).getResultCode should be(ResultCode.SUCCESS)
         }
       }
+      "the pool binds anonymously" in testWith(BindRequestUser.Anonymous)
+      "the pool binds with a service account" in testWith(serviceAccount)
     }
     "run at most as many LDAP calls in parallel as the pool size" in {
       withSingleThreadScheduler { callerScheduler =>
