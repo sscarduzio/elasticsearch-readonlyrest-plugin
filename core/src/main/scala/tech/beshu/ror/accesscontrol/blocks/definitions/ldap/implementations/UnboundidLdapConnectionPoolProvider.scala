@@ -269,12 +269,7 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
     val connectionTimeout = connectionConfig.connectionTimeout.value.plus(3 seconds)
     connectionWithin(createLdapServerSet(connectionConfig), connectionTimeout).use {
       case Right(connection) =>
-        retryBackoffEither(
-          source = testBinding(connection, connectionConfig),
-          maxRetries = 2,
-          firstDelay = 500 millis,
-          backOffScaler = 1
-        )
+        retryBackoffEither(source = testBinding(connection, connectionConfig), policy = bindingTestRetryPolicy)
       case Left(ex) =>
         Task {
           noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
@@ -282,6 +277,12 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
         }
     }
   }
+
+  private lazy val bindingTestRetryPolicy = RetryPolicy(
+    delays = RetryDelays(initialDelay = 500 millis, maxDelay = 500 millis, backOffScaler = 1),
+    maxRetries = 2,
+    isRetryableException = TemporaryBindFailure.matches
+  )
 
   // Each `use` connects to the server set, and the connection is closed after the use. The use fails with a
   // `TimeoutException` when no connection comes within `timeout`. A connection that comes later is closed then.
@@ -394,6 +395,20 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
   private def onBlockingScheduler[A](call: Task[A]): Task[A] =
     doPrivileged(call)(RorSchedulers.blockingScheduler)
 
+  private object TemporaryBindFailure {
+
+    // Only these results can change on a later try. A rejected bind, for example for a wrong password, gets no retry,
+    // because each failed bind can count toward a lockout of the service account.
+    private val resultCodes: Set[ResultCode] =
+      Set(ResultCode.BUSY, ResultCode.UNAVAILABLE, ResultCode.SERVER_DOWN, ResultCode.TIMEOUT, ResultCode.CONNECT_ERROR)
+
+    def matches(ex: Exception): Boolean = ex match {
+      case ldapException: LDAPException => resultCodes.contains(ldapException.getResultCode)
+      case _                            => false
+    }
+
+  }
+
   sealed trait ConnectionError
 
   object ConnectionError {
@@ -405,7 +420,7 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
     final case class UnexpectedConnectionError(ldap: LdapService.Name, cause: Throwable) extends ConnectionError
   }
 
-  case object ClosedLdapPool extends Exception
+  private case object ClosedLdapPool extends Exception
 
   private sealed trait HostnameResolutionResult
 

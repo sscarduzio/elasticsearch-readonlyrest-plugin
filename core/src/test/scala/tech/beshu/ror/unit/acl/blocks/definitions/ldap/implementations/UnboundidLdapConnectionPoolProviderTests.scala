@@ -91,6 +91,18 @@ class UnboundidLdapConnectionPoolProviderTests
             .runSyncUnsafe(30 seconds)
         }
         result should matchPattern { case Right(_) => }
+        bindFailures.rejectedBinds should be(1)
+      }
+    }
+    "not retry a bind of the binding test that the server rejects" in {
+      withPoolProvider { poolProvider =>
+        val result = bindFailures.whileFailing(3, ResultCode.INVALID_CREDENTIALS) {
+          UnboundidLdapConnectionPoolProvider
+            .connectWithOptionalBindingTest(poolProvider, connectionConfig)
+            .runSyncUnsafe(30 seconds)
+        }
+        result should matchPattern { case Left(_) => }
+        bindFailures.rejectedBinds should be(1)
       }
     }
     "give the use an open connection and close it after the use" in {
@@ -189,16 +201,24 @@ class UnboundidLdapConnectionPoolProviderTests
   // Inside `whileFailing`, the server rejects the given number of simple binds.
   private class BindFailures extends InMemoryOperationInterceptor {
     private val remaining = new AtomicInteger(0)
+    private val rejected = new AtomicInteger(0)
+    @volatile private var resultCode = ResultCode.UNAVAILABLE
 
-    def whileFailing[A](count: Int)(block: => A): A = {
+    def whileFailing[A](count: Int, result: ResultCode = ResultCode.UNAVAILABLE)(block: => A): A = {
+      resultCode = result
+      rejected.set(0)
       remaining.set(count)
       try block
       finally remaining.set(0)
     }
 
+    // The number of binds that the server rejected in the last `whileFailing`.
+    def rejectedBinds: Int = rejected.get()
+
     override def processSimpleBindRequest(request: InMemoryInterceptedSimpleBindRequest): Unit = {
       if (remaining.getAndUpdate(left => math.max(left - 1, 0)) > 0) {
-        throw new LDAPException(ResultCode.UNAVAILABLE, "The test rejects this bind")
+        rejected.incrementAndGet()
+        throw new LDAPException(resultCode, "The test rejects this bind")
       }
     }
 
