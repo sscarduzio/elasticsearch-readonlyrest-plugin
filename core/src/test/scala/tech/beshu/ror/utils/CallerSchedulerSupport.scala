@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
+package tech.beshu.ror.utils
 
 import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
@@ -25,10 +25,11 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
 
+// Helpers for tests that check that code does not block the threads of the scheduler that calls it.
 trait CallerSchedulerSupport {
 
   protected def withSingleThreadScheduler(test: Scheduler => Unit): Unit = {
-    val scheduler = Scheduler.singleThread("ldap-test-caller")
+    val scheduler = Scheduler.singleThread("test-caller")
     try test(scheduler)
     finally scheduler.shutdown()
   }

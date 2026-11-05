@@ -16,7 +16,11 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
-import com.unboundid.ldap.listener.interceptor.{InMemoryInterceptedSimpleBindRequest, InMemoryOperationInterceptor}
+import com.unboundid.ldap.listener.interceptor.{
+  InMemoryInterceptedSearchRequest,
+  InMemoryInterceptedSimpleBindRequest,
+  InMemoryOperationInterceptor
+}
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
 import com.unboundid.ldap.sdk.*
 import eu.timepit.refined.api.Refined
@@ -30,7 +34,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPool
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
+import tech.beshu.ror.utils.CallerSchedulerSupport
 
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch, TimeUnit}
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
@@ -112,6 +118,24 @@ class UnboundidLdapConnectionPoolTests
         }
       }
     }
+    "not start the LDAP call of a request that is cancelled while it waits for a permit" in {
+      withSingleThreadScheduler { callerScheduler =>
+        withPool() { pool =>
+          val searches = searchCount.countedDuring {
+            val first = requestHold.whileHeld {
+              val first = startSearch(pool, callerScheduler)
+              requestHold.awaitHeldRequests(1)
+              startSearch(pool, callerScheduler).cancel.runSyncUnsafe(5 seconds)
+              first
+            }
+            inside(resultOf(first)) { case Right(entries) => entries.map(_.getDN) should be(List(baseDn)) }
+            // The first search has given its permit back. A cancelled search that starts gets to the server in this time.
+            Thread.sleep(1000)
+          }
+          searches should be(1)
+        }
+      }
+    }
     "authenticate the pool connection as the service account again after a user bind" in {
       withPool(bindRequestUser = serviceAccount) { pool =>
         val bindDns = bindDnLog.recordedDuring {
@@ -145,12 +169,14 @@ class UnboundidLdapConnectionPoolTests
 
   private val requestHold = new RequestHold
   private val bindDnLog = new BindDnLog
+  private val searchCount = new SearchCount
 
   private val server = {
     val config = new InMemoryDirectoryServerConfig(baseDn)
     config.setListenerConfigs(InMemoryListenerConfig.createLDAPConfig("ldap", 0))
     config.addInMemoryOperationInterceptor(requestHold)
     config.addInMemoryOperationInterceptor(bindDnLog)
+    config.addInMemoryOperationInterceptor(searchCount)
     new InMemoryDirectoryServer(config)
   }
 
@@ -279,6 +305,22 @@ class UnboundidLdapConnectionPoolTests
 
     override def processSimpleBindRequest(request: InMemoryInterceptedSimpleBindRequest): Unit = {
       bindDns.add(request.getRequest.getBindDN)
+    }
+
+  }
+
+  // `countedDuring` returns the number of searches that the server gets while its block runs.
+  private class SearchCount extends InMemoryOperationInterceptor {
+    private val searches = new AtomicInteger(0)
+
+    def countedDuring(block: => Unit): Int = {
+      searches.set(0)
+      block
+      searches.get()
+    }
+
+    override def processSearchRequest(request: InMemoryInterceptedSearchRequest): Unit = {
+      searches.incrementAndGet()
     }
 
   }

@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.jdk.CollectionConverters.*
 
 class UnboundidLdapConnectionPool private (
@@ -86,8 +86,23 @@ class UnboundidLdapConnectionPool private (
   // Runs a blocking SDK call on the blocking scheduler, with no more parallel calls than the pool size.
   // Without the limit, a slow LDAP server gets a new connection for each extra call.
   // A cancelled call keeps its permit until the SDK call ends, because cancellation cannot stop a blocked thread.
-  private def blockingSdkCall[A](call: Task[A]): Task[A] =
-    callPermits.withPermit(onBlockingScheduler(call)).uncancelable
+  // A call that is cancelled while it waits for a permit does not start the SDK call.
+  private def blockingSdkCall[A](call: Task[A]): Task[A] = Task.defer {
+    val cancelled = new AtomicBoolean(false)
+    callPermits
+      .withPermit(Task.defer {
+        if (cancelled.get()) Task.now(Option.empty[A])
+        else onBlockingScheduler(call).map(Some(_))
+      })
+      .uncancelable
+      .doOnCancel(Task(cancelled.set(true)))
+      .flatMap {
+        case Some(result) => Task.now(result)
+        // Only a cancelled call skips the SDK call, so nobody waits for this result.
+        // An error here would be reported as an uncaught failure.
+        case None => Task.never
+      }
+  }
 
   private def onBlockingScheduler[A](call: Task[A]): Task[A] =
     doPrivileged(call)(RorSchedulers.blockingScheduler)

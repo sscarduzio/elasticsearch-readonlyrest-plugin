@@ -38,6 +38,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{
   UnboundidLdapConnectionPool,
   UnboundidLdapConnectionPoolProvider
 }
+import tech.beshu.ror.utils.CallerSchedulerSupport
 import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
