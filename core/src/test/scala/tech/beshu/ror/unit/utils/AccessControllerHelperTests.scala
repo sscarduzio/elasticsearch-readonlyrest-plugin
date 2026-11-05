@@ -21,6 +21,7 @@ import monix.execution.Scheduler.Implicits.global
 import monix.execution.{ExecutionModel, Scheduler, UncaughtExceptionReporter}
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.utils.AccessControllerFrames.runsInsideDoPrivileged
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
@@ -61,9 +62,7 @@ class AccessControllerHelperTests extends AnyWordSpec {
     val privileged = new AtomicBoolean(false)
     val done = new CountDownLatch(1)
     scheduler.execute { () =>
-      privileged.set(Thread.currentThread().getStackTrace.exists { frame =>
-        frame.getClassName == "java.security.AccessController" && frame.getMethodName == "doPrivileged"
-      })
+      privileged.set(runsInsideDoPrivileged())
       done.countDown()
     }
     if (!done.await(5, TimeUnit.SECONDS)) fail("The scheduler does not run the task")

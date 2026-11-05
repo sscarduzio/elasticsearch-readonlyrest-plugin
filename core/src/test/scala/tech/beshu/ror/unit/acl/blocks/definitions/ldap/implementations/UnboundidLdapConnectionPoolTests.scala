@@ -34,9 +34,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPool
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
+import tech.beshu.ror.utils.AccessControllerFrames.runsInsideDoPrivileged
 import tech.beshu.ror.utils.CallerSchedulerSupport
 
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch, TimeUnit}
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
@@ -54,6 +55,21 @@ class UnboundidLdapConnectionPoolTests
         inside(search(pool)) { case Right(entries) =>
           entries.map(_.getDN) should be(List(baseDn))
         }
+      }
+    }
+    "run the search with privileges" in {
+      withPool() { pool =>
+        val privileged = new AtomicBoolean(false)
+        pool
+          .process(
+            listener => {
+              privileged.set(runsInsideDoPrivileged())
+              new SearchRequest(listener, baseDn, SearchScope.BASE, "(objectClass=*)")
+            },
+            Refined.unsafeApply(5 seconds)
+          )
+          .runSyncUnsafe(30 seconds)
+        privileged.get() should be(true)
       }
     }
     "return the error result of a search that the connection cannot send" in {
