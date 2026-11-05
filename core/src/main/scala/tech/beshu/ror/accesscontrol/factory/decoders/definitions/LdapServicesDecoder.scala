@@ -345,19 +345,18 @@ object LdapServicesDecoder extends RequestIdAwareLogging {
       decodingFailureFrom(DefinitionsLevelCreationError(Message(message)))
 
     error match
-      case CannotConnectError(ldap, connectionMethod) =>
-        connectionErrorFrom(
-          connectionMethod match {
-            case SingleServer(host) =>
-              s"There was a problem with '${ldap.show}' LDAP connection to: ${host.show}"
-            case SeveralServers(hosts, _) =>
-              s"There was a problem with '${ldap.show}' LDAP connection to: ${hosts.toList.show}"
-            case ConnectionMethod.ServerDiscovery(recordName, providerUrl, _, _) =>
-              s"There was a problem with '${ldap.show}' LDAP connection in discovery mode. " +
-                s"Connection details: recordName=${recordName.getOrElse("default").show}, " +
-                s"providerUrl=${providerUrl.getOrElse("default")}"
-          }
-        )
+      case CannotConnectError(ldap, connectionMethod, cause) =>
+        val problem = connectionMethod match {
+          case SingleServer(host) =>
+            s"There was a problem with '${ldap.show}' LDAP connection to: ${host.show}"
+          case SeveralServers(hosts, _) =>
+            s"There was a problem with '${ldap.show}' LDAP connection to: ${hosts.toList.show}"
+          case ConnectionMethod.ServerDiscovery(recordName, providerUrl, _, _) =>
+            s"There was a problem with '${ldap.show}' LDAP connection in discovery mode. " +
+              s"Connection details: recordName=${recordName.getOrElse("default").show}, " +
+              s"providerUrl=${providerUrl.getOrElse("default")}"
+        }
+        connectionErrorFrom(s"$problem. Cause: ${cause.show}")
       case HostResolvingError(ldap, hosts) =>
         connectionErrorFrom(s"There was a problem with resolving '${ldap.show}' LDAP hosts: ${hosts.toList.show}")
       case BindingTestError(ldap) =>
@@ -520,8 +519,10 @@ object LdapServicesDecoder extends RequestIdAwareLogging {
         )
         requestTimeout <- c.downFieldsAs[Option[PositiveFiniteDuration]]("request_timeout_in_sec", "request_timeout")
         trustAllCertsOps <- c.downFieldAs[Option[Boolean]]("ssl_trust_all_certs")
+        sslHostnameVerification <- c.downFieldAs[Option[Boolean]]("ssl_hostname_verification")
         ignoreLdapConnectivityProblems <- c.downFieldAs[Option[Boolean]]("ignore_ldap_connectivity_problems")
         bindRequestUser <- c.as[BindRequestUser]
+        trustAllCerts = trustAllCertsOps.getOrElse(false)
       } yield LdapConnectionConfig(
         poolName = serviceName,
         connectionMethod = connectionMethod,
@@ -531,7 +532,8 @@ object LdapServicesDecoder extends RequestIdAwareLogging {
         connectionMaxAge = connectionMaxAge.getOrElse(positiveFiniteDuration(10, TimeUnit.MINUTES)),
         connectionTimeout = connectionTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
         requestTimeout = requestTimeout.getOrElse(positiveFiniteDuration(10, TimeUnit.SECONDS)),
-        trustAllCerts = trustAllCertsOps.getOrElse(false),
+        trustAllCerts = trustAllCerts,
+        sslHostnameVerification = sslHostnameVerification.getOrElse(!trustAllCerts),
         bindRequestUser = bindRequestUser,
         ignoreLdapConnectivityProblems = ignoreLdapConnectivityProblems.getOrElse(false)
       )

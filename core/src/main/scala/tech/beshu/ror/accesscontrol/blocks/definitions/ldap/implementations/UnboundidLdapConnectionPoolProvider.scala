@@ -21,7 +21,7 @@ import cats.data.{EitherT, NonEmptyList}
 import cats.effect.Resource
 import cats.implicits.*
 import com.unboundid.ldap.sdk.*
-import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
+import com.unboundid.util.ssl.{HostNameSSLSocketVerifier, SSLUtil, TrustAllTrustManager}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.UrlWithAuthority
@@ -50,6 +50,7 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.concurrent.TimeUnit
+import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
@@ -118,6 +119,7 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
       connectionTimeout: PositiveFiniteDuration,
       requestTimeout: PositiveFiniteDuration,
       trustAllCerts: Boolean,
+      sslHostnameVerification: Boolean,
       bindRequestUser: BindRequestUser,
       ignoreLdapConnectivityProblems: Boolean
   )
@@ -284,11 +286,25 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
           .left
           .map { ex =>
             noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
-            CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod)
+            CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod, rootCauseMessage(ex))
           }
       }.timeout(connectionTimeout)
     }
   }
+
+  // The SDK message of a failed connection contains the full text of all the nested exceptions.
+  // The message of the deepest cause is short and tells the reason, for example a failed host name check.
+  // The depth limit stops the search when the causes make a cycle.
+  private def rootCauseMessage(ex: Throwable): String = {
+    @tailrec
+    def rootCause(throwable: Throwable, depth: Int): Throwable = Option(throwable.getCause) match {
+      case Some(cause) if depth < maxCauseDepth => rootCause(cause, depth + 1)
+      case _                                    => throwable
+    }
+    Option(rootCause(ex, depth = 0).getMessage).getOrElse(ex.getMessage)
+  }
+
+  private val maxCauseDepth = 20
 
   private def createLdapServerSet(connectionConfig: LdapConnectionConfig) = {
     val options = ldapOptions(connectionConfig)
@@ -299,6 +315,10 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
     val options = new LDAPConnectionOptions()
     options.setConnectTimeoutMillis(connectionConfig.connectionTimeout.value.toMillis.toInt)
     options.setResponseTimeoutMillis(connectionConfig.requestTimeout.value.toMillis.toInt)
+    // When the host name check is off, the SDK default verifier applies. A JVM property of the SDK can change it.
+    if (connectionConfig.sslHostnameVerification) {
+      options.setSSLSocketVerifier(new HostNameSSLSocketVerifier(true))
+    }
     options
   }
 
@@ -377,7 +397,7 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
   sealed trait ConnectionError
 
   object ConnectionError {
-    final case class CannotConnectError(ldap: LdapService.Name, connectionMethod: ConnectionMethod)
+    final case class CannotConnectError(ldap: LdapService.Name, connectionMethod: ConnectionMethod, cause: String)
         extends ConnectionError
     final case class HostResolvingError(ldap: LdapService.Name, hosts: NonEmptyList[LdapHost]) extends ConnectionError
     final case class BindingTestError(ldap: LdapService.Name) extends ConnectionError
