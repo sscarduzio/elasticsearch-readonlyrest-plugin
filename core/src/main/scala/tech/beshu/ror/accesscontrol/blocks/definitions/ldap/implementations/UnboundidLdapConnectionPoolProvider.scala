@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 import cats.Order
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.Resource
-import cats.implicits.*
 import com.unboundid.ldap.sdk.*
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import eu.timepit.refined.api.Refined
@@ -44,6 +43,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.{Address, PlainTextSecret}
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.boot.RorSchedulers
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.RefinedUtils.*
@@ -269,7 +269,7 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
     val connectionTimeout = connectionConfig.connectionTimeout.value.plus(3 seconds)
     connectionWithin(createLdapServerSet(connectionConfig), connectionTimeout).use {
       case Right(connection) =>
-        retryBackoffEither(source = testBinding(connection, connectionConfig), policy = bindingTestRetryPolicy)
+        testBinding(connection, connectionConfig)
       case Left(ex) =>
         Task {
           noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
@@ -373,6 +373,24 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
   }
 
   private def testBinding(
+      connection: LDAPConnection,
+      connectionConfig: LdapConnectionConfig
+  ): Task[Either[ConnectionError, Unit]] = {
+    retryBackoffEither(source = bindOnce(connection, connectionConfig), policy = bindingTestRetryPolicy)
+      .onErrorRecoverWith {
+        case ex: LDAPBindException if !TemporaryBindFailure.matches(ex) =>
+          Task {
+            noRequestIdLogger.warnEx(
+              s"The LDAP server rejected the test bind of the '${connectionConfig.poolName.show}' LDAP connector " +
+                s"(code=${ex.getResultCode.intValue().show})",
+              ex
+            )
+            Left(BindingTestError(connectionConfig.poolName))
+          }
+      }
+  }
+
+  private def bindOnce(
       connection: LDAPConnection,
       connectionConfig: LdapConnectionConfig
   ): Task[Either[ConnectionError, Unit]] = {

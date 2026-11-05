@@ -28,6 +28,10 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{
+  BindingTestError,
+  UnexpectedConnectionError
+}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{
   BindRequestUser,
@@ -94,15 +98,26 @@ class UnboundidLdapConnectionPoolProviderTests
         bindFailures.rejectedBinds should be(1)
       }
     }
-    "not retry a bind of the binding test that the server rejects" in {
+    "report a bind of the binding test that the server rejects as a binding test error, with no retry" in {
       withPoolProvider { poolProvider =>
         val result = bindFailures.whileFailing(3, ResultCode.INVALID_CREDENTIALS) {
           UnboundidLdapConnectionPoolProvider
             .connectWithOptionalBindingTest(poolProvider, connectionConfig)
             .runSyncUnsafe(30 seconds)
         }
-        result should matchPattern { case Left(_) => }
+        result should be(Left(BindingTestError(connectionConfig.poolName)))
         bindFailures.rejectedBinds should be(1)
+      }
+    }
+    "report a temporary bind failure that stays after all retries as an unexpected connection error" in {
+      withPoolProvider { poolProvider =>
+        val result = bindFailures.whileFailing(3, ResultCode.UNAVAILABLE) {
+          UnboundidLdapConnectionPoolProvider
+            .connectWithOptionalBindingTest(poolProvider, connectionConfig)
+            .runSyncUnsafe(30 seconds)
+        }
+        result should matchPattern { case Left(UnexpectedConnectionError(_, _)) => }
+        bindFailures.rejectedBinds should be(3)
       }
     }
     "give the use an open connection and close it after the use" in {
