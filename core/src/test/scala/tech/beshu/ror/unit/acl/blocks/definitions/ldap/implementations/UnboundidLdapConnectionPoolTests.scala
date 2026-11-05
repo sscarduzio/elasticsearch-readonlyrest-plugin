@@ -298,13 +298,9 @@ class UnboundidLdapConnectionPoolTests
 
     def release(): Unit = released.countDown()
 
-    // The SDK close can interrupt the threads of the pool, so the wait ignores interrupts.
     override def ensureConnectionValidForContinuedUse(connection: LDAPConnection): Unit = {
       started.countDown()
-      while (released.getCount > 0) {
-        try released.await()
-        catch { case _: InterruptedException => () }
-      }
+      released.await()
     }
 
   }
