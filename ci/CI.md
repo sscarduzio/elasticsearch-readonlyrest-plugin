@@ -66,7 +66,7 @@ that stops the plugin reading `/usr/share/elasticsearch` to verify its own patch
 | `toolchains_verify` | sanity-checks the toolchains image | always (stops the run early when the image is broken) |
 | `discover` | decides which tests this run covers, and derives every matrix: the ES majors to build, and the ES modules each test matrix covers; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
-| `unit_tests_linux` | the unit suites: core, audit, build-base, and the `ror-tools` CLI | pushes + PRs |
+| `unit_tests_linux` | the unit suites: core, audit, build-base, the `ror-tools` CLI, and the tests in `.github/scripts/tests` | pushes + PRs |
 | `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
 | `it_linux` | integration tests, one job per selected ES module | module selection follows the [test matrix policy](#test-matrix-policy) |
 | `it_windows` | integration tests on native-Windows ES | module selection follows the [test matrix policy](#test-matrix-policy) |
@@ -215,6 +215,7 @@ Two orchestration rules worth knowing before editing conditions:
   | `is_automatic_run` | any run that is not a `workflow_dispatch` | `required_checks`, `optional_checks` |
   | `manual_action` | — the chosen action, `''` on an automatic run | `discover`, `unit_tests_windows` |
   | `unique_build_id` | — `<run id>-<run attempt>`, the tag of every dev image of this run | the e2e jobs |
+  | `base_branch` | — the branch that the code under test is based on, see `.github/scripts/base-branch-of-pull-request.sh` | the e2e jobs |
 
   Every job `if:` reads one of these and compares it against `'true'`. `manual_action` is the
   exception: it holds an action name, so its readers compare it against one. `discover` picks a
@@ -458,7 +459,7 @@ attempt but does not re-run `ci_setup`, and the two sides would then name differ
 
 Branch resolution — this repo passes its branch names, and each other repo picks its own branch for
 them. The e2e repo gets the branch of this PR and its base branch. The ROR KBN repo gets the branch
-of this PR.
+of this PR. The base branch is the branch that the merge commit under test is built on.
 
 Module selection follows the [test matrix policy](#test-matrix-policy). Job names are built from
 the module, not the ES version, so branch-protection checks survive a version bump. The same
