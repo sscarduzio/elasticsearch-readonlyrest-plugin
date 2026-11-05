@@ -38,6 +38,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
   ConnectionMethod,
   LdapHost
 }
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidOps.connectionWithin
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{
   UnboundidLdapConnectionPool,
   UnboundidLdapConnectionPoolProvider
@@ -127,23 +128,26 @@ class UnboundidLdapConnectionPoolProviderTests
         bindFailures.rejectedBinds should be(3)
       }
     }
-    "give the use an open connection and close it after the use" in {
-      val serverSet = new DelayedServerSet
-      serverSet.release()
-      val connectedInUse = UnboundidLdapConnectionPoolProvider
-        .connectionWithin(serverSet, 5 seconds)
-        .use(result => Task(result.map(_.isConnected)))
-        .runSyncUnsafe(10 seconds)
-      connectedInUse should be(Right(true))
-      eventually {
-        serverSet.createdConnection.map(_.isConnected) should be(Some(false))
+    "give the use an open connection and close it before the use ends" in {
+      // The caller scheduler has one thread. A close that the use does not wait for can run only after the check.
+      withSingleThreadScheduler { callerScheduler =>
+        val serverSet = new DelayedServerSet
+        serverSet.release()
+        val connectedInAndAfterUse = startOn(
+          callerScheduler,
+          serverSet
+            .connectionWithin(5 seconds)
+            .use(result => Task(result.map(_.isConnected)))
+            .map(inUse => (inUse, serverSet.createdConnection.map(_.isConnected)))
+        )
+        resultOf(connectedInAndAfterUse) should be((Right(true), Some(false)))
       }
     }
     "close a connection that comes after the connection timeout" in {
       val serverSet = new DelayedServerSet
       val result = Try {
-        UnboundidLdapConnectionPoolProvider
-          .connectionWithin(serverSet, 100 millis)
+        serverSet
+          .connectionWithin(100 millis)
           .use(_ => Task.unit)
           .runSyncUnsafe(10 seconds)
       }
@@ -156,8 +160,8 @@ class UnboundidLdapConnectionPoolProviderTests
     "connect to the server set with privileges" in {
       val serverSet = new DelayedServerSet
       serverSet.release()
-      UnboundidLdapConnectionPoolProvider
-        .connectionWithin(serverSet, 5 seconds)
+      serverSet
+        .connectionWithin(5 seconds)
         .use(_ => Task.unit)
         .runSyncUnsafe(10 seconds)
       serverSet.calledWithPrivileges should be(true)
@@ -167,8 +171,8 @@ class UnboundidLdapConnectionPoolProviderTests
         val serverSet = new DelayedServerSet
         val connecting = startOn(
           callerScheduler,
-          UnboundidLdapConnectionPoolProvider
-            .connectionWithin(serverSet, 5 seconds)
+          serverSet
+            .connectionWithin(5 seconds)
             .use(result => Task.now(result.isRight))
         )
         try {
