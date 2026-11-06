@@ -16,20 +16,38 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
+import com.unboundid.ldap.listener.interceptor.{
+  InMemoryInterceptedSearchRequest,
+  InMemoryInterceptedSimpleBindRequest,
+  InMemoryOperationInterceptor
+}
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
 import com.unboundid.ldap.sdk.*
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.types.string.NonEmptyString
+import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPool
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
+import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
+import tech.beshu.ror.utils.AccessControllerFrames.runsInsideDoPrivileged
+import tech.beshu.ror.utils.CallerSchedulerSupport
 
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch, TimeUnit}
 import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
-class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAll with Inside {
+class UnboundidLdapConnectionPoolTests
+    extends AnyWordSpec
+    with BeforeAndAfterAll
+    with Inside
+    with CallerSchedulerSupport {
 
   "An UnboundidLdapConnectionPool" should {
     "return the entries of a search" in {
@@ -37,6 +55,21 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         inside(search(pool)) { case Right(entries) =>
           entries.map(_.getDN) should be(List(baseDn))
         }
+      }
+    }
+    "run the search with privileges" in {
+      withPool() { pool =>
+        val privileged = new AtomicBoolean(false)
+        pool
+          .process(
+            listener => {
+              privileged.set(runsInsideDoPrivileged())
+              new SearchRequest(listener, baseDn, SearchScope.BASE, "(objectClass=*)")
+            },
+            Refined.unsafeApply(5 seconds)
+          )
+          .runSyncUnsafe(30 seconds)
+        privileged.get() should be(true)
       }
     }
     "return the error result of a search that the connection cannot send" in {
@@ -50,13 +83,116 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         }
       }
     }
+    "not block the threads of the calling scheduler while the LDAP server does not answer" when {
+      def testWith(bindRequestUser: BindRequestUser): Unit = withSingleThreadScheduler { callerScheduler =>
+        withPool(poolSize = 2, bindRequestUser = bindRequestUser) { pool =>
+          val (searchCall, bindCall) = requestHold.whileHeld {
+            val calls = (startSearch(pool, callerScheduler), startBind(pool, callerScheduler))
+            requestHold.awaitHeldRequests(2)
+            runsOtherTask(callerScheduler) should be(true)
+            calls
+          }
+          inside(resultOf(searchCall)) { case Right(entries) =>
+            entries.map(_.getDN) should be(List(baseDn))
+          }
+          resultOf(bindCall).getResultCode should be(ResultCode.SUCCESS)
+        }
+      }
+      "the pool binds anonymously" in testWith(BindRequestUser.Anonymous)
+      "the pool binds with a service account" in testWith(serviceAccount)
+    }
+    "run at most as many LDAP calls in parallel as the pool size" in {
+      withSingleThreadScheduler { callerScheduler =>
+        withPool(poolSize = 2) { pool =>
+          val (searches, binds) = requestHold.whileHeld {
+            val calls =
+              (List.fill(3)(startSearch(pool, callerScheduler)), List.fill(2)(startBind(pool, callerScheduler)))
+            requestHold.awaitHeldRequests(2)
+            requestHold.countNewHeldRequests(during = 1 second) should be(0)
+            runsOtherTask(callerScheduler) should be(true)
+            calls
+          }
+          searches.map(resultOf).foreach { result =>
+            inside(result) { case Right(entries) => entries.map(_.getDN) should be(List(baseDn)) }
+          }
+          binds.map(resultOf).foreach(_.getResultCode should be(ResultCode.SUCCESS))
+        }
+      }
+    }
+    "keep the permit until a cancelled LDAP call ends" in {
+      withSingleThreadScheduler { callerScheduler =>
+        withPool() { pool =>
+          val second = requestHold.whileHeld {
+            val first = startSearch(pool, callerScheduler)
+            requestHold.awaitHeldRequests(1)
+            first.cancel.runSyncUnsafe(5 seconds)
+            val second = startSearch(pool, callerScheduler)
+            requestHold.countNewHeldRequests(during = 1 second) should be(0)
+            second
+          }
+          inside(resultOf(second)) { case Right(entries) => entries.map(_.getDN) should be(List(baseDn)) }
+        }
+      }
+    }
+    "not start the LDAP call of a request that is cancelled while it waits for a permit" in {
+      withSingleThreadScheduler { callerScheduler =>
+        withPool() { pool =>
+          val searches = searchCount.countedDuring {
+            val first = requestHold.whileHeld {
+              val first = startSearch(pool, callerScheduler)
+              requestHold.awaitHeldRequests(1)
+              startSearch(pool, callerScheduler).cancel.runSyncUnsafe(5 seconds)
+              first
+            }
+            inside(resultOf(first)) { case Right(entries) => entries.map(_.getDN) should be(List(baseDn)) }
+            // The first search has given its permit back. A cancelled search that starts gets to the server in this time.
+            Thread.sleep(1000)
+          }
+          searches should be(1)
+        }
+      }
+    }
+    "authenticate the pool connection as the service account again after a user bind" in {
+      withPool(bindRequestUser = serviceAccount) { pool =>
+        val bindDns = bindDnLog.recordedDuring {
+          bind(pool, userDn, userPassword).getResultCode should be(ResultCode.SUCCESS)
+        }
+        bindDns should be(List(userDn, serviceDn))
+      }
+    }
+    "not block the threads of the calling scheduler while the SDK waits for a health check to close the pool" in {
+      withSingleThreadScheduler { callerScheduler =>
+        withPoolInBackgroundCheck { (pool, backgroundCheck) =>
+          val closing = startOn(callerScheduler, pool.close())
+          runsOtherTask(callerScheduler) should be(true)
+          backgroundCheck.release()
+          resultOf(closing) should be(())
+        }
+      }
+    }
   }
 
   private val baseDn = "dc=example,dc=com"
+  private val serviceDn = s"cn=service,$baseDn"
+  private val servicePassword = "service-password"
+  private val userDn = s"cn=user,$baseDn"
+  private val userPassword = "user-password"
+
+  private lazy val serviceAccount = BindRequestUser.CustomUser(
+    Dn(NonEmptyString.unsafeFrom(serviceDn)),
+    PlainTextSecret(NonEmptyString.unsafeFrom(servicePassword))
+  )
+
+  private val requestHold = new RequestHold
+  private val bindDnLog = new BindDnLog
+  private val searchCount = new SearchCount
 
   private val server = {
     val config = new InMemoryDirectoryServerConfig(baseDn)
     config.setListenerConfigs(InMemoryListenerConfig.createLDAPConfig("ldap", 0))
+    config.addInMemoryOperationInterceptor(requestHold)
+    config.addInMemoryOperationInterceptor(bindDnLog)
+    config.addInMemoryOperationInterceptor(searchCount)
     new InMemoryDirectoryServer(config)
   }
 
@@ -64,6 +200,14 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
     super.beforeAll()
     server.startListening()
     server.add(s"dn: $baseDn", "objectClass: top", "objectClass: domain", "dc: example")
+    server.add(
+      s"dn: $serviceDn",
+      "objectClass: person",
+      "cn: service",
+      "sn: service",
+      s"userPassword: $servicePassword"
+    )
+    server.add(s"dn: $userDn", "objectClass: person", "cn: user", "sn: user", s"userPassword: $userPassword")
   }
 
   override protected def afterAll(): Unit = {
@@ -71,20 +215,60 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
     super.afterAll()
   }
 
-  private def withPool(healthCheck: LDAPConnectionPoolHealthCheck = new LDAPConnectionPoolHealthCheck)(
-      test: UnboundidLdapConnectionPool => Unit
-  ): Unit = {
-    val connectionPool = new LDAPConnectionPool(new LDAPConnection("localhost", server.getListenPort), 1)
+  private def withPool(
+      healthCheck: LDAPConnectionPoolHealthCheck = new LDAPConnectionPoolHealthCheck,
+      poolSize: Int = 1,
+      bindRequestUser: BindRequestUser = BindRequestUser.Anonymous
+  )(test: UnboundidLdapConnectionPool => Unit): Unit = {
+    val connection = bindRequestUser match {
+      case BindRequestUser.Anonymous                => new LDAPConnection("localhost", server.getListenPort)
+      case BindRequestUser.CustomUser(dn, password) =>
+        new LDAPConnection("localhost", server.getListenPort, dn.value.value, password.value.value)
+    }
+    val connectionPool = new LDAPConnectionPool(connection, 1, poolSize)
     connectionPool.setHealthCheck(healthCheck)
-    try test(new UnboundidLdapConnectionPool(connectionPool, BindRequestUser.Anonymous))
+    val pool = UnboundidLdapConnectionPool.create(connectionPool, bindRequestUser).runSyncUnsafe()
+    try test(pool)
     finally connectionPool.close()
   }
 
+  // `withPool` cannot use this check: its `finally` closes the SDK pool, and the close waits for the check.
+  private def withPoolInBackgroundCheck(test: (UnboundidLdapConnectionPool, BlockedBackgroundCheck) => Unit): Unit = {
+    val backgroundCheck = new BlockedBackgroundCheck
+    val connectionPool = new LDAPConnectionPool(new LDAPConnection("localhost", server.getListenPort), 1)
+    connectionPool.setHealthCheck(backgroundCheck)
+    connectionPool.setHealthCheckIntervalMillis(10)
+    val pool = UnboundidLdapConnectionPool.create(connectionPool, BindRequestUser.Anonymous).runSyncUnsafe()
+    try {
+      backgroundCheck.awaitStarted()
+      test(pool, backgroundCheck)
+    } finally {
+      backgroundCheck.release()
+      connectionPool.close()
+    }
+  }
+
   private def search(pool: UnboundidLdapConnectionPool) = {
-    pool
-      .process(new SearchRequest(_, baseDn, SearchScope.BASE, "(objectClass=*)"), Refined.unsafeApply(5 seconds))
+    searchTask(pool)
       // A bound for the test only: without it, a search that never completes blocks the suite.
       .runSyncUnsafe(30 seconds)
+  }
+
+  private def searchTask(pool: UnboundidLdapConnectionPool, timeout: FiniteDuration = 5 seconds) = {
+    pool.process(new SearchRequest(_, baseDn, SearchScope.BASE, "(objectClass=*)"), Refined.unsafeApply(timeout))
+  }
+
+  // The search timeout is longer than the wait in `awaitHeldRequests`, so a held search does not time out first.
+  private def startSearch(pool: UnboundidLdapConnectionPool, scheduler: Scheduler) = {
+    startOn(scheduler, searchTask(pool, 30 seconds))
+  }
+
+  private def startBind(pool: UnboundidLdapConnectionPool, scheduler: Scheduler) = {
+    startOn(scheduler, pool.asyncBind(new SimpleBindRequest()))
+  }
+
+  private def bind(pool: UnboundidLdapConnectionPool, dn: String, password: String) = {
+    pool.asyncBind(new SimpleBindRequest(dn, password)).runSyncUnsafe(30 seconds)
   }
 
   // The pool calls the check after it finds the connection open, and returns the connection when the check passes.
@@ -99,6 +283,56 @@ class UnboundidLdapConnectionPoolTests extends AnyWordSpec with BeforeAndAfterAl
         while (connection.isConnected && System.nanoTime() < deadline) Thread.sleep(10)
         droppedConnection = !connection.isConnected
       }
+    }
+
+  }
+
+  // The background check of the pool waits until the test calls `release`.
+  private class BlockedBackgroundCheck extends LDAPConnectionPoolHealthCheck {
+    private val started = new CountDownLatch(1)
+    private val released = new CountDownLatch(1)
+
+    def awaitStarted(): Unit = {
+      if (!started.await(10, TimeUnit.SECONDS)) fail("The pool does not run its background check")
+    }
+
+    def release(): Unit = released.countDown()
+
+    override def ensureConnectionValidForContinuedUse(connection: LDAPConnection): Unit = {
+      started.countDown()
+      released.await()
+    }
+
+  }
+
+  // `recordedDuring` returns the DNs of the simple binds that the server gets while its block runs.
+  private class BindDnLog extends InMemoryOperationInterceptor {
+    private val bindDns = new ConcurrentLinkedQueue[String]
+
+    def recordedDuring(block: => Unit): List[String] = {
+      bindDns.clear()
+      block
+      bindDns.asScala.toList
+    }
+
+    override def processSimpleBindRequest(request: InMemoryInterceptedSimpleBindRequest): Unit = {
+      bindDns.add(request.getRequest.getBindDN)
+    }
+
+  }
+
+  // `countedDuring` returns the number of searches that the server gets while its block runs.
+  private class SearchCount extends InMemoryOperationInterceptor {
+    private val searches = new AtomicInteger(0)
+
+    def countedDuring(block: => Unit): Int = {
+      searches.set(0)
+      block
+      searches.get()
+    }
+
+    override def processSearchRequest(request: InMemoryInterceptedSearchRequest): Unit = {
+      searches.incrementAndGet()
     }
 
   }
