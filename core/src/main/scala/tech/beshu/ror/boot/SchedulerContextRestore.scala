@@ -16,14 +16,31 @@
  */
 package tech.beshu.ror.boot
 
-import monix.execution.misc.Local
+import monix.eval.Task
+import monix.execution.misc.{CanBindLocals, Local}
 import monix.execution.{Cancelable, ExecutionModel, Scheduler, UncaughtExceptionReporter}
 
 import scala.concurrent.duration.TimeUnit
+import scala.util.Using
 
 object SchedulerContextRestore {
 
-  val onContextSwitch: Local[Option[() => Unit]] = Local(None)
+  private val onContextSwitch: Local[Option[() => AutoCloseable]] = Local(None)
+
+  extension [A](task: Task[A]) {
+
+    // Runs the task of one request. Before each step that a ROR scheduler runs, `restoreContext` gives the thread the
+    // context of this request. After the step, the scheduler closes the result, which gives the thread its previous
+    // context back. Concurrent requests do not get the context of each other, also after a task wakes up another task,
+    // for example when it releases a semaphore permit.
+    def runAsyncWithContextRestore(restoreContext: () => AutoCloseable)(callback: Either[Throwable, A] => Unit)(
+        implicit scheduler: Scheduler
+    ): Cancelable =
+      onContextSwitch.bind(Some(restoreContext)) {
+        task.runAsyncOpt(callback)(scheduler, Task.defaultOptions.enableLocalContextPropagation)
+      }(CanBindLocals.synchronous)
+
+  }
 
   private[boot] final class ContextRestoringScheduler(underlying: Scheduler) extends Scheduler {
 
@@ -47,14 +64,17 @@ object SchedulerContextRestore {
 
     override def clockMonotonic(unit: TimeUnit): Long = underlying.clockMonotonic(unit)
 
-    override def withExecutionModel(em: ExecutionModel): Scheduler = underlying.withExecutionModel(em)
+    override def withExecutionModel(em: ExecutionModel): Scheduler =
+      new ContextRestoringScheduler(underlying.withExecutionModel(em))
 
     override def withUncaughtExceptionReporter(r: UncaughtExceptionReporter): Scheduler =
-      underlying.withUncaughtExceptionReporter(r)
+      new ContextRestoringScheduler(underlying.withUncaughtExceptionReporter(r))
 
     private def wrap(r: Runnable): Runnable = { () =>
-      onContextSwitch.apply().foreach(_.apply())
-      r.run()
+      onContextSwitch.apply() match {
+        case Some(restoreContext) => Using.resource(restoreContext())(_ => r.run())
+        case None                 => r.run()
+      }
     }
 
   }
