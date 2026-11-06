@@ -18,7 +18,17 @@ package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.listener.interceptor.{InMemoryInterceptedSimpleBindRequest, InMemoryOperationInterceptor}
 import com.unboundid.ldap.listener.{InMemoryDirectoryServer, InMemoryDirectoryServerConfig, InMemoryListenerConfig}
-import com.unboundid.ldap.sdk.{LDAPConnection, LDAPException, ResultCode, ServerSet}
+import com.unboundid.ldap.sdk.{
+  Control,
+  LDAPConnection,
+  LDAPConnectionInfo,
+  LDAPConnectionLogger,
+  LDAPConnectionOptions,
+  LDAPException,
+  ResultCode,
+  ServerSet
+}
+import com.unboundid.util.{Debug, DebugType}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -47,8 +57,10 @@ import tech.beshu.ror.utils.AccessControllerFrames.runsInsideDoPrivileged
 import tech.beshu.ror.utils.CallerSchedulerSupport
 import tech.beshu.ror.utils.RefinedUtils.*
 
+import java.util
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch, TimeUnit, TimeoutException}
+import java.util.logging.{Handler, LogRecord}
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
@@ -128,20 +140,28 @@ class UnboundidLdapConnectionPoolProviderTests
         bindFailures.rejectedBinds should be(3)
       }
     }
-    "give the use an open connection and close it before the use ends" in {
-      // The caller scheduler has one thread. A close that the use does not wait for can run only after the check.
-      withSingleThreadScheduler { callerScheduler =>
-        val serverSet = new DelayedServerSet
-        serverSet.release()
-        val connectedInAndAfterUse = startOn(
-          callerScheduler,
-          serverSet
-            .connectionWithin(5 seconds)
-            .use(result => Task(result.map(_.isConnected)))
-            .map(inUse => (inUse, serverSet.createdConnection.map(_.isConnected)))
-        )
-        resultOf(connectedInAndAfterUse) should be((Right(true), Some(false)))
+    "bind with privileges when it tests the connection and creates the pool" in {
+      withPoolProvider { poolProvider =>
+        val privileged = bindRequestsSent {
+          UnboundidLdapConnectionPoolProvider
+            .connectWithOptionalBindingTest(poolProvider, connectionConfig)
+            .runSyncUnsafe(30 seconds)
+        }
+        // The first bind is the binding test. The pool makes the next binds when it creates its connections.
+        privileged.size should be > 1
+        all(privileged) should be(true)
       }
+    }
+    "give the use an open connection and close it before the use ends" in {
+      // The close of the test connection takes 1 second. A close that the use does not wait for is still open at the check.
+      val serverSet = new DelayedServerSet(closeDelay = 1 second)
+      serverSet.release()
+      val connectedInAndAfterUse = serverSet
+        .connectionWithin(5 seconds)
+        .use(result => Task(result.map(_.isConnected)))
+        .map(inUse => (inUse, serverSet.createdConnection.map(_.isConnected)))
+        .runSyncUnsafe(10 seconds)
+      connectedInAndAfterUse should be((Right(true), Some(false)))
     }
     "close a connection that comes after the connection timeout" in {
       val serverSet = new DelayedServerSet
@@ -229,8 +249,33 @@ class UnboundidLdapConnectionPoolProviderTests
     finally poolProvider.close().runSyncUnsafe(30 seconds)
   }
 
+  // Runs the block with SDK debug logging on. Returns one value for each bind request that the SDK sends:
+  // true when the SDK sent it inside `AccessController.doPrivileged`. The SDK logs a request in the thread that sends it.
+  private def bindRequestsSent(block: => Unit): List[Boolean] = {
+    val privileged = new ConcurrentLinkedQueue[Boolean]()
+    val handler = new Handler {
+      override def publish(record: LogRecord): Unit =
+        if (Option(record.getMessage).exists(_.contains("BindRequest"))) privileged.add(runsInsideDoPrivileged())
+      override def flush(): Unit = ()
+      override def close(): Unit = ()
+    }
+    val logger = Debug.getLogger
+    val useParentHandlers = logger.getUseParentHandlers
+    logger.setUseParentHandlers(false)
+    logger.addHandler(handler)
+    Debug.setEnabled(true, util.EnumSet.of(DebugType.LDAP))
+    try block
+    finally {
+      Debug.setEnabled(false)
+      logger.removeHandler(handler)
+      logger.setUseParentHandlers(useParentHandlers)
+    }
+    privileged.asScala.toList
+  }
+
   // `getConnection` connects to the test server only after the test calls `release`.
-  private class DelayedServerSet extends ServerSet {
+  // The close of the created connection waits `closeDelay` while the connection is still open.
+  private class DelayedServerSet(closeDelay: FiniteDuration = Duration.Zero) extends ServerSet {
     private val called = new CountDownLatch(1)
     private val released = new CountDownLatch(1)
     private val connection = new AtomicReference(Option.empty[LDAPConnection])
@@ -253,7 +298,12 @@ class UnboundidLdapConnectionPoolProviderTests
       if (!released.await(10, TimeUnit.SECONDS)) {
         throw new LDAPException(ResultCode.TIMEOUT, "The test does not release the connection")
       }
-      val created = new LDAPConnection("127.0.0.1", server.getListenPort)
+      val options = new LDAPConnectionOptions()
+      options.setConnectionLogger(new LDAPConnectionLogger {
+        override def logUnbindRequest(info: LDAPConnectionInfo, messageID: Int, controls: util.List[Control]): Unit =
+          Thread.sleep(closeDelay.toMillis)
+      })
+      val created = new LDAPConnection(options, "127.0.0.1", server.getListenPort)
       connection.set(Some(created))
       created
     }
