@@ -59,16 +59,13 @@ object ScalaOps extends RequestIdAwareLogging {
     def attempt(retriesLeft: Int, delay: FiniteDuration): Task[Either[E, A]] = {
       def doRetry() = attempt(retriesLeft - 1, policy.delays.nextDelay(delay)).delayExecution(delay)
 
-      source
-        .flatMap {
-          case right @ Right(_)           => Task.now(right)
-          case Left(_) if retriesLeft > 0 => doRetry()
-          case Left(error)                => Task.now(Left(error))
-        }
-        .onErrorHandleWith {
-          case ex: Exception if retriesLeft > 0 && policy.isRetryableException(ex) => doRetry()
-          case ex                                                                  => Task.raiseError(ex)
-        }
+      source.attempt.flatMap {
+        case Right(right @ Right(_))                                                   => Task.now(right)
+        case Right(Left(_)) if retriesLeft > 0                                         => doRetry()
+        case Right(left @ Left(_))                                                     => Task.now(left)
+        case Left(ex: Exception) if retriesLeft > 0 && policy.isRetryableException(ex) => doRetry()
+        case Left(ex)                                                                  => Task.raiseError(ex)
+      }
     }
 
     attempt(policy.maxRetries, policy.delays.initialDelay)
