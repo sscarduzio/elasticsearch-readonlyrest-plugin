@@ -18,7 +18,6 @@ package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.boot.SchedulerContextRestore
 import tech.beshu.ror.utils.JavaConverters
 
 object ThreadContextOps {
@@ -28,12 +27,13 @@ object ThreadContextOps {
 
   extension (threadContext: ThreadContext) {
 
-    def setupContextPropagation(): Unit = {
+    // Captures the security transients and the response headers of the current request. The returned function puts
+    // them in the thread context of the thread that runs it. Closing its result gives that thread its previous
+    // context back.
+    def captureContextRestore(): () => AutoCloseable = {
       val capturedTransients = currentTransients(transientHeaderNames)
       val capturedResponseHeaders = currentResponseHeaders
-      SchedulerContextRestore.onContextSwitch := Some(() => {
-        stashAndRestore(capturedTransients, capturedResponseHeaders)
-      })
+      () => stashAndRestore(capturedTransients, capturedResponseHeaders)
     }
 
     def addXpackUserAuthenticationHeader(nodeName: String): ThreadContext = {
@@ -77,15 +77,18 @@ object ThreadContextOps {
       threadContext.getHeaders.asScala.view.filterNot(_._1 == excludedName)
     }
 
+    // Clears the thread context and puts the given values in it. Closing the result gives the thread its previous
+    // context back.
     private def stashAndRestore(
         transients: Iterable[(String, AnyRef)],
         responseHeaders: Iterable[(String, String)],
         requestHeaders: Iterable[(String, String)] = Iterable.empty
-    ): Unit = {
-      threadContext.stashContext() // clear thread context (StoredContext intentionally discarded)
+    ): ThreadContext.StoredContext = {
+      val previousContext = threadContext.stashContext()
       transients.foreach { case (k, v) => threadContext.putTransient(k, v) }
       responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
       requestHeaders.foreach { case (k, v) => if (threadContext.getHeader(k) == null) threadContext.putHeader(k, v) }
+      previousContext
     }
 
   }
