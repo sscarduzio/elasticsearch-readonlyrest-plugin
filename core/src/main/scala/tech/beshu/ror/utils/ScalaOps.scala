@@ -44,42 +44,38 @@ object ScalaOps extends RequestIdAwareLogging {
   def value[F[_], A, B](eitherT: EitherT[F, A, B]): F[Either[A, B]] = eitherT.value
 
   def retry[T](task: Task[T]): Task[T] = {
-    ScalaOps.retryBackoff(task, 5, 500 millis, 1)
+    ScalaOps.retryBackoff(
+      task,
+      RetryPolicy(RetryDelays(initialDelay = 500 millis, maxDelay = 500 millis, backOffScaler = 1), maxRetries = 5)
+    )
   }
 
-  def retryBackoff[A](source: Task[A], maxRetries: Int, firstDelay: FiniteDuration, backOffScaler: Int): Task[A] = {
-    retryBackoffEither[Nothing, A](source.map(Right(_)), maxRetries, firstDelay, backOffScaler)
+  def retryBackoff[A](source: Task[A], policy: RetryPolicy): Task[A] = {
+    retryBackoffEither[Nothing, A](source.map(Right(_)), policy)
       .map(_.getOrElse(throw new IllegalStateException("Impossible")))
   }
 
-  def retryBackoffEither[E, A](
-      source: Task[Either[E, A]],
-      maxRetries: Int,
-      firstDelay: FiniteDuration,
-      backOffScaler: Int
-  ): Task[Either[E, A]] = {
-    def doRetry() = {
-      retryBackoffEither(source, maxRetries - 1, firstDelay * backOffScaler, backOffScaler)
-        .delayExecution(firstDelay)
+  def retryBackoffEither[E, A](source: Task[Either[E, A]], policy: RetryPolicy): Task[Either[E, A]] = {
+    def attempt(retriesLeft: Int, delay: FiniteDuration): Task[Either[E, A]] = {
+      def doRetry() = attempt(retriesLeft - 1, policy.delays.nextDelay(delay)).delayExecution(delay)
+
+      source.attempt.flatMap {
+        case Right(right @ Right(_))                                                   => Task.now(right)
+        case Right(Left(_)) if retriesLeft > 0                                         => doRetry()
+        case Right(left @ Left(_))                                                     => Task.now(left)
+        case Left(ex: Exception) if retriesLeft > 0 && policy.isRetryableException(ex) => doRetry()
+        case Left(ex)                                                                  => Task.raiseError(ex)
+      }
     }
 
-    source
-      .flatMap {
-        case right @ Right(_)          => Task.now(right)
-        case Left(_) if maxRetries > 0 => doRetry()
-        case Left(error)               => Task.now(Left(error))
-      }
-      .onErrorHandleWith {
-        case _: Exception if maxRetries > 0 => doRetry()
-        case ex                             => Task.raiseError(ex)
-      }
+    attempt(policy.maxRetries, policy.delays.initialDelay)
   }
 
   /**
    * Says how long to wait between the attempts, nothing else. The delay grows exponentially, but never exceeds
    * `maxDelay`, so an operation which is retried indefinitely keeps being retried at a predictable pace.
    */
-  final case class RetryPolicy(initialDelay: FiniteDuration, maxDelay: FiniteDuration, backOffScaler: Int = 2) {
+  final case class RetryDelays(initialDelay: FiniteDuration, maxDelay: FiniteDuration, backOffScaler: Int = 2) {
 
     require(initialDelay > Duration.Zero, "The initial delay has to be positive")
     require(maxDelay >= initialDelay, "The max delay cannot be shorter than the initial delay")
@@ -93,6 +89,20 @@ object ScalaOps extends RequestIdAwareLogging {
   }
 
   /**
+   * Says how `retryBackoffEither` retries: `delays` gives the delays and `maxRetries` limits the number of retries.
+   * A `Left` always gets a retry. An exception gets a retry only when `isRetryableException` accepts it.
+   */
+  final case class RetryPolicy(
+      delays: RetryDelays,
+      maxRetries: Int,
+      isRetryableException: Exception => Boolean = (_: Exception) => true
+  ) {
+
+    require(maxRetries >= 0, "The number of retries cannot be negative")
+
+  }
+
+  /**
    * Describes the attempt which has just failed, so that the caller can report it without having to keep track of the
    * retrying on its own. `elapsed` is measured from the beginning of the first attempt, and does not include the
    * `nextAttemptDelay` which is still ahead.
@@ -100,7 +110,7 @@ object ScalaOps extends RequestIdAwareLogging {
   final case class FailedAttempt(number: Int, nextAttemptDelay: FiniteDuration, elapsed: FiniteDuration)
 
   /**
-   * Runs the `operation` until it succeeds, waiting between the attempts according to the `policy`. Every failed
+   * Runs the `operation` until it succeeds, waiting between the attempts according to the `delays`. Every failed
    * attempt is reported to `onFailedAttempt`, together with the number of the attempt, the time spent retrying so far
    * and the delay after which the next attempt will be made.
    *
@@ -111,7 +121,7 @@ object ScalaOps extends RequestIdAwareLogging {
    * an operation which the caller asked to be run until it succeeds. Such a failure is logged, though - otherwise a
    * reporter which never works could not be told apart from an operation which never fails.
    */
-  def retryUntilSuccessful[ERROR, RESULT](policy: RetryPolicy, onFailedAttempt: (ERROR, FailedAttempt) => Task[Unit])(
+  def retryUntilSuccessful[ERROR, RESULT](delays: RetryDelays, onFailedAttempt: (ERROR, FailedAttempt) => Task[Unit])(
       operation: Task[Either[ERROR, RESULT]]
   ): Task[RESULT] = {
     def notifyAboutFailedAttempt(error: ERROR, failedAttempt: FailedAttempt): Task[Unit] = {
@@ -130,14 +140,14 @@ object ScalaOps extends RequestIdAwareLogging {
               now <- Task.eval(System.nanoTime())
               failedAttempt = FailedAttempt(attemptNumber, delay, (now - startedAt).nanos)
               _ <- notifyAboutFailedAttempt(error, failedAttempt)
-              result <- attemptWithRetry(attemptNumber + 1, policy.nextDelay(delay), startedAt).delayExecution(delay)
+              result <- attemptWithRetry(attemptNumber + 1, delays.nextDelay(delay), startedAt).delayExecution(delay)
             } yield result
         }
     }
 
     Task
       .eval(System.nanoTime())
-      .flatMap(startedAt => attemptWithRetry(attemptNumber = 1, delay = policy.initialDelay, startedAt = startedAt))
+      .flatMap(startedAt => attemptWithRetry(attemptNumber = 1, delay = delays.initialDelay, startedAt = startedAt))
   }
 
   def repeat[A](maxRetries: Int, delay: FiniteDuration)(source: Task[A]): Task[Unit] = {

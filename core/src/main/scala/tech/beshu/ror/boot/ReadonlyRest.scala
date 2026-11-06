@@ -41,7 +41,7 @@ import tech.beshu.ror.settings.es.*
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.ScalaOps.{RetryPolicy, retryUntilSuccessful}
+import tech.beshu.ror.utils.ScalaOps.{RetryDelays, retryUntilSuccessful}
 
 import java.time.Instant
 import scala.concurrent.duration.*
@@ -83,11 +83,11 @@ class ReadonlyRest(
    */
   def startWithRetry(
       esConfigBasedRorSettings: EsConfigBasedRorSettings,
-      retryPolicy: RetryPolicy = defaultStartingRetryPolicy
+      retryDelays: RetryDelays = defaultStartingRetryDelays
   )(onFailedAttempt: StartingFailure => Unit): Task[RorInstance] = {
     implicit val requestId: RequestId = RequestId(systemContext.uuidProvider.random.toString)
     retryUntilSuccessful[StartingFailure, RorInstance](
-      policy = retryPolicy,
+      delays = retryDelays,
       onFailedAttempt = (failure, attempt) =>
         Task.delay {
           onFailedAttempt(failure)
@@ -366,7 +366,7 @@ object ReadonlyRest {
 
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-  private val defaultStartingRetryPolicy: RetryPolicy = RetryPolicy(initialDelay = 5 seconds, maxDelay = 1 minute)
+  private val defaultStartingRetryDelays: RetryDelays = RetryDelays(initialDelay = 5 seconds, maxDelay = 1 minute)
 
   def create(indexContentService: IndexDocumentManager, auditCapabilities: EsAuditCapabilities, env: EsEnv)(
       implicit systemContext: SystemContext

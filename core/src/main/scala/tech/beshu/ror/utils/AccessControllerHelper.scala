@@ -58,10 +58,11 @@ object AccessControllerHelper {
 
     override def clockMonotonic(unit: TimeUnit): Long = underlying.clockMonotonic(unit)
 
-    override def withExecutionModel(em: ExecutionModel): Scheduler = underlying.withExecutionModel(em)
+    override def withExecutionModel(em: ExecutionModel): Scheduler =
+      PrivilegedScheduler(underlying.withExecutionModel(em))
 
     override def withUncaughtExceptionReporter(r: UncaughtExceptionReporter): Scheduler =
-      underlying.withUncaughtExceptionReporter(underlying)
+      PrivilegedScheduler(underlying.withUncaughtExceptionReporter(r))
 
     private def wrap(r: Runnable): Runnable = { () =>
       doPrivileged(r.run())
