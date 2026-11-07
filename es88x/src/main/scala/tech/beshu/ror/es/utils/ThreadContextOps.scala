@@ -52,6 +52,7 @@ object ThreadContextOps {
         case Some(_) => // header already present, do not overwrite
         case None    =>
           val capturedRequestHeaders = currentRequestHeadersExcluding(headerName)
+          // Discards the stored context on purpose: the new header must stay for the rest of the request.
           stashAndRestore(currentTransients(nonAuthTransientNames), currentResponseHeaders, capturedRequestHeaders)
           threadContext.putHeader(headerName, header.value.value)
       }
@@ -61,6 +62,7 @@ object ThreadContextOps {
     private def replaceAuthenticationHeader(header: Header): ThreadContext = {
       val headerName = header.name.value.value
       val capturedRequestHeaders = currentRequestHeadersExcluding(headerName)
+      // Discards the stored context on purpose: the new header must stay for the rest of the request.
       stashAndRestore(currentTransients(nonAuthTransientNames), currentResponseHeaders, capturedRequestHeaders)
       threadContext.putHeader(headerName, header.value.value)
       threadContext
