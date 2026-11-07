@@ -23,7 +23,7 @@ import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
-import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
+import tech.beshu.ror.es.utils.EsCalls.esCall
 import tech.beshu.ror.utils.{AccessControllerHelper, RequestIdAwareLogging}
 
 import scala.util.{Failure, Success, Try}
@@ -68,9 +68,7 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any, threadPool: Threa
   }
 
   private def authenticateApiKey(apiKeyCredentials: AnyRef): Task[Boolean] = {
-    val listener = new ActionListenerToTaskAdapter[AnyRef]
-    on(apiKeyServiceRef).call("tryAuthenticate", threadPool.getThreadContext, apiKeyCredentials, listener)
-    listener.result
+    esCall[AnyRef](on(apiKeyServiceRef).call("tryAuthenticate", threadPool.getThreadContext, apiKeyCredentials, _))
       .map(isAuthenticated)
       .onErrorRecover {
         case _: ElasticsearchSecurityException => false

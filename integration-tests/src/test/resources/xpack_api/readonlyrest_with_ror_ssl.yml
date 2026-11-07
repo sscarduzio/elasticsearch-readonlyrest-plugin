@@ -60,3 +60,25 @@ readonlyrest:
       auth_key: dev7:test
       indices: ["test7_*"]
       filter: '{ "match": { "content.app": { "query": "a1" } }}'
+
+    # Each response to these users gets a session cookie with the name of the user.
+    - name: "concurrent requests alice"
+      verbosity: error
+      auth_key: alice:test
+      session_max_idle: 1h
+      indices: ["concurrent_requests_index"]
+      filter: '{"match":{"owner":"all"}}'
+
+    - name: "concurrent requests bob"
+      verbosity: error
+      auth_key: bob:test
+      session_max_idle: 1h
+      indices: ["concurrent_requests_index"]
+      filter: '{"match":{"owner":"all"}}'
+
+    - name: "concurrent requests carol"
+      verbosity: error
+      auth_key: carol:test
+      session_max_idle: 1h
+      indices: ["concurrent_requests_index"]
+      filter: '{"match":{"owner":"all"}}'

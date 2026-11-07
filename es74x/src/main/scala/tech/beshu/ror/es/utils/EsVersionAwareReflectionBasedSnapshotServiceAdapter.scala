@@ -22,6 +22,7 @@ import org.elasticsearch.repositories.RepositoryData
 import org.elasticsearch.snapshots.SnapshotsService
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
+import tech.beshu.ror.es.utils.EsCalls.esCall
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 class EsVersionAwareReflectionBasedSnapshotServiceAdapter(snapshotsService: SnapshotsService) {
@@ -34,11 +35,11 @@ class EsVersionAwareReflectionBasedSnapshotServiceAdapter(snapshotsService: Snap
   }
 
   private def getRepositoriesDataForPostEs76x(repository: RepositoryName): Task[RepositoryData] = {
-    val listener = new ActionListenerToTaskAdapter[RepositoryData]()
-    doPrivileged {
-      on(snapshotsService).call("getRepositoryData", RepositoryName.toString(repository), listener)
+    esCall[RepositoryData] { listener =>
+      doPrivileged {
+        on(snapshotsService).call("getRepositoryData", RepositoryName.toString(repository), listener)
+      }
     }
-    listener.result
   }
 
   private def getRepositoriesDataForEsPre76x(repository: RepositoryName): Task[RepositoryData] =

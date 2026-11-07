@@ -18,28 +18,17 @@ package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
 import monix.eval.Task
-import org.elasticsearch.client.{Request, Response, ResponseException, ResponseListener, RestClient}
+import org.elasticsearch.client.{Request, Response, ResponseException, RestClient}
 import tech.beshu.ror.es.services.MultiNodeRestClient.{FailoverAwareRequestExecutor, FailoverDecision}
+import tech.beshu.ror.es.utils.EsCalls.esRestCall
 import tech.beshu.ror.es.utils.RestResponseOps.*
 
 import java.io.IOException
 import java.time.Clock
-import scala.concurrent.Promise
 
 final class RestClientRequestExecutor(restClient: RestClient) extends FailoverAwareRequestExecutor[Request, Response] {
 
-  override def execute(request: Request): Task[Response] = Task.defer {
-    val promise = Promise[Response]()
-    restClient.performRequestAsync(
-      request,
-      new ResponseListener {
-        override def onSuccess(response: Response): Unit = promise.success(response)
-
-        override def onFailure(exception: Exception): Unit = promise.failure(exception)
-      }
-    )
-    Task.fromFuture(promise.future)
-  }
+  override def execute(request: Request): Task[Response] = esRestCall(restClient.performRequestAsync(request, _))
 
   override def failoverDecisionOn(exception: Throwable): FailoverDecision = exception match {
     case exception: ResponseException if exception.getResponse.isRetryable =>
