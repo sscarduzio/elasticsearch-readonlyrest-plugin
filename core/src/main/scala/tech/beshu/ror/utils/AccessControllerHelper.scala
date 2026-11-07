@@ -60,7 +60,8 @@ object AccessControllerHelper {
 
     // This scheduler passes on the tracing feature of the scheduler that it wraps. So Monix does not wrap it in its
     // own TracingScheduler, which runs trampolined steps on the calling thread, without privileges.
-    // This scheduler does not batch, because `wrap` forks each step.
+    // This scheduler does not batch: `wrap` turns each step into a plain `Runnable`, and the underlying scheduler
+    // forks it.
     override def features: Features = underlying.features.diff(Features(Scheduler.BATCHING))
 
     override def withExecutionModel(em: ExecutionModel): Scheduler =

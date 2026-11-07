@@ -65,8 +65,9 @@ object SchedulerContextRestore {
 
     override def clockMonotonic(unit: TimeUnit): Long = underlying.clockMonotonic(unit)
 
-    // With the tracing feature, Monix does not wrap this scheduler in its own TracingScheduler. That one runs trampolined
-    // steps on the calling thread, so they skip `wrap`. This scheduler does not batch, because `wrap` forks each step.
+    // With the tracing feature, Monix does not wrap this scheduler in its own TracingScheduler. That one runs
+    // trampolined steps on the calling thread, so they skip `wrap`. This scheduler does not batch: `wrap` turns each
+    // step into a plain `Runnable`, and the underlying scheduler forks it.
     override def features: Features = underlying.features.diff(Features(Scheduler.BATCHING))
 
     override def withExecutionModel(em: ExecutionModel): Scheduler =
