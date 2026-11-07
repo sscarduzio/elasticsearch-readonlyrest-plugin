@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.utils
 
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.execution.schedulers.TracingScheduler
 import monix.execution.{CancelablePromise, ExecutionModel, Scheduler, UncaughtExceptionReporter}
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -36,6 +37,12 @@ class AccessControllerHelperTests extends AnyWordSpec {
   "The scheduler of a privileged task" should {
     "run its tasks with privileges" in {
       runsPrivileged(privilegedScheduler) should be(true)
+    }
+    "declare the tracing feature of the scheduler that it wraps, but not the batching feature" in {
+      // The scheduler that it wraps declares both features.
+      val features = privilegedSchedulerOn(TracingScheduler(global)).features
+      features.contains(Scheduler.TRACING) should be(true)
+      features.contains(Scheduler.BATCHING) should be(false)
     }
     "keep the privileges when it gets a new execution model" in {
       val scheduler = privilegedScheduler.withExecutionModel(ExecutionModel.AlwaysAsyncExecution)
@@ -65,8 +72,10 @@ class AccessControllerHelperTests extends AnyWordSpec {
     }
   }
 
-  private def privilegedScheduler: Scheduler = {
-    doPrivileged(Task.deferAction(Task.now))(global).runSyncUnsafe(5 seconds)
+  private def privilegedScheduler: Scheduler = privilegedSchedulerOn(global)
+
+  private def privilegedSchedulerOn(underlying: Scheduler): Scheduler = {
+    doPrivileged(Task.deferAction(Task.now))(underlying).runSyncUnsafe(5 seconds)
   }
 
   // Returns true when the scheduler runs a task inside `AccessController.doPrivileged`.

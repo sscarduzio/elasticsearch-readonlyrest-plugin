@@ -61,10 +61,10 @@ object TaskOps {
         )
       }
 
-    // Use it for a future that a thread outside of ROR completes, for example an ES listener. The async boundary makes
-    // the rest of the request run on a ROR thread, with the context of the request. Without it, the first step after
-    // the completion runs without that context, because it starts before Monix restores the Locals.
-    def fromEsFuture[T](future: Future[T]): Task[T] = Task.fromFuture(future).asyncBoundary
+    // Use it for a future that a thread outside of ROR completes, for example an ES listener. After a result or an
+    // error, the request continues on a ROR thread with its context, because the boundary comes after Monix restores
+    // the Locals. `asyncBoundary` skips an error, so the error passes the boundary as a value.
+    def fromEsFuture[T](future: Future[T]): Task[T] = Task.fromFuture(future).materialize.asyncBoundary.dematerialize
 
   }
 

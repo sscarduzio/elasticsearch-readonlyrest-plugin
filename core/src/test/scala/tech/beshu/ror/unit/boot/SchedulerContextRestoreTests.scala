@@ -47,6 +47,12 @@ class SchedulerContextRestoreTests extends AnyWordSpec with Eventually {
       val scheduler = RorSchedulers.mainScheduler.withUncaughtExceptionReporter(UncaughtExceptionReporter.default)
       callsContextSwitchHook(scheduler) should be(true)
     }
+    "declare the tracing feature, but not the batching feature" in {
+      // The scheduler that it wraps declares both features.
+      val features = RorSchedulers.mainScheduler.features
+      features.contains(Scheduler.TRACING) should be(true)
+      features.contains(Scheduler.BATCHING) should be(false)
+    }
   }
 
   "The task of a request" should {
@@ -107,6 +113,14 @@ class SchedulerContextRestoreTests extends AnyWordSpec with Eventually {
       thread should not be outsideOfRorThreadName
       context should be("A")
     }
+    "continue with its own context after a thread outside of ROR fails its future" in {
+      val promise = Promise[Unit]()
+      val recoveredFailure = Task.fromEsFuture(promise.future).onErrorHandle(_ => ())
+      val (thread, context) =
+        resultOf(runRequestCompletedOutsideOfRor("A", recoveredFailure, () => promise.failure(new Exception("ES"))))
+      thread should not be outsideOfRorThreadName
+      context should be("A")
+    }
     "complete in the context of the thread when its context restore fails" in {
       val restoreFailure = new IllegalStateException("restore failed")
       val reportedFailures = new ConcurrentLinkedQueue[Throwable]()
@@ -154,9 +168,9 @@ class SchedulerContextRestoreTests extends AnyWordSpec with Eventually {
     result.future
   }
 
-  // Runs the request `name`. Its first step is `waitFor`, which ends when a thread outside of ROR calls `complete`. That
-  // thread has its own context, as the thread of an ES listener has. The result is the thread and the context of the
-  // next step.
+  // Runs the request `name`. Its first step is `waitFor`, which ends when a thread outside of ROR calls `complete`.
+  // That thread has its own context, as the thread of an ES listener has. The result is the thread and the context of
+  // the next step.
   private def runRequestCompletedOutsideOfRor(
       name: String,
       waitFor: Task[Unit],
