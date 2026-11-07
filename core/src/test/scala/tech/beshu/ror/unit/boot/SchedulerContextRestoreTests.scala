@@ -28,7 +28,8 @@ import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.boot.SchedulerContextRestore.runAsyncWithContextRestore
 import tech.beshu.ror.utils.TaskOps.fromEsFuture
 
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicReference}
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future, Promise}
 
@@ -106,6 +107,23 @@ class SchedulerContextRestoreTests extends AnyWordSpec with Eventually {
       thread should not be outsideOfRorThreadName
       context should be("A")
     }
+    "complete in the context of the thread when its context restore fails" in {
+      val restoreFailure = new IllegalStateException("restore failed")
+      val reportedFailures = new ConcurrentLinkedQueue[Throwable]()
+      val scheduler = RorSchedulers.mainScheduler.withUncaughtExceptionReporter(
+        UncaughtExceptionReporter(reportedFailures.add(_): Unit)
+      )
+      val contextBeforeRestore = new AtomicReference[String]()
+      val failingRestore: () => AutoCloseable = () => {
+        contextBeforeRestore.set(threadContext.get())
+        throw restoreFailure
+      }
+      val result = Promise[String]()
+      (Task.shift >> Task(threadContext.get()))
+        .runAsyncWithContextRestore(failingRestore)(r => result.complete(r.toTry))(scheduler)
+      resultOf(result.future) should be(contextBeforeRestore.get())
+      reportedFailures should contain(restoreFailure)
+    }
   }
 
   override implicit val patienceConfig: PatienceConfig =
@@ -155,7 +173,7 @@ class SchedulerContextRestoreTests extends AnyWordSpec with Eventually {
     result.future
   }
 
-  private val outsideOfRorThreadName = "outside-of-ror"
+  private lazy val outsideOfRorThreadName = "outside-of-ror"
 
   private def blockingStep(step: Task[Unit]): Task[Unit] = step.executeOn(RorSchedulers.blockingScheduler)
 

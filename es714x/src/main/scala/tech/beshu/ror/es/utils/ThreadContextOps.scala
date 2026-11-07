@@ -20,6 +20,8 @@ import org.elasticsearch.common.util.concurrent.ThreadContext
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.utils.JavaConverters
 
+import scala.util.{Failure, Success, Try}
+
 object ThreadContextOps {
 
   private val nonAuthTransientNames = List("_authz_info", "_indices_permissions")
@@ -78,17 +80,23 @@ object ThreadContextOps {
     }
 
     // Clears the thread context and puts the given values in it. Closing the result gives the thread its previous
-    // context back.
+    // context back. If a put fails, the thread gets its previous context back before the failure goes up.
     private def stashAndRestore(
         transients: Iterable[(String, AnyRef)],
         responseHeaders: Iterable[(String, String)],
         requestHeaders: Iterable[(String, String)] = Iterable.empty
     ): ThreadContext.StoredContext = {
       val previousContext = threadContext.stashContext()
-      transients.foreach { case (k, v) => threadContext.putTransient(k, v) }
-      responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
-      requestHeaders.foreach { case (k, v) => if (threadContext.getHeader(k) == null) threadContext.putHeader(k, v) }
-      previousContext
+      Try {
+        transients.foreach { case (k, v) => threadContext.putTransient(k, v) }
+        responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
+        requestHeaders.foreach { case (k, v) => if (threadContext.getHeader(k) == null) threadContext.putHeader(k, v) }
+      } match {
+        case Success(()) => previousContext
+        case Failure(ex) =>
+          previousContext.close()
+          throw ex
+      }
     }
 
   }

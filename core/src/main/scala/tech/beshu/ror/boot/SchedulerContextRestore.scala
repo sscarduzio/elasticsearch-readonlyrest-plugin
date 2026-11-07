@@ -21,7 +21,7 @@ import monix.execution.misc.{CanBindLocals, Local}
 import monix.execution.{Cancelable, ExecutionModel, Features, Scheduler, UncaughtExceptionReporter}
 
 import scala.concurrent.duration.TimeUnit
-import scala.util.Using
+import scala.util.{Failure, Success, Try, Using}
 
 object SchedulerContextRestore {
 
@@ -32,7 +32,8 @@ object SchedulerContextRestore {
     // Runs the task of one request. Before each step that a ROR scheduler runs, `restoreContext` gives the thread the
     // context of this request. After the step, the scheduler closes the result, which gives the thread its previous
     // context back. Concurrent requests do not get the context of each other, also after a task wakes up another task,
-    // for example when it releases a semaphore permit.
+    // for example when it releases a semaphore permit. If `restoreContext` fails, it must leave the context of the
+    // thread as it was.
     def runAsyncWithContextRestore(restoreContext: () => AutoCloseable)(callback: Either[Throwable, A] => Unit)(
         implicit scheduler: Scheduler
     ): Cancelable =
@@ -76,10 +77,21 @@ object SchedulerContextRestore {
 
     private def wrap(r: Runnable): Runnable = { () =>
       onContextSwitch.apply() match {
-        case Some(restoreContext) => Using.resource(restoreContext())(_ => r.run())
+        case Some(restoreContext) => runInContext(restoreContext, r)
         case None                 => r.run()
       }
     }
+
+    // The task stops when one of its steps does not run. Thus, the step also runs when `restoreContext` fails. Then it
+    // runs in the context of the thread. The scheduler reports the failure, because it gets only the step and cannot
+    // fail the task.
+    private def runInContext(restoreContext: () => AutoCloseable, r: Runnable): Unit =
+      Try(restoreContext()) match {
+        case Success(context) => Using.resource(context)(_ => r.run())
+        case Failure(ex)      =>
+          reportFailure(ex)
+          r.run()
+      }
 
   }
 
