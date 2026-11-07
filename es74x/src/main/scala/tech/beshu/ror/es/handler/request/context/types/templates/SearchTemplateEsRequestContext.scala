@@ -18,9 +18,9 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import monix.eval.Task
-import monix.execution.{CancelablePromise, Scheduler}
+import monix.execution.Scheduler
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
-import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, CompositeIndicesRequest}
+import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
@@ -31,6 +31,7 @@ import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.{BaseFilterableEsRequestContext, ReflectionBasedActionRequest}
 import tech.beshu.ror.es.handler.response.SearchHitOps.*
+import tech.beshu.ror.es.utils.EsCalls.esCall
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -120,15 +121,7 @@ class SearchTemplateEsRequestContext private (
   }
 
   private def search(request: SearchRequest): Task[SearchResponse] = {
-    val promise = CancelablePromise[SearchResponse]()
-    nodeClient.search(
-      request,
-      new ActionListener[SearchResponse]() {
-        override def onResponse(response: SearchResponse): Unit = promise.trySuccess(response)
-        override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-      }
-    )
-    Task.fromCancelablePromise(promise)
+    esCall[SearchResponse](nodeClient.search(request, _))
   }
 
 }

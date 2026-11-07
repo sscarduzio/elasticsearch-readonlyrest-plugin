@@ -18,7 +18,7 @@ package tech.beshu.ror.boot
 
 import monix.eval.Task
 import monix.execution.misc.{CanBindLocals, Local}
-import monix.execution.{Cancelable, ExecutionModel, Scheduler, UncaughtExceptionReporter}
+import monix.execution.{Cancelable, ExecutionModel, Features, Scheduler, UncaughtExceptionReporter}
 
 import scala.concurrent.duration.TimeUnit
 import scala.util.Using
@@ -63,6 +63,10 @@ object SchedulerContextRestore {
     override def clockRealTime(unit: TimeUnit): Long = underlying.clockRealTime(unit)
 
     override def clockMonotonic(unit: TimeUnit): Long = underlying.clockMonotonic(unit)
+
+    // With the tracing feature, Monix does not wrap this scheduler in its own TracingScheduler. That one runs trampolined
+    // steps on the calling thread, so they skip `wrap`. This scheduler does not batch, because `wrap` forks each step.
+    override def features: Features = underlying.features.diff(Features(Scheduler.BATCHING))
 
     override def withExecutionModel(em: ExecutionModel): Scheduler =
       new ContextRestoringScheduler(underlying.withExecutionModel(em))

@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils
 
 import monix.eval.Task
-import monix.execution.{Cancelable, ExecutionModel, Scheduler, UncaughtExceptionReporter}
+import monix.execution.{Cancelable, ExecutionModel, Features, Scheduler, UncaughtExceptionReporter}
 
 import java.security.{AccessController, PrivilegedAction}
 import scala.concurrent.duration.TimeUnit
@@ -57,6 +57,11 @@ object AccessControllerHelper {
     override def clockRealTime(unit: TimeUnit): Long = underlying.clockRealTime(unit)
 
     override def clockMonotonic(unit: TimeUnit): Long = underlying.clockMonotonic(unit)
+
+    // This scheduler passes on the tracing feature of the scheduler that it wraps. So Monix does not wrap it in its
+    // own TracingScheduler, which runs trampolined steps on the calling thread, without privileges.
+    // This scheduler does not batch, because `wrap` forks each step.
+    override def features: Features = underlying.features.diff(Features(Scheduler.BATCHING))
 
     override def withExecutionModel(em: ExecutionModel): Scheduler =
       PrivilegedScheduler(underlying.withExecutionModel(em))

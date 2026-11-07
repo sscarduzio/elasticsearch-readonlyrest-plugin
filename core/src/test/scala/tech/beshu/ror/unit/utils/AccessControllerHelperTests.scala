@@ -18,14 +18,16 @@ package tech.beshu.ror.unit.utils
 
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import monix.execution.{ExecutionModel, Scheduler, UncaughtExceptionReporter}
+import monix.execution.{CancelablePromise, ExecutionModel, Scheduler, UncaughtExceptionReporter}
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.AccessControllerFrames.runsInsideDoPrivileged
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import java.util.concurrent.{CountDownLatch, TimeUnit}
+import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -50,6 +52,16 @@ class AccessControllerHelperTests extends AnyWordSpec {
         .withUncaughtExceptionReporter(UncaughtExceptionReporter(ex => reported.set(Some(ex))))
         .reportFailure(failure)
       reported.get() should be(Some(failure))
+    }
+    "run with privileges the step after a thread outside of ROR completes a Monix promise" in {
+      // A Monix promise calls back the task on the thread that completes it.
+      val promise = CancelablePromise[Unit]()
+      val privileged = doPrivileged(Task.fromCancelablePromise(promise) >> Task(runsInsideDoPrivileged()))(
+        RorSchedulers.mainScheduler
+      ).runToFuture(RorSchedulers.mainScheduler)
+      val complete: Runnable = () => promise.success(())
+      new Thread(complete).start()
+      Await.result(privileged, 5.seconds) should be(true)
     }
   }
 

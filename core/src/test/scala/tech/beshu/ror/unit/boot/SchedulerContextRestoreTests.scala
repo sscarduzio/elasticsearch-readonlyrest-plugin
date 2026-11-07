@@ -19,13 +19,14 @@ package tech.beshu.ror.unit.boot
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import monix.execution.{ExecutionModel, Scheduler, UncaughtExceptionReporter}
+import monix.execution.{CancelablePromise, ExecutionModel, Scheduler, UncaughtExceptionReporter}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.boot.SchedulerContextRestore.runAsyncWithContextRestore
+import tech.beshu.ror.utils.TaskOps.fromEsFuture
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.concurrent.duration.*
@@ -91,6 +92,20 @@ class SchedulerContextRestoreTests extends AnyWordSpec with Eventually {
       restores.get() should be > 0
       eventually(contextsNotGivenBack.get() should be(0))
     }
+    "not run its next step on the thread outside of ROR that completes its Monix promise" in {
+      // A Monix promise calls back the task on the thread that completes it.
+      val promise = CancelablePromise[Unit]()
+      val (thread, _) =
+        resultOf(runRequestCompletedOutsideOfRor("A", Task.fromCancelablePromise(promise), () => promise.success(())))
+      thread should not be outsideOfRorThreadName
+    }
+    "continue with its own context after a thread outside of ROR completes its future" in {
+      val promise = Promise[Unit]()
+      val (thread, context) =
+        resultOf(runRequestCompletedOutsideOfRor("A", Task.fromEsFuture(promise.future), () => promise.success(())))
+      thread should not be outsideOfRorThreadName
+      context should be("A")
+    }
   }
 
   override implicit val patienceConfig: PatienceConfig =
@@ -120,6 +135,27 @@ class SchedulerContextRestoreTests extends AnyWordSpec with Eventually {
       )
     result.future
   }
+
+  // Runs the request `name`. Its first step is `waitFor`, which ends when a thread outside of ROR calls `complete`. That
+  // thread has its own context, as the thread of an ES listener has. The result is the thread and the context of the
+  // next step.
+  private def runRequestCompletedOutsideOfRor(
+      name: String,
+      waitFor: Task[Unit],
+      complete: () => Unit
+  ): Future[(String, String)] = {
+    val result = Promise[(String, String)]()
+    (waitFor >> Task((Thread.currentThread().getName, threadContext.get())))
+      .runAsyncWithContextRestore(restoreAs(name))(r => result.complete(r.toTry))(RorSchedulers.mainScheduler)
+    val completeWithOwnContext: Runnable = () => {
+      threadContext.set("ES")
+      complete()
+    }
+    new Thread(completeWithOwnContext, outsideOfRorThreadName).start()
+    result.future
+  }
+
+  private val outsideOfRorThreadName = "outside-of-ror"
 
   private def blockingStep(step: Task[Unit]): Task[Unit] = step.executeOn(RorSchedulers.blockingScheduler)
 

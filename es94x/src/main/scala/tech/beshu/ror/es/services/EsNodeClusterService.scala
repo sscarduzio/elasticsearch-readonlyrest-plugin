@@ -19,9 +19,8 @@ package tech.beshu.ror.es.services
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
-import monix.execution.{CancelablePromise, Scheduler}
-import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
@@ -45,9 +44,8 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName.{
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.services.EsClusterService.*
-import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
-import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
 import tech.beshu.ror.es.utils.ClusterStateMetadataOps.toOps
+import tech.beshu.ror.es.utils.EsCalls.{esCall, esRefCountedCall}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -274,8 +272,9 @@ class EsNodeClusterService(
   override def verifyDocumentAccessibility(document: Document, filter: Filter)(
       implicit id: RequestId
   ): Task[DocumentAccessibility] = {
-    createSearchRequest(filter, document)
-      .call(extractAccessibilityFrom)
+    esRefCountedCall[SearchResponse, DocumentAccessibility](createSearchRequest(filter, document).execute(_))(
+      extractAccessibilityFrom
+    )
       .onErrorRecover { case ex =>
         logger.error(s"Could not verify get request. Blocking document", ex)
         Inaccessible
@@ -285,8 +284,9 @@ class EsNodeClusterService(
   override def verifyDocumentsAccessibility(documents: NonEmptyList[Document], filter: Filter)(
       implicit id: RequestId
   ): Task[DocumentsAccessibility] = {
-    createMultiSearchRequest(filter, documents)
-      .call(extractResultsFromSearchResponse)
+    esRefCountedCall[MultiSearchResponse, List[DocumentAccessibility]](
+      createMultiSearchRequest(filter, documents).execute(_)
+    )(extractResultsFromSearchResponse)
       .onErrorRecover { case ex =>
         logger.error(s"Could not verify documents returned by multi get response. Blocking all returned documents", ex)
         blockAllDocsReturned(documents)
@@ -341,19 +341,10 @@ class EsNodeClusterService(
 
   private def resolveRemoteIndicesUsing(client: RemoteClusterClient) = {
     import tech.beshu.ror.es.utils.ThreadContextOps.*
-    threadPool.getThreadContext.addXpackUserAuthenticationHeader(nodeName)
-    val promise = CancelablePromise[ResolveIndexAction.Response]()
-    client
-      .execute(
-        ResolveIndexAction.REMOTE_TYPE,
-        new ResolveIndexAction.Request(Array("*")),
-        new ActionListener[ResolveIndexAction.Response] {
-          override def onResponse(response: ResolveIndexAction.Response): Unit = promise.trySuccess(response)
-
-          override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-        }
-      )
-    Task.fromCancelablePromise(promise)
+    esCall[ResolveIndexAction.Response] { listener =>
+      threadPool.getThreadContext.addXpackUserAuthenticationHeader(nodeName)
+      client.execute(ResolveIndexAction.REMOTE_TYPE, new ResolveIndexAction.Request(Array("*")), listener)
+    }
   }
 
   private def toFullRemoteIndexWithAliases(resolvedIndex: ResolvedIndex, remoteClusterName: ClusterName.Full) = {
@@ -600,9 +591,8 @@ object EsNodeClusterService {
             .asScala
             .keys
             .map { projectId =>
-              val listener = new ActionListenerToTaskAdapter[RepositoryData]()
-              service.getRepositoryData(projectId, RepositoryName.toString(repository), listener)
-              listener.result.map(_.getSnapshotIds.asScala)
+              esCall[RepositoryData](service.getRepositoryData(projectId, RepositoryName.toString(repository), _))
+                .map(_.getSnapshotIds.asScala)
             }
         }
         .map(_.flatten.toCovariantSet)
@@ -620,9 +610,8 @@ object EsNodeClusterService {
             .asScala
             .keys
             .map { projectId =>
-              val listener = new ActionListenerToTaskAdapter[SnapshotInfo]()
-              service.repository(projectId, repository.value.value).getSnapshotInfo(snapshotId, listener)
-              listener.result.map(indicesFrom)
+              esCall[SnapshotInfo](service.repository(projectId, repository.value.value).getSnapshotInfo(snapshotId, _))
+                .map(indicesFrom)
             }
         }
         .map(_.flatten.toCovariantSet)
