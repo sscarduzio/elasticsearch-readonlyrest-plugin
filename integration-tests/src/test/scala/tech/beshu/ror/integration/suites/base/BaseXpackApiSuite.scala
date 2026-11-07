@@ -607,7 +607,9 @@ trait BaseXpackApiSuite
     clientsScheduler
       .use { scheduler =>
         Task.parTraverseUnordered(clientUsers) { user =>
-          Task(sendRequestsAs(user, basicAuthClient(user, "test"))).executeOn(scheduler)
+          clientOf(user)
+            .use(client => Task(sendRequestsAs(user, client)))
+            .executeOn(scheduler)
         }
       }
       .map(_.flatten)
@@ -616,6 +618,9 @@ trait BaseXpackApiSuite
 
   private def clientsScheduler: Resource[Task, SchedulerService] =
     Resource.make(Task(Scheduler.io("concurrent-requests-clients")))(scheduler => Task(scheduler.shutdown()))
+
+  private def clientOf(user: String): Resource[Task, RestClient] =
+    Resource.make(Task(basicAuthClient(user, "test")))(client => Task(client.close()))
 
   private def sendRequestsAs(user: String, client: RestClient): List[CheckedResponse] = {
     val documentManager = new DocumentManager(client, esVersionUsed)
