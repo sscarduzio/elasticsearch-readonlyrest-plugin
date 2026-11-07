@@ -19,9 +19,7 @@ package tech.beshu.ror.es.services
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import monix.execution.CancelablePromise
 import monix.execution.atomic.Atomic
-import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.client.Client
@@ -44,8 +42,7 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName.{
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.services.EsClusterService.*
-import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
-import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
+import tech.beshu.ror.es.utils.EsCalls.esCall
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -290,8 +287,8 @@ class EsNodeClusterService(
   override def verifyDocumentAccessibility(document: Document, filter: Filter)(
       implicit id: RequestId
   ): Task[DocumentAccessibility] = {
-    createSearchRequest(filter, document)
-      .call(extractAccessibilityFrom)
+    esCall[SearchResponse](createSearchRequest(filter, document).execute(_))
+      .map(extractAccessibilityFrom)
       .onErrorRecover { case ex =>
         logger.error(s"Could not verify get request. Blocking document", ex)
         Inaccessible
@@ -301,8 +298,8 @@ class EsNodeClusterService(
   override def verifyDocumentsAccessibility(documents: NonEmptyList[Document], filter: Filter)(
       implicit id: RequestId
   ): Task[DocumentsAccessibility] = {
-    createMultiSearchRequest(filter, documents)
-      .call(extractResultsFromSearchResponse)
+    esCall[MultiSearchResponse](createMultiSearchRequest(filter, documents).execute(_))
+      .map(extractResultsFromSearchResponse)
       .onErrorRecover { case ex =>
         logger.error(s"Could not verify documents returned by multi get response. Blocking all returned documents", ex)
         blockAllDocsReturned(documents)
@@ -315,19 +312,13 @@ class EsNodeClusterService(
 
   private def resolveRemoteIndicesUsing(client: Client) = {
     import tech.beshu.ror.es.utils.ThreadContextOps.*
-    threadPool.getThreadContext.addXpackUserAuthenticationHeader(nodeName)
-    val promise = CancelablePromise[ClusterStateResponse]()
-    client
-      .admin()
-      .cluster()
-      .state(
-        new ClusterStateRequest().metaData(true),
-        new ActionListener[ClusterStateResponse] {
-          override def onResponse(response: ClusterStateResponse): Unit = promise.trySuccess(response)
-          override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-        }
-      )
-    Task.fromCancelablePromise(promise)
+    esCall[ClusterStateResponse] { listener =>
+      threadPool.getThreadContext.addXpackUserAuthenticationHeader(nodeName)
+      client
+        .admin()
+        .cluster()
+        .state(new ClusterStateRequest().metaData(true), listener)
+    }
   }
 
   private def toFullRemoteIndexWithAliases(indexMetadata: IndexMetaData, remoteClusterName: ClusterName.Full) = {
@@ -531,9 +522,8 @@ object EsNodeClusterService {
   private implicit class SnapshotsServiceOps(val service: SnapshotsService) extends AnyVal {
 
     def getSnapshotIds(repository: RepositoryName.Full): Task[Set[SnapshotId]] = {
-      val listener = new ActionListenerToTaskAdapter[RepositoryData]()
-      service.getRepositoryData(RepositoryName.toString(repository), listener)
-      listener.result.map(_.getSnapshotIds.asSafeSet)
+      esCall[RepositoryData](service.getRepositoryData(RepositoryName.toString(repository), _))
+        .map(_.getSnapshotIds.asSafeSet)
     }
 
     def getRepositoriesService: RepositoriesService =
