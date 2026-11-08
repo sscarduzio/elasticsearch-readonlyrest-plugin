@@ -43,7 +43,7 @@ import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamS
 import tech.beshu.ror.es.services.DataStreamSettingsOps.*
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.TaskOps.Measure
+import tech.beshu.ror.utils.TaskOps.measure
 
 import java.time.Clock
 import scala.jdk.CollectionConverters.*

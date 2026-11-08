@@ -73,6 +73,8 @@ class RestClient(ssl: Boolean, host: String, port: Int, basicAuth: Option[(Strin
       .runSyncUnsafe()
   }
 
+  def close(): Unit = underlying.close()
+
   private def callExecute(req: HttpUriRequest): CloseableHttpResponse = {
     Task(underlying.execute(req))
       .onErrorRestartLoop(0) {

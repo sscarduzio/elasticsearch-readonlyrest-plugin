@@ -52,6 +52,10 @@ jobs:
   # `if:` cannot read the `env` context.
   ci_setup:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To read the base branch of the PR.
+      pull-requests: read
     outputs:
       image:                      ${{ steps.toolchains.outputs.image }}
       is_release_branch:          ${{ steps.flags.outputs.is_release_branch }}
@@ -60,6 +64,7 @@ jobs:
       is_automatic_run:           ${{ steps.flags.outputs.is_automatic_run }}
       manual_action:              ${{ steps.flags.outputs.manual_action }}
       unique_build_id:            ${{ github.run_id }}-${{ github.run_attempt }}
+      base_branch:                ${{ steps.flags.outputs.base_branch }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -73,8 +78,18 @@ jobs:
           IS_DEVELOP_PUSH: ${{ github.ref == 'refs/heads/develop' }}
           IS_EPIC_BRANCH: ${{ contains(github.head_ref || github.ref_name, 'epic/') }}
           MANUAL_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.actionToPerform || '' }}
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BRANCH: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           source ci/ci-lib.sh
+          if [ "$EVENT" = pull_request ]; then
+            BASE_BRANCH=$(.github/scripts/base-branch-of-pull-request.sh "$BASE_REF" "$PR_NUMBER")
+          else
+            BASE_BRANCH=$BRANCH
+          fi
           MERGE_BACK=false
           [ "$IS_DEVELOP_PUSH" = "true" ] && [ -z "$MANUAL_ACTION" ] \
             && is_merge_back_of_master && MERGE_BACK=true
@@ -85,6 +100,7 @@ jobs:
             echo "manual_action=$MANUAL_ACTION"
             echo "is_automatic_run=$([ -z "$MANUAL_ACTION" ] && echo true || echo false)"
             echo "is_merge_back=$MERGE_BACK"
+            echo "base_branch=$BASE_BRANCH"
           } >> "$GITHUB_OUTPUT"
 
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
@@ -488,6 +504,8 @@ jobs:
     runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 150
+    outputs:
+      elk_version_by_module: ${{ steps.versions.outputs.elk_version_by_module }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -505,20 +523,20 @@ jobs:
         run: |
           set -e
           source ci/e2e-tests-lib.sh
-          VERSIONS=""
+          ELK_VERSION_BY_MODULE='{}'
           for module in $E2E_ES_MODULES; do
             version=$(e2e_elk_version_for_module "$module") || exit $?
             echo ">>> $module -> ELK $version"
-            VERSIONS="${VERSIONS:+$VERSIONS }$version"
+            ELK_VERSION_BY_MODULE=$(jq -c --arg m "$module" --arg v "$version" '. + {($m): $v}' <<<"$ELK_VERSION_BY_MODULE")
           done
-          echo "elk_versions=$VERSIONS" >> "$GITHUB_OUTPUT"
+          echo "elk_version_by_module=$ELK_VERSION_BY_MODULE" >> "$GITHUB_OUTPUT"
       - name: order_e2e_kbn_images
         id: order
         env:
           ROR_TASK: order_e2e_kbn_images
-          E2E_ELK_VERSIONS: ${{ steps.versions.outputs.elk_versions }}
+          ELK_VERSION_BY_MODULE: ${{ steps.versions.outputs.elk_version_by_module }}
           ROR_KBN_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          ROR_KBN_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
+          ROR_KBN_FALLBACK_BRANCH: ${{ needs.ci_setup.outputs.base_branch }}
           E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           ROR_KBN_WAIT_TIMEOUT_SECONDS: 7200
@@ -526,6 +544,8 @@ jobs:
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
+          E2E_ELK_VERSIONS=$(jq -r '[.[]] | join(" ")' <<<"$ELK_VERSION_BY_MODULE")
+          export E2E_ELK_VERSIONS
           source ci/configure-docker.sh
           ci/run-pipeline.sh
 
@@ -590,11 +610,9 @@ jobs:
     timeout-minutes: 120
     # The one Linux job with no container: Cypress reads the ports the compose stack of the e2e repo
     # publishes on the HOST, and the localhost of a job container is not the host. The image also
-    # holds no node, yarn or Cypress browser. So there is no toolchains-image Gradle home here, and
-    # gradle runs once, to derive the ELK version of this row's module.
+    # holds no node, yarn or Cypress browser.
     env:
-      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
-      GRADLE_OPTS: '-Dorg.gradle.java.installations.paths= -Dorg.gradle.java.installations.auto-download=true'
+      E2E_ELK_VERSION: ${{ fromJSON(needs.e2e_order_kbn_images.outputs.elk_version_by_module)[matrix.ES_MODULE] }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.e2e_matrix) }}
@@ -610,15 +628,12 @@ jobs:
         run: ci/free-host-disk.sh
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: '24.11.0' }
-      # run_e2e_tests derives E2E_ELK_VERSION from the module, and that is a Gradle call.
-      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
-        with: { distribution: temurin, java-version: '17' }
       - name: run_e2e_tests
         env:
           ROR_TASK: run_e2e_tests
           E2E_ES_MODULE: ${{ matrix.ES_MODULE }}
           E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          E2E_FALLBACK_BRANCH: ${{ github.base_ref || github.ref_name }}
+          E2E_FALLBACK_BRANCH: ${{ needs.ci_setup.outputs.base_branch }}
           E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}

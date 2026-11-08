@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.audit.output.IndexBasedAuditOutputServiceCre
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster, Header}
 import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.boot.SchedulerContextRestore.runAsyncWithContextRestore
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.{
@@ -200,10 +201,9 @@ class IndexLevelActionFilter(
   }
 
   private def handleRequest(engines: Engines, esContext: EsContext): Unit = {
-    threadPool.getThreadContext.setupContextPropagation()
     aclAwareRequestFilter
       .handle(engines, esContext)
-      .runAsync {
+      .runAsyncWithContextRestore(threadPool.getThreadContext.captureContextRestore()) {
         case Right(Right(()))                                                          =>
         case Right(Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured)) =>
           handleImpersonatorsEngineNotConfigured(esContext)

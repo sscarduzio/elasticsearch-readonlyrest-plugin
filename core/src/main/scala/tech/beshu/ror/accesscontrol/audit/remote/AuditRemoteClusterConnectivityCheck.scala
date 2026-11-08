@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient.Config
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.ScalaOps.retryBackoffEither
+import tech.beshu.ror.utils.ScalaOps.{RetryDelays, RetryPolicy, retryBackoffEither}
 
 import java.util.concurrent.TimeUnit
 import scala.collection.concurrent.TrieMap
@@ -221,12 +221,14 @@ final class NodesInfoBasedAuditRemoteClusterConnectivityCheck(httpClientsFactory
         case Left(error) if error.isTransient => Left(error)
         case finalResult                      => Right(finalResult)
       },
-      maxRetries = retryConfig.maxRetries,
-      firstDelay = retryConfig.initialDelay,
-      backOffScaler = retryConfig.backoffScaler
+      policy = retryPolicy
     ).map(_.flatten)
 
-  private val retryConfig: RetryConfig = RetryConfig(initialDelay = 500.milliseconds, backoffScaler = 2, maxRetries = 3)
+  private val retryPolicy: RetryPolicy =
+    RetryPolicy(
+      RetryDelays(initialDelay = 500.milliseconds, maxDelay = 2.seconds, backOffScaler = 2),
+      maxRetries = 3
+    )
 
   private val checkTimeout: FiniteDuration = 30.seconds
 
@@ -244,8 +246,6 @@ final class SharedAuditRemoteClusterConnectivityCheck(underlying: AuditRemoteClu
 }
 
 object NodesInfoBasedAuditRemoteClusterConnectivityCheck {
-
-  private final case class RetryConfig(initialDelay: FiniteDuration, backoffScaler: Int, maxRetries: Int)
 
   private final case class AuditNodeInfo(node: AuditClusterNode, info: ClusterInfoResponse)
 

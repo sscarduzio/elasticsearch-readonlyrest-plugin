@@ -14,24 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.utils
+package tech.beshu.ror.utils
 
-import monix.eval.Task
-import org.elasticsearch.action.ActionListener
+object AccessControllerFrames {
 
-import scala.concurrent.Promise
-
-class ActionListenerToTaskAdapter[T] extends ActionListener[T] {
-  private val promise = Promise[T]()
-
-  def result: Task[T] = Task.fromFuture(promise.future)
-
-  override def onResponse(response: T): Unit = {
-    promise.success(response)
-  }
-
-  override def onFailure(exception: Exception): Unit = {
-    promise.failure(exception)
-  }
+  // Returns true when the current thread runs inside `AccessController.doPrivileged`.
+  def runsInsideDoPrivileged(): Boolean =
+    Thread.currentThread().getStackTrace.exists { frame =>
+      frame.getClassName == "java.security.AccessController" && frame.getMethodName == "doPrivileged"
+    }
 
 }

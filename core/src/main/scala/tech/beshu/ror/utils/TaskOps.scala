@@ -19,32 +19,31 @@ package tech.beshu.ror.utils
 import monix.eval.Task
 
 import java.time.{Clock, Duration, Instant}
+import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
-import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
-class TaskOps[T](val task: Task[T]) extends AnyVal {
+object TaskOps {
 
-  def andThen[U](pf: PartialFunction[Try[T], U]): Task[T] = {
-    task
-      .map { t =>
-        val success: Try[T] = Success(t)
-        pf.applyOrElse(success, identity[Try[T]])
-        t
-      }
-      .onErrorRecover { case e =>
-        val failure: Try[T] = Failure[T](e)
-        pf.applyOrElse(failure, identity[Try[T]])
-        throw e
-      }
+  extension [T](task: Task[T]) {
+
+    def andThen[U](pf: PartialFunction[Try[T], U]): Task[T] = {
+      task
+        .map { t =>
+          val success: Try[T] = Success(t)
+          pf.applyOrElse(success, identity[Try[T]])
+          t
+        }
+        .onErrorRecover { case e =>
+          val failure: Try[T] = Failure[T](e)
+          pf.applyOrElse(failure, identity[Try[T]])
+          throw e
+        }
+    }
+
   }
 
-}
-
-object TaskOps {
-  implicit def from[T](task: Task[T]): TaskOps[T] = new TaskOps[T](task)
-
-  implicit class Measure(val task: Task.type) extends AnyVal {
+  extension (taskCompanion: Task.type) {
 
     def measure[T](task: Task[T], logTimeMeasurement: FiniteDuration => Task[Unit])(
         implicit clock: Clock
@@ -61,6 +60,11 @@ object TaskOps {
           result => stopMeasurement.map(_ => result),
         )
       }
+
+    // Use it for a future that a thread outside of ROR completes, for example an ES listener. After a result or an
+    // error, the request continues on a ROR thread with its context, because the boundary comes after Monix restores
+    // the Locals. `asyncBoundary` skips an error, so the error passes the boundary as a value.
+    def fromEsFuture[T](future: Future[T]): Task[T] = Task.fromFuture(future).materialize.asyncBoundary.dematerialize
 
   }
 

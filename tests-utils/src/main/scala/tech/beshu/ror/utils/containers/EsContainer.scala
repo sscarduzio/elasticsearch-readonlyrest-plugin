@@ -22,7 +22,6 @@ import monix.eval.Coeval
 import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
-import org.testcontainers.images.builder.ImageFromDockerfile
 import squants.information.{Information, Mebibytes}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, BasicAuthWithHeaders, Header, None, Token}
@@ -119,47 +118,31 @@ abstract class EsContainer(
         Option(System.getenv("ROR_CI_JOB_ID")).filter(_.nonEmpty).foreach { legId =>
           container.withLabel("ror.ci-job", legId)
         }
-        EsContainerImplementation.Linux(
-          esImage = esImage,
-          container = container
-        )
+        EsContainerImplementation.Linux(container)
     }
   }
 
   override implicit val container: GenericContainer[_] = containerImplementation match {
-    case EsContainerImplementation.Windows(container)        => container
-    case EsContainerImplementation.Linux(esImage, container) => container
-  }
-
-  def removeImage(): Unit = {
-    containerImplementation match {
-      case EsContainerImplementation.Windows(_) =>
-        ()
-      case EsContainerImplementation.Linux(esImage, _) =>
-        // No prune: other test JVMs build on the parent layers.
-        try dockerClient.removeImageCmd(esImage.get()).withForce(false).withNoPrune(true).exec()
-        catch {
-          case scala.util.control.NonFatal(_) => ()
-        }
-    }
+    case EsContainerImplementation.Windows(container) => container
+    case EsContainerImplementation.Linux(container)   => container
   }
 
   def sslEnabled: Boolean
 
   def ip: String = containerImplementation match {
-    case EsContainerImplementation.Windows(_)          => "localhost"
-    case EsContainerImplementation.Linux(_, container) => container.getHost
+    case EsContainerImplementation.Windows(_)       => "localhost"
+    case EsContainerImplementation.Linux(container) => container.getHost
   }
 
   def port: Integer = containerImplementation match {
-    case EsContainerImplementation.Windows(container)  => container.getPort
-    case EsContainerImplementation.Linux(_, container) => container.getMappedPort(9200)
+    case EsContainerImplementation.Windows(container) => container.getPort
+    case EsContainerImplementation.Linux(container)   => container.getMappedPort(9200)
   }
 
   def getAddressInInternalNetwork: String = containerImplementation match {
     case EsContainerImplementation.Windows(container) =>
       s"localhost:${container.getPort}"
-    case EsContainerImplementation.Linux(_, container) =>
+    case EsContainerImplementation.Linux(container) =>
       s"${containerInfo.getConfig.getHostName}:9200"
   }
 
@@ -237,8 +220,7 @@ object EsContainer {
   object EsContainerImplementation {
     final case class Windows(container: WindowsPseudoEsContainer) extends EsContainerImplementation
 
-    final case class Linux(esImage: ImageFromDockerfile, container: GenericContainer[_])
-        extends EsContainerImplementation
+    final case class Linux(container: GenericContainer[_]) extends EsContainerImplementation
   }
 
 }
