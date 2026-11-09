@@ -52,7 +52,6 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.concurrent.TimeUnit
-import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
@@ -277,24 +276,10 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
         case Left(ex) =>
           Task {
             noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
-            Left(CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod, rootCauseMessage(ex)))
+            Left(CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod, ex))
           }
       }
   }
-
-  // The SDK message of a failed connection contains the full text of all the nested exceptions.
-  // The message of the deepest cause is short and tells the reason, for example a failed host name check.
-  // The depth limit stops the search when the causes make a cycle.
-  private def rootCauseMessage(ex: Throwable): String = {
-    @tailrec
-    def rootCause(throwable: Throwable, depth: Int): Throwable = Option(throwable.getCause) match {
-      case Some(cause) if depth < maxCauseDepth => rootCause(cause, depth + 1)
-      case _                                    => throwable
-    }
-    Option(rootCause(ex, depth = 0).getMessage).getOrElse(ex.getMessage)
-  }
-
-  private val maxCauseDepth = 20
 
   private lazy val bindingTestRetryPolicy = RetryPolicy(
     delays = RetryDelays(initialDelay = 500 millis, maxDelay = 500 millis, backOffScaler = 1),
@@ -428,7 +413,7 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
   sealed trait ConnectionError
 
   object ConnectionError {
-    final case class CannotConnectError(ldap: LdapService.Name, connectionMethod: ConnectionMethod, cause: String)
+    final case class CannotConnectError(ldap: LdapService.Name, connectionMethod: ConnectionMethod, cause: Throwable)
         extends ConnectionError
     final case class HostResolvingError(ldap: LdapService.Name, hosts: NonEmptyList[LdapHost]) extends ConnectionError
     final case class BindingTestError(ldap: LdapService.Name) extends ConnectionError

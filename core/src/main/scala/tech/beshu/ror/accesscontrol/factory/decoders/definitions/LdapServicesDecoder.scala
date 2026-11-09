@@ -356,7 +356,7 @@ object LdapServicesDecoder extends RequestIdAwareLogging {
               s"Connection details: recordName=${recordName.getOrElse("default").show}, " +
               s"providerUrl=${providerUrl.getOrElse("default")}"
         }
-        connectionErrorFrom(s"$problem. Cause: ${cause.show}")
+        connectionErrorFrom(s"$problem. Cause: ${cause.getMessage.show}")
       case HostResolvingError(ldap, hosts) =>
         connectionErrorFrom(s"There was a problem with resolving '${ldap.show}' LDAP hosts: ${hosts.toList.show}")
       case BindingTestError(ldap) =>

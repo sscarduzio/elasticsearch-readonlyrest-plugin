@@ -58,19 +58,19 @@ class UnboundidLdapConnectionPoolProviderSslTests extends AnyWordSpec with Befor
     "not connect to an LDAPS server" when {
       "the certificate does not contain the host name" in {
         inside(connect(config(singleServer(otherNameServerPort)))) { case Left(CannotConnectError(_, _, cause)) =>
-          cause should include("Hostname verification failed")
+          cause.getMessage should include("Hostname verification failed")
         }
       }
       "the certificates of all failover servers do not contain the host name" in {
         val method = severalServers(HaMethod.Failover, otherNameServerPort, secondOtherNameServerPort)
         inside(connect(config(method))) { case Left(CannotConnectError(_, _, cause)) =>
-          cause should include("Hostname verification failed")
+          cause.getMessage should include("Hostname verification failed")
         }
       }
       "the certificates of all round robin servers do not contain the host name" in {
         val method = severalServers(HaMethod.RoundRobin, otherNameServerPort, secondOtherNameServerPort)
         inside(connect(config(method))) { case Left(CannotConnectError(_, _, cause)) =>
-          cause should include("Hostname verification failed")
+          cause.getMessage should include("Hostname verification failed")
         }
       }
       "the certificate of the server from the SRV record does not contain the SRV target name" in {
@@ -85,14 +85,14 @@ class UnboundidLdapConnectionPoolProviderSslTests extends AnyWordSpec with Befor
               useSSL = true
             )
             inside(connect(config(method))) { case Left(CannotConnectError(_, _, cause)) =>
-              cause should include("Hostname verification failed")
+              cause.getMessage should include("Hostname verification failed")
             }
           } finally dnsContainer.stop()
         }
       }
       "the certificate is not in the trust store" in {
         inside(connect(config(singleServer(untrustedServerPort)))) { case Left(CannotConnectError(_, _, cause)) =>
-          cause should not include "Hostname verification failed"
+          cause.getMessage should not include "Hostname verification failed"
         }
       }
     }
