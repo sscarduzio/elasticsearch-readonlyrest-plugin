@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.{DataStreamName, RorAuditDataStream, 
 import tech.beshu.ror.es.services.DataStreamService
 import tech.beshu.ror.es.services.DataStreamService.CreationResult.*
 import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.utils.ScalaOps.{RetryDelays, RetryPolicy}
 
 import scala.concurrent.duration.DurationInt
 
@@ -698,11 +699,11 @@ class DataStreamServiceTest extends AnyWordSpec with MockFactory {
 
   class MockableDataStreamService extends DataStreamService {
 
-    override protected val retryConfig: RetryConfig = RetryConfig(
-      initialDelay = 1.milliseconds,
-      backoffScaler = 1,
-      maxRetries = 5
-    )
+    override protected val retryPolicy: RetryPolicy =
+      RetryPolicy(
+        RetryDelays(initialDelay = 1.milliseconds, maxDelay = 1.milliseconds, backOffScaler = 1),
+        maxRetries = 5
+      )
 
     def dataStreamExists(dataStreamName: DataStreamName.Full): Boolean =
       throwErrorWhenNotMocked

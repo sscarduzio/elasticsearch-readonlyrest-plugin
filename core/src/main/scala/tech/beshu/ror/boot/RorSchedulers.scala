@@ -31,7 +31,7 @@ object RorSchedulers {
   val mainScheduler: Scheduler = new ContextRestoringScheduler(TracingScheduler(global))
 
   val blockingScheduler: Scheduler = new ContextRestoringScheduler(
-    TracingScheduler(Scheduler.io("blocking-index-content-provider"))
+    TracingScheduler(Scheduler.io("ror-blocking-executor"))
   )
 
   val restApiScheduler: Scheduler = new ContextRestoringScheduler(

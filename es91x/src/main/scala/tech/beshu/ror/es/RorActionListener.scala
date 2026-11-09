@@ -24,6 +24,7 @@ import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
+import tech.beshu.ror.boot.SchedulerContextRestore.runAsyncWithContextRestore
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.utils.ThreadContextOps.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -65,8 +66,7 @@ final class AtEsLevelUpdateActionResponseListener(
 ) extends RorActionListener[ActionResponse](esContext.listener.underlying) {
 
   override def onResponse(response: ActionResponse): Unit = {
-    threadPool.getThreadContext.setupContextPropagation()
-    update(response) runAsync {
+    update(response).runAsyncWithContextRestore(threadPool.getThreadContext.captureContextRestore()) {
       case Right(updatedResponse) =>
         super.onResponse(updatedResponse)
       case Left(ex) =>

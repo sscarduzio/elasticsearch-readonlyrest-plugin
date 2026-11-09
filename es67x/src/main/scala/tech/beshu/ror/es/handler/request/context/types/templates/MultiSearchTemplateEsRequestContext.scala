@@ -19,10 +19,10 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
-import monix.execution.{CancelablePromise, Scheduler}
+import monix.execution.Scheduler
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
 import org.elasticsearch.action.support.IndicesOptions
-import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, CompositeIndicesRequest}
+import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
@@ -43,6 +43,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, S
 import tech.beshu.ror.es.handler.request.context.types.ReflectionBasedActionRequest
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.SearchHitOps.*
+import tech.beshu.ror.es.utils.EsCalls.esCall
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -198,18 +199,10 @@ class MultiSearchTemplateEsRequestContext private (
   }
 
   private def mSearch(requests: List[SearchRequest]): Task[MultiSearchResponse] = {
-    val promise = CancelablePromise[MultiSearchResponse]()
     val multiSearchRequest = new MultiSearchRequest()
     requests.foreach(multiSearchRequest.add)
     multiSearchRequest.indicesOptions(multiSearchTemplateRequest.indicesOptions())
-    nodeClient.multiSearch(
-      multiSearchRequest,
-      new ActionListener[MultiSearchResponse]() {
-        override def onResponse(response: MultiSearchResponse): Unit = promise.trySuccess(response)
-        override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-      }
-    )
-    Task.fromCancelablePromise(promise)
+    esCall[MultiSearchResponse](nodeClient.multiSearch(multiSearchRequest, _))
   }
 
 }

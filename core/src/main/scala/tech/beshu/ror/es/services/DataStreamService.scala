@@ -26,7 +26,7 @@ import tech.beshu.ror.es.services.DataStreamService.CreationResult.{Acknowledged
 import tech.beshu.ror.es.services.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
-import tech.beshu.ror.utils.ScalaOps.retryBackoffEither
+import tech.beshu.ror.utils.ScalaOps.{RetryDelays, RetryPolicy, retryBackoffEither}
 
 import scala.concurrent.duration.*
 
@@ -144,17 +144,14 @@ trait DataStreamService {
   }
 
   private def withRetries[E, A](source: => Task[Either[E, A]]) =
-    retryBackoffEither(
-      source = source,
-      maxRetries = retryConfig.maxRetries,
-      firstDelay = retryConfig.initialDelay,
-      backOffScaler = retryConfig.backoffScaler
+    retryBackoffEither(source = source, policy = retryPolicy)
+
+  protected val retryPolicy: RetryPolicy =
+    RetryPolicy(
+      RetryDelays(initialDelay = 500.milliseconds, maxDelay = 8.seconds, backOffScaler = 2),
+      maxRetries = 5
     )
 
-  protected val retryConfig: RetryConfig =
-    RetryConfig(initialDelay = 500.milliseconds, backoffScaler = 2, maxRetries = 5)
-
-  protected case class RetryConfig(initialDelay: FiniteDuration, backoffScaler: Int, maxRetries: Int)
 }
 
 object DataStreamService {

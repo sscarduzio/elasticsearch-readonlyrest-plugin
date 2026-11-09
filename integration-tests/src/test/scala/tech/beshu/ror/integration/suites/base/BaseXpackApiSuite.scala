@@ -16,9 +16,21 @@
  */
 package tech.beshu.ror.integration.suites.base
 
+import cats.effect.Resource
+import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
+import monix.execution.schedulers.SchedulerService
 import org.scalatest.wordspec.AnyWordSpecLike
-import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.{NextRollupJobName, nodeDataInitializer}
+import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.{
+  CheckedResponse,
+  NextRollupJobName,
+  clientsPerUser,
+  concurrentRequestsUsers,
+  nodeDataInitializer,
+  requestsPerClient,
+  sessionCookieUserOf
+}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.TestUjson.ujson
@@ -26,6 +38,9 @@ import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+
+import scala.concurrent.duration.*
+import scala.util.Try
 
 trait BaseXpackApiSuite
     extends AnyWordSpecLike
@@ -568,9 +583,76 @@ trait BaseXpackApiSuite
     }
   }
 
+  "Concurrent requests of different users" should {
+    // ROR changes the GET response in an async step, on ROR threads. In this step, ROR must use the thread context of
+    // the same request. The session cookie in the response shows whose context ROR used. The test clients keep cookies,
+    // as a browser does. So after a wrong cookie, the next request of that client fails with 403.
+    "each get the session cookie of their own user only" in {
+      val responses = sendConcurrently(concurrentRequestsUsers.flatMap(user => List.fill(clientsPerUser)(user)))
+
+      val wrongResponses = responses.filterNot(r => r.status == 200 && r.cookieUsers == List(r.user))
+      withClue(
+        s"${wrongResponses.size} of ${responses.size} responses have a wrong status or session cookie, " +
+          s"for example ${wrongResponses.take(5)}:"
+      ) {
+        wrongResponses.size should be(0)
+      }
+    }
+  }
+
+  // Each user gets its own clients, and each client sends its requests one after another. The clients run at the same
+  // time, so ES handles the requests of different users at the same time.
+  private def sendConcurrently(clientUsers: List[String]): List[CheckedResponse] = {
+    import monix.execution.Scheduler.Implicits.global
+    clientsScheduler
+      .use { scheduler =>
+        Task.parTraverseUnordered(clientUsers) { user =>
+          clientOf(user)
+            .use(client => Task(sendRequestsAs(user, client)))
+            .executeOn(scheduler)
+        }
+      }
+      .map(_.flatten)
+      .runSyncUnsafe(5.minutes)
+  }
+
+  private def clientsScheduler: Resource[Task, SchedulerService] =
+    Resource.make(Task(Scheduler.io("concurrent-requests-clients")))(scheduler => Task(scheduler.shutdown()))
+
+  private def clientOf(user: String): Resource[Task, RestClient] =
+    Resource.make(Task(basicAuthClient(user, "test")))(client => Task(client.close()))
+
+  private def sendRequestsAs(user: String, client: RestClient): List[CheckedResponse] = {
+    val documentManager = new DocumentManager(client, esVersionUsed)
+    List.fill(requestsPerClient) {
+      val response = documentManager.get("concurrent_requests_index", 1)
+      CheckedResponse(
+        user = user,
+        status = response.responseCode,
+        cookieUsers = response.headers.toList
+          .filter(_.name.equalsIgnoreCase("Set-Cookie"))
+          .flatMap(h => sessionCookieUserOf(h.value))
+      )
+    }
+  }
+
 }
 
 object BaseXpackApiSuite {
+
+  private val concurrentRequestsUsers = List("alice", "bob", "carol")
+  private val clientsPerUser = 8
+  private val requestsPerClient = 25
+
+  private final case class CheckedResponse(user: String, status: Int, cookieUsers: List[String])
+
+  // The value of the session cookie is `[{"user":"<user>","expire":<millis>},"<signature>"]`.
+  private def sessionCookieUserOf(setCookieValue: String): Option[String] = {
+    val prefix = "ReadonlyREST_Session="
+    Option
+      .when(setCookieValue.startsWith(prefix))(setCookieValue.stripPrefix(prefix))
+      .flatMap(json => Try(ujson.read(json)(0)("user").str).toOption)
+  }
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
@@ -642,6 +724,8 @@ object BaseXpackApiSuite {
 
     documentManager.createDoc("test7_index", 1, ujson.read("""{"content":{ "app": "a1" }}""")).force()
     documentManager.createDoc("test7_index", 2, ujson.read("""{"content":{ "app": "a2" }}""")).force()
+
+    documentManager.createDoc("concurrent_requests_index", 1, ujson.read("""{"owner":"all"}""")).force()
   }
 
   private def storeScriptTemplate(adminRestClient: RestClient, esVersion: String): Unit = {

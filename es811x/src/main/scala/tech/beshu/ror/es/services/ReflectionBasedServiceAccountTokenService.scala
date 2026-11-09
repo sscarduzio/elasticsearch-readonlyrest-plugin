@@ -21,7 +21,7 @@ import org.elasticsearch.ElasticsearchSecurityException
 import org.elasticsearch.common.settings.SecureString
 import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
-import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
+import tech.beshu.ror.es.utils.EsCalls.esCall
 import tech.beshu.ror.utils.{AccessControllerHelper, RequestIdAwareLogging}
 
 import scala.util.{Failure, Success, Try, Using}
@@ -69,9 +69,7 @@ private class ServiceAccountTokenServiceRefAvailable(serviceAccountServiceRef: A
     }
 
   private def authenticateToken(serviceAccountToken: AnyRef): Task[Boolean] = {
-    val listener = new ActionListenerToTaskAdapter[AnyRef]
-    on(serviceAccountServiceRef).call("authenticateToken", serviceAccountToken, "any", listener)
-    listener.result
+    esCall[AnyRef](on(serviceAccountServiceRef).call("authenticateToken", serviceAccountToken, "any", _))
       .map(ref => Option(ref).isDefined)
       .onErrorRecover {
         case _: ElasticsearchSecurityException => false

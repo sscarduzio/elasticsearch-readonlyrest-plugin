@@ -360,10 +360,10 @@ object LdapServicesDecoder extends RequestIdAwareLogging {
       case HostResolvingError(ldap, hosts) =>
         connectionErrorFrom(s"There was a problem with resolving '${ldap.show}' LDAP hosts: ${hosts.toList.show}")
       case BindingTestError(ldap) =>
-        connectionErrorFrom(s"There was a problem with test binding in case of '${ldap.show}' LDAP connector}")
+        connectionErrorFrom(s"There was a problem with test binding in case of '${ldap.show}' LDAP connector")
       case UnexpectedConnectionError(ldap, cause) =>
         noRequestIdLogger.error(s"Unexpected '${ldap.show}' LDAP connection error", cause)
-        connectionErrorFrom(s"Unexpected '${ldap.show}' LDAP connection error: '${cause.getMessage.show}'}")
+        connectionErrorFrom(s"Unexpected '${ldap.show}' LDAP connection error: '${cause.getMessage.show}'")
   }
 
   private given Decoder[UserSearchFilterConfig] =

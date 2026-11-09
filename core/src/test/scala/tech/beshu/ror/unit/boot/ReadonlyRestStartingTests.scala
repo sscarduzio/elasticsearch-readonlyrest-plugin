@@ -88,7 +88,7 @@ import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSaving
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.utils.WithReadonlyrestBootSupport
 import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
-import tech.beshu.ror.utils.ScalaOps.RetryPolicy
+import tech.beshu.ror.utils.ScalaOps.RetryDelays
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.Wiremock
@@ -1990,7 +1990,7 @@ class ReadonlyRestStartingTests
         )
 
         val instance = readonlyRest
-          .startWithRetry(esConfigBasedRorSettings, RetryPolicy(initialDelay = 10 millis, maxDelay = 20 millis)) { _ =>
+          .startWithRetry(esConfigBasedRorSettings, RetryDelays(initialDelay = 10 millis, maxDelay = 20 millis)) { _ =>
             throw new RuntimeException("the listener is broken")
           }
           .runSyncUnsafe()
@@ -2061,7 +2061,7 @@ class ReadonlyRestStartingTests
     val instance = readonlyRest
       .startWithRetry(
         esConfigBasedRorSettings,
-        RetryPolicy(initialDelay = 10 millis, maxDelay = 20 millis)
+        RetryDelays(initialDelay = 10 millis, maxDelay = 20 millis)
       ) { failure =>
         reportedFailures.updateAndGet(_ :+ failure)
       }

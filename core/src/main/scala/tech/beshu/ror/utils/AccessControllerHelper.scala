@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils
 
 import monix.eval.Task
-import monix.execution.{Cancelable, ExecutionModel, Scheduler, UncaughtExceptionReporter}
+import monix.execution.{Cancelable, ExecutionModel, Features, Scheduler, UncaughtExceptionReporter}
 
 import java.security.{AccessController, PrivilegedAction}
 import scala.concurrent.duration.TimeUnit
@@ -58,10 +58,17 @@ object AccessControllerHelper {
 
     override def clockMonotonic(unit: TimeUnit): Long = underlying.clockMonotonic(unit)
 
-    override def withExecutionModel(em: ExecutionModel): Scheduler = underlying.withExecutionModel(em)
+    // This scheduler passes on the tracing feature of the scheduler that it wraps. So Monix does not wrap it in its
+    // own TracingScheduler, which runs trampolined steps on the calling thread, without privileges.
+    // This scheduler does not batch: `wrap` turns each step into a plain `Runnable`, and the underlying scheduler
+    // forks it.
+    override def features: Features = underlying.features.diff(Features(Scheduler.BATCHING))
+
+    override def withExecutionModel(em: ExecutionModel): Scheduler =
+      PrivilegedScheduler(underlying.withExecutionModel(em))
 
     override def withUncaughtExceptionReporter(r: UncaughtExceptionReporter): Scheduler =
-      underlying.withUncaughtExceptionReporter(underlying)
+      PrivilegedScheduler(underlying.withUncaughtExceptionReporter(r))
 
     private def wrap(r: Runnable): Runnable = { () =>
       doPrivileged(r.run())
