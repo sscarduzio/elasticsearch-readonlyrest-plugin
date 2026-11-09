@@ -239,6 +239,7 @@ class UnboundidLdapConnectionPoolProviderTests
     connectionTimeout = positiveFiniteDuration(5, TimeUnit.SECONDS),
     requestTimeout = positiveFiniteDuration(30, TimeUnit.SECONDS),
     trustAllCerts = false,
+    sslHostnameVerification = true,
     bindRequestUser = BindRequestUser.Anonymous,
     ignoreLdapConnectivityProblems = false
   )

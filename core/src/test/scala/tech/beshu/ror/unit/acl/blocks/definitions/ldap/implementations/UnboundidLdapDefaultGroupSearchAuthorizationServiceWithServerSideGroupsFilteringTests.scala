@@ -231,6 +231,7 @@ abstract class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSide
       connectionTimeout = Refined.unsafeApply(5 seconds),
       requestTimeout = Refined.unsafeApply(5 seconds),
       trustAllCerts = false,
+      sslHostnameVerification = true,
       bindRequestUser = BindRequestUser.CustomUser(
         Dn("cn=admin,dc=example,dc=com"),
         PlainTextSecret("password")
