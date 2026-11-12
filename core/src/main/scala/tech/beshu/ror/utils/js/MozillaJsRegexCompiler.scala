@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.js
 import cats.effect.Resource
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.mozilla.javascript.{Context, RhinoException}
+import org.mozilla.javascript.{Context, RhinoException, Scriptable}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.concurrent.duration.*
@@ -87,13 +87,14 @@ object MozillaJsRegexCompiler extends JsRegexCompiler with RequestIdAwareLogging
       )
   }
 
-  // The pattern goes to the RegExp constructor as an argument. It never becomes JS source.
   // The safe scope gives no access to Java classes (no `Packages`, no `java`).
+  private[ror] def createSafeScope(context: Context): Scriptable = context.initSafeStandardObjects()
+
+  // The pattern goes to the RegExp constructor as an argument. It never becomes JS source.
   // `RhinoException.getMessage` adds the Java source location of the caller. `details` gives only the reason.
   private def runRegExpConstructor(context: Context, pattern: String): Either[String, Unit] = {
     try {
-      val scope = context.initSafeStandardObjects()
-      context.newObject(scope, "RegExp", Array[AnyRef](pattern))
+      context.newObject(createSafeScope(context), "RegExp", Array[AnyRef](pattern))
       Right(())
     } catch {
       case ex: RhinoException =>

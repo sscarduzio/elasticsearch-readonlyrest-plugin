@@ -17,12 +17,15 @@
 package tech.beshu.ror.unit.acl.domain
 
 import eu.timepit.refined.types.string.NonEmptyString
+import org.mozilla.javascript.{Context, ScriptableObject}
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.JsRegex
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 import tech.beshu.ror.utils.js.{JsRegexCompiler, MozillaJsRegexCompiler}
+
+import scala.util.Using
 
 class JsRegexCompilerTests extends AnyWordSpec with Matchers with EitherValues {
 
@@ -63,6 +66,11 @@ class JsRegexCompilerTests extends AnyWordSpec with Matchers with EitherValues {
         ) should be(Left(JsRegex.CompilationResult.SyntaxError("SyntaxError: unmatched ) in regular expression.")))
         System.getProperty("ror.js.regex.test") should be(null)
       }
+      "an escaped backslash comes before a parenthesis" in {
+        JsRegex.compile("""/\\(/""") should be(
+          Left(JsRegex.CompilationResult.SyntaxError("SyntaxError: Unterminated parenthetical"))
+        )
+      }
     }
     "not run the regex as JS code" when {
       "the regex is valid and contains JS code" in {
@@ -74,8 +82,29 @@ class JsRegexCompilerTests extends AnyWordSpec with Matchers with EitherValues {
         System.getProperty("ror.js.regex.test2") should be(null)
       }
     }
-    "compile a regex that contains a quote or a backslash" in {
-      JsRegex.compile("""/^it's \d+$/""").isRight should be(true)
+    "compile a regex" when {
+      "the regex contains a quote or a backslash" in {
+        JsRegex.compile("""/^it's \d+$/""").isRight should be(true)
+      }
+      "the regex ends with an escaped backslash" in {
+        JsRegex.compile("""/a\\/""").isRight should be(true)
+      }
+      "the regex contains `);`" in {
+        JsRegex.compile("/(a);b/").isRight should be(true)
+      }
+    }
+  }
+
+  "A MozillaJsRegexCompiler" should {
+    "create a scope without access to Java classes" in {
+      Using.resource(Context.enter()) { context =>
+        val scope = MozillaJsRegexCompiler.createSafeScope(context)
+        List("Packages", "java", "javax", "JavaAdapter", "getClass").foreach { name =>
+          withClue(s"[$name]") {
+            ScriptableObject.hasProperty(scope, name) should be(false)
+          }
+        }
+      }
     }
   }
 
