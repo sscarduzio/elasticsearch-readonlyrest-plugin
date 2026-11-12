@@ -21,7 +21,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.JsRegex.CompilationResult
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.utils.ScalaOps.toRootLowerCase
-import tech.beshu.ror.utils.js.JsCompiler
+import tech.beshu.ror.utils.js.JsRegexCompiler
 
 sealed trait KibanaApp
 
@@ -30,14 +30,14 @@ object KibanaApp {
   final case class KibanaAppRegex(regex: JsRegex) extends KibanaApp
 
   def from(str: NonEmptyString)(
-      implicit jsCompiler: JsCompiler
+      implicit jsRegexCompiler: JsRegexCompiler
   ): Either[String, KibanaApp] = {
     JsRegex.compile(str) match {
-      case Right(jsRegex)                      => Right(KibanaApp.KibanaAppRegex(jsRegex))
-      case Left(CompilationResult.NotRegex)    => Right(KibanaApp.FullNameKibanaApp(str))
-      case Left(CompilationResult.SyntaxError) =>
+      case Right(jsRegex)                              => Right(KibanaApp.KibanaAppRegex(jsRegex))
+      case Left(CompilationResult.NotRegex)            => Right(KibanaApp.FullNameKibanaApp(str))
+      case Left(CompilationResult.SyntaxError(reason)) =>
         Left(
-          s"Cannot compile [${str.value}] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions)"
+          s"Cannot compile [${str.value}] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions): $reason"
         )
     }
   }

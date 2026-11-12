@@ -777,7 +777,7 @@ class KibanaUserDataRuleSettingsTests
             errors.head should be(
               RulesLevelCreationError(
                 Message(
-                  "Cannot compile [/^(?!(Analytics\\|Maps).*$.*$/] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions)"
+                  "Cannot compile [/^(?!(Analytics\\|Maps).*$.*$/] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions): SyntaxError: Unterminated parenthetical"
                 )
               )
             )

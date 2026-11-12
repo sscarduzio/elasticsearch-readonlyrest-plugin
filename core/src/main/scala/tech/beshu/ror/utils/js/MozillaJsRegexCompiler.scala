@@ -19,23 +19,32 @@ package tech.beshu.ror.utils.js
 import cats.effect.Resource
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.mozilla.javascript.Context
+import org.mozilla.javascript.{Context, RhinoException, Scriptable}
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
-object MozillaJsCompiler extends JsCompiler {
+object MozillaJsRegexCompiler extends JsRegexCompiler with RequestIdAwareLogging {
 
-  override def compile(jsCodeString: String)(
+  override def compile(pattern: String)(
       implicit timeout: FiniteDuration = 10 seconds
-  ): Try[Unit] = {
-    createJsContext
-      .use { context =>
-        Task.delay(runCompilation(context, jsCodeString))
-      }
-      // at the moment there is no need to do it better, because the JS compiler is used only during documentation parsing
-      .runSyncUnsafe(timeout)
+  ): Either[String, Unit] = {
+    Try {
+      createJsContext
+        .use { context =>
+          Task.delay(runRegExpConstructor(context, pattern))
+        }
+        // at the moment there is no need to do it better, because the JS regex compiler is used only during settings parsing
+        .runSyncUnsafe(timeout)
+    } match {
+      case Success(result) =>
+        result
+      case Failure(ex) =>
+        noRequestIdLogger.error(s"Cannot validate the JS regex [$pattern]", ex)
+        Left(Option(ex.getMessage).map(_.trim).filter(_.nonEmpty).getOrElse(ex.getClass.getSimpleName))
+    }
   }
 
   private def createJsContext: Resource[Task, Context] = {
@@ -78,10 +87,21 @@ object MozillaJsCompiler extends JsCompiler {
       )
   }
 
-  private def runCompilation(context: Context, jsCodeString: String) = Try {
-    val jsScript = context.compileString(jsCodeString, "js", 1, null)
-    jsScript.exec(context, context.initStandardObjects)
-    ()
+  // The safe scope gives no access to Java classes (no `Packages`, no `java`).
+  private[ror] def createSafeScope(context: Context): Scriptable = context.initSafeStandardObjects()
+
+  // The pattern goes to the RegExp constructor as an argument. It never becomes JS source.
+  // `RhinoException.getMessage` adds the Java source location of the caller. `details` gives only the reason.
+  private def runRegExpConstructor(context: Context, pattern: String): Either[String, Unit] = {
+    try {
+      context.newObject(createSafeScope(context), "RegExp", Array[AnyRef](pattern))
+      Right(())
+    } catch {
+      case ex: RhinoException =>
+        val reason = ex.details().trim
+        noRequestIdLogger.debug(s"Invalid JS regex [$pattern]: $reason")
+        Left(reason)
+    }
   }
 
 }
