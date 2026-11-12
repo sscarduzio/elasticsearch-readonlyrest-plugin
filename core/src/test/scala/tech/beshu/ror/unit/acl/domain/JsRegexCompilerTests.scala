@@ -22,11 +22,11 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.JsRegex
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
-import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
+import tech.beshu.ror.utils.js.{JsRegexCompiler, MozillaJsRegexCompiler}
 
-class JsRegexTests extends AnyWordSpec with Matchers with EitherValues {
+class JsRegexCompilerTests extends AnyWordSpec with Matchers with EitherValues {
 
-  private implicit val jsCompile: JsCompiler = MozillaJsCompiler
+  private implicit val jsRegexCompiler: JsRegexCompiler = MozillaJsRegexCompiler
 
   "A JsRegex" should {
     "compile valid regex" in {
@@ -55,6 +55,25 @@ class JsRegexTests extends AnyWordSpec with Matchers with EitherValues {
           }
         ) should be(Left(JsRegex.CompilationResult.SyntaxError))
       }
+      "the regex tries to run Java code" in {
+        JsRegex.compile(
+          "/x'),Packages.java.lang.System.setProperty('ror.js.regex.test','executed'),(' /"
+        ) should be(Left(JsRegex.CompilationResult.SyntaxError))
+        System.getProperty("ror.js.regex.test") should be(null)
+      }
+    }
+    "not run the regex as JS code" when {
+      "the regex is valid and contains JS code" in {
+        JsRegex
+          .compile(
+            "/Packages.java.lang.System.setProperty('ror.js.regex.test2','executed')/"
+          )
+          .isRight should be(true)
+        System.getProperty("ror.js.regex.test2") should be(null)
+      }
+    }
+    "compile a regex that contains a quote or a backslash" in {
+      JsRegex.compile("""/^it's \d+$/""").isRight should be(true)
     }
   }
 

@@ -25,16 +25,16 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Try
 
-object MozillaJsCompiler extends JsCompiler {
+object MozillaJsRegexCompiler extends JsRegexCompiler {
 
-  override def compile(jsCodeString: String)(
+  override def compile(pattern: String)(
       implicit timeout: FiniteDuration = 10 seconds
   ): Try[Unit] = {
     createJsContext
       .use { context =>
-        Task.delay(runCompilation(context, jsCodeString))
+        Task.delay(runRegExpConstructor(context, pattern))
       }
-      // at the moment there is no need to do it better, because the JS compiler is used only during documentation parsing
+      // at the moment there is no need to do it better, because the JS regex compiler is used only during settings parsing
       .runSyncUnsafe(timeout)
   }
 
@@ -78,9 +78,11 @@ object MozillaJsCompiler extends JsCompiler {
       )
   }
 
-  private def runCompilation(context: Context, jsCodeString: String) = Try {
-    val jsScript = context.compileString(jsCodeString, "js", 1, null)
-    jsScript.exec(context, context.initStandardObjects)
+  // The pattern goes to the RegExp constructor as an argument. It never becomes JS source.
+  // The safe scope gives no access to Java classes (no `Packages`, no `java`).
+  private def runRegExpConstructor(context: Context, pattern: String) = Try {
+    val scope = context.initSafeStandardObjects()
+    context.newObject(scope, "RegExp", Array[AnyRef](pattern))
     ()
   }
 

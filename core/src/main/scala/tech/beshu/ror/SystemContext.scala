@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVar
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.providers.*
-import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
+import tech.beshu.ror.utils.js.{JsRegexCompiler, MozillaJsRegexCompiler}
 
 import java.time.Clock
 
@@ -31,7 +31,7 @@ final class SystemContext(
     val propertiesProvider: PropertiesProvider = JvmPropertiesProvider,
     implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
     val uuidProvider: UuidProvider = JavaUuidProvider,
-    val jsCompiler: JsCompiler = MozillaJsCompiler,
+    val jsRegexCompiler: JsRegexCompiler = MozillaJsRegexCompiler,
     val variablesFunctions: SupportedVariablesFunctions = SupportedVariablesFunctions.default,
     implicit val scheduler: Scheduler = RorSchedulers.Implicits.mainScheduler
 )

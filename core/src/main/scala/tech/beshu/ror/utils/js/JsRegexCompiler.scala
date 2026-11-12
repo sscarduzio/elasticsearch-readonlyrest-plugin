@@ -20,9 +20,9 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.postfixOps
 import scala.util.Try
 
-trait JsCompiler {
+trait JsRegexCompiler {
 
-  def compile(jsCodeString: String)(
+  def compile(pattern: String)(
       implicit timeout: FiniteDuration = 10 seconds
   ): Try[Unit]
 

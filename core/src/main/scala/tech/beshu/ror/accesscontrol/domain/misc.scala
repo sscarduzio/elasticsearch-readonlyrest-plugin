@@ -20,7 +20,7 @@ import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.js.JsCompiler
+import tech.beshu.ror.utils.js.JsRegexCompiler
 
 import java.util.regex
 import scala.util.{Failure, Success, Try}
@@ -72,16 +72,16 @@ object JsRegex extends RequestIdAwareLogging {
   private val extractRawRegex = """\/(.*)\/""".r
 
   def compile(str: NonEmptyString)(
-      implicit jsCompiler: JsCompiler
+      implicit jsRegexCompiler: JsRegexCompiler
   ): Either[CompilationResult, JsRegex] = {
-    if (validateInput(str)) {
+    if (isNotMultilineString(str)) {
       str.value match {
         case extractRawRegex(regex) =>
-          jsCompiler.compile(s"new RegExp('$regex')") match {
+          jsRegexCompiler.compile(regex) match {
             case Success(_) =>
               Right(new JsRegex(str))
             case Failure(ex) =>
-              noRequestIdLogger.error("JS compiler error", ex)
+              noRequestIdLogger.error("JS regex compiler error", ex)
               Left(CompilationResult.SyntaxError)
           }
         case _ =>
@@ -92,11 +92,6 @@ object JsRegex extends RequestIdAwareLogging {
     }
   }
 
-  private def validateInput(str: NonEmptyString) = {
-    doesNotContainEndOfFunctionInvocation(str) && isNotMultilineString(str)
-  }
-
-  private def doesNotContainEndOfFunctionInvocation(str: NonEmptyString) = !str.contains(");")
   private def isNotMultilineString(str: NonEmptyString) = !str.contains("\n")
 
   sealed trait CompilationResult
