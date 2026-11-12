@@ -31,6 +31,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
   RuntimeSingleResolvableVariable
 }
 import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, KibanaApp, KibanaIndexName, RorSettingsIndex}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
@@ -44,7 +46,15 @@ class KibanaHideAppsRuleDecoder(
   override protected def decoder: Decoder[RuleDefinition[KibanaHideAppsRule]] = {
     DecoderHelpers
       .decodeNonEmptyStringLikeOrUniqueNonEmptyList(identity)
-      .emap(_.toList.map(KibanaApp.from).traverse(identity))
+      .toSyncDecoder
+      .emapE[List[KibanaApp]](
+        _.toList
+          .map(KibanaApp.from)
+          .traverse(identity)
+          .left
+          .map(error => CoreCreationError.RulesLevelCreationError(Message(error)))
+      )
+      .decoder
       .map(apps => new KibanaHideAppsRule(Settings(UniqueNonEmptyList.unsafeFrom(apps))))
       .map(RuleDefinition.create(_))
   }
