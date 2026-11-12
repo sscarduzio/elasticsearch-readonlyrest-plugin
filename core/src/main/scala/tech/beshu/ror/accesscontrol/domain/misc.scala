@@ -19,11 +19,10 @@ package tech.beshu.ror.accesscontrol.domain
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.js.JsRegexCompiler
 
 import java.util.regex
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 final case class RequestId(value: String)
 
@@ -68,7 +67,7 @@ object JavaRegex {
 
 final case class JsRegex private (value: NonEmptyString)
 
-object JsRegex extends RequestIdAwareLogging {
+object JsRegex {
   private val extractRawRegex = """\/(.*)\/""".r
 
   def compile(str: NonEmptyString)(
@@ -77,18 +76,16 @@ object JsRegex extends RequestIdAwareLogging {
     if (isNotMultilineString(str)) {
       str.value match {
         case extractRawRegex(regex) =>
-          jsRegexCompiler.compile(regex) match {
-            case Success(_) =>
-              Right(new JsRegex(str))
-            case Failure(ex) =>
-              noRequestIdLogger.error("JS regex compiler error", ex)
-              Left(CompilationResult.SyntaxError)
-          }
+          jsRegexCompiler
+            .compile(regex)
+            .map(_ => new JsRegex(str))
+            .left
+            .map(CompilationResult.SyntaxError.apply)
         case _ =>
           Left(CompilationResult.NotRegex)
       }
     } else {
-      Left(CompilationResult.SyntaxError)
+      Left(CompilationResult.SyntaxError("the regex contains a new line"))
     }
   }
 
@@ -98,7 +95,7 @@ object JsRegex extends RequestIdAwareLogging {
 
   object CompilationResult {
     case object NotRegex extends CompilationResult
-    case object SyntaxError extends CompilationResult
+    final case class SyntaxError(reason: String) extends CompilationResult
   }
 
 }

@@ -37,11 +37,13 @@ class JsRegexCompilerTests extends AnyWordSpec with Matchers with EitherValues {
         JsRegex.compile("^abc$") should be(Left(JsRegex.CompilationResult.NotRegex))
       }
       "there is a syntax error" in {
-        JsRegex.compile("/^b[c$/") should be(Left(JsRegex.CompilationResult.SyntaxError))
+        JsRegex.compile("/^b[c$/") should be(
+          Left(JsRegex.CompilationResult.SyntaxError("SyntaxError: Unterminated character class"))
+        )
       }
       "JS injection was detected (1)" in {
         JsRegex.compile("/^a$/');1+1;console.log('injection');new RegExp('/^a$/") should be(
-          Left(JsRegex.CompilationResult.SyntaxError)
+          Left(JsRegex.CompilationResult.SyntaxError("SyntaxError: unmatched ) in regular expression."))
         )
       }
       "JS injection was detected (2)" in {
@@ -53,12 +55,12 @@ class JsRegexCompilerTests extends AnyWordSpec with Matchers with EitherValues {
                |new RegExp('/^a$$//"
                |"""".stripMargin
           }
-        ) should be(Left(JsRegex.CompilationResult.SyntaxError))
+        ) should be(Left(JsRegex.CompilationResult.SyntaxError("the regex contains a new line")))
       }
       "the regex tries to run Java code" in {
         JsRegex.compile(
           "/x'),Packages.java.lang.System.setProperty('ror.js.regex.test','executed'),(' /"
-        ) should be(Left(JsRegex.CompilationResult.SyntaxError))
+        ) should be(Left(JsRegex.CompilationResult.SyntaxError("SyntaxError: unmatched ) in regular expression.")))
         System.getProperty("ror.js.regex.test") should be(null)
       }
     }
