@@ -1,0 +1,36 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+import tech.beshu.ror.gradle.utils.LibsStore
+
+// The libs store: ES versions Elastic has released but not yet published to Maven Central resolve from here.
+// It is declared after mavenCentral(), so Central still answers for every version it has. mavenPom() reads
+// the POMs ror-tools publishes next to the jars; artifact() covers the jars stored without one.
+//
+// The address comes from LibsStore, which the WRITE side (ror-tools:uploadArtifactsFromEsBinaries) reads too --
+// the two must name the same location, and did not when each carried its own copy of the defaults.
+//
+// Applied by every project that resolves ES artifacts: the es*x modules (readonlyrest.plugin-common-conventions)
+// and the es<major>-base projects (readonlyrest.es-base-conventions), whose IDE classpath resolves the same jars.
+repositories {
+    maven {
+        url = uri(LibsStore.fromEnv().repositoryUrl())
+        metadataSources {
+            mavenPom()
+            artifact()
+        }
+    }
+}
