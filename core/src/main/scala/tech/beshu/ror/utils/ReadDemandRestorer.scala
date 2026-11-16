@@ -22,9 +22,9 @@ import io.netty.handler.flow.FlowControlHandler
 /**
  * Keeps the read demand of the ES HTTP pipeline alive.
  *
- * ES 9.1 to 9.4.7 and ES 9.5.0 to 9.5.4 turn auto-read off and put a netty `FlowControlHandler` in the HTTP
- * pipeline, so the transport reads only what it asks for. netty 4.1.136+ clears the `FlowControlHandler` read
- * demand on every `channelReadComplete`. A read that decodes no message - a partial TLS record, a swallowed
+ * ES 9.1+ turns auto-read off, so the transport reads only what it asks for. ES 9.1 to 9.4.7 and ES 9.5.0 to
+ * 9.5.4 also put a netty `FlowControlHandler` in the HTTP pipeline. netty 4.1.136+ clears the
+ * `FlowControlHandler` read demand on every `channelReadComplete`. A read that decodes no message - a partial TLS record, a swallowed
  * empty chunk, a TLS handshake round trip - therefore drops the demand. The next message stays in the
  * `FlowControlHandler` queue, no side asks for a new read, and the connection stalls with the request body
  * in the socket buffer.
@@ -72,16 +72,16 @@ object ReadDemandRestorer extends RequestIdAwareLogging {
 
   private val handlerName = "ror_read_demand_restorer"
 
-  // ES 9.4.8+ and 9.5.5+ add their own flow control handler under this name. Its class is package-private,
-  // so ROR finds the handler by name.
+  // The class of the ES flow control handler is package-private, so ROR finds the handler by this name.
   private val esFlowControlHandlerName = "decoder_flow_control"
 
   /**
    * Puts the handler directly after the netty `FlowControlHandler` of the given pipeline.
    *
-   * A pipeline with the ES flow control handler gets nothing. That handler keeps the read demand until a
-   * message passes, so the stall cannot occur. A pipeline with neither handler means ES changed its HTTP
-   * pipeline. The method then logs and adds nothing, because the position decides whether the handler works.
+   * ES 9.4.8+ and 9.5.5+ use their own flow control handler instead. It keeps the read demand until it
+   * forwards a message, so the method adds nothing and logs nothing. A pipeline with neither handler means ES
+   * changed its HTTP pipeline. The method then logs a warning and adds nothing, because the position decides
+   * whether the handler works.
    */
   def installIn(pipeline: ChannelPipeline): Unit = {
     Option(pipeline.context(classOf[FlowControlHandler])) match {
