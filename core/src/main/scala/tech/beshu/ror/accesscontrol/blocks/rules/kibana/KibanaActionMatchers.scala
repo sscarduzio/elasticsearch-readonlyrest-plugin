@@ -70,11 +70,34 @@ object KibanaActionMatchers {
   val clusterActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
       "cluster:monitor/*",
-      "cluster:*/xpack/*",
       "indices:admin/template/get*",
       "cluster:*/info",
       "cluster:*/get",
       "cluster:*/simulate"
+    ).map(Action.apply)
+  }
+
+  val xpackActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+    Set("cluster:*/xpack/*").map(Action.apply)
+  }
+
+  val xpackAdminOnlyActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+    Set(
+      "cluster:admin/xpack/license/*",
+      "cluster:admin/xpack/security/*"
+    ).map(Action.apply)
+  }
+
+  val apiKeyChangeActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+    Set(
+      "cluster:admin/xpack/security/api_key/create",
+      "cluster:admin/xpack/security/api_key/grant",
+      "cluster:admin/xpack/security/api_key/update",
+      "cluster:admin/xpack/security/api_key/bulk_update",
+      "cluster:admin/xpack/security/api_key/invalidate",
+      "cluster:admin/xpack/security/api_key/clone",
+      "cluster:admin/xpack/security/cross_cluster/api_key/create",
+      "cluster:admin/xpack/security/cross_cluster/api_key/update"
     ).map(Action.apply)
   }
 

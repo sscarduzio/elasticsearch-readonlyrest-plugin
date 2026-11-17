@@ -52,6 +52,7 @@ abstract class BaseKibanaRule(val settings: Settings)
     isDevNullKibanaRelated ||
     isRoAction ||
     isClusterAction ||
+    isAllowedXpackAction ||
     emptyIndicesMatch ||
     isKibanaSimpleData ||
     isRoNonStrictCase ||
@@ -224,6 +225,43 @@ abstract class BaseKibanaRule(val settings: Settings)
     result
   }
 
+  private lazy val isAllowedXpackAction: ProcessingContext = {
+    isXpackAction && (settings.access match {
+      case Admin | Unrestricted => ProcessingContext.alwaysTrue
+      case RW                   => isReadOnlyAction || !isXpackAdminOnlyAction || isApiKeyChangeAction
+      case ApiOnly              => isReadOnlyAction || isApiKeyChangeAction
+      case RO | ROStrict        => isReadOnlyAction
+    })
+  }
+
+  private lazy val isXpackAction = ProcessingContext.create { (bc, _) =>
+    val result = xpackActionPatternsMatcher.`match`(bc.requestContext.action)
+    given BlockContext = bc
+    logger.debug(s"Is X-Pack action? ${result.show}")
+    result
+  }
+
+  private lazy val isReadOnlyAction = ProcessingContext.create { (bc, _) =>
+    val result = bc.requestContext.isReadOnlyRequest
+    given BlockContext = bc
+    logger.debug(s"Is read-only action? ${result.show}")
+    result
+  }
+
+  private lazy val isXpackAdminOnlyAction = ProcessingContext.create { (bc, _) =>
+    val result = xpackAdminOnlyActionPatternsMatcher.`match`(bc.requestContext.action)
+    given BlockContext = bc
+    logger.debug(s"Is X-Pack admin-only action? ${result.show}")
+    result
+  }
+
+  private lazy val isApiKeyChangeAction = ProcessingContext.create { (bc, _) =>
+    val result = apiKeyChangeActionPatternsMatcher.`match`(bc.requestContext.action)
+    given BlockContext = bc
+    logger.debug(s"Is API key change action? ${result.show}")
+    result
+  }
+
   private lazy val isRwAction = ProcessingContext.create { (bc, _) =>
     val result = rwActionPatternsMatcher.`match`(bc.requestContext.action)
     given BlockContext = bc
@@ -309,6 +347,8 @@ object BaseKibanaRule {
   object ProcessingContext {
     def create(func: (BlockContext, KibanaIndexName) => Boolean): ProcessingContext =
       ReaderT[Id, (BlockContext, KibanaIndexName), Boolean] { case (bc, i) => func(bc, i) }
+
+    val alwaysTrue: ProcessingContext = create((_, _) => true)
   }
 
   implicit class ProcessingContextBooleanOps(val context1: ProcessingContext) extends AnyVal {
