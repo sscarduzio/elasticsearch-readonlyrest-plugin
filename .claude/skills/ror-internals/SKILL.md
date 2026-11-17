@@ -13,23 +13,25 @@ Shared decision tree (`shouldMatch`): `core/.../blocks/rules/kibana/BaseKibanaRu
 - **Current**: `KibanaUserDataRule.scala` — YAML name `kibana`.
 - **Legacy**: `KibanaAccessRule.scala` — YAML name `kibana_access`, `@deprecated` since `1.48.0`.
 
-Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` (`roActionPatternsMatcher`, `rwActionPatternsMatcher`, `clusterActionPatternsMatcher`, `adminActionPatternsMatcher`, `nonStrictActions`, `indicesWriteAction`) — there is no `Constants.java`.
+Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` (`roActionPatternsMatcher`, `rwActionPatternsMatcher`, `clusterActionPatternsMatcher`, `xpackActionPatternsMatcher`, `xpackAdminOnlyActionPatternsMatcher`, `apiKeyChangeActionPatternsMatcher`, `adminActionPatternsMatcher`, `nonStrictActions`, `indicesWriteAction`) — there is no `Constants.java`.
 
 - Omitting `kibana_access` ≡ `unrestricted`. The explicit `unrestricted` value exists so YAML anchor/template blocks can **override** a templated `rw` default.
 - Design intent of all restricted levels: the kibana index is writable (saved objects must work), all other "data indices" are **read-only** — protect against accidental data loss. Special-case writable indices exist (e.g. reporting).
 - `admin` grants `rw`-level kibana access **plus** the full `adminActionPatternsMatcher` set on no-index requests and the ROR config index / index-management / tags paths (step 9) — that includes `indices:admin/create`, `indices:admin/ilm/*`, `cluster:admin/ingest/pipeline/put`, etc., none of which `rw` can reach. It also gates the ROR settings/activation-keys APIs.
 
-| level | kibana_index | data indices | reporting index | cluster mgmt | ROR settings API |
-|-----------|-----------|-----------|------|-----------|------|
-| admin | full | read only | full | read only | full |
-| rw | full | read only | full | read only | none |
-| ro | non-strict only¹ | read only | full | none | none |
-| ro_strict | read only | read only | none | none | none |
-| api_only² | non-strict only² | read only | none | none | none |
+| level | kibana_index | data indices | reporting index | cluster mgmt | X-Pack writes³ | ROR settings API |
+|-----------|-----------|-----------|------|-----------|-----------|------|
+| admin | full | read only | full | read only | all | full |
+| rw | full | read only | full | read only | all except license and security; API key changes yes | none |
+| ro | non-strict only¹ | read only | full | none | none | none |
+| ro_strict | read only | read only | none | none | none | none |
+| api_only² | non-strict only² | read only | none | none | API key changes only | none |
 
 ¹ `ro` cannot modify the kibana index in general (`kibanaCanBeModified = false`). It only permits a narrow allow-list of saved-object writes via `isRoNonStrictCase` (step 8) — discover UI state, short URLs, index-pattern/url/config doc updates. It is not full kibana-index write access.
 
 ² `api_only` (YAML value `api_only`) is its own `KibanaAccess` value, not an alias. On the kibana index it behaves like `ro`, **not** `ro_strict`: `kibanaCanBeModified` is false for `RO | ROStrict | ApiOnly`, but step 8 (`isRoNonStrictCase`) is gated by `isAccessOtherThanRoStrictConfigured` (`access =!= ROStrict`) — true for `api_only`, so it CAN reach the narrow non-strict kibana-write allow-branch (discover state / short URLs), which `ro_strict` never can. Its distinct restriction is the `allowed_api_paths` coupling (`KibanaUserDataRuleDecoder.scala`), a separate layer gating which ROR/ES API paths may be called.
+
+³ An X-Pack action matches `cluster:*/xpack/*`. Each level can use X-Pack reads (`RequestContext.isReadOnlyRequest`). License and security writes match `xpackAdminOnlyActionPatternsMatcher`. API key changes match `apiKeyChangeActionPatternsMatcher`. See step 5.
 
 Decision tree — `shouldMatch` is a short-circuit OR chain (first match → ALLOW; if none match → REJECT). Order below mirrors `BaseKibanaRule.shouldMatch` exactly:
 
@@ -37,7 +39,7 @@ Decision tree — `shouldMatch` is a short-circuit OR chain (first match → ALL
 2. `isUserMetadataRequest` — ROR user-metadata path (login).
 3. `isDevNullKibanaRelated` — request targets the internal `.kibana-devnull` index.
 4. `isRoAction` — action matches `roActionPatternsMatcher`.
-5. `isClusterAction` — action matches `clusterActionPatternsMatcher`.
+5. `isClusterAction`, then `isAllowedXpackAction` (two adjacent checks). `isClusterAction`: action matches `clusterActionPatternsMatcher`. `isAllowedXpackAction`: action matches `xpackActionPatternsMatcher` AND, by level: `admin`, `unrestricted` → true; `rw` → read OR `!isXpackAdminOnlyAction` OR `isApiKeyChangeAction`; `api_only` → read OR `isApiKeyChangeAction`; `ro`, `ro_strict` → read. Read means `RequestContext.isReadOnlyRequest`.
 6. `emptyIndicesMatch` — request has **no indices** AND ((kibana writable AND RW action) OR (admin access AND admin action)). Not a blanket allow.
 7. `isKibanaSimpleData` — kibana writable AND request is a Kibana sample-data index/stream.
 8. `isRoNonStrictCase` — targets kibana index, level ≠ `ro_strict`, kibana not modifiable, non-strict allowed path AND non-strict action (saves discover UI state / short URLs).

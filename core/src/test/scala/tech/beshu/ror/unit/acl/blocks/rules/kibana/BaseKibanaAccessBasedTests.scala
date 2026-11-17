@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
-import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
+import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{Admin, ApiOnly, RO, ROStrict, RW, Unrestricted}
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -282,27 +282,62 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
         )
       }
     }
-    "X-Pack cluster settings update" in {
-      def assertMatchClusterRule(access: KibanaAccess) = {
-        assertMatchRuleUsingIndicesRequest(
-          settingsOf(access),
-          Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"),
-          requestedIndices = Set.empty,
-          uriPath = Some(UriPath.from("/_ccr/auto_follow"))
-        ) {
-          assertBlockContext(_)(
-            kibanaPolicy = Some(
-              KibanaPolicy.default.copy(
-                access = access,
-                index = kibanaIndexFrom(None)
-              )
-            ),
-          )
-        }
+    "X-Pack action is used" should {
+      "allow X-Pack read action for each access level" in {
+        assertXpackActions(
+          actions = Set(
+            "cluster:admin/xpack/license/basic_status",
+            "cluster:admin/xpack/ml/filters/get",
+            "cluster:admin/xpack/security/api_key/get"
+          ),
+          allowedFor = Set(ROStrict, RO, ApiOnly, RW, Admin),
+          notAllowedFor = Set.empty
+        )
       }
-
-      assertMatchClusterRule(RW)
-      assertMatchClusterRule(RO)
+      "allow X-Pack write action only for rw and admin access levels" in {
+        assertXpackActions(
+          actions = Set(
+            "cluster:admin/xpack/ml/job/put",
+            "cluster:admin/xpack/enrich/put",
+            "cluster:admin/xpack/watcher/watch/put"
+          ),
+          allowedFor = Set(RW, Admin),
+          notAllowedFor = Set(ROStrict, RO, ApiOnly)
+        )
+      }
+      "allow X-Pack license write action only for admin access level" in {
+        assertXpackActions(
+          actions = Set(
+            "cluster:admin/xpack/license/put",
+            "cluster:admin/xpack/license/delete",
+            "cluster:admin/xpack/license/start_trial",
+            "cluster:admin/xpack/license/start_basic"
+          ),
+          allowedFor = Set(Admin),
+          notAllowedFor = Set(ROStrict, RO, ApiOnly, RW)
+        )
+      }
+      "allow X-Pack security write action only for admin access level" in {
+        assertXpackActions(
+          actions = Set(
+            "cluster:admin/xpack/security/role/put",
+            "cluster:admin/xpack/security/user/put",
+            "cluster:admin/xpack/security/privilege/delete"
+          ),
+          allowedFor = Set(Admin),
+          notAllowedFor = Set(ROStrict, RO, ApiOnly, RW)
+        )
+      }
+      "allow API key change action only for api_only, rw and admin access levels" in {
+        assertXpackActions(
+          actions = Set(
+            "cluster:admin/xpack/security/api_key/create",
+            "cluster:admin/xpack/security/api_key/invalidate"
+          ),
+          allowedFor = Set(ApiOnly, RW, Admin),
+          notAllowedFor = Set(ROStrict, RO)
+        )
+      }
     }
     "ROR action is used" when {
       "it's current user metadata request action" in {
@@ -508,6 +543,24 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
       uriPath,
       Some(blockContextAssertion)
     )
+
+  private def assertXpackActions(
+      actions: Set[String],
+      allowedFor: Set[KibanaAccess],
+      notAllowedFor: Set[KibanaAccess]
+  ): Unit =
+    actions.map(Action.apply).foreach { action =>
+      allowedFor.foreach { access =>
+        withClue(s"${action.value} for $access: ") {
+          assertMatchRuleUsingIndicesRequest(settingsOf(access), action)()
+        }
+      }
+      notAllowedFor.foreach { access =>
+        withClue(s"${action.value} for $access: ") {
+          assertNotMatchRuleUsingIndicesRequest(settingsOf(access), action, requestedIndices = Set.empty)
+        }
+      }
+    }
 
   private def assertMatchRuleUsingDataStreamsRequest(
       settings: SETTINGS,
