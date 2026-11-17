@@ -287,8 +287,16 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
         assertXpackActions(
           actions = Set(
             "cluster:admin/xpack/license/basic_status",
+            "cluster:admin/xpack/license/feature_usage",
             "cluster:admin/xpack/ml/filters/get",
-            "cluster:admin/xpack/security/api_key/get"
+            "cluster:admin/xpack/ml/job/estimate_model_memory",
+            "cluster:admin/xpack/ml/job/validate",
+            "cluster:admin/xpack/ml/job/validate/detector",
+            "cluster:admin/xpack/security/api_key/get",
+            "cluster:admin/xpack/security/profile/has_privileges",
+            "cluster:admin/xpack/security/profile/suggest",
+            "cluster:admin/xpack/security/user/authenticate",
+            "cluster:admin/xpack/security/user/has_privileges"
           ),
           allowedFor = Set(ROStrict, RO, ApiOnly, RW, Admin),
           notAllowedFor = Set.empty
