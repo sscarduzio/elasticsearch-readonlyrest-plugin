@@ -13,7 +13,7 @@ Shared decision: `BaseKibanaRule.isAllowed` (`core/.../blocks/rules/kibana/BaseK
 - **Current**: `KibanaUserDataRule.scala` — YAML name `kibana`.
 - **Legacy**: `KibanaAccessRule.scala` — YAML name `kibana_access`, `@deprecated` since `1.48.0`.
 
-Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` (`roActionPatternsMatcher`, `rwActionPatternsMatcher`, `clusterActionPatternsMatcher`, `adminActionPatternsMatcher`, `nonStrictActions`, `indicesWriteAction`) — there is no `Constants.java`.
+Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` (`roActionPatternsMatcher`, `rwActionPatternsMatcher`, `clusterActionPatternsMatcher`, `adminActionPatternsMatcher`, `nonStrictActions`) — there is no `Constants.java`.
 
 - Omitting `kibana_access` ≡ `unrestricted`. The explicit `unrestricted` value exists so YAML anchor/template blocks can **override** a templated `rw` default.
 - Design intent of all restricted levels: the kibana index is writable (saved objects must work), all other "data indices" are **read-only** — protect against accidental data loss. Special-case writable indices exist (e.g. reporting).
@@ -24,18 +24,17 @@ The access table has the shape of the docs table ("Possible access levels" in `r
 - `DataIndices`: the request has other indices;
 - `NoIndices`: `bc.indices` is empty. A data stream request with no backing indices is here too.
 
-A request is allowed when the row "all levels" allows it, when its row allows it for all targets, or when the cell of its target allows it. An empty cell adds nothing.
+All levels also allow the user metadata path, `clusterActionPatternsMatcher`, and all actions when the first index is `.kibana-devnull`. Each row checks each column:
 
-| level | all targets | Kibana indices | data indices | no indices |
+| level | Kibana indices | data indices | Kibana sample data | no indices |
 |---|---|---|---|---|
-| (all levels) | user metadata path; `clusterActionPatternsMatcher`; all actions when the first index is `.kibana-devnull` | | | |
-| `ro_strict` | | read | read | read |
-| `ro`, `api_only` | | read; non-strict writes¹ | read | read |
-| `rw` | all actions on one Kibana sample data index or data stream | read; `rwActionPatternsMatcher`; `indicesWriteAction` | read | read; `rwActionPatternsMatcher` |
-| `admin` | as `rw` | as `rw`; (A) | read; (A) | read; `rwActionPatternsMatcher`; `adminActionPatternsMatcher` |
-| `unrestricted` | all actions | | | |
+| `ro_strict` | read | read | read | read |
+| `ro`, `api_only` | read; non-strict writes¹ | read | read | read |
+| `rw` | read; `rwActionPatternsMatcher` | read | all actions | read; `rwActionPatternsMatcher` |
+| `admin` | read; `rwActionPatternsMatcher`; (A) | read; (A) | all actions | read; `rwActionPatternsMatcher`; `adminActionPatternsMatcher` |
+| `unrestricted` | all actions | all actions | all actions | all actions |
 
-"read" = `roActionPatternsMatcher`.
+"read" = `roActionPatternsMatcher`. "Kibana sample data" = the request names exactly one index or exactly one data stream, and it matches `kibana_sample_data_*`. This target wins over the others.
 
 (A) `adminActionPatternsMatcher` actions from the Kibana "Index Management" or "Tags" app (`x-ror-kibana-request-path` contains `/index_management/` or `/tags/`), or when the first index is the ROR settings index.
 
@@ -45,7 +44,7 @@ A request is allowed when the row "all levels" allows it, when its row allows it
 
 The table is an OR of independent cells, so the order of the checks does not change the result. **A change of a cell is a behavioral change** — review it accordingly.
 
-Note: `indices:data/write/*` is **not** blanket-rejected — the `rw` and `admin` cells for Kibana indices allow it (`indicesWriteAction`), and it is also a member of `adminActionPatternsMatcher`.
+Note: on the Kibana indices, `rw` and `admin` allow only the document writes that `rwActionPatternsMatcher` lists (index, update, delete, bulk, simulate bulk, reindex), not all `indices:data/write/*`. `adminActionPatternsMatcher` has `indices:data/write/*`, so `admin` allows all document writes in the (A) cases and with no indices.
 
 ## FLS (fields rule) engines
 

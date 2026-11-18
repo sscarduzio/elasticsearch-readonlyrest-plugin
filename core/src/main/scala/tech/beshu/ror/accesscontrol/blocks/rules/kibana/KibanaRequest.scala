@@ -40,7 +40,8 @@ private[kibana] final class KibanaRequest(
   private val indices = blockContext.indices
 
   lazy val target: Target =
-    if (indices.isEmpty) Target.NoIndices
+    if (isOneKibanaSampleDataIndexOrDataStream) Target.KibanaSampleData
+    else if (indices.isEmpty) Target.NoIndices
     else if (indices.forall(_.name.isRelatedToKibanaIndex(kibanaIndex))) Target.KibanaIndices
     else Target.DataIndices
 
@@ -50,11 +51,12 @@ private[kibana] final class KibanaRequest(
 
   def isRwAction: Boolean = rwActionPatternsMatcher.`match`(action)
 
-  def isDataWriteAction: Boolean = indicesWriteAction.`match`(action)
-
   def isAdminAction: Boolean = adminActionPatternsMatcher.`match`(action)
 
   def isNonStrictAction: Boolean = nonStrictActions.`match`(action)
+
+  // The writes of the Kibana UI that the read only levels need: a non-strict path and a non-strict action
+  def isNonStrictWrite: Boolean = isNonStrictPath && isNonStrictAction
 
   lazy val isUserMetadataRequest: Boolean = blockContext.requestContext.restRequest.path.isUserMetadataPath
 
@@ -62,7 +64,7 @@ private[kibana] final class KibanaRequest(
 
   lazy val isFirstIndexRorSettingsIndex: Boolean = isFirstIndex(rorIndex.toLocal)
 
-  lazy val isOneKibanaSampleDataIndexOrDataStream: Boolean = {
+  private lazy val isOneKibanaSampleDataIndexOrDataStream: Boolean = {
     val isOneSampleDataIndex = indices.toList match {
       case index :: Nil => kibanaSampleDataIndexMatcher.`match`(index.name)
       case _            => false
@@ -99,6 +101,9 @@ private[kibana] object KibanaRequest {
   object Target {
     case object KibanaIndices extends Target("Kibana indices")
     case object DataIndices extends Target("data indices")
+    // The request names exactly one index or exactly one data stream, and it is a Kibana sample data index or data
+    // stream (`kibana_sample_data_*`)
+    case object KibanaSampleData extends Target("Kibana sample data")
     case object NoIndices extends Target("no indices")
   }
 

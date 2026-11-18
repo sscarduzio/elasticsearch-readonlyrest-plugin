@@ -30,15 +30,19 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
 }
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaRequest.Target
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 // Temporary: compares the access table with the decision of `BaseKibanaRule` before the refactor
-// (`LegacyKibanaDecision`) for a matrix of requests. Remove both when the review of the refactor is done.
+// (`LegacyKibanaDecision`, with the action groups of that time) for a matrix of requests. Only the changes of the
+// action groups can make a difference (see `isExpectedDifference`). Remove both when the review of the refactor is
+// done.
 class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAssertion with BeforeAndAfterAll {
 
   private val kibanaRulesPackage = "tech.beshu.ror.accesscontrol.blocks.rules.kibana"
@@ -59,17 +63,20 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
         kibanaIndex <- kibanaIndices
         access <- accessLevels
       } yield {
+        val request = new KibanaRequest(blockContext, kibanaIndex, rorIndex)
         val before = legacyDecisions(access).shouldMatch((blockContext, kibanaIndex))
-        val after = KibanaAccessTable.isAllowed(access, new KibanaRequest(blockContext, kibanaIndex, rorIndex))
+        val after = KibanaAccessTable.isAllowed(access, request)
         Option.when(before != after) {
-          s"$access, ${action.value}, kibana index ${kibanaIndex.stringify}, ${describe(blockContext)}: " +
-            s"before $before, after $after"
+          val difference = s"$access, ${action.value}, kibana index ${kibanaIndex.stringify}, " +
+            s"${describe(blockContext)}: before $before, after $after"
+          (isExpectedDifference(access, action, request, before, after), difference)
         }
       }
-      val differences = decisions.flatten
+      val (expectedDifferences, unexpectedDifferences) = decisions.flatten.partition(_._1)
       decisions.size should be > 100000
-      withClue(differences.take(30).mkString("\n", "\n", "\n")) {
-        differences.size should be(0)
+      info(s"${decisions.size} decisions, ${expectedDifferences.size} expected differences")
+      withClue(unexpectedDifferences.take(30).map(_._2).mkString("\n", "\n", "\n")) {
+        unexpectedDifferences.size should be(0)
       }
     }
   }
@@ -92,6 +99,40 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
 
   private lazy val kibanaIndices = List(kibanaIndexName(".kibana"), kibanaIndexName(".custom_kibana"))
 
+  // The changes of the action groups after the refactor. With the ES action lists (ES 5.3.3 to 9.5.6), their effect
+  // on the real actions is:
+  // - `indices:admin/create_index` is not an ES action;
+  // - of `indices:admin/aliases/*`, `rw` keeps no action: `indices:admin/aliases/get` was a read action already, and
+  //   `indices:admin/aliases/exists` is a read action now (all levels, all targets);
+  // - `rw` allows `indices:data/write/simulate/bulk*` and `indices:data/write/reindex*` also with no indices;
+  // - on the Kibana indices, `rw` and `admin` allow only the document writes of `rw`, not all `indices:data/write/*`.
+  private def isExpectedDifference(
+      access: KibanaAccess,
+      action: Action,
+      request: KibanaRequest,
+      before: Boolean,
+      after: Boolean
+  ): Boolean = {
+    val isRemovedAction = removedActions.`match`(action) && !keptAliasActions.`match`(action)
+    val isNewReadAction = newReadActions.`match`(action)
+    val isNewRwActionWithNoIndices =
+      access == KibanaAccess.RW && request.target == Target.NoIndices && newRwActions.`match`(action)
+    val isOtherDocumentWriteOnKibanaIndices =
+      (access == KibanaAccess.RW || access == KibanaAccess.Admin) && request.target == Target.KibanaIndices &&
+        documentWrites.`match`(action) && !rwActionPatternsMatcher.`match`(action)
+    (before && !after && (isRemovedAction || isOtherDocumentWriteOnKibanaIndices)) ||
+    (!before && after && (isNewReadAction || isNewRwActionWithNoIndices))
+  }
+
+  private lazy val removedActions = actionsMatcher("indices:admin/create_index", "indices:admin/aliases/*")
+  private lazy val keptAliasActions = actionsMatcher("indices:admin/aliases/exists", "indices:admin/aliases/get")
+  private lazy val newReadActions = actionsMatcher("indices:admin/aliases/exists")
+  private lazy val newRwActions = actionsMatcher("indices:data/write/simulate/bulk*", "indices:data/write/reindex*")
+  private lazy val documentWrites = actionsMatcher("indices:data/write/*")
+
+  private def actionsMatcher(patterns: String*): PatternsMatcher[Action] =
+    PatternsMatcher.create(patterns.map(Action.apply).toSet)
+
   private lazy val actions: List[Action] = {
     val patterns = List(
       roActionPatternsMatcher,
@@ -99,7 +140,12 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
       clusterActionPatternsMatcher,
       adminActionPatternsMatcher,
       nonStrictActions,
-      indicesWriteAction
+      LegacyKibanaDecision.Matchers.roActionPatternsMatcher,
+      LegacyKibanaDecision.Matchers.rwActionPatternsMatcher,
+      LegacyKibanaDecision.Matchers.clusterActionPatternsMatcher,
+      LegacyKibanaDecision.Matchers.adminActionPatternsMatcher,
+      LegacyKibanaDecision.Matchers.nonStrictActions,
+      LegacyKibanaDecision.Matchers.indicesWriteAction
     ).flatMap(_.patterns.toList.map(_.toString))
     val others = List(
       "xyz",
@@ -113,7 +159,16 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
       "cluster:admin/settings/update",
       "indices:admin/data_stream/create",
       "indices:admin/data_stream/delete",
-      "indices:monitor/data_stream/stats"
+      "indices:monitor/data_stream/stats",
+      "indices:admin/aliases",
+      "indices:admin/aliases/exists",
+      "indices:admin/aliases/get",
+      "indices:data/write/reindex",
+      "indices:data/write/reindex/resume",
+      "indices:data/write/simulate/bulk",
+      "indices:data/write/otlp/logs",
+      "indices:data/write/prometheus/remote_write",
+      "indices:data/write/xpack/connector/put"
     )
     (patterns ++ patterns.map(_.replace("*", "x")) ++ others).distinct.map(Action.apply)
   }
@@ -149,14 +204,15 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
     List("kibana_sample_data_logs", "logs-app")
   )
 
+  private lazy val nonStrictPaths: List[UriPath] = List(
+    UriPath.from(NonEmptyString.unsafeFrom("/.kibana/url/abc")),
+    UriPath.from(NonEmptyString.unsafeFrom("/.custom_kibana/index-pattern/abc")),
+    UriPath.from(NonEmptyString.unsafeFrom("/_template/abc"))
+  )
+
   private lazy val restRequests: List[MockRestRequest] = {
-    val paths = List(
-      UriPath.from(NonEmptyString.unsafeFrom("/undefined")),
-      UriPath.from(NonEmptyString.unsafeFrom("/.kibana/url/abc")),
-      UriPath.from(NonEmptyString.unsafeFrom("/.custom_kibana/index-pattern/abc")),
-      UriPath.from(NonEmptyString.unsafeFrom("/_template/abc")),
-      UriPath.userMetadataPath
-    )
+    val paths =
+      UriPath.from(NonEmptyString.unsafeFrom("/undefined")) :: UriPath.userMetadataPath :: nonStrictPaths
     val kibanaRequestPaths = List(
       None,
       Some("/app/management/data/index_management/indices"),
@@ -191,11 +247,18 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
         allAllowedClusters = Set.empty
       )
     }
+    // A data stream request with backing indices (`_modify`) has a `/_data_stream/...` path, never a non-strict path
+    // of a Kibana document. The access table gives such a request the Kibana sample data target before the Kibana
+    // indices one, so these impossible combinations would differ for `ro` and `api_only`.
     val backingIndicesOptions =
-      BackingIndices.IndicesNotInvolved ::
-        List(List("logs-1"), List(".kibana"), List(".ds-.kibana-reporting-.kibana-2025.01.01-000001")).map { indices =>
-          BackingIndices.IndicesInvolved(toRequestedIndices(indices), Set(ClusterIndexName.Local.wildcard))
-        }
+      BackingIndices.IndicesNotInvolved :: (
+        if (nonStrictPaths.contains(restRequest.path)) Nil
+        else
+          List(List("logs-1"), List(".kibana"), List(".ds-.kibana-reporting-.kibana-2025.01.01-000001")).map {
+            indices =>
+              BackingIndices.IndicesInvolved(toRequestedIndices(indices), Set(ClusterIndexName.Local.wildcard))
+          }
+      )
     val dataStreamContexts = for {
       dataStreams <- dataStreamSets
       backingIndices <- backingIndicesOptions

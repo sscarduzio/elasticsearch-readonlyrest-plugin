@@ -35,6 +35,7 @@ object KibanaActionMatchers {
       "indices:data/read/*",
       "indices:admin/resolve/*",
       "indices:admin/aliases/get",
+      "indices:admin/aliases/exists",
       "indices:admin/data_stream/get",
       "indices:admin/data_stream/lifecycle/get",
       "cluster:admin/component_template/get",
@@ -50,15 +51,15 @@ object KibanaActionMatchers {
     RorAction.writeActions ++
       Set(
         "indices:admin/create",
-        "indices:admin/create_index",
         "indices:admin/mapping/put",
         "indices:data/write/delete*",
         "indices:data/write/index",
         "indices:data/write/update*",
         "indices:data/write/bulk*",
+        "indices:data/write/simulate/bulk*",
+        "indices:data/write/reindex*",
         "indices:admin/template/*",
         "cluster:admin/settings/*",
-        "indices:admin/aliases/*",
         "indices:admin/data_stream/*",
         "indices:admin/index_template/*",
         "cluster:admin/component_template/*",
@@ -84,7 +85,6 @@ object KibanaActionMatchers {
         "cluster:internal_ror/*",
         "indices:data/write/*", // <-- DEPRECATED!
         "indices:admin/create",
-        "indices:admin/create_index",
         "indices:admin/ilm/*",
         "cluster:admin/ingest/pipeline/put",
         "cluster:admin/ingest/pipeline/delete",
@@ -116,8 +116,6 @@ object KibanaActionMatchers {
       Action("indices:admin/template/put")
     )
   )
-
-  val indicesWriteAction: PatternsMatcher[Action] = PatternsMatcher.create(Set(Action("indices:data/write/*")))
 
   val kibanaSampleDataIndexMatcher: PatternsMatcher[ClusterIndexName] = PatternsMatcher.create(
     Set(Local(IndexName.Pattern.unsafeFromNes(nes("kibana_sample_data_*"))))
