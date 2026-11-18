@@ -105,7 +105,7 @@ object KibanaIndexName {
   private def createKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
     // The index name is admin-configured and may contain regex metacharacters (the default `.kibana`
     // already has a `.`). Quote it so it matches literally — same fix as `nonStrictAllowedPathsPatternFor`
-    // in `BaseKibanaRule`. The `\d+\.\d+` version suffixes stay real regex.
+    // in `KibanaRequest`. The `\d+\.\d+` version suffixes stay real regex.
     val idx = Pattern.quote(kibanaIndex.stringify)
     Vector(
       s"""^${idx}_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_8.0.0
@@ -134,7 +134,7 @@ object KibanaIndexName {
   private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) =
     // Caffeine's atomic loader compiles the regex vector at most once per Kibana index even under
     // concurrent first access, instead of the racy `getIfPresent`/`put` (both threads miss, both
-    // compile). Matches the pattern used by `nonStrictAllowedPathsPatternCache` in `BaseKibanaRule`.
+    // compile). Matches the pattern used by `nonStrictAllowedPathsPatternCache` in `KibanaRequest`.
     kibanaIndicesRegexesCache.get(kibanaIndex, createKibanaRelatedIndicesRegexes)
 
   extension (indexName: ClusterIndexName)
