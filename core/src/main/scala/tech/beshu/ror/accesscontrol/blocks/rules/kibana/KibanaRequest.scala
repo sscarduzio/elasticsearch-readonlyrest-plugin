@@ -49,12 +49,10 @@ private[kibana] final class KibanaRequest(blockContext: BlockContext, kibanaInde
 
   def isRorAdminAction: Boolean = rorAdminActions.`match`(action)
 
-  def isNonStrictAction: Boolean = nonStrictActions.`match`(action)
-
   def isSampleDataAction: Boolean = sampleDataActions.`match`(action)
 
-  // The writes of the Kibana UI that the read only levels need: a non-strict path and a non-strict action
-  def isNonStrictWrite: Boolean = isNonStrictPath && isNonStrictAction
+  def isNonStrictWrite: Boolean =
+    NonStrictWrite.matches(action, blockContext.requestContext.restRequest.path, kibanaIndex)
 
   def isUserMetadataRequest: Boolean = action == Action.RorAction.RorUserMetadataAction
 
@@ -74,13 +72,6 @@ private[kibana] final class KibanaRequest(blockContext: BlockContext, kibanaInde
     isOneSampleDataStream || isOneSampleDataIndexOrTemplate
   }
 
-  // The paths of the writes that the Kibana UI does also for the read only access levels: the "Discover" state, short
-  // URLs, data views, telemetry and new config documents
-  private lazy val isNonStrictPath: Boolean =
-    nonStrictAllowedPathsPatternFor(kibanaIndex)
-      .matcher(blockContext.requestContext.restRequest.path.value.value)
-      .find()
-
 }
 
 private[ror] object KibanaRequest {
@@ -94,34 +85,42 @@ private[ror] object KibanaRequest {
     case object NoIndices extends Target
   }
 
-  // The regex only varies by the Kibana index name (typically a single, static value),
-  // so the compiled Pattern is cached per Kibana index instead of being recompiled on
-  // every non-strict path check.
-  private val nonStrictAllowedPathsRegexTemplate =
-    "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
+  // The writes of the Kibana UI that the read only access levels also do: a non-strict action to a path of the main
+  // Kibana index for the "Discover" state, short URLs, data views, telemetry or new config documents.
+  private object NonStrictWrite {
 
-  private val nonStrictAllowedPathsPatternCache: Cache[KibanaIndexName, Pattern] =
-    doPrivileged {
-      Caffeine
-        .newBuilder()
-        .executor(global)
-        .maximumSize(1000)
-        .build[KibanaIndexName, Pattern]()
+    def matches(action: Action, path: UriPath, kibanaIndex: KibanaIndexName): Boolean =
+      nonStrictActions.`match`(action) && pathPatternFor(kibanaIndex).matcher(path.value.value).find()
+
+    private val pathsRegexTemplate =
+      "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
+
+    // The pattern varies only by the Kibana index name (typically a single, static value), so it is cached per Kibana
+    // index instead of being compiled for each request.
+    private val pathPatternCache: Cache[KibanaIndexName, Pattern] =
+      doPrivileged {
+        Caffeine
+          .newBuilder()
+          .executor(global)
+          .maximumSize(1000)
+          .build[KibanaIndexName, Pattern]()
+      }
+
+    private def pathPatternFor(kibanaIndexName: KibanaIndexName): Pattern = {
+      // Caffeine's atomic loader guarantees the pattern is compiled at most once per
+      // Kibana index even under concurrent access.
+      pathPatternCache.get(
+        kibanaIndexName,
+        _ =>
+          Pattern.compile(
+            // `@kibana_index` only ever appears as a literal path segment in the template, so the index
+            // name is quoted: any regex metacharacter in it (e.g. the `.` in `.kibana`) must match
+            // literally, never act as a pattern. The quoting also makes every index name compile.
+            pathsRegexTemplate.replace("@kibana_index", Pattern.quote(kibanaIndexName.stringify))
+          )
+      )
     }
 
-  private def nonStrictAllowedPathsPatternFor(kibanaIndexName: KibanaIndexName): Pattern = {
-    // Caffeine's atomic loader guarantees the pattern is compiled at most once per
-    // Kibana index even under concurrent access.
-    nonStrictAllowedPathsPatternCache.get(
-      kibanaIndexName,
-      _ =>
-        Pattern.compile(
-          // `@kibana_index` only ever appears as a literal path segment in the template, so the index
-          // name is quoted: any regex metacharacter in it (e.g. the `.` in `.kibana`) must match
-          // literally, never act as a pattern. The quoting also makes every index name compile.
-          nonStrictAllowedPathsRegexTemplate.replace("@kibana_index", Pattern.quote(kibanaIndexName.stringify))
-        )
-    )
   }
 
 }

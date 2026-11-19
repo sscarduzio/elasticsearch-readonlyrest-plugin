@@ -44,7 +44,7 @@ All levels also allow the ROR user metadata request (by its ROR action). The kib
 
 "read" = `readActions`, "write" = `writeActions`, "cluster read" = `clusterManagementReadActions`, "sample data" = `sampleDataActions`.
 
-¹ A narrow allow-list of saved-object writes of the Kibana UI: the non-strict path (`KibanaRequest.isNonStrictPath`: discover UI state, short URLs, index-pattern/url/config doc updates, telemetry) AND `nonStrictActions` (document writes only). It is not full kibana-index write access. `rw` and `admin` do not need it: `writeActions` has all document writes.
+¹ A narrow allow-list of saved-object writes of the Kibana UI: the non-strict path (`KibanaRequest.NonStrictWrite`: discover UI state, short URLs, index-pattern/url/config doc updates, telemetry) AND `nonStrictActions` (document writes only). It is not full kibana-index write access. `rw` and `admin` do not need it: `writeActions` has all document writes.
 
 `api_only` (YAML value `api_only`) is its own `KibanaAccess` value, not an alias. On the ES side it has the row of `ro`, **not** `ro_strict`. Its distinct restrictions are on the Kibana side: the ROR Kibana plugin denies the browser login and allows only Kibana `/api/...` paths, filtered by `allowed_api_paths` (`KibanaUserDataRuleDecoder.scala`).
 
