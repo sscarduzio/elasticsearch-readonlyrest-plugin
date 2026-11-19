@@ -244,7 +244,6 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   implicit val fullIndexNameShow: Show[IndexName.Full] = Show.show(_.name.value)
   implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.show)
   implicit val fullDataStreamShow: Show[DataStreamName.Full] = Show.show(_.value.value)
-  implicit val dataStreamNameShow: Show[DataStreamName] = Show.show(_.stringify)
   implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
   implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] =
     Show.show(_.value.value)

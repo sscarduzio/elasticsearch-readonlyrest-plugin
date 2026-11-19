@@ -34,7 +34,8 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 // R     read (`readActions`)
 // NS    non-strict writes to the main Kibana index (`isNonStrictWrite`): the "Discover" state, short URLs, data
 //       views, telemetry and new config documents
-// W     write (`writeActions`)
+// W     document writes, index and data stream creation, and mapping updates (`writeActions`). Index delete and the
+//       other index management actions are cluster management writes.
 // CR    cluster management read (`clusterManagementReadActions`)
 // ROR   ROR settings API (`rorAdminActions`); its requests have no indices
 // ALL   all actions
