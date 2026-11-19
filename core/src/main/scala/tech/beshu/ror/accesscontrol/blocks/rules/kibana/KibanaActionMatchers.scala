@@ -162,26 +162,34 @@ object KibanaActionMatchers {
     ).map(Action.apply)
   }
 
-  // The writes of indices, data streams and aliases
+  // The writes of the Kibana UI that the read only access levels need, together with a non-strict path. They are
+  // document writes, so `writeActions` contains them.
+  private val nonStrictActionNames: Set[Action] = Set(
+    "indices:data/write/bulk",
+    "indices:data/write/delete",
+    "indices:data/write/delete/byquery",
+    "indices:data/write/index",
+    "indices:data/write/otlp/logs",
+    "indices:data/write/otlp/metrics",
+    "indices:data/write/otlp/traces",
+    "indices:data/write/prometheus/remote_write",
+    "indices:data/write/reindex",
+    "indices:data/write/reindex/resume",
+    "indices:data/write/simulate/bulk",
+    "indices:data/write/update",
+    "indices:data/write/update/byquery"
+  ).map(Action.apply)
+
+  val nonStrictActions: PatternsMatcher[Action] = PatternsMatcher.create(nonStrictActionNames)
+
+  // The writes of indices, data streams and aliases: the non-strict actions, the index and data stream creation, and
+  // the mapping updates
   val writeActions: PatternsMatcher[Action] = PatternsMatcher.create {
-    Set(
+    nonStrictActionNames ++ Set(
       "indices:admin/create",
       "indices:admin/data_stream/create",
       "indices:admin/data_stream/mappings/update",
-      "indices:admin/mapping/put",
-      "indices:data/write/bulk",
-      "indices:data/write/delete",
-      "indices:data/write/delete/byquery",
-      "indices:data/write/index",
-      "indices:data/write/otlp/logs",
-      "indices:data/write/otlp/metrics",
-      "indices:data/write/otlp/traces",
-      "indices:data/write/prometheus/remote_write",
-      "indices:data/write/reindex",
-      "indices:data/write/reindex/resume",
-      "indices:data/write/simulate/bulk",
-      "indices:data/write/update",
-      "indices:data/write/update/byquery"
+      "indices:admin/mapping/put"
     ).map(Action.apply)
   }
 
@@ -330,25 +338,6 @@ object KibanaActionMatchers {
       "indices:data/read/xpack/connector/list",
       "indices:data/read/xpack/connector/sync_job/get",
       "indices:data/read/xpack/connector/sync_job/list"
-    ).map(Action.apply)
-  }
-
-  // The writes of the Kibana UI that the read only access levels need, together with a non-strict path
-  val nonStrictActions: PatternsMatcher[Action] = PatternsMatcher.create {
-    Set(
-      "indices:data/write/bulk",
-      "indices:data/write/delete",
-      "indices:data/write/delete/byquery",
-      "indices:data/write/index",
-      "indices:data/write/otlp/logs",
-      "indices:data/write/otlp/metrics",
-      "indices:data/write/otlp/traces",
-      "indices:data/write/prometheus/remote_write",
-      "indices:data/write/reindex",
-      "indices:data/write/reindex/resume",
-      "indices:data/write/simulate/bulk",
-      "indices:data/write/update",
-      "indices:data/write/update/byquery"
     ).map(Action.apply)
   }
 
