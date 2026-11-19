@@ -13,13 +13,15 @@ Shared decision: `BaseKibanaRule.isAllowed` (`core/.../blocks/rules/kibana/BaseK
 - **Current**: `KibanaUserDataRule.scala` — YAML name `kibana`.
 - **Legacy**: `KibanaAccessRule.scala` — YAML name `kibana_access`, `@deprecated` since `1.48.0`.
 
-Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` — there is no `Constants.java`. Each group names the ES actions **in full, with no wildcard**, generated from the ES action lists (`readonlyrest-docs/actionstrings`, ES 6.7.0 to 9.5.6). An action that a new ES version adds is allowed only for `unrestricted` until someone adds it to a group:
+Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` — there is no `Constants.java`. Each group names the ES actions **in full, with no wildcard**, generated from the ES action lists (`readonlyrest-docs/actionstrings`, ES 6.7.0 to 9.5.6). An action that a new ES version adds is allowed only for `unrestricted` until someone adds it to a group (see the sample data exception below):
 - `readActions` — reads of indices, data streams and aliases, and the cluster reads that Kibana needs for the read only levels (health, nodes, license, ML views, Dev Tools, ES|QL autocompletion…).
 - `writeActions` — document writes, index and data stream creation, mapping updates. Index or data stream delete, alias updates and the other index management actions are cluster management, not here.
 - `clusterManagementReadActions` — reads of the cluster configuration and state, without the secret values (Fleet and connector secrets) and without the cluster reads that return index data (datafeed, DFA and transform previews, `find_field_structure`): ROR finds no indices in those requests, so the `indices` rule cannot check them.
 - `nonStrictActions` — with a non-strict path (see ¹).
 - `rorAdminActions` — the ROR settings API, from `RorAction.adminActions`.
 - Cluster management writes (cluster settings, templates, ILM/SLM, pipelines, snapshots, index management, API key changes, X-Pack features…) are in no group: only `unrestricted` allows them.
+
+The exception to both rules: on one Kibana sample data index or data stream (`kibana_sample_data_*`), `rw` and `admin` allow every action, also the actions in no group. Kibana's "Sample data" page creates and deletes these indices with the user's credentials.
 
 - Omitting `kibana_access` ≡ `unrestricted`. The explicit `unrestricted` value exists so YAML anchor/template blocks can **override** a templated `rw` default.
 - Design intent of all restricted levels: the Kibana indices are writable for `rw` and `admin` (saved objects must work), all other "data indices" are **read-only**, and no restricted level writes the cluster configuration.

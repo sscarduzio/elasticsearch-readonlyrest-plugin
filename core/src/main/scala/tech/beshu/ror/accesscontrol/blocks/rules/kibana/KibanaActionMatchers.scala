@@ -23,7 +23,8 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.utils.RefinedUtils.*
 
 // The action groups of the kibana rule. Each group names the ES actions in full, with no wildcard: an action that ES
-// adds in a new version is allowed only for `unrestricted` until it is added to a group. Source of the names: the ES
+// adds in a new version is allowed only for `unrestricted` until it is added to a group. The exception is a request to
+// one Kibana sample data index or data stream: there, `rw` and `admin` allow every action. Source of the names: the ES
 // action lists of `readonlyrest-docs/actionstrings`, ES 6.7.0 to 9.5.6.
 object KibanaActionMatchers {
 
