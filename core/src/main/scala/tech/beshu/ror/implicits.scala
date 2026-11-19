@@ -234,7 +234,7 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   }
 
   implicit val kibanaAccessTableDecisionShow: Show[KibanaAccessTable.Decision] = Show.show {
-    case KibanaAccessTable.Decision.UserMetadataRequest =>
+    case KibanaAccessTable.Decision.AllowUserMetadataRequest =>
       "ROR allows the ROR user metadata request for every kibana access level."
     case KibanaAccessTable.Decision.Cell(access, target, isAllowed) =>
       s"ROR classifies the request as '${target.show}' (a column of the kibana access table). " +

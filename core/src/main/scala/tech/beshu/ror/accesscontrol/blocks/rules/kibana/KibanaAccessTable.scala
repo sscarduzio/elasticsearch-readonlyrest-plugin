@@ -48,7 +48,7 @@ private[ror] object KibanaAccessTable {
 
   object Decision {
 
-    case object UserMetadataRequest extends Decision {
+    case object AllowUserMetadataRequest extends Decision {
       override val isAllowed: Boolean = true
     }
 
@@ -56,7 +56,7 @@ private[ror] object KibanaAccessTable {
   }
 
   private[kibana] def decide(access: KibanaAccess, request: KibanaRequest): Decision =
-    if (request.isUserMetadataRequest) Decision.UserMetadataRequest
+    if (request.isUserMetadataRequest) Decision.AllowUserMetadataRequest
     else Decision.Cell(access, request.target, isAllowedForLevel(access, request))
 
   private def isAllowedForLevel(access: KibanaAccess, request: KibanaRequest): Boolean = access match {
