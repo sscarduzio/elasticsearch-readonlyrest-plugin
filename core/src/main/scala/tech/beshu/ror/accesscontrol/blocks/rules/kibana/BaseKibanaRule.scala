@@ -33,9 +33,8 @@ abstract class BaseKibanaRule(val settings: Settings)
     with KibanaRelatedRule
     with RequestIdAwareLogging {
 
-  // The access level of the rule decides with the access table (see `KibanaAccessTable`)
   protected def isAllowed(blockContext: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
-    val request = new KibanaRequest(blockContext, kibanaIndex, settings.rorIndex)
+    val request = new KibanaRequest(blockContext, kibanaIndex)
     val allowed = KibanaAccessTable.isAllowed(settings.access, request)
     given BlockContext = blockContext
     logger.debug(s"Kibana access table, target: ${request.target.name}, allowed: ${allowed.show}")

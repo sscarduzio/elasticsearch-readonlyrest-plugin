@@ -30,67 +30,57 @@ import scala.util.Try
 
 // What the kibana rule needs to know about a request: the target of the request (the columns of the access table),
 // and the facts about its action and paths that the cells of the table use.
-private[kibana] final class KibanaRequest(
-    blockContext: BlockContext,
-    kibanaIndex: KibanaIndexName,
-    rorIndex: RorSettingsIndex
-) {
+private[kibana] final class KibanaRequest(blockContext: BlockContext, kibanaIndex: KibanaIndexName) {
 
   private val action = blockContext.requestContext.action
-  private val indices = blockContext.indices
 
-  lazy val target: Target =
+  lazy val target: Target = {
+    val indices = blockContext.indices
     if (isOneKibanaSampleDataIndexOrDataStream) Target.KibanaSampleData
     else if (indices.isEmpty) Target.NoIndices
     else if (indices.forall(_.name.isRelatedToKibanaIndex(kibanaIndex))) Target.KibanaIndices
     else Target.DataIndices
+  }
 
-  def isReadAction: Boolean = roActionPatternsMatcher.`match`(action)
+  def isReadAction: Boolean = readActions.`match`(action)
 
-  def isClusterAction: Boolean = clusterActionPatternsMatcher.`match`(action)
+  def isWriteAction: Boolean = writeActions.`match`(action)
 
-  def isRwAction: Boolean = rwActionPatternsMatcher.`match`(action)
+  def isClusterManagementReadAction: Boolean = clusterManagementReadActions.`match`(action)
 
-  def isAdminAction: Boolean = adminActionPatternsMatcher.`match`(action)
+  def isRorAdminAction: Boolean = rorAdminActions.`match`(action)
 
   def isNonStrictAction: Boolean = nonStrictActions.`match`(action)
 
   // The writes of the Kibana UI that the read only levels need: a non-strict path and a non-strict action
   def isNonStrictWrite: Boolean = isNonStrictPath && isNonStrictAction
 
-  lazy val isUserMetadataRequest: Boolean = blockContext.requestContext.restRequest.path.isUserMetadataPath
+  lazy val isUserMetadataRequest: Boolean =
+    blockContext.requestContext.restRequest.path.isUserMetadataPath || action == Action.RorAction.RorUserMetadataAction
 
-  lazy val isFirstIndexKibanaDevNull: Boolean = isFirstIndex(devNullKibana.underlying)
-
-  lazy val isFirstIndexRorSettingsIndex: Boolean = isFirstIndex(rorIndex.toLocal)
-
+  // The ROR Kibana plugin sends an audit event (the logout) with the credentials of the user
+  lazy val isAuditEventRequest: Boolean =
+    blockContext.requestContext.restRequest.path.isAuditEventPath || action == Action.RorAction.RorAuditEventAction
+  
   private lazy val isOneKibanaSampleDataIndexOrDataStream: Boolean = {
-    val isOneSampleDataIndex = indices.toList match {
+    def isOneSampleDataIndex = blockContext.indices.toList match {
       case index :: Nil => kibanaSampleDataIndexMatcher.`match`(index.name)
       case _            => false
     }
-    val isOneSampleDataStream = blockContext.dataStreams.toList match {
+    def isOneSampleDataStream = blockContext.dataStreams.toList match {
       case dataStream :: Nil => kibanaSampleDataStreamMatcher.`match`(dataStream)
       case _                 => false
     }
     isOneSampleDataIndex || isOneSampleDataStream
   }
 
-  // The Kibana request path of the Kibana "Index Management" or "Tags" app
-  lazy val isFromKibanaIndexManagementOrTags: Boolean =
-    blockContext.requestContext.headers.kibanaRequestPath.exists { path =>
-      path.value.contains("/index_management/") || path.value.contains("/tags/")
-    }
-
   // The paths of the writes that the Kibana UI does also for the read only access levels: the "Discover" state, short
-  // URLs, data views, telemetry, new config documents and legacy templates
-  lazy val isNonStrictPath: Boolean =
+  // URLs, data views, telemetry and new config documents
+  private lazy val isNonStrictPath: Boolean =
     nonStrictAllowedPathsPatternFor(kibanaIndex) match {
       case Some(paths) => paths.matcher(blockContext.requestContext.restRequest.path.value.value).find()
       case None        => false
     }
-
-  private def isFirstIndex(index: ClusterIndexName): Boolean = indices.headOption.exists(_.name == index)
 
 }
 
@@ -111,7 +101,7 @@ private[kibana] object KibanaRequest {
   // so the compiled Pattern is cached per Kibana index instead of being recompiled on
   // every non-strict path check.
   private val nonStrictAllowedPathsRegexTemplate =
-    "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
+    "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
 
   private val nonStrictAllowedPathsPatternCache: Cache[KibanaIndexName, Option[Pattern]] =
     doPrivileged {

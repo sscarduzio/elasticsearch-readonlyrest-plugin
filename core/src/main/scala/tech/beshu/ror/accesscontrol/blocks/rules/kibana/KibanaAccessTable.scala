@@ -21,19 +21,26 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 
 // The access levels of the kibana rule, as the table in the docs: one row per access level, one column per target of
-// the request (see `KibanaRequest.Target`). All levels also allow the user metadata request, the cluster actions, and
+// the request. All levels also allow the user metadata request, the audit event request of the ROR Kibana plugin, and
 // all actions when the first index is `.kibana-devnull`.
 //
-// | level            | Kibana indices          | data indices | Kibana sample data | no indices              |
-// |------------------|-------------------------|--------------|--------------------|-------------------------|
-// | `ro_strict`      | read                    | read         | read               | read                    |
-// | `ro`, `api_only` | read, non-strict writes | read         | read               | read                    |
-// | `rw`             | read, rw                | read         | all actions        | read, rw                |
-// | `admin`          | read, rw, (AAA)         | read, (AAA)  | all actions        | read, rw, admin actions |
-// | `unrestricted`   | all actions             | all actions  | all actions        | all actions             |
+// | level            | Kibana indices     | data indices | Kibana sample data | no indices   |
+// |------------------|--------------------|--------------|--------------------|--------------|
+// | `ro_strict`      | R                  | R            | R                  | R            |
+// | `ro`, `api_only` | R, NS              | R            | R                  | R            |
+// | `rw`             | R, W, CR           | R, CR        | ALL                | R, CR        |
+// | `admin`          | R, W, CR           | R, CR        | ALL                | R, CR, ROR   |
+// | `unrestricted`   | ALL                | ALL          | ALL                | ALL          |
 //
-// (AAA) additional admin actions from the Kibana "Index Management" and "Tags" apps, or when the first index is the
-// ROR settings index
+// R     read (`readActions`)
+// NS    non-strict writes to the main Kibana index (`isNonStrictWrite`): the "Discover" state, short URLs, data
+//       views, telemetry and new config documents
+// W     write (`writeActions`)
+// CR    cluster management read (`clusterManagementReadActions`)
+// ROR   ROR settings API (`rorAdminActions`); its requests have no indices
+// ALL   all actions
+//
+// Only `unrestricted` allows the cluster management writes.
 private[kibana] object KibanaAccessTable {
 
   def isAllowed(access: KibanaAccess, request: KibanaRequest): Boolean =
@@ -41,8 +48,7 @@ private[kibana] object KibanaAccessTable {
 
   private def isAllowedForAllLevels(request: KibanaRequest): Boolean =
     request.isUserMetadataRequest ||
-      request.isFirstIndexKibanaDevNull ||
-      request.isClusterAction
+      request.isAuditEventRequest
 
   private def isAllowedForLevel(access: KibanaAccess, request: KibanaRequest): Boolean = access match {
     case ROStrict     => isAllowedForRoStrict(request)
@@ -67,26 +73,34 @@ private[kibana] object KibanaAccessTable {
   }
 
   private def isAllowedForRw(request: KibanaRequest): Boolean = request.target match {
-    case Target.KibanaIndices    => request.isReadAction || request.isRwAction
-    case Target.DataIndices      => request.isReadAction
-    case Target.KibanaSampleData => true
-    case Target.NoIndices        => request.isReadAction || request.isRwAction
+    case Target.KibanaIndices =>
+      request.isReadAction ||
+      request.isWriteAction ||
+      request.isClusterManagementReadAction
+    case Target.DataIndices =>
+      request.isReadAction ||
+      request.isClusterManagementReadAction
+    case Target.KibanaSampleData =>
+      true
+    case Target.NoIndices =>
+      request.isReadAction ||
+      request.isClusterManagementReadAction
   }
 
   private def isAllowedForAdmin(request: KibanaRequest): Boolean = request.target match {
     case Target.KibanaIndices =>
       request.isReadAction ||
-      request.isRwAction ||
-      isAdminActionFromKibanaAppOrOnRorSettingsIndex(request)
+      request.isWriteAction ||
+      request.isClusterManagementReadAction
     case Target.DataIndices =>
       request.isReadAction ||
-      isAdminActionFromKibanaAppOrOnRorSettingsIndex(request)
+      request.isClusterManagementReadAction
     case Target.KibanaSampleData =>
       true
     case Target.NoIndices =>
       request.isReadAction ||
-      request.isRwAction ||
-      request.isAdminAction
+      request.isClusterManagementReadAction ||
+      request.isRorAdminAction
   }
 
   private def isAllowedForUnrestricted(request: KibanaRequest): Boolean = request.target match {
@@ -95,9 +109,5 @@ private[kibana] object KibanaAccessTable {
     case Target.KibanaSampleData => true
     case Target.NoIndices        => true
   }
-
-  // (A) in the table
-  private def isAdminActionFromKibanaAppOrOnRorSettingsIndex(request: KibanaRequest): Boolean =
-    request.isAdminAction && (request.isFromKibanaIndexManagementOrTags || request.isFirstIndexRorSettingsIndex)
 
 }

@@ -13,38 +13,42 @@ Shared decision: `BaseKibanaRule.isAllowed` (`core/.../blocks/rules/kibana/BaseK
 - **Current**: `KibanaUserDataRule.scala` — YAML name `kibana`.
 - **Legacy**: `KibanaAccessRule.scala` — YAML name `kibana_access`, `@deprecated` since `1.48.0`.
 
-Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` (`roActionPatternsMatcher`, `rwActionPatternsMatcher`, `clusterActionPatternsMatcher`, `adminActionPatternsMatcher`, `nonStrictActions`) — there is no `Constants.java`.
+Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` — there is no `Constants.java`. Each group names the ES actions **in full, with no wildcard**, generated from the ES action lists (`readonlyrest-docs/actionstrings`, ES 6.7.0 to 9.5.6). An action that a new ES version adds is allowed only for `unrestricted` until someone adds it to a group:
+- `readActions` — reads of indices, data streams and aliases, and the cluster reads that Kibana needs for the read only levels (health, nodes, license, ML views, Dev Tools, ES|QL autocompletion…).
+- `writeActions` — document writes, index and data stream creation, mapping updates. Index or data stream delete, alias updates and the other index management actions are cluster management, not here.
+- `clusterManagementReadActions` — reads of the cluster configuration and state, without the secret values (Fleet and connector secrets) and without the cluster reads that return index data (datafeed, DFA and transform previews, `find_field_structure`): ROR finds no indices in those requests, so the `indices` rule cannot check them.
+- `nonStrictActions` — with a non-strict path (see ¹).
+- `rorAdminActions` — the ROR settings API, from `RorAction.adminActions`.
+- Cluster management writes (cluster settings, templates, ILM/SLM, pipelines, snapshots, index management, API key changes, X-Pack features…) are in no group: only `unrestricted` allows them.
 
 - Omitting `kibana_access` ≡ `unrestricted`. The explicit `unrestricted` value exists so YAML anchor/template blocks can **override** a templated `rw` default.
-- Design intent of all restricted levels: the kibana index is writable (saved objects must work), all other "data indices" are **read-only** — protect against accidental data loss. Special-case writable indices exist (e.g. reporting).
-- `admin` is `rw` **plus** `adminActionPatternsMatcher` on requests with no indices, on the ROR settings index and from the Kibana Index Management / Tags apps — that includes `indices:admin/create`, `indices:admin/ilm/*`, `cluster:admin/ingest/pipeline/put`, etc., none of which `rw` can reach. It also gates the ROR settings/activation-keys APIs.
+- Design intent of all restricted levels: the Kibana indices are writable for `rw` and `admin` (saved objects must work), all other "data indices" are **read-only**, and no restricted level writes the cluster configuration.
+- `admin` is `rw` **plus** the ROR settings API (`rorAdminActions`). It is not a cluster administrator.
 
-The access table has the shape of the docs table ("Possible access levels" in `readonlyrest-docs/elasticsearch.md`): one row per level, one column per target (`KibanaRequest.Target`):
+The access table has the shape of the docs table ("Possible access levels" in `readonlyrest-docs/elasticsearch.md`, published `master`, plus the internal access table): one row per level, one column per target (`KibanaRequest.Target`):
 - `KibanaIndices`: all indices of the request are related to the Kibana index (`isRelatedToKibanaIndex`);
 - `DataIndices`: the request has other indices;
 - `NoIndices`: `bc.indices` is empty. A data stream request with no backing indices is here too.
 
-All levels also allow the user metadata path, `clusterActionPatternsMatcher`, and all actions when the first index is `.kibana-devnull`. Each row checks each column:
+All levels also allow the ROR user metadata request and the ROR audit event request (the logout event that the ROR Kibana plugin sends with the user's credentials), each by path or by ROR action, and all actions when the first index is `.kibana-devnull`. Each row checks each column:
 
 | level | Kibana indices | data indices | Kibana sample data | no indices |
 |---|---|---|---|---|
 | `ro_strict` | read | read | read | read |
 | `ro`, `api_only` | read; non-strict writes¹ | read | read | read |
-| `rw` | read; `rwActionPatternsMatcher` | read | all actions | read; `rwActionPatternsMatcher` |
-| `admin` | read; `rwActionPatternsMatcher`; (A) | read; (A) | all actions | read; `rwActionPatternsMatcher`; `adminActionPatternsMatcher` |
+| `rw` | read; write; cluster read | read; cluster read | all actions | read; cluster read |
+| `admin` | as `rw` | as `rw` | all actions | as `rw`; `rorAdminActions` (the ROR settings API, whose requests have no indices) |
 | `unrestricted` | all actions | all actions | all actions | all actions |
 
-"read" = `roActionPatternsMatcher`. "Kibana sample data" = the request names exactly one index or exactly one data stream, and it matches `kibana_sample_data_*`. This target wins over the others.
+"read" = `readActions`, "write" = `writeActions`, "cluster read" = `clusterManagementReadActions`. "Kibana sample data" = the request names exactly one index or exactly one data stream, and it matches `kibana_sample_data_*`. This target wins over the others.
 
-(A) `adminActionPatternsMatcher` actions from the Kibana "Index Management" or "Tags" app (`x-ror-kibana-request-path` contains `/index_management/` or `/tags/`), or when the first index is the ROR settings index.
+¹ A narrow allow-list of saved-object writes of the Kibana UI: the non-strict path (`KibanaRequest.isNonStrictPath`: discover UI state, short URLs, index-pattern/url/config doc updates, telemetry) AND `nonStrictActions` (document writes only). It is not full kibana-index write access. `rw` and `admin` do not need it: `writeActions` has all document writes.
 
-¹ A narrow allow-list of saved-object writes of the Kibana UI: the non-strict path (`KibanaRequest.isNonStrictPath`: discover UI state, short URLs, index-pattern/url/config doc updates, telemetry, legacy templates) AND `nonStrictActions`. It is not full kibana-index write access.
+`api_only` (YAML value `api_only`) is its own `KibanaAccess` value, not an alias. On the ES side it has the row of `ro`, **not** `ro_strict`. Its distinct restrictions are on the Kibana side: the ROR Kibana plugin denies the browser login and allows only Kibana `/api/...` paths, filtered by `allowed_api_paths` (`KibanaUserDataRuleDecoder.scala`).
 
-`api_only` (YAML value `api_only`) is its own `KibanaAccess` value, not an alias. It has the row of `ro`, **not** `ro_strict`, so it CAN reach the non-strict kibana writes, which `ro_strict` never can. Its distinct restriction is the `allowed_api_paths` coupling (`KibanaUserDataRuleDecoder.scala`), a separate layer gating which ROR/ES API paths may be called.
+API keys: ES runs every request that ROR allows as its internal `_xpack` user (`addXpackUserAuthenticationHeader`), so all ROR users share one API key owner; "own API keys" cannot be enforced per ROR user.
 
-The table is an OR of independent cells, so the order of the checks does not change the result. **A change of a cell is a behavioral change** — review it accordingly.
-
-Note: on the Kibana indices, `rw` and `admin` allow only the document writes that `rwActionPatternsMatcher` lists (index, update, delete, bulk, simulate bulk, reindex), not all `indices:data/write/*`. `adminActionPatternsMatcher` has `indices:data/write/*`, so `admin` allows all document writes in the (A) cases and with no indices.
+The table is an OR of independent cells, so the order of the checks does not change the result. **A change of a cell or of an action group is a behavioral change** — review it accordingly.
 
 ## FLS (fields rule) engines
 

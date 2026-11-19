@@ -30,19 +30,19 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
 }
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaRequest.Target
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
+import scala.io.{Codec, Source}
+
 // Temporary: compares the access table with the decision of `BaseKibanaRule` before the refactor
-// (`LegacyKibanaDecision`, with the action groups of that time) for a matrix of requests. Only the changes of the
-// action groups can make a difference (see `isExpectedDifference`). Remove both when the review of the refactor is
-// done.
+// (`LegacyKibanaDecision`, with the action groups of that time), for a matrix of requests and for the real ES actions.
+// A request that was rejected before can be allowed now only as a read of its access level (see `isAllowedGain`). The
+// tests print the other changes for the review. Remove both when the review of the refactor is done.
 class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAssertion with BeforeAndAfterAll {
 
   private val kibanaRulesPackage = "tech.beshu.ror.accesscontrol.blocks.rules.kibana"
@@ -54,31 +54,89 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
   override def afterAll(): Unit = Configurator.setLevel(kibanaRulesPackage, logLevelBefore)
 
   "The kibana access table" should {
-    "decide like the kibana rule before the refactor" in {
+    "allow no more than before, except the reads of each access level" in {
       val block = mock[Block]
-      val decisions = for {
+      val differences = for {
         restRequest <- restRequests
         action <- actions
         blockContext <- blockContexts(block, action, restRequest)
         kibanaIndex <- kibanaIndices
         access <- accessLevels
-      } yield {
-        val request = new KibanaRequest(blockContext, kibanaIndex, rorIndex)
-        val before = legacyDecisions(access).shouldMatch((blockContext, kibanaIndex))
-        val after = KibanaAccessTable.isAllowed(access, request)
-        Option.when(before != after) {
-          val difference = s"$access, ${action.value}, kibana index ${kibanaIndex.stringify}, " +
-            s"${describe(blockContext)}: before $before, after $after"
-          (isExpectedDifference(access, action, request, before, after), difference)
-        }
+        request = new KibanaRequest(blockContext, kibanaIndex)
+        before = legacyDecisions(access).shouldMatch((blockContext, kibanaIndex))
+        after = KibanaAccessTable.isAllowed(access, request)
+        if before != after
+      } yield (access, action, request, before, after, describe(blockContext))
+      val (gains, losses) = differences.partition { case (_, _, _, before, after, _) => !before && after }
+      val forbiddenGains = gains.filterNot { case (access, action, request, _, _, _) =>
+        isAllowedGain(access, action, request)
       }
-      val (expectedDifferences, unexpectedDifferences) = decisions.flatten.partition(_._1)
-      decisions.size should be > 100000
-      info(s"${decisions.size} decisions, ${expectedDifferences.size} expected differences")
-      withClue(unexpectedDifferences.take(30).map(_._2).mkString("\n", "\n", "\n")) {
-        unexpectedDifferences.size should be(0)
+      info(s"${gains.size} gains (all reads), ${losses.size} losses")
+      withClue(
+        forbiddenGains
+          .take(30)
+          .map { case (access, action, _, _, _, context) =>
+            s"$access, ${action.value}, $context"
+          }
+          .mkString("\n", "\n", "\n")
+      ) {
+        forbiddenGains.size should be(0)
       }
     }
+    "report the changes for the real ES actions" in {
+      val block = mock[Block]
+      val restRequest = MockRestRequest(path = UriPath.from(NonEmptyString.unsafeFrom("/undefined")))
+      val kibanaIndex = kibanaIndexName(".kibana")
+      val differences = for {
+        action <- esActions
+        blockContext <- blockContexts(block, action, restRequest).filter(isReportedBlockContext)
+        access <- accessLevels
+        request = new KibanaRequest(blockContext, kibanaIndex)
+        before = legacyDecisions(access).shouldMatch((blockContext, kibanaIndex))
+        after = KibanaAccessTable.isAllowed(access, request)
+        if before != after
+      } yield (action, access, request, before, after)
+      info(s"${esActions.size} ES actions, ${differences.size} differences")
+      differences.groupBy(_._1).toList.sortBy(_._1.value).foreach { case (action, actionDifferences) =>
+        val changes = actionDifferences.map { case (_, access, request, before, after) =>
+          s"$access ${request.target.name} ${if (after) "allowed" else "rejected"} now"
+        }
+        info(s"REPORT ${action.value}: ${changes.distinct.mkString(", ")}")
+      }
+      val forbiddenGains = differences.collect {
+        case (action, access, request, false, true) if !isAllowedGain(access, action, request) =>
+          s"${action.value} $access"
+      }
+      forbiddenGains should be(List.empty)
+    }
+  }
+
+  // A read of the access level: the reads of all levels, the user metadata and audit event requests of all levels, and
+  // the cluster management reads of `rw` and `admin`
+  private def isAllowedGain(access: KibanaAccess, action: Action, request: KibanaRequest): Boolean = {
+    val isRwOrAdmin = access == KibanaAccess.RW || access == KibanaAccess.Admin
+    readActions.`match`(action) ||
+    request.isUserMetadataRequest ||
+    request.isAuditEventRequest ||
+    (isRwOrAdmin && clusterManagementReadActions.`match`(action)) ||
+    (access == KibanaAccess.Admin && rorAdminActions.`match`(action))
+  }
+
+  // The union of the ES action lists of `readonlyrest-docs/actionstrings`, ES 6.7.0 to 9.5.6
+  private lazy val esActions: List[Action] =
+    Source
+      .fromResource("kibana_access_table/es_action_strings.txt")(Codec.UTF8)
+      .getLines()
+      .filter(_.nonEmpty)
+      .map(Action.apply)
+      .toList
+
+  // The report uses three block contexts: no indices, the Kibana index, a data index
+  private def isReportedBlockContext(blockContext: BlockContext): Boolean = blockContext match {
+    case _: GeneralNonIndexRequestBlockContext => true
+    case _: GeneralIndexRequestBlockContext    =>
+      List(Set(".kibana"), Set("logs-1")).contains(blockContext.indices.map(_.name.stringify))
+    case _ => false
   }
 
   private lazy val accessLevels: List[KibanaAccess] = List(
@@ -99,46 +157,11 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
 
   private lazy val kibanaIndices = List(kibanaIndexName(".kibana"), kibanaIndexName(".custom_kibana"))
 
-  // The changes of the action groups after the refactor. With the ES action lists (ES 5.3.3 to 9.5.6), their effect
-  // on the real actions is:
-  // - `indices:admin/create_index` is not an ES action;
-  // - of `indices:admin/aliases/*`, `rw` keeps no action: `indices:admin/aliases/get` was a read action already, and
-  //   `indices:admin/aliases/exists` is a read action now (all levels, all targets);
-  // - `rw` allows `indices:data/write/simulate/bulk*` and `indices:data/write/reindex*` also with no indices;
-  // - on the Kibana indices, `rw` and `admin` allow only the document writes of `rw`, not all `indices:data/write/*`.
-  private def isExpectedDifference(
-      access: KibanaAccess,
-      action: Action,
-      request: KibanaRequest,
-      before: Boolean,
-      after: Boolean
-  ): Boolean = {
-    val isRemovedAction = removedActions.`match`(action) && !keptAliasActions.`match`(action)
-    val isNewReadAction = newReadActions.`match`(action)
-    val isNewRwActionWithNoIndices =
-      access == KibanaAccess.RW && request.target == Target.NoIndices && newRwActions.`match`(action)
-    val isOtherDocumentWriteOnKibanaIndices =
-      (access == KibanaAccess.RW || access == KibanaAccess.Admin) && request.target == Target.KibanaIndices &&
-        documentWrites.`match`(action) && !rwActionPatternsMatcher.`match`(action)
-    (before && !after && (isRemovedAction || isOtherDocumentWriteOnKibanaIndices)) ||
-    (!before && after && (isNewReadAction || isNewRwActionWithNoIndices))
-  }
-
-  private lazy val removedActions = actionsMatcher("indices:admin/create_index", "indices:admin/aliases/*")
-  private lazy val keptAliasActions = actionsMatcher("indices:admin/aliases/exists", "indices:admin/aliases/get")
-  private lazy val newReadActions = actionsMatcher("indices:admin/aliases/exists")
-  private lazy val newRwActions = actionsMatcher("indices:data/write/simulate/bulk*", "indices:data/write/reindex*")
-  private lazy val documentWrites = actionsMatcher("indices:data/write/*")
-
-  private def actionsMatcher(patterns: String*): PatternsMatcher[Action] =
-    PatternsMatcher.create(patterns.map(Action.apply).toSet)
-
   private lazy val actions: List[Action] = {
     val patterns = List(
-      roActionPatternsMatcher,
-      rwActionPatternsMatcher,
-      clusterActionPatternsMatcher,
-      adminActionPatternsMatcher,
+      readActions,
+      writeActions,
+      clusterManagementReadActions,
       nonStrictActions,
       LegacyKibanaDecision.Matchers.roActionPatternsMatcher,
       LegacyKibanaDecision.Matchers.rwActionPatternsMatcher,
