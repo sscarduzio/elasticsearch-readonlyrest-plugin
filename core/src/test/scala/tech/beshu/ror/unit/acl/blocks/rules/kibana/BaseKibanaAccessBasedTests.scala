@@ -320,9 +320,9 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
         allowedFor = Set(KibanaAccess.Admin, Unrestricted)
       )
     }
-    "ROR user metadata or audit event action is used" in {
+    "ROR user metadata action is used" in {
       assertActionsAllowedOnlyFor(
-        actions = Set("cluster:internal_ror/user_metadata/get", "cluster:internal_ror/audit_event/put"),
+        actions = Set("cluster:internal_ror/user_metadata/get"),
         allowedFor = Set(ROStrict, RO, KibanaAccess.ApiOnly, RW, KibanaAccess.Admin, Unrestricted)
       )
     }

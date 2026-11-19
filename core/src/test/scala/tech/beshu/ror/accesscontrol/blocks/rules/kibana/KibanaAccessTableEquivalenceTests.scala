@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -56,30 +57,29 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
   "The kibana access table" should {
     "allow no more than before, except the reads of each access level" in {
       val block = mock[Block]
-      val differences = for {
+      var gains = 0
+      var losses = 0
+      val forbiddenGains = scala.collection.mutable.ListBuffer.empty[String]
+      for {
         restRequest <- restRequests
         action <- actions
         blockContext <- blockContexts(block, action, restRequest)
         kibanaIndex <- kibanaIndices
         access <- accessLevels
-        request = new KibanaRequest(blockContext, kibanaIndex)
-        before = legacyDecisions(access).shouldMatch((blockContext, kibanaIndex))
-        after = KibanaAccessTable.isAllowed(access, request)
-        if before != after
-      } yield (access, action, request, before, after, describe(blockContext))
-      val (gains, losses) = differences.partition { case (_, _, _, before, after, _) => !before && after }
-      val forbiddenGains = gains.filterNot { case (access, action, request, _, _, _) =>
-        isAllowedGain(access, action, request)
+      } {
+        val request = new KibanaRequest(blockContext, kibanaIndex)
+        val before = legacyDecisions(access).shouldMatch((blockContext, kibanaIndex))
+        val after = KibanaAccessTable.decide(access, request).isAllowed
+        if (!before && after) {
+          gains += 1
+          if (!isAllowedGain(access, action, request) && forbiddenGains.size < 30)
+            forbiddenGains += s"$access, ${action.value}, ${describe(blockContext)}"
+        } else if (before && !after) {
+          losses += 1
+        }
       }
-      info(s"${gains.size} gains (all reads), ${losses.size} losses")
-      withClue(
-        forbiddenGains
-          .take(30)
-          .map { case (access, action, _, _, _, context) =>
-            s"$access, ${action.value}, $context"
-          }
-          .mkString("\n", "\n", "\n")
-      ) {
+      info(s"$gains gains (all reads), $losses losses")
+      withClue(forbiddenGains.mkString("\n", "\n", "\n")) {
         forbiddenGains.size should be(0)
       }
     }
@@ -93,13 +93,13 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
         access <- accessLevels
         request = new KibanaRequest(blockContext, kibanaIndex)
         before = legacyDecisions(access).shouldMatch((blockContext, kibanaIndex))
-        after = KibanaAccessTable.isAllowed(access, request)
+        after = KibanaAccessTable.decide(access, request).isAllowed
         if before != after
       } yield (action, access, request, before, after)
       info(s"${esActions.size} ES actions, ${differences.size} differences")
       differences.groupBy(_._1).toList.sortBy(_._1.value).foreach { case (action, actionDifferences) =>
         val changes = actionDifferences.map { case (_, access, request, before, after) =>
-          s"$access ${request.target.name} ${if (after) "allowed" else "rejected"} now"
+          s"$access ${request.target.show} ${if (after) "allowed" else "rejected"} now"
         }
         info(s"REPORT ${action.value}: ${changes.distinct.mkString(", ")}")
       }
@@ -111,13 +111,12 @@ class KibanaAccessTableEquivalenceTests extends AnyWordSpec with BlockContextAss
     }
   }
 
-  // A read of the access level: the reads of all levels, the user metadata and audit event requests of all levels, and
-  // the cluster management reads of `rw` and `admin`
+  // A read of the access level: the reads of all levels, the user metadata request of all levels, and the cluster
+  // management reads of `rw` and `admin`
   private def isAllowedGain(access: KibanaAccess, action: Action, request: KibanaRequest): Boolean = {
     val isRwOrAdmin = access == KibanaAccess.RW || access == KibanaAccess.Admin
     readActions.`match`(action) ||
     request.isUserMetadataRequest ||
-    request.isAuditEventRequest ||
     (isRwOrAdmin && clusterManagementReadActions.`match`(action)) ||
     (access == KibanaAccess.Admin && rorAdminActions.`match`(action))
   }

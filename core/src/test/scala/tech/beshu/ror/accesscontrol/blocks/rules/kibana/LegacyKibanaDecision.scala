@@ -263,6 +263,10 @@ final class LegacyKibanaDecision(val settings: Settings) extends RequestIdAwareL
 
 object LegacyKibanaDecision {
 
+  private val devNullKibana: KibanaIndexName = KibanaIndexName(
+    ClusterIndexName.Local(IndexName.Full(nes(".kibana-devnull")))
+  )
+
   // The action groups of `KibanaActionMatchers` before the refactor
   object Matchers {
 

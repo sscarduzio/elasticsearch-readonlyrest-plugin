@@ -55,13 +55,8 @@ private[kibana] final class KibanaRequest(blockContext: BlockContext, kibanaInde
   // The writes of the Kibana UI that the read only levels need: a non-strict path and a non-strict action
   def isNonStrictWrite: Boolean = isNonStrictPath && isNonStrictAction
 
-  lazy val isUserMetadataRequest: Boolean =
-    blockContext.requestContext.restRequest.path.isUserMetadataPath || action == Action.RorAction.RorUserMetadataAction
+  def isUserMetadataRequest: Boolean = action == Action.RorAction.RorUserMetadataAction
 
-  // The ROR Kibana plugin sends an audit event (the logout) with the credentials of the user
-  lazy val isAuditEventRequest: Boolean =
-    blockContext.requestContext.restRequest.path.isAuditEventPath || action == Action.RorAction.RorAuditEventAction
-  
   private lazy val isOneKibanaSampleDataIndexOrDataStream: Boolean = {
     def isOneSampleDataIndex = blockContext.indices.toList match {
       case index :: Nil => kibanaSampleDataIndexMatcher.`match`(index.name)
@@ -84,17 +79,15 @@ private[kibana] final class KibanaRequest(blockContext: BlockContext, kibanaInde
 
 }
 
-private[kibana] object KibanaRequest {
+private[ror] object KibanaRequest {
 
-  sealed abstract class Target(val name: String)
+  sealed trait Target
 
   object Target {
-    case object KibanaIndices extends Target("Kibana indices")
-    case object DataIndices extends Target("data indices")
-    // The request names exactly one index or exactly one data stream, and it is a Kibana sample data index or data
-    // stream (`kibana_sample_data_*`)
-    case object KibanaSampleData extends Target("Kibana sample data")
-    case object NoIndices extends Target("no indices")
+    case object KibanaIndices extends Target
+    case object DataIndices extends Target
+    case object KibanaSampleData extends Target
+    case object NoIndices extends Target
   }
 
   // The regex only varies by the Kibana index name (typically a single, static value),

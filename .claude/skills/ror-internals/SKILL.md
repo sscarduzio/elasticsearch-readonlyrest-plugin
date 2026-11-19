@@ -30,7 +30,7 @@ The access table has the shape of the docs table ("Possible access levels" in `r
 - `DataIndices`: the request has other indices;
 - `NoIndices`: `bc.indices` is empty. A data stream request with no backing indices is here too.
 
-All levels also allow the ROR user metadata request and the ROR audit event request (the logout event that the ROR Kibana plugin sends with the user's credentials), each by path or by ROR action, and all actions when the first index is `.kibana-devnull`. Each row checks each column:
+All levels also allow the ROR user metadata request (by its ROR action). The kibana rule never sees the ROR audit event request: `RegularRule.check` permits it for every regular rule, by path. Each row checks each column:
 
 | level | Kibana indices | data indices | Kibana sample data | no indices |
 |---|---|---|---|---|

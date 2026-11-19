@@ -21,8 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 
 // The access levels of the kibana rule, as the table in the docs: one row per access level, one column per target of
-// the request. All levels also allow the user metadata request, the audit event request of the ROR Kibana plugin, and
-// all actions when the first index is `.kibana-devnull`.
+// the request. All levels also allow the user metadata request.
 //
 // | level            | Kibana indices     | data indices | Kibana sample data | no indices   |
 // |------------------|--------------------|--------------|--------------------|--------------|
@@ -41,14 +40,24 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 // ALL   all actions
 //
 // Only `unrestricted` allows the cluster management writes.
-private[kibana] object KibanaAccessTable {
+private[ror] object KibanaAccessTable {
 
-  def isAllowed(access: KibanaAccess, request: KibanaRequest): Boolean =
-    isAllowedForAllLevels(request) || isAllowedForLevel(access, request)
+  sealed trait Decision {
+    def isAllowed: Boolean
+  }
 
-  private def isAllowedForAllLevels(request: KibanaRequest): Boolean =
-    request.isUserMetadataRequest ||
-      request.isAuditEventRequest
+  object Decision {
+
+    case object UserMetadataRequest extends Decision {
+      override val isAllowed: Boolean = true
+    }
+
+    final case class Cell(access: KibanaAccess, target: Target, isAllowed: Boolean) extends Decision
+  }
+
+  private[kibana] def decide(access: KibanaAccess, request: KibanaRequest): Decision =
+    if (request.isUserMetadataRequest) Decision.UserMetadataRequest
+    else Decision.Cell(access, request.target, isAllowedForLevel(access, request))
 
   private def isAllowedForLevel(access: KibanaAccess, request: KibanaRequest): Boolean = access match {
     case ROStrict     => isAllowedForRoStrict(request)

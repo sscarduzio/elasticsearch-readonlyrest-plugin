@@ -34,11 +34,10 @@ abstract class BaseKibanaRule(val settings: Settings)
     with RequestIdAwareLogging {
 
   protected def isAllowed(blockContext: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
-    val request = new KibanaRequest(blockContext, kibanaIndex)
-    val allowed = KibanaAccessTable.isAllowed(settings.access, request)
+    val decision = KibanaAccessTable.decide(settings.access, new KibanaRequest(blockContext, kibanaIndex))
     given BlockContext = blockContext
-    logger.debug(s"Kibana access table, target: ${request.target.name}, allowed: ${allowed.show}")
-    allowed
+    logger.debug(decision.show)
+    decision.isAllowed
   }
 
 }
