@@ -26,6 +26,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, Inside, Succeeded}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
@@ -310,9 +311,58 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
     ruleResult should be(Denied(specialCause))
   }
 
-  private def createIndicesRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]) = {
+  protected def assertMatchRuleForDataStreamRequest(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      mustInvolveIndices: Boolean = false,
+      kibanaIndex: Option[KibanaIndexName] = None
+  ): Unit = {
+    val result = checkDataStreamRequest(configured, action, requestDataStreams, mustInvolveIndices, kibanaIndex)
+    inside(result) { case Permitted(blockContext) =>
+      blockContext.dataStreams should be(requestDataStreams)
+    }
+  }
+
+  protected def assertNotMatchRuleForDataStreamRequest(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      mustInvolveIndices: Boolean = false
+  ): Unit = {
+    val result = checkDataStreamRequest(configured, action, requestDataStreams, mustInvolveIndices, kibanaIndex = None)
+    result should be(Denied(NotAuthorized))
+  }
+
+  // A data stream request without backing indices, for example a data stream create, delete or promote
+  private def checkDataStreamRequest(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      mustInvolveIndices: Boolean,
+      kibanaIndex: Option[KibanaIndexName]
+  ): Decision[DataStreamRequestBlockContext] = {
+    val rule = createIndicesRule(configured, mustInvolveIndices)
+    val requestContext = MockRequestContext.dataStreams.copy(action = action, dataStreams = requestDataStreams)
+    val blockMetadata = BlockMetadata.from(requestContext)
+    val blockContext = DataStreamRequestBlockContext(
+      block = mock[Block],
+      requestContext = requestContext,
+      blockMetadata = kibanaIndex.map(blockMetadata.withKibanaIndex).getOrElse(blockMetadata),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      dataStreams = requestDataStreams,
+      backingIndices = BackingIndices.IndicesNotInvolved
+    )
+    rule.check(blockContext).runSyncUnsafe()
+  }
+
+  private def createIndicesRule(
+      configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      mustInvolveIndices: Boolean = false
+  ) = {
     new IndicesRule(
-      settings = IndicesRule.Settings(configuredValues, mustInvolveIndices = false),
+      settings = IndicesRule.Settings(configuredValues, mustInvolveIndices),
       identifierGenerator = (_: Refined[Int, Positive]) => "0000000000"
     )
   }

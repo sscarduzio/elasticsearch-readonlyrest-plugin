@@ -17,7 +17,9 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.NonEmptySet
+import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.domain.{Action, DataStreamName}
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockEsServices
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
@@ -1170,6 +1172,125 @@ trait IndicesRuleDataStreamTests {
       }
     }
   }
+
+  "An IndicesRule for data stream API requests" should {
+    "match" when {
+      "the data stream name matches the allowed indices" in {
+        dataStreamWriteActions.foreach { action =>
+          assertMatchRuleForDataStreamRequest(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            action = action,
+            requestDataStreams = Set(fullDataStreamName("logs-app"))
+          )
+        }
+      }
+      "all data stream names match the allowed indices" in {
+        assertMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*"), indexNameVar("metrics-app")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("metrics-app"))
+        )
+      }
+      "the data stream name pattern is the allowed indices pattern" in {
+        assertMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(dataStreamNamePattern("logs-*"))
+        )
+      }
+      "all indices are allowed" in {
+        assertMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar("*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName("audit-events"))
+        )
+      }
+      "the data stream is the Kibana reporting data stream" in {
+        assertMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName(".kibana-reporting-.kibana")),
+          kibanaIndex = Some(kibanaIndexName(".kibana"))
+        )
+      }
+      "the indices must be involved and the data stream name matches the allowed indices" in {
+        assertMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName("logs-app")),
+          mustInvolveIndices = true
+        )
+      }
+    }
+    "not match" when {
+      "the data stream name does not match the allowed indices" in {
+        dataStreamWriteActions.foreach { action =>
+          assertNotMatchRuleForDataStreamRequest(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            action = action,
+            requestDataStreams = Set(fullDataStreamName("audit-events"))
+          )
+        }
+      }
+      "one of the data stream names does not match the allowed indices" in {
+        assertNotMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("audit-events"))
+        )
+      }
+      "the request has no data stream names" in {
+        dataStreamWriteActions.foreach { action =>
+          assertNotMatchRuleForDataStreamRequest(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            action = action,
+            requestDataStreams = Set.empty
+          )
+        }
+      }
+      "the data stream name is a pattern wider than the allowed indices" in {
+        List(dataStreamNamePattern("logs-*"), DataStreamName.Wildcard, DataStreamName.All).foreach { dataStream =>
+          assertNotMatchRuleForDataStreamRequest(
+            configured = NonEmptySet.of(indexNameVar("logs-app")),
+            action = deleteDataStreamAction,
+            requestDataStreams = Set(dataStream)
+          )
+        }
+      }
+      "only the backing indices of the data stream are allowed" in {
+        assertNotMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar(".ds-logs-app*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName("logs-app"))
+        )
+      }
+      "the data stream is the Kibana reporting data stream and the block has no Kibana index" in {
+        assertNotMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName(".kibana-reporting-.kibana"))
+        )
+      }
+      "the indices must be involved and the data stream name does not match the allowed indices" in {
+        assertNotMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName("audit-events")),
+          mustInvolveIndices = true
+        )
+      }
+    }
+  }
+
+  private lazy val deleteDataStreamAction = Action("indices:admin/data_stream/delete")
+
+  private lazy val dataStreamWriteActions = List(
+    deleteDataStreamAction,
+    Action("indices:admin/data_stream/create"),
+    Action("indices:admin/data_stream/promote")
+  )
+
+  private def dataStreamNamePattern(value: NonEmptyString) = DataStreamName.Pattern.fromNes(value)
 
   private def testDataStreams = Set(
     fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),

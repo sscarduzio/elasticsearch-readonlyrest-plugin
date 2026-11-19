@@ -46,7 +46,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.OrWildcardWhenEmpty
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName, RequestId, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
@@ -229,9 +230,36 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
       blockContext: DataStreamRequestBlockContext
   ): Task[Decision[DataStreamRequestBlockContext]] = {
     if (matchAll) Task.now(Permitted(blockContext))
-    else if (blockContext.backingIndices == BackingIndices.IndicesNotInvolved)
-      processRequestWithoutIndices(blockContext)
-    else processIndicesRequest(blockContext)
+    else
+      blockContext.backingIndices match {
+        case BackingIndices.IndicesNotInvolved if blockContext.requestContext.isReadOnlyRequest =>
+          processRequestWithoutIndices(blockContext)
+        case BackingIndices.IndicesNotInvolved =>
+          processDataStreamWriteRequest(blockContext)
+        case _: BackingIndices.IndicesInvolved =>
+          processIndicesRequest(blockContext)
+      }
+  }
+
+  // A data stream write request without backing indices (create, delete, promote) has only data stream names. The rule
+  // checks each name as an index name of a write request, for example a bulk request to the data stream. A request with
+  // no names means all data streams, so it passes only when the rule allows all indices.
+  private def processDataStreamWriteRequest(
+      blockContext: DataStreamRequestBlockContext
+  ): Task[Decision[DataStreamRequestBlockContext]] = {
+    val dataStreamsAsIndices: Set[RequestedIndex[ClusterIndexName]] =
+      blockContext.dataStreams.orWildcardWhenEmpty.map { dataStream =>
+        RequestedIndex(asLocalIndexName(dataStream), excluded = false)
+      }
+    processIndices(
+      blockContext.requestContext,
+      allowedIndicesFor(blockContext),
+      dataStreamsAsIndices,
+      kibanaIndexFrom(blockContext)
+    ).map {
+      case ProcessResult.Ok(_)     => Permitted(blockContext)
+      case _: ProcessResult.Failed => reject()
+    }
   }
 
   private def allowedIndicesFor(blockContext: BlockContext): AllowedClusterIndices =
@@ -291,6 +319,12 @@ object IndicesRule {
     lazy val remoteClusterNamesMatcher: PatternsMatcher[ClusterName] = PatternsMatcher.create(remote.map(_.cluster))
 
     def isLocalClusterAllowed: Boolean = local.nonEmpty
+  }
+
+  private def asLocalIndexName(dataStream: DataStreamName): ClusterIndexName.Local = dataStream match {
+    case DataStreamName.Full(name)                    => ClusterIndexName.Local.fromNes(name)
+    case DataStreamName.Pattern(namePattern)          => ClusterIndexName.Local.fromNes(namePattern)
+    case DataStreamName.All | DataStreamName.Wildcard => ClusterIndexName.Local.wildcard
   }
 
   private[indices] sealed trait ProcessResult
