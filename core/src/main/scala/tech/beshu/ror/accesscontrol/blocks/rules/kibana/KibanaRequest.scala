@@ -26,7 +26,6 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.util.regex.Pattern
 import scala.concurrent.ExecutionContext.global
-import scala.util.Try
 
 // What the kibana rule needs to know about a request: the target of the request (the columns of the access table),
 // and the facts about its action and paths that the cells of the table use.
@@ -72,10 +71,9 @@ private[kibana] final class KibanaRequest(blockContext: BlockContext, kibanaInde
   // The paths of the writes that the Kibana UI does also for the read only access levels: the "Discover" state, short
   // URLs, data views, telemetry and new config documents
   private lazy val isNonStrictPath: Boolean =
-    nonStrictAllowedPathsPatternFor(kibanaIndex) match {
-      case Some(paths) => paths.matcher(blockContext.requestContext.restRequest.path.value.value).find()
-      case None        => false
-    }
+    nonStrictAllowedPathsPatternFor(kibanaIndex)
+      .matcher(blockContext.requestContext.restRequest.path.value.value)
+      .find()
 
 }
 
@@ -96,31 +94,27 @@ private[ror] object KibanaRequest {
   private val nonStrictAllowedPathsRegexTemplate =
     "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
 
-  private val nonStrictAllowedPathsPatternCache: Cache[KibanaIndexName, Option[Pattern]] =
+  private val nonStrictAllowedPathsPatternCache: Cache[KibanaIndexName, Pattern] =
     doPrivileged {
       Caffeine
         .newBuilder()
         .executor(global)
         .maximumSize(1000)
-        .build[KibanaIndexName, Option[Pattern]]()
+        .build[KibanaIndexName, Pattern]()
     }
 
-  private def nonStrictAllowedPathsPatternFor(kibanaIndexName: KibanaIndexName): Option[Pattern] = {
+  private def nonStrictAllowedPathsPatternFor(kibanaIndexName: KibanaIndexName): Pattern = {
     // Caffeine's atomic loader guarantees the pattern is compiled at most once per
-    // Kibana index even under concurrent access. `None` (the compile-failure sentinel)
-    // is a valid non-null value, so it is stored and retrieved like any other entry.
+    // Kibana index even under concurrent access.
     nonStrictAllowedPathsPatternCache.get(
       kibanaIndexName,
       _ =>
-        Try(
-          Pattern.compile(
-            // `@kibana_index` only ever appears as a literal path segment in the template, so the index
-            // name is quoted: any regex metacharacter in it (e.g. the `.` in `.kibana`) must match
-            // literally, never act as a pattern. Without quoting, `.` would match any char and names
-            // containing `(`, `[`, `\`, ... would compile to a wrong pattern or fail to compile.
-            nonStrictAllowedPathsRegexTemplate.replace("@kibana_index", Pattern.quote(kibanaIndexName.stringify))
-          )
-        ).toOption
+        Pattern.compile(
+          // `@kibana_index` only ever appears as a literal path segment in the template, so the index
+          // name is quoted: any regex metacharacter in it (e.g. the `.` in `.kibana`) must match
+          // literally, never act as a pattern. The quoting also makes every index name compile.
+          nonStrictAllowedPathsRegexTemplate.replace("@kibana_index", Pattern.quote(kibanaIndexName.stringify))
+        )
     )
   }
 
