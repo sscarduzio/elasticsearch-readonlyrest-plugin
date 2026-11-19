@@ -16,12 +16,17 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
+import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{DataStreamRequestBlockContext, GeneralIndexRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
+  DataStreamRequestBlockContext,
+  GeneralIndexRequestBlockContext,
+  TemplateRequestBlockContext
+}
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, KibanaPolicy}
@@ -32,9 +37,11 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpd
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplate, DeletingIndexTemplates}
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -332,6 +339,12 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
         allowedFor = Set(RW, KibanaAccess.Admin, Unrestricted)
       )
     }
+    "Painless script execution action is used" in {
+      assertActionsAllowedOnlyFor(
+        actions = Set("cluster:admin/scripts/painless/execute"),
+        allowedFor = Set(RW, KibanaAccess.Admin, Unrestricted)
+      )
+    }
     "Kibana related index is used" which {
       "is .kibana_8.8.0" in {
         assertMatchRuleUsingIndicesRequest(
@@ -448,12 +461,132 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
         }
       }
     }
+    "Kibana sample data set is used" which {
+      "is added and removed by the Kibana Sample data page" in {
+        val addingAndRemovingLevels = Set[KibanaAccess](RW, KibanaAccess.Admin, Unrestricted)
+        List("indices:admin/create", "indices:data/write/bulk", "indices:admin/delete").foreach { action =>
+          assertIndicesRequestAllowedOnlyFor(action, "kibana_sample_data_flights", addingAndRemovingLevels)
+        }
+        List("indices:admin/data_stream/create", "indices:admin/data_stream/delete").foreach { action =>
+          assertDataStreamRequestAllowedOnlyFor(action, "kibana_sample_data_logs", addingAndRemovingLevels)
+        }
+        assertTemplateRequestAllowedOnlyFor(
+          "indices:admin/index_template/put",
+          AddingIndexTemplate(
+            name = TemplateName("kibana_sample_data_logs"),
+            patterns = UniqueNonEmptyList.of(indexPattern("kibana_sample_data_logs")),
+            aliases = Set.empty
+          ),
+          addingAndRemovingLevels
+        )
+        assertTemplateRequestAllowedOnlyFor(
+          "indices:admin/index_template/delete",
+          DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("kibana_sample_data_logs"))),
+          addingAndRemovingLevels
+        )
+      }
+      "is read" in {
+        assertIndicesRequestAllowedOnlyFor("indices:data/read/search", "kibana_sample_data_flights", allAccessLevels)
+      }
+      "is changed with an action that the Kibana Sample data page does not use" in {
+        List("indices:data/write/delete/byquery", "indices:admin/close", "indices:admin/settings/update").foreach {
+          action => assertIndicesRequestAllowedOnlyFor(action, "kibana_sample_data_logs", Set(Unrestricted))
+        }
+      }
+    }
+    "name of a Kibana sample data set is not used in full" which {
+      "is an index name with a wildcard" in {
+        assertIndicesRequestAllowedOnlyFor("indices:admin/delete", "kibana_sample_data_*", Set(Unrestricted))
+      }
+      "is the pattern of an index template" in {
+        assertTemplateRequestAllowedOnlyFor(
+          "indices:admin/index_template/put",
+          AddingIndexTemplate(
+            name = TemplateName("kibana_sample_data_logs"),
+            patterns = UniqueNonEmptyList.of(indexPattern("kibana_sample_data_*")),
+            aliases = Set.empty
+          ),
+          Set(Unrestricted)
+        )
+      }
+      "is the pattern of an index template with another name" in {
+        assertTemplateRequestAllowedOnlyFor(
+          "indices:admin/index_template/put",
+          AddingIndexTemplate(
+            name = TemplateName("sample-override"),
+            patterns = UniqueNonEmptyList.of(indexPattern("kibana_sample_data_logs")),
+            aliases = Set.empty
+          ),
+          Set(Unrestricted)
+        )
+      }
+    }
   }
 
+  private lazy val allAccessLevels: Set[KibanaAccess] =
+    Set(ROStrict, RO, KibanaAccess.ApiOnly, RW, KibanaAccess.Admin, Unrestricted)
+
+  private def assertIndicesRequestAllowedOnlyFor(action: String, index: String, allowedFor: Set[KibanaAccess]): Unit =
+    allAccessLevels.foreach { access =>
+      withClue(s"$action on $index for $access: ") {
+        assertRuleUsingIndicesRequest(
+          settingsOf(access),
+          Action(action),
+          customKibanaIndex = None,
+          requestedIndices = Set(requestedIndex(index)),
+          uriPath = None,
+          blockContextAssertion = permittedIf(allowedFor.contains(access))
+        )
+      }
+    }
+
+  private def assertDataStreamRequestAllowedOnlyFor(
+      action: String,
+      dataStream: String,
+      allowedFor: Set[KibanaAccess]
+  ): Unit =
+    allAccessLevels.foreach { access =>
+      withClue(s"$action on $dataStream for $access: ") {
+        assertRuleUsingDataStreamsRequest(
+          settingsOf(access),
+          Action(action),
+          customKibanaIndex = None,
+          requestedDataStreams = Set(fullDataStreamName(dataStream)),
+          uriPath = None,
+          blockContextAssertion = permittedIf(allowedFor.contains(access))
+        )
+      }
+    }
+
+  private def assertTemplateRequestAllowedOnlyFor(
+      action: String,
+      operation: TemplateOperation,
+      allowedFor: Set[KibanaAccess]
+  ): Unit =
+    allAccessLevels.foreach { access =>
+      withClue(s"$action with $operation for $access: ") {
+        val requestContext = MockRequestContext.template(operation).copy(action = Action(action))
+        val blockContext = TemplateRequestBlockContext(
+          block = mock[Block],
+          requestContext = requestContext,
+          blockMetadata = BlockMetadata.from(requestContext).withKibanaIndex(kibanaIndexFrom(None)),
+          responseHeaders = Set.empty,
+          responseTransformations = List.empty,
+          templateOperation = operation,
+          responseTemplateTransformation = identity,
+          allAllowedIndices = Set.empty
+        )
+        assertRule(settingsOf(access), blockContext, permittedIf(allowedFor.contains(access)))
+      }
+    }
+
+  // `Some` expects the rule to permit the request, and `None` expects it to deny the request
+  private def permittedIf(isAllowed: Boolean): Option[BlockContext => Unit] =
+    if (isAllowed) Some(_ => ()) else None
+
   private def assertActionsAllowedOnlyFor(actions: Set[String], allowedFor: Set[KibanaAccess]): Unit = {
-    val accessLevels: Set[KibanaAccess] = Set(ROStrict, RO, KibanaAccess.ApiOnly, RW, KibanaAccess.Admin, Unrestricted)
     actions.map(Action.apply).foreach { action =>
-      accessLevels.foreach { access =>
+      allAccessLevels.foreach { access =>
         withClue(s"${action.value} for $access: ") {
           if (allowedFor.contains(access)) assertMatchRuleUsingIndicesRequest(settingsOf(access), action)()
           else assertNotMatchRuleUsingIndicesRequest(settingsOf(access), action, requestedIndices = Set.empty)

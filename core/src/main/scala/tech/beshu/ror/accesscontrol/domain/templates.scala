@@ -113,6 +113,8 @@ object TemplateNamePattern {
   implicit val matchableTemplateNamePattern: Matchable[TemplateNamePattern] = Matchable.matchable(_.value.value)
   val wildcard: TemplateNamePattern = TemplateNamePattern(nes("*"))
 
+  extension (templateNamePattern: TemplateNamePattern) def stringify: String = templateNamePattern.value.value
+
   def fromString(value: String): Option[TemplateNamePattern] = {
     NonEmptyString
       .from(value)

@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 // |------------------|--------------------|--------------|--------------------|--------------|
 // | `ro_strict`      | R                  | R            | R                  | R            |
 // | `ro`, `api_only` | R, NS              | R            | R                  | R            |
-// | `rw`             | R, W, CR           | R, CR        | ALL                | R, CR        |
-// | `admin`          | R, W, CR           | R, CR        | ALL                | R, CR, ROR   |
+// | `rw`             | R, W, CR           | R, CR        | R, SD              | R, CR        |
+// | `admin`          | R, W, CR           | R, CR        | R, SD              | R, CR, ROR   |
 // | `unrestricted`   | ALL                | ALL          | ALL                | ALL          |
 //
 // R     read (`readActions`)
@@ -38,6 +38,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 //       other index management actions are cluster management writes.
 // CR    cluster management read (`clusterManagementReadActions`)
 // ROR   ROR settings API (`rorAdminActions`); its requests have no indices
+// SD    the actions that the Kibana "Sample data" page sends to add and remove a sample data set (`sampleDataActions`)
 // ALL   all actions
 //
 // Only `unrestricted` allows the cluster management writes.
@@ -91,7 +92,8 @@ private[ror] object KibanaAccessTable {
       request.isReadAction ||
       request.isClusterManagementReadAction
     case Target.KibanaSampleData =>
-      true
+      request.isReadAction ||
+      request.isSampleDataAction
     case Target.NoIndices =>
       request.isReadAction ||
       request.isClusterManagementReadAction
@@ -106,7 +108,8 @@ private[ror] object KibanaAccessTable {
       request.isReadAction ||
       request.isClusterManagementReadAction
     case Target.KibanaSampleData =>
-      true
+      request.isReadAction ||
+      request.isSampleDataAction
     case Target.NoIndices =>
       request.isReadAction ||
       request.isClusterManagementReadAction ||

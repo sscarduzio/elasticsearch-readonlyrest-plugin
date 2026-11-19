@@ -16,15 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
+import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
-import tech.beshu.ror.accesscontrol.domain.{Action, ClusterIndexName, DataStreamName, IndexName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.utils.RefinedUtils.*
 
 // The action groups of the kibana rule. Each group names the ES actions in full, with no wildcard: an action that ES
-// adds in a new version is allowed only for `unrestricted` until it is added to a group. The exception is a request to
-// one Kibana sample data index or data stream: there, `rw` and `admin` allow every action. Source of the names: the ES
+// adds in a new version is allowed only for `unrestricted` until it is added to a group. Source of the names: the ES
 // action lists of `readonlyrest-docs/actionstrings`, ES 6.7.0 to 9.5.6.
 object KibanaActionMatchers {
 
@@ -39,7 +36,6 @@ object KibanaActionMatchers {
       "cluster:admin/ingest/processor/grok/get",
       "cluster:admin/repository/get",
       "cluster:admin/scripts/painless/context",
-      "cluster:admin/scripts/painless/execute",
       "cluster:admin/xpack/enrich/get",
       "cluster:admin/xpack/esql/view/get",
       "cluster:admin/xpack/inference/get",
@@ -194,7 +190,8 @@ object KibanaActionMatchers {
   }
 
   // The reads of the cluster management: the cluster configuration and state. The reads of secret values and the
-  // cluster reads that return index data are not in the group.
+  // cluster reads that return index data are not in the group. The group also has the Painless script execution of
+  // the Dev Tools "Painless Lab", because the script runs code.
   val clusterManagementReadActions: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
       "cluster:admin/autoscaling/get_autoscaling_capacity",
@@ -216,6 +213,7 @@ object KibanaActionMatchers {
       "cluster:admin/script/get",
       "cluster:admin/script_context/get",
       "cluster:admin/script_language/get",
+      "cluster:admin/scripts/painless/execute",
       "cluster:admin/shutdown/get",
       "cluster:admin/shutdown/prevalidate_removal",
       "cluster:admin/slm/get",
@@ -343,12 +341,27 @@ object KibanaActionMatchers {
 
   val rorAdminActions: PatternsMatcher[Action] = PatternsMatcher.create(Set.empty[Action] ++ RorAction.adminActions)
 
-  val kibanaSampleDataIndexMatcher: PatternsMatcher[ClusterIndexName] = PatternsMatcher.create(
-    Set(Local(IndexName.Pattern.unsafeFromNes(nes("kibana_sample_data_*"))))
-  )
+  // The actions that the Kibana "Sample data" page sends to add and remove a sample data set: the create and the delete
+  // of its index, its data stream and the index template of the data stream, and the bulk of its documents
+  val sampleDataActions: PatternsMatcher[Action] = PatternsMatcher.create {
+    Set(
+      "indices:admin/create",
+      "indices:admin/data_stream/create",
+      "indices:admin/data_stream/delete",
+      "indices:admin/delete",
+      "indices:admin/index_template/delete",
+      "indices:admin/index_template/put",
+      "indices:data/write/bulk"
+    ).map(Action.apply)
+  }
 
-  val kibanaSampleDataStreamMatcher: PatternsMatcher[DataStreamName] = PatternsMatcher.create(
-    Set(DataStreamName.Pattern.fromNes(nes("kibana_sample_data_*")))
+  // The names of the Kibana sample data sets. Kibana uses the name of a set for its index or data stream, and for the
+  // index template of the data stream.
+  val kibanaSampleDataSetNames: Set[String] = Set(
+    "kibana_sample_data_ecommerce",
+    "kibana_sample_data_flights",
+    "kibana_sample_data_logs",
+    "kibana_sample_data_logstsdb"
   )
 
 }

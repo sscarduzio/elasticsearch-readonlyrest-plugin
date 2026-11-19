@@ -35,7 +35,7 @@ private[kibana] final class KibanaRequest(blockContext: BlockContext, kibanaInde
 
   lazy val target: Target = {
     val indices = blockContext.indices
-    if (isOneKibanaSampleDataIndexOrDataStream) Target.KibanaSampleData
+    if (isOneKibanaSampleDataSet) Target.KibanaSampleData
     else if (indices.isEmpty) Target.NoIndices
     else if (indices.forall(_.name.isRelatedToKibanaIndex(kibanaIndex))) Target.KibanaIndices
     else Target.DataIndices
@@ -51,21 +51,27 @@ private[kibana] final class KibanaRequest(blockContext: BlockContext, kibanaInde
 
   def isNonStrictAction: Boolean = nonStrictActions.`match`(action)
 
+  def isSampleDataAction: Boolean = sampleDataActions.`match`(action)
+
   // The writes of the Kibana UI that the read only levels need: a non-strict path and a non-strict action
   def isNonStrictWrite: Boolean = isNonStrictPath && isNonStrictAction
 
   def isUserMetadataRequest: Boolean = action == Action.RorAction.RorUserMetadataAction
 
-  private lazy val isOneKibanaSampleDataIndexOrDataStream: Boolean = {
-    def isOneSampleDataIndex = blockContext.indices.toList match {
-      case index :: Nil => kibanaSampleDataIndexMatcher.`match`(index.name)
-      case _            => false
-    }
+  // The request uses the full name of one Kibana sample data set and no other name. A data stream request uses the name
+  // of its data stream, and its backing indices do not count. The other requests use their indices, aliases and
+  // template names.
+  private lazy val isOneKibanaSampleDataSet: Boolean = {
     def isOneSampleDataStream = blockContext.dataStreams.toList match {
-      case dataStream :: Nil => kibanaSampleDataStreamMatcher.`match`(dataStream)
+      case dataStream :: Nil => kibanaSampleDataSetNames.contains(dataStream.stringify)
       case _                 => false
     }
-    isOneSampleDataIndex || isOneSampleDataStream
+    def isOneSampleDataIndexOrTemplate =
+      (blockContext.indices.map(_.stringify) ++ blockContext.templateNames.map(_.stringify)).toList match {
+        case name :: Nil => kibanaSampleDataSetNames.contains(name)
+        case _           => false
+      }
+    isOneSampleDataStream || isOneSampleDataIndexOrTemplate
   }
 
   // The paths of the writes that the Kibana UI does also for the read only access levels: the "Discover" state, short
