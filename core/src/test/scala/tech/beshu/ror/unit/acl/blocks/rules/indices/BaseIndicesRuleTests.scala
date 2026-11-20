@@ -333,7 +333,13 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       expectedDataStreams: Set[DataStreamName],
       kibanaIndex: Option[KibanaIndexName] = None
   ): Unit = {
-    val result = checkDataStreamStatsRequest(configured, requestDataStreams, clusterDataStreams, false, kibanaIndex)
+    val result = checkDataStreamStatsRequest(
+      configured,
+      requestDataStreams,
+      clusterDataStreams,
+      mustInvolveIndices = false,
+      kibanaIndex
+    )
     inside(result) { case Permitted(blockContext) =>
       blockContext.dataStreams should be(expectedDataStreams)
     }
@@ -345,7 +351,8 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       requestDataStreams: Set[DataStreamName],
       clusterDataStreams: Set[DataStreamName.Full]
   ): Unit = {
-    val result = checkDataStreamStatsRequest(configured, requestDataStreams, clusterDataStreams, false, None)
+    val result =
+      checkDataStreamStatsRequest(configured, requestDataStreams, clusterDataStreams, mustInvolveIndices = false, None)
     inside(result) { case Permitted(blockContext) =>
       inside(blockContext.dataStreams.toList) { case DataStreamName.Pattern(pattern) :: Nil =>
         clusterDataStreams.map(_.value.value) should not contain pattern.value.stripSuffix("*")
