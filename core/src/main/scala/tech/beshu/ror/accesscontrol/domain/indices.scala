@@ -90,7 +90,6 @@ final case class KibanaIndexName(underlying: ClusterIndexName.Local) extends Eag
 
 object KibanaIndexName {
 
-  val devNullKibana: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana-devnull"))))
   val default: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana"))))
 
   private val kibanaIndicesRegexesCache: Cache[KibanaIndexName, Vector[Regex]] =
@@ -103,9 +102,8 @@ object KibanaIndexName {
     }
 
   private def createKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
-    // The index name is admin-configured and may contain regex metacharacters (the default `.kibana`
-    // already has a `.`). Quote it so it matches literally — same fix as `nonStrictAllowedPathsPatternFor`
-    // in `BaseKibanaRule`. The `\d+\.\d+` version suffixes stay real regex.
+    // The Kibana index name comes from the settings and can contain regex metacharacters (the default `.kibana` has
+    // a `.`). It is quoted, so it matches literally. The version suffixes (`\d+\.\d+`) stay regex.
     val idx = Pattern.quote(kibanaIndex.stringify)
     Vector(
       s"""^${idx}_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_8.0.0
@@ -132,9 +130,8 @@ object KibanaIndexName {
   }
 
   private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) =
-    // Caffeine's atomic loader compiles the regex vector at most once per Kibana index even under
-    // concurrent first access, instead of the racy `getIfPresent`/`put` (both threads miss, both
-    // compile). Matches the pattern used by `nonStrictAllowedPathsPatternCache` in `BaseKibanaRule`.
+    // The atomic loader of Caffeine compiles the regexes at most once per Kibana index, also when two threads ask
+    // for the same Kibana index at the same time.
     kibanaIndicesRegexesCache.get(kibanaIndex, createKibanaRelatedIndicesRegexes)
 
   extension (indexName: ClusterIndexName)

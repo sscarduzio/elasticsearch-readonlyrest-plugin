@@ -37,7 +37,7 @@ class KibanaUserDataRule(override val settings: Settings) extends BaseKibanaRule
   override val name: Rule.Name = KibanaUserDataRule.Name.name
 
   override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
-    if (shouldMatch(blockContext, resolveKibanaIndex(blockContext)))
+    if (isAllowed(blockContext, resolveKibanaIndex(blockContext)))
       matched(blockContext)
     else
       Denied[B](Cause.NotAuthorized)
