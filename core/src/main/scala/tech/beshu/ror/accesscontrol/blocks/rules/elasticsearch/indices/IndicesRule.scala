@@ -240,18 +240,23 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
   private def processDataStreamRequest(
       blockContext: DataStreamRequestBlockContext
   ): Task[Decision[DataStreamRequestBlockContext]] = {
-    if (matchAll) Task.now(Permitted(blockContext))
-    else
+    if (matchAll) {
+      Task.now(Permitted(blockContext))
+    } else if (blockContext.requestContext.isReadOnlyRequest) {
       blockContext.backingIndices match {
-        case BackingIndices.IndicesNotInvolved if blockContext.requestContext.isReadOnlyRequest =>
+        case BackingIndices.IndicesNotInvolved =>
           processDataStreamReadRequest(blockContext)
+        case _: BackingIndices.IndicesInvolved =>
+          processIndicesRequest(blockContext).flatMap(whenPermitted(narrowDataStreams))
+      }
+    } else {
+      blockContext.backingIndices match {
         case BackingIndices.IndicesNotInvolved =>
           processDataStreamWriteRequest(blockContext)
-        case _: BackingIndices.IndicesInvolved if blockContext.requestContext.isReadOnlyRequest =>
-          processIndicesRequest(blockContext).flatMap(whenPermitted(narrowDataStreams))
         case _: BackingIndices.IndicesInvolved =>
           processIndicesRequest(blockContext).flatMap(whenPermitted(processDataStreamsOfWriteRequestWithIndices))
       }
+    }
   }
 
   private def whenPermitted(
@@ -378,8 +383,8 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
   }
 
   private val matchAll = settings.allowedIndices.exists {
-    case AlreadyResolved(indices) if indices.exists(_.allIndicesRequested) => true
-    case _                                                                 => false
+    case AlreadyResolved(indices) if indices.exists(_ == ClusterIndexName.Local.wildcard) => true
+    case _                                                                                => false
   }
 
   private def reject[T]() = Decision.Denied[T](Cause.NotAuthorized)

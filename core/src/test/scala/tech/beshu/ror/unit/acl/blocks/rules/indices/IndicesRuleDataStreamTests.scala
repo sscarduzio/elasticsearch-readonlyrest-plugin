@@ -1266,6 +1266,13 @@ trait IndicesRuleDataStreamTests {
           requestDataStreams = Set(fullDataStreamName("logs-app"))
         )
       }
+      "the rule allows only the indices of the remote clusters" in {
+        assertNotMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar("*:*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName("logs-app"))
+        )
+      }
       "the data stream is the Kibana reporting data stream and the block has no Kibana index" in {
         assertNotMatchRuleForDataStreamRequest(
           configured = NonEmptySet.of(indexNameVar("logs-*")),

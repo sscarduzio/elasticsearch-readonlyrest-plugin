@@ -284,6 +284,24 @@ trait IndicesRuleRemoteIndexTests {
         }
       }
     }
+    "match when the rule allows all remote indices" when {
+      "the request names a remote index" in {
+        assertMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("*:*")),
+          requestIndices = Set(requestedIndex("prod:logs-1")),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allRemoteIndicesAndAliases = Set(fullRemoteIndexWithAliases("prod", "logs-1")),
+                allRemoteClusterNames = Set(clusterName("prod"))
+              )
+            )
+          ),
+          filteredRequestedIndices = Set(requestedIndex("prod:logs-1")),
+          allAllowedClusters = Set(clusterName("prod"))
+        )
+      }
+    }
     "match with only a nonexistent index on the unavailable remote cluster, so that ES fails the search" when {
       "the request names the unavailable cluster with a cluster pattern" in {
         val result = checkIndexRequest(
@@ -314,6 +332,22 @@ trait IndicesRuleRemoteIndexTests {
       }
     }
     "not match" when {
+      "the rule allows all remote indices and the request names a local index" in {
+        assertNotMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("*:*")),
+          requestIndices = Set(requestedIndex("test")),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"))),
+                allRemoteIndicesAndAliases = Set(fullRemoteIndexWithAliases("prod", "logs-1")),
+                allRemoteClusterNames = Set(clusterName("prod"))
+              )
+            )
+          ),
+          allAllowedClusters = Set(clusterName("prod"))
+        )
+      }
       "the request names only an unavailable cluster that no allowed pattern names" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("prod:logs-*")),
