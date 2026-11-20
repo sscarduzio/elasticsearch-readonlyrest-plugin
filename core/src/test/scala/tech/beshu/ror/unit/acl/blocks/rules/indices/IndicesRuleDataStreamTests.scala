@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.domain.{Action, DataStreamName}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockEsServices
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
@@ -1193,13 +1194,6 @@ trait IndicesRuleDataStreamTests {
           requestDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("metrics-app"))
         )
       }
-      "the data stream name pattern is the allowed indices pattern" in {
-        assertMatchRuleForDataStreamRequest(
-          configured = NonEmptySet.of(indexNameVar("logs-*")),
-          action = deleteDataStreamAction,
-          requestDataStreams = Set(dataStreamNamePattern("logs-*"))
-        )
-      }
       "all indices are allowed" in {
         assertMatchRuleForDataStreamRequest(
           configured = NonEmptySet.of(indexNameVar("*")),
@@ -1287,6 +1281,71 @@ trait IndicesRuleDataStreamTests {
           requestDataStreams = Set(fullDataStreamName("audit-events")),
           mustInvolveIndices = true
         )
+      }
+    }
+  }
+
+  "An IndicesRule for a data stream delete request with a pattern" should {
+    "get the names of the matched data streams" when {
+      "the pattern is the allowed indices pattern" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(dataStreamNamePattern("logs-*")),
+          clusterDataStreams = statsClusterDataStreams
+        )
+        inside(result) { case Permitted(blockContext) =>
+          blockContext.dataStreams should be(Set(fullDataStreamName("logs-app"), fullDataStreamName("logs-db")))
+        }
+      }
+      "the allowed indices pattern matches the text of the requested pattern and all matched data streams" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-?")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(dataStreamNamePattern("logs-*")),
+          clusterDataStreams = Set(fullDataStreamName("logs-a"), fullDataStreamName("audit-events"))
+        )
+        inside(result) { case Permitted(blockContext) =>
+          blockContext.dataStreams should be(Set(fullDataStreamName("logs-a")))
+        }
+      }
+      "the request has a full name and a pattern" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*"), indexNameVar("audit-events")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName("audit-events"), dataStreamNamePattern("logs-a*")),
+          clusterDataStreams = statsClusterDataStreams
+        )
+        inside(result) { case Permitted(blockContext) =>
+          blockContext.dataStreams should be(Set(fullDataStreamName("audit-events"), fullDataStreamName("logs-app")))
+        }
+      }
+    }
+    "get a name that matches nothing" when {
+      "the pattern matches no data stream" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("metrics-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(dataStreamNamePattern("metrics-*")),
+          clusterDataStreams = statsClusterDataStreams
+        )
+        inside(result) { case Permitted(blockContext) =>
+          inside(blockContext.dataStreams.toList) { case (pattern: DataStreamName.Pattern) :: Nil =>
+            val patternMatcher = PatternsMatcher.create[DataStreamName](Set(pattern))
+            statsClusterDataStreams.filter(patternMatcher.`match`) should be(empty)
+          }
+        }
+      }
+    }
+    "not match" when {
+      "the pattern matches a data stream that is not allowed" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-?")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(dataStreamNamePattern("logs-*")),
+          clusterDataStreams = Set(fullDataStreamName("logs-a"), fullDataStreamName("logs-secret"))
+        )
+        result should be(Denied(NotAuthorized))
       }
     }
   }

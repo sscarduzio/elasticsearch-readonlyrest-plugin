@@ -398,6 +398,23 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
     )
   }
 
+  // A data stream create, delete or promote request in a cluster with the given data streams
+  protected def checkDataStreamWriteRequest(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      clusterDataStreams: Set[DataStreamName.Full]
+  ): Decision[DataStreamRequestBlockContext] = {
+    checkDataStreamRequest(
+      configured,
+      action,
+      requestDataStreams,
+      mustInvolveIndices = false,
+      kibanaIndex = None,
+      esServicesWith(clusterDataStreams)
+    )
+  }
+
   private def checkDataStreamStatsRequest(
       configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
       requestDataStreams: Set[DataStreamName],
@@ -405,21 +422,23 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       mustInvolveIndices: Boolean,
       kibanaIndex: Option[KibanaIndexName]
   ): Decision[DataStreamRequestBlockContext] = {
-    val esServices = MockEsServices.`with`(
-      MockEsClusterService(
-        allIndicesAndAliases = Set.empty,
-        allDataStreamsAndAliases = clusterDataStreams.map(fullLocalDataStreamWithAliases)
-      )
-    )
     checkDataStreamRequest(
       configured,
       Action("indices:monitor/data_stream/stats"),
       requestDataStreams,
       mustInvolveIndices,
       kibanaIndex,
-      esServices
+      esServicesWith(clusterDataStreams)
     )
   }
+
+  private def esServicesWith(clusterDataStreams: Set[DataStreamName.Full]): EsServices =
+    MockEsServices.`with`(
+      MockEsClusterService(
+        allIndicesAndAliases = Set.empty,
+        allDataStreamsAndAliases = clusterDataStreams.map(fullLocalDataStreamWithAliases)
+      )
+    )
 
   protected def assertNotMatchRuleForDataStreamRequest(
       configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],

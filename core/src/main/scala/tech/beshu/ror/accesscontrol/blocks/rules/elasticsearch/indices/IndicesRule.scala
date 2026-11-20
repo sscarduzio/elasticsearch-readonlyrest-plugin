@@ -272,18 +272,63 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
   private def processDataStreamWriteRequest(
       blockContext: DataStreamRequestBlockContext
   ): Task[Decision[DataStreamRequestBlockContext]] = {
-    val dataStreamsAsIndices: Set[RequestedIndex[ClusterIndexName]] =
-      blockContext.dataStreams.orWildcardWhenEmpty.map { dataStream =>
-        RequestedIndex(asLocalIndexName(dataStream), excluded = false)
+    val allowedIndices = allowedIndicesFor(blockContext)
+    areDataStreamWritesAllowed(
+      blockContext,
+      allowedIndices,
+      blockContext.dataStreams.orWildcardWhenEmpty.map(asLocalIndexName)
+    ).flatMap {
+      case true  => resolveDataStreamPatternsOfWriteRequest(blockContext, allowedIndices)
+      case false => Task.now(reject())
+    }
+  }
+
+  private def areDataStreamWritesAllowed(
+      blockContext: DataStreamRequestBlockContext,
+      allowedIndices: AllowedClusterIndices,
+      dataStreams: Set[ClusterIndexName.Local]
+  ): Task[Boolean] = {
+    if (dataStreams.isEmpty) {
+      Task.now(true)
+    } else {
+      processIndices(
+        blockContext.requestContext,
+        allowedIndices,
+        dataStreams.map(dataStream => RequestedIndex[ClusterIndexName](dataStream, excluded = false)),
+        kibanaIndexFrom(blockContext)
+      ).map {
+        case ProcessResult.Ok(_)     => true
+        case _: ProcessResult.Failed => false
       }
-    processIndices(
-      blockContext.requestContext,
-      allowedIndicesFor(blockContext),
-      dataStreamsAsIndices,
-      kibanaIndexFrom(blockContext)
-    ).map {
-      case ProcessResult.Ok(_)     => Permitted(blockContext)
-      case _: ProcessResult.Failed => reject()
+    }
+  }
+
+  // Each data stream that a requested pattern matches must also be allowed. The request then gets the names of these data
+  // streams instead of the pattern. When the pattern matches no data stream, the request gets a name that matches nothing.
+  private def resolveDataStreamPatternsOfWriteRequest(
+      blockContext: DataStreamRequestBlockContext,
+      allowedIndices: AllowedClusterIndices
+  ): Task[Decision[DataStreamRequestBlockContext]] = {
+    given RequestId = blockContext.requestContext.id.toRequestId
+    val (fullNames, patterns) = blockContext.dataStreams.orWildcardWhenEmpty.partition {
+      case _: DataStreamName.Full                                                   => true
+      case DataStreamName.Pattern(_) | DataStreamName.All | DataStreamName.Wildcard => false
+    }
+    if (patterns.isEmpty) {
+      Task.now(Permitted(blockContext))
+    } else {
+      val patternsMatcher = PatternsMatcher.create(patterns.map(asLocalIndexName))
+      for {
+        allDataStreams <- localIndicesManager(blockContext, allowedIndices).allDataStreams
+        matchedDataStreams = allDataStreams.filter(patternsMatcher.`match`)
+        allowed <- areDataStreamWritesAllowed(blockContext, allowedIndices, matchedDataStreams)
+      } yield {
+        val dataStreams =
+          fullNames ++ matchedDataStreams.flatMap(dataStream => DataStreamName.fromString(dataStream.stringify))
+        if (!allowed) reject()
+        else if (dataStreams.nonEmpty) Permitted(blockContext.withDataStreams(dataStreams))
+        else Permitted(blockContext.withDataStreams(Set(nonexistentDataStreamPattern)))
+      }
     }
   }
 
