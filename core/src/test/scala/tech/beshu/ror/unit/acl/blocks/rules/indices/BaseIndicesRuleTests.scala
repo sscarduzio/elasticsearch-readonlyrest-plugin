@@ -47,7 +47,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.Template.{ComponentTemplate, IndexTemplate, LegacyTemplate}
-import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, RandomBasedUniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.es.EsServices
 import tech.beshu.ror.mocks.*
@@ -354,9 +354,9 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
     val result =
       checkDataStreamStatsRequest(configured, requestDataStreams, clusterDataStreams, mustInvolveIndices = false, None)
     inside(result) { case Permitted(blockContext) =>
-      inside(blockContext.dataStreams.toList) { case DataStreamName.Pattern(pattern) :: Nil =>
-        clusterDataStreams.map(_.value.value) should not contain pattern.value.stripSuffix("*")
-        pattern.value should endWith("*")
+      inside(blockContext.dataStreams.toList) { case (pattern: DataStreamName.Pattern) :: Nil =>
+        val patternMatcher = PatternsMatcher.create[DataStreamName](Set(pattern))
+        clusterDataStreams.filter(patternMatcher.`match`) should be(empty)
       }
     }
   }
