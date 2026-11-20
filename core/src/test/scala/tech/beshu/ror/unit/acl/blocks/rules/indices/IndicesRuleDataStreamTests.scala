@@ -19,6 +19,8 @@ package tech.beshu.ror.unit.acl.blocks.rules.indices
 import cats.data.NonEmptySet
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.domain.{Action, DataStreamName}
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockEsServices
@@ -1363,6 +1365,104 @@ trait IndicesRuleDataStreamTests {
       }
     }
   }
+
+  "An IndicesRule for a data stream modify request" should {
+    "match" when {
+      "the index and the data stream match the allowed indices" in {
+        inside(modifyRequest(dataStream = "logs-app", index = "logs-x")) { case Permitted(_) => }
+      }
+      "the rule allows all backing indices of the data stream" in {
+        inside(
+          checkDataStreamRequestWithIndices(
+            configured = NonEmptySet.of(indexNameVar("logs-*"), indexNameVar(".ds-audit-*")),
+            action = modifyDataStreamsAction,
+            requestDataStreams = Set(fullDataStreamName("audit-events")),
+            requestIndices = Set(requestedIndex("logs-x")),
+            clusterDataStreams = statsClusterDataStreams
+          )
+        ) { case Permitted(_) => }
+      }
+    }
+    "not match" when {
+      "an allowed index is added to a data stream that is not allowed" in {
+        modifyRequest(dataStream = "audit-events", index = "logs-x") should be(Denied(NotAuthorized))
+      }
+      "the data stream name is a pattern" in {
+        modifyRequest(dataStream = "logs-*", index = "logs-x") should be(Denied(NotAuthorized))
+      }
+      "the index is not allowed" in {
+        modifyRequest(dataStream = "logs-app", index = "audit-x") should be(Denied(NotAuthorized))
+      }
+    }
+  }
+
+  "An IndicesRule for a data stream migrate request" should {
+    "match" when {
+      "the alias, which is the new data stream name, matches the allowed indices" in {
+        inside(migrateRequest(alias = "logs-alias")) { case Permitted(_) => }
+      }
+    }
+    "not match" when {
+      "the alias does not match the allowed indices" in {
+        migrateRequest(alias = "audit-alias") should be(Denied(NotAuthorized))
+      }
+    }
+  }
+
+  "An IndicesRule for a data stream read request with indices" should {
+    "leave only the allowed data streams" when {
+      "the request asks for all data streams" in {
+        List(getDataStreamAction, getDataStreamLifecycleAction).foreach { action =>
+          val result = checkDataStreamRequestWithIndices(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            action = action,
+            requestDataStreams = Set.empty,
+            requestIndices = Set.empty,
+            clusterDataStreams = statsClusterDataStreams
+          )
+          inside(result) { case Permitted(blockContext) =>
+            blockContext.dataStreams should be(Set(fullDataStreamName("logs-app"), fullDataStreamName("logs-db")))
+          }
+        }
+      }
+      "the request asks for a data stream that is not allowed" in {
+        List(getDataStreamAction, getDataStreamLifecycleAction).foreach { action =>
+          val result = checkDataStreamRequestWithIndices(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            action = action,
+            requestDataStreams = Set(dataStreamNamePattern("audit-*"), fullDataStreamName("logs-app")),
+            requestIndices = Set.empty,
+            clusterDataStreams = statsClusterDataStreams
+          )
+          inside(result) { case Permitted(blockContext) =>
+            blockContext.dataStreams should be(Set(fullDataStreamName("logs-app")))
+          }
+        }
+      }
+    }
+  }
+
+  private def modifyRequest(dataStream: NonEmptyString, index: NonEmptyString) =
+    checkDataStreamRequestWithIndices(
+      configured = NonEmptySet.of(indexNameVar("logs-*")),
+      action = modifyDataStreamsAction,
+      requestDataStreams = Set(DataStreamName.fromString(dataStream.value).get),
+      requestIndices = Set(requestedIndex(index)),
+      clusterDataStreams = statsClusterDataStreams
+    )
+
+  private def migrateRequest(alias: NonEmptyString) =
+    checkDataStreamRequestWithIndices(
+      configured = NonEmptySet.of(indexNameVar("logs-*")),
+      action = Action("indices:admin/data_stream/migrate"),
+      requestDataStreams = Set.empty,
+      requestIndices = Set(requestedIndex(alias)),
+      clusterDataStreams = statsClusterDataStreams
+    )
+
+  private lazy val modifyDataStreamsAction = Action("indices:admin/data_stream/modify")
+  private lazy val getDataStreamAction = Action("indices:admin/data_stream/get")
+  private lazy val getDataStreamLifecycleAction = Action("indices:admin/data_stream/lifecycle/get")
 
   private lazy val statsClusterDataStreams = Set(
     fullDataStreamName("logs-app"),

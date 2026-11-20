@@ -247,8 +247,16 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
           processDataStreamReadRequest(blockContext)
         case BackingIndices.IndicesNotInvolved =>
           processDataStreamWriteRequest(blockContext)
+        case _: BackingIndices.IndicesInvolved if blockContext.requestContext.isReadOnlyRequest =>
+          processIndicesRequest(blockContext).flatMap {
+            case Permitted(checkedBlockContext) => narrowDataStreams(checkedBlockContext)
+            case denied                         => Task.now(denied)
+          }
         case _: BackingIndices.IndicesInvolved =>
-          processIndicesRequest(blockContext)
+          processIndicesRequest(blockContext).flatMap {
+            case Permitted(checkedBlockContext) => processDataStreamsOfWriteRequestWithIndices(checkedBlockContext)
+            case denied                         => Task.now(denied)
+          }
       }
   }
 
@@ -273,31 +281,62 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     }
   }
 
-  // A data stream read request without backing indices (stats) gets only the requested data streams that the rule
-  // allows. When the rule allows none of them, the request gets a name that matches nothing, because ES reads no names
-  // as all data streams.
+  // A data stream read request without backing indices (stats)
   private def processDataStreamReadRequest(
       blockContext: DataStreamRequestBlockContext
   ): Task[Decision[DataStreamRequestBlockContext]] = {
-    if (settings.mustInvolveIndices) {
-      Task.now(reject())
-    } else {
-      given RequestId = blockContext.requestContext.id.toRequestId
-      val allowedIndices = allowedIndicesFor(blockContext)
-      val requestedMatcher = PatternsMatcher.create(blockContext.dataStreams.orWildcardWhenEmpty.map(asLocalIndexName))
-      val indicesManager = new LocalIndicesManager(blockContext.requestContext, allowedIndices.localMatcher)
-      for {
-        allDataStreams <- indicesManager.allDataStreams
-        backingIndicesPerDataStream <- indicesManager.backingIndicesPerDataStreamMap
-      } yield {
-        val allowedDataStreams =
-          allDataStreams
-            .filter(requestedMatcher.`match`)
-            .filter(isDataStreamAllowed(_, allowedIndices, backingIndicesPerDataStream, kibanaIndexFrom(blockContext)))
-            .flatMap(dataStream => DataStreamName.fromString(dataStream.stringify))
-        if (allowedDataStreams.nonEmpty) Permitted(blockContext.withDataStreams(allowedDataStreams))
-        else Permitted(blockContext.withDataStreams(Set(nonexistentDataStreamPattern)))
+    if (settings.mustInvolveIndices) Task.now(reject())
+    else narrowDataStreams(blockContext)
+  }
+
+  // A data stream read request gets only the requested data streams that the rule allows. When the rule allows none of
+  // them, the request gets a name that matches nothing, because ES reads no names as all data streams.
+  private def narrowDataStreams(
+      blockContext: DataStreamRequestBlockContext
+  ): Task[Decision[DataStreamRequestBlockContext]] = {
+    given RequestId = blockContext.requestContext.id.toRequestId
+    val allowedIndices = allowedIndicesFor(blockContext)
+    val requestedMatcher = PatternsMatcher.create(blockContext.dataStreams.orWildcardWhenEmpty.map(asLocalIndexName))
+    val indicesManager = new LocalIndicesManager(blockContext.requestContext, allowedIndices.localMatcher)
+    for {
+      allDataStreams <- indicesManager.allDataStreams
+      backingIndicesPerDataStream <- indicesManager.backingIndicesPerDataStreamMap
+    } yield {
+      val allowedDataStreams =
+        allDataStreams
+          .filter(requestedMatcher.`match`)
+          .filter(isDataStreamAllowed(_, allowedIndices, backingIndicesPerDataStream, kibanaIndexFrom(blockContext)))
+          .flatMap(dataStream => DataStreamName.fromString(dataStream.stringify))
+      if (allowedDataStreams.nonEmpty) Permitted(blockContext.withDataStreams(allowedDataStreams))
+      else Permitted(blockContext.withDataStreams(Set(nonexistentDataStreamPattern)))
+    }
+  }
+
+  // A data stream write request with indices (_modify, migrate): the rule already checked the indices. Each data stream
+  // name of the request must be allowed too, so that an allowed index cannot join or leave another data stream. A
+  // pattern is not allowed. A request with no data stream names (migrate, where the data stream gets the name of the
+  // checked alias) has nothing more to check.
+  private def processDataStreamsOfWriteRequestWithIndices(
+      blockContext: DataStreamRequestBlockContext
+  ): Task[Decision[DataStreamRequestBlockContext]] = {
+    given RequestId = blockContext.requestContext.id.toRequestId
+    val allowedIndices = allowedIndicesFor(blockContext)
+    val indicesManager = new LocalIndicesManager(blockContext.requestContext, allowedIndices.localMatcher)
+    indicesManager.backingIndicesPerDataStreamMap.map { backingIndicesPerDataStream =>
+      val requestHasNoDataStreamNames = blockContext.dataStreams == Set(DataStreamName.all)
+      val allDataStreamsAllowed = requestHasNoDataStreamNames || blockContext.dataStreams.forall {
+        case DataStreamName.Full(name) =>
+          isDataStreamAllowed(
+            ClusterIndexName.Local.fromNes(name),
+            allowedIndices,
+            backingIndicesPerDataStream,
+            kibanaIndexFrom(blockContext)
+          )
+        case DataStreamName.Pattern(_) | DataStreamName.All | DataStreamName.Wildcard =>
+          false
       }
+      if (allDataStreamsAllowed) Permitted(blockContext)
+      else reject()
     }
   }
 

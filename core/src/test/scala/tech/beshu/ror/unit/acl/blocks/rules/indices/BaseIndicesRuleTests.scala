@@ -365,6 +365,32 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
     result should be(Denied(NotAuthorized))
   }
 
+  // A data stream request with indices: _modify, migrate, get or lifecycle get
+  protected def checkDataStreamRequestWithIndices(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      requestIndices: Set[RequestedIndex[ClusterIndexName]],
+      clusterDataStreams: Set[DataStreamName.Full]
+  ): Decision[DataStreamRequestBlockContext] = {
+    val esServices = MockEsServices.`with`(
+      MockEsClusterService(
+        allIndicesAndAliases =
+          requestIndices.map(index => fullLocalIndexWithAliases(fullIndexName(index.name.stringify))),
+        allDataStreamsAndAliases = clusterDataStreams.map(fullLocalDataStreamWithAliases)
+      )
+    )
+    checkDataStreamRequest(
+      configured,
+      action,
+      requestDataStreams.orWildcardWhenEmpty,
+      mustInvolveIndices = false,
+      kibanaIndex = None,
+      esServices,
+      BackingIndices.IndicesInvolved(requestIndices, Set(ClusterIndexName.Local.wildcard))
+    )
+  }
+
   private def checkDataStreamStatsRequest(
       configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
       requestDataStreams: Set[DataStreamName],
@@ -405,7 +431,8 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       requestDataStreams: Set[DataStreamName],
       mustInvolveIndices: Boolean,
       kibanaIndex: Option[KibanaIndexName],
-      esServices: EsServices = MockEsServices.dummy
+      esServices: EsServices = MockEsServices.dummy,
+      backingIndices: BackingIndices = BackingIndices.IndicesNotInvolved
   ): Decision[DataStreamRequestBlockContext] = {
     val rule = createIndicesRule(configured, mustInvolveIndices)
     val requestContext =
@@ -418,7 +445,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       dataStreams = requestDataStreams,
-      backingIndices = BackingIndices.IndicesNotInvolved
+      backingIndices = backingIndices
     )
     rule.check(blockContext).runSyncUnsafe()
   }
