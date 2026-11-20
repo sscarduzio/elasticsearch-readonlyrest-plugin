@@ -1201,14 +1201,6 @@ trait IndicesRuleDataStreamTests {
           requestDataStreams = Set(fullDataStreamName("audit-events"))
         )
       }
-      "the data stream is the Kibana reporting data stream" in {
-        assertMatchRuleForDataStreamRequest(
-          configured = NonEmptySet.of(indexNameVar("logs-*")),
-          action = deleteDataStreamAction,
-          requestDataStreams = Set(fullDataStreamName(".kibana-reporting-.kibana")),
-          kibanaIndex = Some(kibanaIndexName(".kibana"))
-        )
-      }
       "the indices must be involved and the data stream name matches the allowed indices" in {
         assertMatchRuleForDataStreamRequest(
           configured = NonEmptySet.of(indexNameVar("logs-*")),
@@ -1265,6 +1257,24 @@ trait IndicesRuleDataStreamTests {
           configured = NonEmptySet.of(indexNameVar("*:*")),
           action = deleteDataStreamAction,
           requestDataStreams = Set(fullDataStreamName("logs-app"))
+        )
+      }
+      "the data stream is the Kibana reporting data stream" in {
+        dataStreamWriteActions.foreach { action =>
+          assertNotMatchRuleForDataStreamRequest(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            action = action,
+            requestDataStreams = Set(fullDataStreamName(".kibana-reporting-.kibana")),
+            kibanaIndex = Some(kibanaIndexName(".kibana"))
+          )
+        }
+      }
+      "an allowed data stream and the Kibana reporting data stream are requested together" in {
+        assertNotMatchRuleForDataStreamRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName(".kibana-reporting-.kibana")),
+          kibanaIndex = Some(kibanaIndexName(".kibana"))
         )
       }
       "the data stream is the Kibana reporting data stream and the block has no Kibana index" in {
@@ -1458,6 +1468,26 @@ trait IndicesRuleDataStreamTests {
       }
       "the index is not allowed" in {
         modifyRequest(dataStream = "logs-app", index = "audit-x") should be(Denied(NotAuthorized))
+      }
+      "an allowed index is added to the Kibana reporting data stream" in {
+        checkDataStreamRequestWithIndices(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = modifyDataStreamsAction,
+          requestDataStreams = Set(fullDataStreamName(".kibana-reporting-.kibana")),
+          requestIndices = Set(requestedIndex("logs-x")),
+          clusterDataStreams = statsClusterDataStreams + fullDataStreamName(".kibana-reporting-.kibana"),
+          kibanaIndex = Some(kibanaIndexName(".kibana"))
+        ) should be(Denied(NotAuthorized))
+      }
+      "a Kibana index is added to an allowed data stream" in {
+        checkDataStreamRequestWithIndices(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = modifyDataStreamsAction,
+          requestDataStreams = Set(fullDataStreamName("logs-app")),
+          requestIndices = Set(requestedIndex(".kibana_1")),
+          clusterDataStreams = statsClusterDataStreams,
+          kibanaIndex = Some(kibanaIndexName(".kibana"))
+        ) should be(Denied(NotAuthorized))
       }
     }
   }

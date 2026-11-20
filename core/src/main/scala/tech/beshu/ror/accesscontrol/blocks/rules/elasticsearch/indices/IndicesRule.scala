@@ -103,12 +103,18 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
 
   private def processIndicesRequest[B <: BlockContext: BlockContextWithIndicesUpdater](
       blockContext: B
+  ): Task[Decision[B]] =
+    processIndicesRequestWith(blockContext, kibanaIndexFrom(blockContext))
+
+  private def processIndicesRequestWith[B <: BlockContext: BlockContextWithIndicesUpdater](
+      blockContext: B,
+      kibanaIndex: Option[KibanaIndexName]
   ): Task[Decision[B]] = {
     if (matchAll) {
       Task.now(Permitted(blockContext))
     } else {
       val allowedIndices = allowedIndicesFor(blockContext)
-      processIndices(blockContext.requestContext, allowedIndices, blockContext.indices, kibanaIndexFrom(blockContext))
+      processIndices(blockContext.requestContext, allowedIndices, blockContext.indices, kibanaIndex)
         .map {
           case ProcessResult.Ok(filteredIndices) =>
             val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allowedIndices)
@@ -254,7 +260,8 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
         case BackingIndices.IndicesNotInvolved =>
           processDataStreamWriteRequest(blockContext)
         case _: BackingIndices.IndicesInvolved =>
-          processIndicesRequest(blockContext).flatMap(whenPermitted(processDataStreamsOfWriteRequestWithIndices))
+          processIndicesRequestWith(blockContext, kibanaIndex = None)
+            .flatMap(whenPermitted(processDataStreamsOfWriteRequestWithIndices))
       }
     }
   }
@@ -283,6 +290,7 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     }
   }
 
+  // A data stream write gets no Kibana exception. The rule must allow the data stream name.
   private def areDataStreamWritesAllowed(
       blockContext: DataStreamRequestBlockContext,
       allowedIndices: AllowedClusterIndices,
@@ -295,7 +303,7 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
         blockContext.requestContext,
         allowedIndices,
         dataStreams.map(dataStream => RequestedIndex[ClusterIndexName](dataStream, excluded = false)),
-        kibanaIndexFrom(blockContext)
+        determinedKibanaIndex = None
       ).map {
         case ProcessResult.Ok(_)     => true
         case _: ProcessResult.Failed => false
@@ -364,7 +372,7 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
   }
 
   // A _modify or migrate request passes only when the rule allows each data stream name, with no pattern. So an allowed
-  // index cannot join or leave another data stream.
+  // index cannot join or leave another data stream. A data stream write gets no Kibana exception.
   private def processDataStreamsOfWriteRequestWithIndices(
       blockContext: DataStreamRequestBlockContext
   ): Task[Decision[DataStreamRequestBlockContext]] = {
@@ -381,7 +389,7 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
               ClusterIndexName.Local.fromNes(name),
               allowedIndices,
               backingIndicesPerDataStream,
-              kibanaIndexFrom(blockContext)
+              kibanaIndex = None
             )
           case DataStreamName.Pattern(_) | DataStreamName.All | DataStreamName.Wildcard =>
             false
@@ -391,7 +399,8 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     }
   }
 
-  // A data stream is allowed when the rule allows its name or all its backing indices, or when it is a Kibana index.
+  // A data stream is allowed when the rule allows its name or all its backing indices, or when it relates to the given
+  // Kibana index.
   private def isDataStreamAllowed(
       dataStream: ClusterIndexName.Local,
       allowedIndices: AllowedClusterIndices,
