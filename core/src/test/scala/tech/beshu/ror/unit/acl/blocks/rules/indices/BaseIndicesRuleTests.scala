@@ -378,8 +378,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       action: Action,
       requestDataStreams: Set[DataStreamName],
       requestIndices: Set[RequestedIndex[ClusterIndexName]],
-      clusterDataStreams: Set[DataStreamName.Full],
-      kibanaIndex: Option[KibanaIndexName] = None
+      clusterDataStreams: Set[DataStreamName.Full]
   ): Decision[DataStreamRequestBlockContext] = {
     val esServices = MockEsServices.`with`(
       MockEsClusterService(
@@ -393,7 +392,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       action,
       requestDataStreams.orWildcardWhenEmpty,
       mustInvolveIndices = false,
-      kibanaIndex,
+      kibanaIndex = None,
       esServices,
       BackingIndices.IndicesInvolved(requestIndices, Set(ClusterIndexName.Local.wildcard))
     )
@@ -445,10 +444,9 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
       action: Action,
       requestDataStreams: Set[DataStreamName],
-      mustInvolveIndices: Boolean = false,
-      kibanaIndex: Option[KibanaIndexName] = None
+      mustInvolveIndices: Boolean = false
   ): Unit = {
-    val result = checkDataStreamRequest(configured, action, requestDataStreams, mustInvolveIndices, kibanaIndex)
+    val result = checkDataStreamRequest(configured, action, requestDataStreams, mustInvolveIndices, kibanaIndex = None)
     result should be(Denied(NotAuthorized))
   }
 
