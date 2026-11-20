@@ -460,6 +460,11 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
           )
         }
       }
+      "is the Kibana reporting data stream, which only the unrestricted access creates or deletes" in {
+        List("indices:admin/data_stream/create", "indices:admin/data_stream/delete").foreach { action =>
+          assertDataStreamRequestAllowedOnlyFor(action, ".kibana-reporting-.kibana", Set(Unrestricted))
+        }
+      }
     }
     "Kibana sample data set is used" which {
       "is added and removed by the Kibana Sample data page" in {
