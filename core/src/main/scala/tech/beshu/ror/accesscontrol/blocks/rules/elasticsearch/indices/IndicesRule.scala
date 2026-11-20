@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices
 
 import cats.data.NonEmptySet
 import cats.implicits.*
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
@@ -41,13 +42,23 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.*
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.AllClusterIndices
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.{
+  AllClusterIndices,
+  LocalIndicesManager
+}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates.AllTemplateIndices
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.OrWildcardWhenEmpty
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName, RequestId, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*
+import tech.beshu.ror.accesscontrol.domain.{
+  ClusterIndexName,
+  DataStreamName,
+  KibanaIndexName,
+  RequestId,
+  RequestedIndex
+}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
@@ -233,7 +244,7 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     else
       blockContext.backingIndices match {
         case BackingIndices.IndicesNotInvolved if blockContext.requestContext.isReadOnlyRequest =>
-          processRequestWithoutIndices(blockContext)
+          processDataStreamReadRequest(blockContext)
         case BackingIndices.IndicesNotInvolved =>
           processDataStreamWriteRequest(blockContext)
         case _: BackingIndices.IndicesInvolved =>
@@ -260,6 +271,48 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
       case ProcessResult.Ok(_)     => Permitted(blockContext)
       case _: ProcessResult.Failed => reject()
     }
+  }
+
+  // A data stream read request without backing indices (stats) gets only the requested data streams that the rule
+  // allows. When the rule allows none of them, the request gets a name that matches nothing, because ES reads no names
+  // as all data streams.
+  private def processDataStreamReadRequest(
+      blockContext: DataStreamRequestBlockContext
+  ): Task[Decision[DataStreamRequestBlockContext]] = {
+    if (settings.mustInvolveIndices) {
+      Task.now(reject())
+    } else {
+      given RequestId = blockContext.requestContext.id.toRequestId
+      val allowedIndices = allowedIndicesFor(blockContext)
+      val requestedMatcher = PatternsMatcher.create(blockContext.dataStreams.orWildcardWhenEmpty.map(asLocalIndexName))
+      val indicesManager = new LocalIndicesManager(blockContext.requestContext, allowedIndices.localMatcher)
+      for {
+        allDataStreams <- indicesManager.allDataStreams
+        backingIndicesPerDataStream <- indicesManager.backingIndicesPerDataStreamMap
+      } yield {
+        val allowedDataStreams =
+          allDataStreams
+            .filter(requestedMatcher.`match`)
+            .filter(isDataStreamAllowed(_, allowedIndices, backingIndicesPerDataStream, kibanaIndexFrom(blockContext)))
+            .flatMap(dataStream => DataStreamName.fromString(dataStream.stringify))
+        if (allowedDataStreams.nonEmpty) Permitted(blockContext.withDataStreams(allowedDataStreams))
+        else Permitted(blockContext.withDataStreams(Set(nonexistentDataStreamPattern)))
+      }
+    }
+  }
+
+  // A data stream is allowed when the rule allows its name or all its backing indices.
+  private def isDataStreamAllowed(
+      dataStream: ClusterIndexName.Local,
+      allowedIndices: AllowedClusterIndices,
+      backingIndicesPerDataStream: Map[ClusterIndexName.Local, Set[ClusterIndexName.Local]],
+      kibanaIndex: Option[KibanaIndexName]
+  ): Boolean = {
+    allowedIndices.localMatcher.`match`(dataStream) ||
+    backingIndicesPerDataStream.get(dataStream).exists { backingIndices =>
+      backingIndices.nonEmpty && backingIndices.forall(allowedIndices.localMatcher.`match`)
+    } ||
+    kibanaIndex.exists(dataStream.isRelatedToKibanaIndex)
   }
 
   private def allowedIndicesFor(blockContext: BlockContext): AllowedClusterIndices =
@@ -326,6 +379,11 @@ object IndicesRule {
     case DataStreamName.Pattern(namePattern)          => ClusterIndexName.Local.fromNes(namePattern)
     case DataStreamName.All | DataStreamName.Wildcard => ClusterIndexName.Local.wildcard
   }
+
+  private def nonexistentDataStreamPattern: DataStreamName =
+    DataStreamName.Pattern.fromNes(
+      NonEmptyString.unsafeFrom(s"${ClusterIndexName.Local.randomNonexistentIndex().stringify}*")
+    )
 
   private[indices] sealed trait ProcessResult
 

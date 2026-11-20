@@ -1282,6 +1282,94 @@ trait IndicesRuleDataStreamTests {
     }
   }
 
+  "An IndicesRule for a data stream stats request" should {
+    "leave only the allowed data streams" when {
+      "the request has no data stream names" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set.empty,
+          clusterDataStreams = statsClusterDataStreams,
+          expectedDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("logs-db"))
+        )
+      }
+      "the request asks for all data streams" in {
+        List(DataStreamName.All, DataStreamName.Wildcard).foreach { dataStream =>
+          assertDataStreamStatsRequestNarrowed(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            requestDataStreams = Set(dataStream),
+            clusterDataStreams = statsClusterDataStreams,
+            expectedDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("logs-db"))
+          )
+        }
+      }
+      "the request has a pattern wider than the allowed indices" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar("logs-app")),
+          requestDataStreams = Set(dataStreamNamePattern("logs-*")),
+          clusterDataStreams = statsClusterDataStreams,
+          expectedDataStreams = Set(fullDataStreamName("logs-app"))
+        )
+      }
+      "the request has an allowed and a not allowed name" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("audit-events")),
+          clusterDataStreams = statsClusterDataStreams,
+          expectedDataStreams = Set(fullDataStreamName("logs-app"))
+        )
+      }
+      "the rule allows all backing indices of the data stream" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar(".ds-audit-*")),
+          requestDataStreams = Set.empty,
+          clusterDataStreams = statsClusterDataStreams,
+          expectedDataStreams = Set(fullDataStreamName("audit-events"))
+        )
+      }
+      "the data stream is the Kibana reporting data stream" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar("logs-app")),
+          requestDataStreams = Set.empty,
+          clusterDataStreams = statsClusterDataStreams + fullDataStreamName(".kibana-reporting-.kibana"),
+          expectedDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName(".kibana-reporting-.kibana")),
+          kibanaIndex = Some(kibanaIndexName(".kibana"))
+        )
+      }
+    }
+    "leave a data stream name that matches nothing" when {
+      "the rule allows none of the requested data streams" in {
+        assertDataStreamStatsRequestGetsNoDataStream(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set(fullDataStreamName("audit-events")),
+          clusterDataStreams = statsClusterDataStreams
+        )
+      }
+      "the requested data stream does not exist" in {
+        assertDataStreamStatsRequestGetsNoDataStream(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set(fullDataStreamName("logs-unknown")),
+          clusterDataStreams = statsClusterDataStreams
+        )
+      }
+    }
+    "not match" when {
+      "the indices must be involved" in {
+        assertDataStreamStatsRequestRejected(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set(fullDataStreamName("logs-app")),
+          clusterDataStreams = statsClusterDataStreams,
+          mustInvolveIndices = true
+        )
+      }
+    }
+  }
+
+  private lazy val statsClusterDataStreams = Set(
+    fullDataStreamName("logs-app"),
+    fullDataStreamName("logs-db"),
+    fullDataStreamName("audit-events")
+  )
+
   private lazy val deleteDataStreamAction = Action("indices:admin/data_stream/delete")
 
   private lazy val dataStreamWriteActions = List(

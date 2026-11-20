@@ -58,6 +58,7 @@ import tech.beshu.ror.utils.TestsUtils.{
   clusterIndexName,
   fullDataStreamName,
   fullIndexName,
+  fullLocalDataStreamWithAliases,
   fullLocalIndexWithAliases,
   indexPattern,
   unsafeNes
@@ -324,6 +325,69 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
     }
   }
 
+  // A data stream stats request: the rule leaves only the allowed data streams of the cluster in the request
+  protected def assertDataStreamStatsRequestNarrowed(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      requestDataStreams: Set[DataStreamName],
+      clusterDataStreams: Set[DataStreamName.Full],
+      expectedDataStreams: Set[DataStreamName],
+      kibanaIndex: Option[KibanaIndexName] = None
+  ): Unit = {
+    val result = checkDataStreamStatsRequest(configured, requestDataStreams, clusterDataStreams, false, kibanaIndex)
+    inside(result) { case Permitted(blockContext) =>
+      blockContext.dataStreams should be(expectedDataStreams)
+    }
+  }
+
+  // A data stream stats request: no data stream is allowed, so the request gets a pattern that matches nothing
+  protected def assertDataStreamStatsRequestGetsNoDataStream(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      requestDataStreams: Set[DataStreamName],
+      clusterDataStreams: Set[DataStreamName.Full]
+  ): Unit = {
+    val result = checkDataStreamStatsRequest(configured, requestDataStreams, clusterDataStreams, false, None)
+    inside(result) { case Permitted(blockContext) =>
+      inside(blockContext.dataStreams.toList) { case DataStreamName.Pattern(pattern) :: Nil =>
+        clusterDataStreams.map(_.value.value) should not contain pattern.value.stripSuffix("*")
+        pattern.value should endWith("*")
+      }
+    }
+  }
+
+  protected def assertDataStreamStatsRequestRejected(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      requestDataStreams: Set[DataStreamName],
+      clusterDataStreams: Set[DataStreamName.Full],
+      mustInvolveIndices: Boolean
+  ): Unit = {
+    val result =
+      checkDataStreamStatsRequest(configured, requestDataStreams, clusterDataStreams, mustInvolveIndices, None)
+    result should be(Denied(NotAuthorized))
+  }
+
+  private def checkDataStreamStatsRequest(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      requestDataStreams: Set[DataStreamName],
+      clusterDataStreams: Set[DataStreamName.Full],
+      mustInvolveIndices: Boolean,
+      kibanaIndex: Option[KibanaIndexName]
+  ): Decision[DataStreamRequestBlockContext] = {
+    val esServices = MockEsServices.`with`(
+      MockEsClusterService(
+        allIndicesAndAliases = Set.empty,
+        allDataStreamsAndAliases = clusterDataStreams.map(fullLocalDataStreamWithAliases)
+      )
+    )
+    checkDataStreamRequest(
+      configured,
+      Action("indices:monitor/data_stream/stats"),
+      requestDataStreams,
+      mustInvolveIndices,
+      kibanaIndex,
+      esServices
+    )
+  }
+
   protected def assertNotMatchRuleForDataStreamRequest(
       configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
       action: Action,
@@ -334,16 +398,18 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
     result should be(Denied(NotAuthorized))
   }
 
-  // A data stream request without backing indices, for example a data stream create, delete or promote
+  // A data stream request without backing indices: a data stream create, delete, promote or stats
   private def checkDataStreamRequest(
       configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
       action: Action,
       requestDataStreams: Set[DataStreamName],
       mustInvolveIndices: Boolean,
-      kibanaIndex: Option[KibanaIndexName]
+      kibanaIndex: Option[KibanaIndexName],
+      esServices: EsServices = MockEsServices.dummy
   ): Decision[DataStreamRequestBlockContext] = {
     val rule = createIndicesRule(configured, mustInvolveIndices)
-    val requestContext = MockRequestContext.dataStreams.copy(action = action, dataStreams = requestDataStreams)
+    val requestContext =
+      MockRequestContext.dataStreams.copy(action = action, dataStreams = requestDataStreams, esServices = esServices)
     val blockMetadata = BlockMetadata.from(requestContext)
     val blockContext = DataStreamRequestBlockContext(
       block = mock[Block],
