@@ -100,7 +100,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
           val request = MockRequestContext.indices
             .withHeaders(basicAuthHeader("john:dev"))
             .copy(
-              action = Action("indices:monitor/*"),
+              action = Action("indices:monitor/stats"),
               filteredIndices = Set(requestedIndex(".readonlyrest"))
             )
 
@@ -120,79 +120,13 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
             )
           }
         }
+      }
+      "not allow to proceed" when {
         "component template creation request is called (in case of `admin` kibana access)" in {
-          val request = MockRequestContext.nonIndices.copy(
-            restRequest = MockRestRequest(
-              allHeaders = UniqueList.of(basicAuthHeader("john:dev")),
-              path = UriPath.from("/_component_template/test")
-            ),
-            action = Action("cluster:admin/component_template/put"),
-          )
-
-          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
-
-          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
-            blockContext.block.name should be(Block.Name("Template Tenancy"))
-            assertBlockContext(blockContext)(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
-              kibanaPolicy = Some(
-                KibanaPolicy.default.copy(
-                  access = KibanaAccess.Admin,
-                  index = kibanaIndexName(".kibana_template"),
-                )
-              ),
-            )
-          }
+          assertForbiddenComponentTemplateCreation(basicAuthHeader("john:dev"))
         }
         "component template creation request is called (in case of `rw` kibana access)" in {
-          val request = MockRequestContext.nonIndices.copy(
-            restRequest = MockRestRequest(
-              allHeaders = UniqueList.of(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
-              path = UriPath.from("/_component_template/test")
-            ),
-            action = Action("cluster:admin/component_template/put"),
-          )
-
-          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
-
-          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
-            blockContext.block.name should be(Block.Name("Read-Write access with RoR custom kibana index"))
-            assertBlockContext(blockContext)(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
-              currentGroup = Some(GroupId("RW_ror_custom")),
-              availableGroups = UniqueList.of(group("RW_ror_custom")),
-              kibanaPolicy = Some(
-                KibanaPolicy.default.copy(
-                  access = KibanaAccess.RW,
-                  index = kibanaIndexName(".kibana_ror_custom"),
-                )
-              ),
-            )
-          }
-        }
-        "index template creation request is called (in case of `admin` kibana access)" in {
-          val request = MockRequestContext.nonIndices.copy(
-            restRequest = MockRestRequest(
-              allHeaders = UniqueList.of(basicAuthHeader("john:dev")),
-              path = UriPath.from("/_component_template/test")
-            ),
-            action = Action("cluster:admin/component_template/put"),
-          )
-
-          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
-
-          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
-            blockContext.block.name should be(Block.Name("Template Tenancy"))
-            assertBlockContext(blockContext)(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
-              kibanaPolicy = Some(
-                KibanaPolicy.default.copy(
-                  access = KibanaAccess.Admin,
-                  index = kibanaIndexName(".kibana_template"),
-                )
-              ),
-            )
-          }
+          assertForbiddenComponentTemplateCreation(basicAuthHeader("testuser_ro_master_rw_custom:XXXX"))
         }
       }
     }
@@ -311,6 +245,18 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
         }
       }
     }
+  }
+
+  private def assertForbiddenComponentTemplateCreation(authHeader: Header): Unit = {
+    val request = MockRequestContext.nonIndices.copy(
+      restRequest = MockRestRequest(
+        allHeaders = UniqueList.of(authHeader),
+        path = UriPath.from("/_component_template/test")
+      ),
+      action = Action("cluster:admin/component_template/put")
+    )
+    val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
+    inside(result) { case RegularRequestResult.ForbiddenByMismatched(_) => }
   }
 
 }
