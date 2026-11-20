@@ -1,0 +1,37 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+// Common build config for every ES 9 module. A module overrides any of it by assigning or adding
+// after the `apply from:` line in its own build.gradle -- the same base/override rule the sources
+// and the Dockerfile follow.
+ext.javaLanguageVersion = 21
+ext.jarHellMainClass = 'org.elasticsearch.jdk.JarHell'
+
+// ext, not a local def: a module's own build.gradle references it in its overrides.
+ext.moduleEsVersion = project.ext.esVersion
+
+dependencies {
+    implementation project(path: ':core')
+    implementation project(path: ':ror-tools', configuration: 'shadow')
+    implementation project(path: ':ror-tools-core')
+    implementation group: 'org.elasticsearch',          name: 'elasticsearch',              version: moduleEsVersion
+    implementation group: 'org.elasticsearch.client',   name: 'elasticsearch-rest-client',  version: moduleEsVersion
+    implementation group: 'org.apache.httpcomponents',  name: 'httpclient',                 version: '4.5.14'
+    implementation group: 'org.apache.logging.log4j',   name: 'log4j-core',                 version: '2.11.1'
+    compileOnly     group: 'org.locationtech.spatial4j', name: 'spatial4j',                 version: '0.7'
+    // if you don't have this dependency in local maven, please run publishToMavenLocal task first
+    compileOnly     group: 'org.elasticsearch.plugin',   name: 'transport-netty4',          version: moduleEsVersion
+}

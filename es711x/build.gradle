@@ -18,21 +18,13 @@ plugins {
     id "readonlyrest.plugin-common-conventions"
 }
 
-ext.javaLanguageVersion = 11
-ext.jarHellMainClass = 'org.elasticsearch.bootstrap.JarHell'
-
-def moduleEsVersion = project.ext.esVersion
+apply from: "$rootDir/es7-base/module.gradle"
 
 dependencies {
-    implementation  project(path: ':core')
-    implementation  project(path: ':ror-tools', configuration: 'shadow')
-    implementation  project(path: ':ror-tools-core')
-    implementation  ('org.elasticsearch:elasticsearch:' + moduleEsVersion) {
-        // because of https://github.com/elastic/elasticsearch/issues/68889 (for ES 7.11.0)
-        exclude     group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'
-    }
-    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: moduleEsVersion
-    implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.14'
-    compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
-    implementation  group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: moduleEsVersion
+    compileOnly     group: 'org.locationtech.spatial4j', name: 'spatial4j',                 version: '0.7'
+}
+
+// because of https://github.com/elastic/elasticsearch/issues/68889 (for ES 7.11.0)
+configurations.configureEach {
+    exclude group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'
 }

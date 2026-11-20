@@ -18,22 +18,12 @@ plugins {
     id "readonlyrest.plugin-common-conventions"
 }
 
-ext.javaLanguageVersion = 21
-ext.jarHellMainClass = 'org.elasticsearch.jdk.JarHell'
+apply from: "$rootDir/es9-base/module.gradle"
 
-def moduleEsVersion = project.ext.esVersion
 
-dependencies {
-    implementation  project(path: ':core')
-    implementation  project(path: ':ror-tools', configuration: 'shadow')
-    implementation  project(path: ':ror-tools-core')
-    implementation (group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: moduleEsVersion) {
-        exclude group: 'org.elasticsearch', module: 'exponential-histogram'
-    }
-    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: moduleEsVersion
-    implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.14'
-    implementation  group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.1'
-    compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
-    // if you don't have this dependency in local maven, please run publishToMavenLocal task first
-    compileOnly     group: 'org.elasticsearch.plugin',          name: 'transport-netty4',                       version: moduleEsVersion
+// NOTE: this currently matches nothing -- the artifact ES publishes is
+// `elasticsearch-exponential-histogram`, not `exponential-histogram`, so the jar still resolves.
+// Kept verbatim here to keep this change behaviour-neutral; see the PR discussion.
+configurations.configureEach {
+    exclude group: 'org.elasticsearch', module: 'exponential-histogram'
 }
