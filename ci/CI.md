@@ -13,9 +13,10 @@ shared `CI_RUNS_ON`, `LIGHT_RUNS_ON` and the others of `readonlyrest_kbn` into t
 | Variable | Default | Jobs |
 |---|---|---|
 | `ES_LIGHT_RUNS_ON` | `["ubuntu-latest"]` | `ci_setup`, `toolchains_verify`, `discover`, `e2e_order_kbn_images`, `release_setup`, the `discover` of `release.yml`, `record_digest`, and the small workflows (`pr-conventions`, `claude`, `claude-code-review`, `flake-ledger`, `actionstrings_gen`, `verify-publish-credentials`) |
-| `ES_CI_RUNS_ON` | `["ubuntu-latest"]` | `optional_checks`, `required_checks`, `unit_tests_linux`, `it_linux`, `e2e_build_es_images`, `e2e_tests`, `build_ror`, `mirror-es-libs.yml`, `publish-pre-builds.yml` |
+| `ES_CI_RUNS_ON` | `["ubuntu-latest"]` | `optional_checks`, `required_checks`, `unit_tests_linux`, `it_linux`, `e2e_build_es_images`, `e2e_tests`, `build_ror` |
 | `ES_WINDOWS_RUNS_ON` | `["windows-2025"]` | `it_windows`, `unit_tests_windows` |
 | `ES_PUBLISH_RUNS_ON` | `["self-hosted","Linux","X64"]` | `upload_pre_ror`, `release_ror`, `publish_mvn` |
+| `ES_PUBLISH_RUNS_ON` | `["ubuntu-latest"]` | `mirror-es-libs.yml`, `publish-pre-builds.yml` |
 | `ES_IMAGE_BUILD_RUNS_ON` | `["ubuntu-latest"]` | the `build` job of `build-toolchains-image.yml`, `disk-probe.yml` |
 
 A value is a JSON array of labels. Do not set them in this public repo: a pull request from a fork

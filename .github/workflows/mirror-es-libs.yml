@@ -28,7 +28,7 @@ jobs:
     name: Mirroring
     # Downloads an ES distribution and pushes the jars to the libs store.
     # Run by hand a few times per ES release.
-    runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
+    runs-on: ${{ fromJSON(vars.ES_PUBLISH_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 120
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home

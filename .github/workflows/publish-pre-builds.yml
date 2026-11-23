@@ -47,7 +47,7 @@ jobs:
   publish:
     name: Publishing
     # A long build-and-push job, one at a time.
-    runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
+    runs-on: ${{ fromJSON(vars.ES_PUBLISH_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 600
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
