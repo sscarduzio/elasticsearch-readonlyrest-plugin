@@ -265,7 +265,12 @@ reap_ci_job_containers() {
   [ -n "$ids" ] && docker rm -f $ids 2>/dev/null || true
 }
 
-ES_DEV_IMAGE_REPO="$(gradle_property dockerImageNamespace)/elasticsearch-readonlyrest-dev" || exit 1
+# The ROR_ES_DEV_IMAGE_REPO repo variable moves the dev image to another registry. The e2e repo reads the same variable.
+if [ -n "${ROR_ES_DEV_IMAGE_REPO:-}" ]; then
+  ES_DEV_IMAGE_REPO=$ROR_ES_DEV_IMAGE_REPO
+else
+  ES_DEV_IMAGE_REPO="$(gradle_property dockerImageNamespace)/elasticsearch-readonlyrest-dev" || exit 1
+fi
 
 # Copies a registry image manifest to a new tag without pulling/rebuilding (multi-platform safe).
 retag_dev_image() {
@@ -345,6 +350,7 @@ publish_ror_es_prebuild_plugin() {
     if ! retry_with_backoff --retry-if is_docker_registry_error \
          ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" \
          "-PdockerPlatforms=$PLATFORMS" \
+         "-PpreBuildDockerImageRepo=$ES_DEV_IMAGE_REPO" \
          "-PadditionalImageTag=${ES_DEV_IMAGE_REPO}:${SOURCE_TAG}" </dev/null; then
       ci_log "Cannot publish the ROR pre-build image for ES $ES_VERSION."
       return 4

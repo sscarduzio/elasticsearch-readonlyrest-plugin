@@ -50,9 +50,15 @@ jobs:
     # self-hosted runner — see ci/self-hosted-runner.md.
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 600
+    permissions:
+      contents: read
+      # To push the ROR ES dev image when ROR_ES_DEV_IMAGE_REPO names ghcr.io.
+      packages: write
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
+      # Name of the ROR ES dev image. Empty means the Docker Hub default. See ci/CI.md#dev-image-names.
+      ROR_ES_DEV_IMAGE_REPO: ${{ vars.ROR_ES_DEV_IMAGE_REPO }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 0, persist-credentials: false }
@@ -97,6 +103,7 @@ jobs:
           ROR_CUSTOM_DOCKER_PLATFORMS: ${{ inputs.custom_platforms }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
 
@@ -105,9 +112,11 @@ jobs:
           echo ">>> Publishing pre-build docker images for: $BUILD_ROR_ES_VERSIONS"
           ci/run-pipeline.sh
 
-      # configure-docker.sh logs in with the Docker Hub RW token. On an ephemeral VM that credential
-      # died with the VM; here it would stay in the runner user's ~/.docker/config.json, where every
-      # later job on the box can read it.
-      - name: Log out of Docker Hub
+      # configure-docker.sh logs in with the Docker Hub RW token, and to ghcr.io when the dev image is
+      # there. On an ephemeral VM those credentials died with the VM; here they would stay in the
+      # runner user's ~/.docker/config.json, where every later job on the box can read them.
+      - name: Log out of the registries
         if: always()
-        run: docker logout || true
+        run: |
+          docker logout || true
+          docker logout ghcr.io || true

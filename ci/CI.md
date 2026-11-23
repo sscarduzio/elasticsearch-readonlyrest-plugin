@@ -593,6 +593,25 @@ step 1 starts. Nothing else authenticates it. That pull is anonymous, and the re
 `ci_setup` chose answers it: `mirror.gcr.io` on the normal path, Docker Hub on the fallback. See
 [The `container:` image](#the-container-image).
 
+### Dev image names
+
+Two optional repo variables name the ROR dev images. Unset or empty means the Docker Hub default.
+
+| Variable | Default | Read by |
+|---|---|---|
+| `ROR_ES_DEV_IMAGE_REPO` | `beshultd/elasticsearch-readonlyrest-dev` | `ci-lib.sh` (`ES_DEV_IMAGE_REPO`), which passes it to gradle as `-PpreBuildDockerImageRepo`; the e2e repo's `prebuild-images-lib.sh` |
+| `ROR_KBN_DEV_IMAGE_REPO` | `beshultd/kibana-readonlyrest-dev` | the e2e repo's `prebuild-images-lib.sh`, when it waits for the ROR KBN images |
+
+`ci.yml` and `publish-pre-builds.yml` put them in the job environment. The ES plugin repo, the
+Kibana plugin repo and the e2e repo must hold the same values: the job that pushes an image and the
+job that waits for it read the name from different repos. Docker Hub rate limits and slow pulls are
+the reason to move the images to `ghcr.io`.
+
+When `ROR_ES_DEV_IMAGE_REPO` starts with `ghcr.io/`, `configure-docker.sh` also logs the docker CLI
+in to `ghcr.io` with `GHCR_TOKEN`. Only the two jobs that push the image supply it
+(`e2e_build_es_images` and `publish-pre-builds`), with `packages: write`. Every other job pulls the
+public package anonymously. The release images and the toolchains image stay on Docker Hub.
+
 ### Docker Hub pull mirror
 
 `ci/configure-docker.sh` also points Docker at a pull-through cache, `mirror.gcr.io`. Authentication
@@ -639,12 +658,12 @@ the day the mirror cannot serve an image a job needs.
 The flag answers one question: may this job read a cached answer? It does not follow from what the
 job pushes. The two workflows that push most, `publish-pre-builds` and `build-toolchains-image`, need the
 mirror most, because a 429 hits their base-image pulls. A mirror rewrites pulls only. A push names
-`beshultd/...` and goes to Docker Hub whatever the mirror says.
+its registry and goes there whatever the mirror says.
 
 `e2e_tests` keeps the mirror as well, although it pulls the ROR ES and ROR KBN images that two other
 runs pushed a moment before, where a cached answer can be stale. The e2e repo settles that image by
 image: it names the images it takes from the cache, and the ROR images are not among them, so those
-two pulls go to Docker Hub. The job gains the rest: the digest-pinned gosu and corretto pulls of the
+two pulls go to their own registry. The job gains the rest: the digest-pinned gosu and corretto pulls of the
 ES image build, and every image the e2e stack takes from the cache.
 
 Two more things stay off the mirror by themselves, and both must remain so:
@@ -652,7 +671,7 @@ Two more things stay off the mirror by themselves, and both must remain so:
 - `docker manifest inspect` (`docker_image_state`) and `docker buildx imagetools create`. They read
   a tag we pushed seconds ago. Both run in the CLI, which reads neither `buildkitd.toml` nor any of
   the variables above, so both address Docker Hub by themselves.
-- Every push. A pull-through cache is read-only, so `beshultd/*` images go to Docker Hub.
+- Every push. A pull-through cache is read-only, so every image goes to the registry it names.
 
 ### The `container:` image
 

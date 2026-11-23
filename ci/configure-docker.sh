@@ -1,8 +1,8 @@
 #!/bin/bash
 # Configures Docker for a CI job. This script is the only place that does it. Every job that pulls
-# or pushes a Docker Hub image uses it.
+# or pushes a Docker Hub image, or pushes the ROR ES dev image, uses it.
 #
-# It does two things: it points Docker at a pull-through cache, and it authenticates.
+# It points Docker at a pull-through cache, and it authenticates.
 #
 # HOW TO USE IT
 # Source the script. Do not run it. The caller shell needs the variables that the script exports.
@@ -72,6 +72,14 @@
 #
 # The workflow computed the fork case before. Two jobs held the same expression, and a new job had
 # to copy it. The script reads the event instead.
+#
+# ---------------------------------------------------------------------------------------------
+# PART 3: GHCR.IO, FOR THE ROR ES DEV IMAGE
+#
+# The ROR_ES_DEV_IMAGE_REPO repo variable can move the dev image to ghcr.io. A job that pushes it
+# supplies GHCR_TOKEN (the GITHUB_TOKEN, with `packages: write`). The script then logs the docker
+# CLI in to ghcr.io as GITHUB_ACTOR. A job without GHCR_TOKEN skips the login: the package is
+# public, so a pull needs none. A login that fails stops the job, as in part 2.
 #
 # ---------------------------------------------------------------------------------------------
 # TWO LIMITS
@@ -238,11 +246,33 @@ _ror_docker_auth() {
   return 0
 }
 
+# Docker Hub credentials do not apply to ghcr.io, so this is a second login for a different
+# registry. It does not add to DOCKER_AUTH_CONFIG: testcontainers pulls no ghcr.io image.
+_ror_docker_ghcr_auth() {
+  case "${ROR_ES_DEV_IMAGE_REPO:-}" in
+    ghcr.io/*) ;;
+    *) return 0 ;;
+  esac
+  if ! _ror_docker_auth_isset "${GHCR_TOKEN:-}"; then
+    ci_log "ghcr.io login is OFF: the job supplied no GHCR_TOKEN. Pulls of the public dev image are anonymous."
+    return 0
+  fi
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    echo "::add-mask::$GHCR_TOKEN"
+  fi
+  if ! printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR:-github-actions}" --password-stdin >/dev/null; then
+    _ror_docker_auth_failed "the docker login to ghcr.io failed"
+    return $?
+  fi
+  ci_log "ghcr.io login is ON, for the ROR ES dev image ${ROR_ES_DEV_IMAGE_REPO}."
+  return 0
+}
+
 # The mirror comes first, so that a pull in this same step already uses it. Its status is ignored
 # on purpose: only authentication can stop the job.
 _ror_docker_configure() {
   _ror_docker_mirror
-  _ror_docker_auth
+  _ror_docker_auth && _ror_docker_ghcr_auth
 }
 
 # The script is sourced, so `return` gives the status to the caller shell. That stops the step

@@ -43,6 +43,9 @@ env:
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
   IT_PARALLELISM: '4'
+  # Names of the ROR dev images. Empty means the Docker Hub default. See ci/CI.md#dev-image-names.
+  ROR_ES_DEV_IMAGE_REPO: ${{ vars.ROR_ES_DEV_IMAGE_REPO }}
+  ROR_KBN_DEV_IMAGE_REPO: ${{ vars.ROR_KBN_DEV_IMAGE_REPO }}
 
 jobs:
 
@@ -565,6 +568,10 @@ jobs:
     runs-on: ubuntu-latest
     container: *toolchains_container
     timeout-minutes: 120
+    permissions:
+      contents: read
+      # To push the ROR ES dev image when ROR_ES_DEV_IMAGE_REPO names ghcr.io.
+      packages: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.e2e_matrix) }}
@@ -586,6 +593,7 @@ jobs:
           E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           source ci/configure-docker.sh
