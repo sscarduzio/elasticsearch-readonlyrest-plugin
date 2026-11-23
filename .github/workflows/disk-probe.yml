@@ -13,7 +13,7 @@ defaults:
 jobs:
   probe:
     name: Probing
-    runs-on: ubicloud-standard-4
+    runs-on: ${{ fromJSON(vars.ES_IMAGE_BUILD_RUNS_ON || '["ubicloud-standard-4"]') }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

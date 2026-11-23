@@ -6,6 +6,22 @@ jobs run on GitHub-hosted `windows-2025`. The **release** jobs are the exception
 shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` in `release.yml`, plus the standalone
 `mirror-es-libs.yml` and `publish-pre-builds.yml`.
 
+Every job reads its runner from a repo variable. An unset variable gives the runner named above, so
+this repo sets none of them. Set one to move its jobs to another pool, for example when the
+GitHub-hosted runners are short of capacity, without an edit to the workflows. The names start with `ES_` because Doppler syncs the
+shared `CI_RUNS_ON`, `LIGHT_RUNS_ON` and the others of `readonlyrest_kbn` into this repo too.
+
+| Variable | Default | Jobs |
+|---|---|---|
+| `ES_LIGHT_RUNS_ON` | `["ubuntu-latest"]` | `ci_setup`, `toolchains_verify`, `discover`, `e2e_order_kbn_images`, `release_setup`, the `discover` of `release.yml`, `record_digest`, and the small workflows (`pr-conventions`, `claude`, `claude-code-review`, `flake-ledger`, `actionstrings_gen`, `verify-publish-credentials`) |
+| `ES_CI_RUNS_ON` | `["ubuntu-latest"]` | `optional_checks`, `required_checks`, `unit_tests_linux`, `it_linux`, `e2e_build_es_images`, `e2e_tests`, `build_ror` |
+| `ES_WINDOWS_RUNS_ON` | `["windows-2025"]` | `it_windows`, `unit_tests_windows` |
+| `ES_PUBLISH_RUNS_ON` | `["self-hosted","Linux","X64"]` | `upload_pre_ror`, `release_ror`, `publish_mvn`, `mirror-es-libs.yml`, `publish-pre-builds.yml` |
+| `ES_IMAGE_BUILD_RUNS_ON` | `["ubicloud-standard-4"]` | the `build` job of `build-toolchains-image.yml`, `disk-probe.yml` |
+
+A value is a JSON array of labels. Do not set them in this public repo: a pull request from a fork
+runs its own code on the runner these variables name.
+
 `ubuntu-latest` is 4 vCPU / 16 GB. It is slower per core than the paid runners these jobs can also
 use, and the repo is public, so it costs nothing. `ci/toolchains/image.env` holds the toolchains
 image tag, and every workflow that needs it sources that file.

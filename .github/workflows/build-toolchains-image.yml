@@ -36,7 +36,7 @@ jobs:
     # A dispatch stays open to every branch. The image bakes this commit's Gradle dependencies, so a
     # branch that bumps one needs its own tag and its own build. record_digest warns about the cost.
     if: github.event_name != 'schedule' || github.ref == 'refs/heads/develop'
-    runs-on: ubicloud-standard-4
+    runs-on: ${{ fromJSON(vars.ES_IMAGE_BUILD_RUNS_ON || '["ubicloud-standard-4"]') }}
     timeout-minutes: 240
     # record_digest reads these. A digest is public, so an output carries it safely.
     outputs:
@@ -89,7 +89,7 @@ jobs:
   # runner, and both ends read one store.
   record_digest:
     needs: build          # build fails without a digest, so this job needs no guard of its own
-    runs-on: ubuntu-latest   # GH-hosted, like setup. A different runner means a different store.
+    runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}   # Same variable as ci_setup: a different runner means a different store.
     timeout-minutes: 5
     steps:
       - name: Write the digest file
