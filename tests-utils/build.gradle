@@ -61,7 +61,7 @@ dependencies {
     api group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                    version: "2.1.11"
     api group: 'com.unboundid',                  name: 'unboundid-ldapsdk',                 version: '7.0.5'
     api group: 'com.lihaoyi',                    name: 'upickle_3',                         version: '4.4.3'
-    api group: 'org.wiremock',                   name: 'wiremock',                          version: '4.0.0-beta.40'
+    api group: 'org.wiremock',                   name: 'wiremock',                          version: '4.0.0-beta.44'
 
     constraints {
         api group: 'org.ow2.asm',                name: 'asm',                               version: '9.11.1'
