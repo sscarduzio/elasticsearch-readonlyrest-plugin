@@ -3,8 +3,7 @@
 CI runs on GitHub Actions: `.github/workflows/ci.yml`. The Linux **test and build** jobs run on
 **GitHub-hosted** `ubuntu-latest` runners inside the `beshultd/ror-ci-toolchains` image; Windows
 jobs run on GitHub-hosted `windows-2025`. The **release** jobs are the exception and stay on the
-shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` in `release.yml`, plus the standalone
-`mirror-es-libs.yml` and `publish-pre-builds.yml`.
+shared self-hosted box: `upload_pre_ror`, `release_ror` and `publish_mvn` in `release.yml`.
 
 Every job reads its runner from a repo variable. An unset variable gives the runner named above, so
 this repo sets none of them. Set one to move its jobs to another pool, for example when the
@@ -14,10 +13,10 @@ shared `CI_RUNS_ON`, `LIGHT_RUNS_ON` and the others of `readonlyrest_kbn` into t
 | Variable | Default | Jobs |
 |---|---|---|
 | `ES_LIGHT_RUNS_ON` | `["ubuntu-latest"]` | `ci_setup`, `toolchains_verify`, `discover`, `e2e_order_kbn_images`, `release_setup`, the `discover` of `release.yml`, `record_digest`, and the small workflows (`pr-conventions`, `claude`, `claude-code-review`, `flake-ledger`, `actionstrings_gen`, `verify-publish-credentials`) |
-| `ES_CI_RUNS_ON` | `["ubuntu-latest"]` | `optional_checks`, `required_checks`, `unit_tests_linux`, `it_linux`, `e2e_build_es_images`, `e2e_tests`, `build_ror` |
+| `ES_CI_RUNS_ON` | `["ubuntu-latest"]` | `optional_checks`, `required_checks`, `unit_tests_linux`, `it_linux`, `e2e_build_es_images`, `e2e_tests`, `build_ror`, `mirror-es-libs.yml`, `publish-pre-builds.yml` |
 | `ES_WINDOWS_RUNS_ON` | `["windows-2025"]` | `it_windows`, `unit_tests_windows` |
-| `ES_PUBLISH_RUNS_ON` | `["self-hosted","Linux","X64"]` | `upload_pre_ror`, `release_ror`, `publish_mvn`, `mirror-es-libs.yml`, `publish-pre-builds.yml` |
-| `ES_IMAGE_BUILD_RUNS_ON` | `["ubicloud-standard-4"]` | the `build` job of `build-toolchains-image.yml`, `disk-probe.yml` |
+| `ES_PUBLISH_RUNS_ON` | `["self-hosted","Linux","X64"]` | `upload_pre_ror`, `release_ror`, `publish_mvn` |
+| `ES_IMAGE_BUILD_RUNS_ON` | `["ubuntu-latest"]` | the `build` job of `build-toolchains-image.yml`, `disk-probe.yml` |
 
 A value is a JSON array of labels. Do not set them in this public repo: a pull request from a fork
 runs its own code on the runner these variables name.
@@ -40,9 +39,8 @@ matrix. Only integration-test coverage is gone, so a regression specific to one 
 ships untested. Remove a name from that set to test that module again, at the price of runner
 minutes.
 
-The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) and the standalone
-`mirror-es-libs.yml` and `publish-pre-builds.yml` workflows run on the **self-hosted** box —
-they push images and run for hours. `build-toolchains-image.yml` stays on `ubicloud-standard-4`.
+The release path (`upload_pre_ror`, `release_ror`, `publish_mvn`) runs on the **self-hosted** box:
+it pushes artifacts and runs for hours.
 
 **Every job calls `ci/free-host-disk.sh` right after checkout**, including a new one. The script
 detects the runner and decides whether to reclaim disk; a job never decides that for it. On the
@@ -738,10 +736,10 @@ branch that bumps one needs its own tag and its own build, and the push is what 
 Only the cache entry goes to waste, so `record_digest` raises a `::warning::` instead of a refusal.
 Dispatch the workflow again on `develop` after the merge.
 
-The rebuild does not save that entry. It runs on an Ubicloud runner, and an Ubicloud runner keeps
-its own Actions cache. A GitHub-hosted runner cannot read it, and `ci_setup` is GitHub-hosted. So the
-digest travels as a job output to `record_digest`, a small job on `ubuntu-latest`, which saves it.
-Both ends then read one store.
+The rebuild does not save that entry. `ES_IMAGE_BUILD_RUNS_ON` can move it to a pool with its own
+Actions cache, such as Ubicloud, and `ci_setup` cannot read that cache. So the digest travels as a
+job output to `record_digest`, a small job on the runner of `ci_setup`, which saves it. Both ends
+then read one store.
 
 The rebuild lives in `build-toolchains-image.yml`, not in `ci.yml`. It takes up to four hours, and
 no test run waits for it. A rebuild in `ci.yml` would also hold the `develop` concurrency group for

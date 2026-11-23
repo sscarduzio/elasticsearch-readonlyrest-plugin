@@ -26,10 +26,9 @@ defaults:
 jobs:
   mirror:
     name: Mirroring
-    # Self-hosted: downloads an ES distribution and pushes the jars to the libs store.
-    # Pure IO, run by hand a few times per ES release. Needs a registered self-hosted runner — see
-    # ci/self-hosted-runner.md.
-    runs-on: ${{ fromJSON(vars.ES_PUBLISH_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    # Downloads an ES distribution and pushes the jars to the libs store.
+    # Run by hand a few times per ES release.
+    runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 120
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
