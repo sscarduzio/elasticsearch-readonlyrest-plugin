@@ -50,13 +50,14 @@ object FileUtils {
     val tarFile = new TarFile(tarPath.toFile)
     try {
       for (entry <- tarFile.getEntries.asScala) {
-        val entryName = entry.getName
-        val path = outputPath.resolve(entryName).normalize()
-        if (entryName.contains("..") || !path.startsWith(outputPath)) {
-          throw new SecurityException(s"Path traversal attempt detected: $entryName")
-        }
+        val path = safeResolve(outputPath, entry.getName)
         if (entry.isDirectory) {
           Files.createDirectories(path)
+        } else if (entry.isLink) {
+          // A hard link entry has no content. It points to an entry that the archive stores before it.
+          Files.createDirectories(path.getParent)
+          Files.deleteIfExists(path)
+          Files.createLink(path, safeResolve(outputPath, entry.getLinkName))
         } else {
           Files.createDirectories(path.getParent)
           Files.copy(tarFile.getInputStream(entry), path, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
@@ -65,6 +66,14 @@ object FileUtils {
     } finally {
       tarFile.close()
     }
+  }
+
+  private def safeResolve(outputPath: Path, entryName: String): Path = {
+    val path = outputPath.resolve(entryName).normalize()
+    if (entryName.contains("..") || !path.startsWith(outputPath)) {
+      throw new SecurityException(s"Path traversal attempt detected: $entryName")
+    }
+    path
   }
 
 }
