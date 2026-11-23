@@ -52,6 +52,11 @@ dependencies {
     }
 }
 
+dependencyCheck {
+    // The plugin ships the shaded jars from shadowCompile, so the scan must check them too.
+    scanConfigurations = ['runtimeClasspath', 'shadowCompile']
+}
+
 shadowJar {
     configurations = [project.configurations.shadowCompile]
     exclude('META-INF/versions/9/module-info.class')
