@@ -46,9 +46,7 @@ defaults:
 jobs:
   publish:
     name: Publishing
-    # Self-hosted: a long build-and-push job, IO-bound, one at a time. Needs a registered
-    # self-hosted runner — see ci/self-hosted-runner.md.
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ${{ fromJSON(vars.ES_PUBLISH_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 600
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
@@ -105,9 +103,8 @@ jobs:
           echo ">>> Publishing pre-build docker images for: $BUILD_ROR_ES_VERSIONS"
           ci/run-pipeline.sh
 
-      # configure-docker.sh logs in with the Docker Hub RW token. On an ephemeral VM that credential
-      # died with the VM; here it would stay in the runner user's ~/.docker/config.json, where every
-      # later job on the box can read it.
+      # configure-docker.sh logs in with the Docker Hub RW token. On a self-hosted runner it would stay
+      # in ~/.docker/config.json, where every later job on the box can read it.
       - name: Log out of Docker Hub
         if: always()
         run: docker logout || true

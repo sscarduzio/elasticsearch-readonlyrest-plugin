@@ -14,8 +14,6 @@ Jobs that need a self-hosted runner:
 | `release.yml` | `upload_pre_ror` | 4-leg matrix, pre-release only |
 | `release.yml` | `release_ror` | 4-leg matrix, release only |
 | `release.yml` | `publish_mvn` | short, in parallel with `release_ror` |
-| `publish-pre-builds.yml` | `publish` | manual, long build-and-push |
-| `mirror-es-libs.yml` | `mirror` | manual, short |
 
 **Size the pool on the slowest leg, not the average, and measure before you change it.** Leg times
 differ by more than an order of magnitude between ES majors, and they move when the build changes.
