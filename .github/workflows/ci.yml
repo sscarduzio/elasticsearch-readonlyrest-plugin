@@ -51,7 +51,7 @@ jobs:
   # whether an operator started it. These are job outputs, not workflow `env`, because a job-level
   # `if:` cannot read the `env` context.
   ci_setup:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     permissions:
       contents: read
       # To read the base branch of the PR.
@@ -108,7 +108,7 @@ jobs:
   # job depends on.
   toolchains_verify:
     needs: ci_setup
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     container: &toolchains_container
       image: ${{ needs.ci_setup.outputs.image }}
     timeout-minutes: 10
@@ -125,7 +125,7 @@ jobs:
   # needs no edit here.
   discover:
     needs: [ ci_setup, toolchains_verify ]
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     container: *toolchains_container
     timeout-minutes: 15
     outputs:
@@ -230,7 +230,7 @@ jobs:
     name: ${{ matrix.OPTIONAL_CHECK }}
     needs: [ ci_setup, toolchains_verify ]
     if: needs.ci_setup.outputs.is_automatic_run == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
     container: *toolchains_container
     continue-on-error: true
     timeout-minutes: 30
@@ -271,7 +271,7 @@ jobs:
     name: ${{ matrix.REQUIRED_CHECK }}
     needs: [ ci_setup, toolchains_verify ]
     if: needs.ci_setup.outputs.is_automatic_run == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
     container: *toolchains_container
     strategy:
       fail-fast: false
@@ -310,7 +310,7 @@ jobs:
     if: >-
       needs.ci_setup.outputs.is_automatic_run == 'true' ||
       needs.ci_setup.outputs.manual_action == 'run_all_tests_on_linux'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
     container: *toolchains_container
     timeout-minutes: 60
     steps:
@@ -351,7 +351,7 @@ jobs:
     # and the whole run ends `failure`. The guard turns the empty case into `skipped`, which
     # build_ror accepts.
     if: needs.discover.outputs.it_linux_matrix != '{"include":[]}'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
     container: *toolchains_container
     timeout-minutes: 120
     env:
@@ -422,7 +422,7 @@ jobs:
     needs: [ discover, toolchains_verify ]
     # Same reason as it_linux.
     if: needs.discover.outputs.it_windows_matrix != '{"include":[]}'
-    runs-on: windows-2025
+    runs-on: ${{ fromJSON(vars.ES_WINDOWS_RUNS_ON || '["windows-2025"]') }}
     timeout-minutes: 150
     # Clears the Linux toolchains-image Gradle settings: /opt/gradle-home resolves to an empty
     # \opt\gradle-home here, and its auto-download=false blocks the JDK provisioning this leg needs.
@@ -474,7 +474,7 @@ jobs:
   unit_tests_windows:
     needs: ci_setup
     if: needs.ci_setup.outputs.manual_action == 'run_all_tests_on_windows'
-    runs-on: windows-2025
+    runs-on: ${{ fromJSON(vars.ES_WINDOWS_RUNS_ON || '["windows-2025"]') }}
     timeout-minutes: 150
     # Same reason as it_windows, and the same reason it cannot live in setup-windows-job.
     env:
@@ -501,7 +501,7 @@ jobs:
     needs: [ ci_setup, discover ]
     # Same reason as it_linux.
     if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     container: *toolchains_container
     timeout-minutes: 150
     outputs:
@@ -562,7 +562,7 @@ jobs:
     needs: [ ci_setup, discover ]
     # Same reason as it_linux.
     if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
     container: *toolchains_container
     timeout-minutes: 120
     strategy:
@@ -606,7 +606,7 @@ jobs:
     needs: [ ci_setup, discover, e2e_order_kbn_images, e2e_build_es_images ]
     # Same reason as it_linux.
     if: needs.discover.outputs.e2e_matrix != '{"include":[]}'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 120
     # The one Linux job with no container: Cypress reads the ports the compose stack of the e2e repo
     # publishes on the HOST, and the localhost of a job container is not the host. The image also
@@ -696,7 +696,7 @@ jobs:
       needs.it_linux.result == 'success' &&
       (needs.it_windows.result == 'success' || needs.it_windows.result == 'skipped') &&
       (needs.e2e_tests.result == 'success' || needs.e2e_build_es_images.result == 'skipped')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
     container: *toolchains_container
     timeout-minutes: 180
     strategy:
