@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Fills a Gradle read-only dependency cache with what the toolchains image lacks: dependencies that changed
-# after the image build, and the ES-versioned jars and compile classpaths of every supported ES version.
-# A job that sets GRADLE_RO_DEP_CACHE to the output dir reads them there instead of from Maven Central.
-#
+# Fills a Gradle read-only dependency cache with the dependencies that the toolchains image lacks.
 # Usage: ci/fill-gradle-cache.sh <output dir>    (in the toolchains image; writes <output dir>/modules-2)
 set -euo pipefail
 

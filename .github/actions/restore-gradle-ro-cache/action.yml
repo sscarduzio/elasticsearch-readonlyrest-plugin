@@ -1,9 +1,7 @@
 name: Restore the Gradle read-only cache
 description: >-
-  Restores the Gradle dependencies that the toolchains image lacks, which the Fill Gradle read-only cache
-  workflow saves, and points GRADLE_RO_DEP_CACHE at them. Gradle then reads them instead of downloading
-  them. Without an entry the job goes on and Gradle downloads what it needs. The caller must check the
-  repo out first.
+  Restores the Gradle read-only cache (see ci/CI.md) and points GRADLE_RO_DEP_CACHE at it. The caller
+  must check the repo out first.
 
 runs:
   using: composite

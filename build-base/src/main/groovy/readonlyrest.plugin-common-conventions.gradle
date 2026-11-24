@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import tech.beshu.ror.gradle.utils.EsVersions
 import tech.beshu.ror.gradle.utils.LibsStore
 import tech.beshu.ror.gradle.utils.PluginArtifact
@@ -219,9 +220,8 @@ tasks.register('downloadEsVersionedDependencyJars') {
     }
 }
 
-// Resolves, without building, what the ES-version tasks download: the ES-versioned jars of every supported
-// version (downloadEsVersionedDependencyJars), and the compile classpath of every version that
-// verifyRepackageBytecode compiles. ci/fill-gradle-cache.sh runs it to fill the CI dependency cache.
+// Resolves, without building, the ES-versioned jars of every supported version and the compile classpath of
+// every version that verifyRepackageBytecode compiles. ci/fill-gradle-cache.sh runs it.
 tasks.register('resolveEsVersionedDependencies') {
     group = 'ci'
     doLast {
@@ -236,7 +236,7 @@ tasks.register('resolveEsVersionedDependencies') {
                 }
             }
             classpath.incoming.artifactView {
-                componentFilter { it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+                componentFilter { it instanceof ModuleComponentIdentifier }
             }.files.files
         }
     }

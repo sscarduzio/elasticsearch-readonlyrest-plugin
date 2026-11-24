@@ -514,7 +514,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: ./.github/actions/restore-gradle-ro-cache
       - name: Start host telemetry
         uses: ./.github/actions/host-telemetry-start
         with:
