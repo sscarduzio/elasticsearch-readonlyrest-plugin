@@ -1227,22 +1227,24 @@ trait IndicesRuleDataStreamTests {
           requestDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("audit-events"))
         )
       }
-      "the request has no data stream names" in {
+      "the request has no data stream names and the rule does not allow all data streams" in {
         dataStreamWriteActions.foreach { action =>
-          assertNotMatchRuleForDataStreamRequest(
+          checkDataStreamWriteRequest(
             configured = NonEmptySet.of(indexNameVar("logs-*")),
             action = action,
-            requestDataStreams = Set.empty
-          )
+            requestDataStreams = Set.empty,
+            clusterDataStreams = statsClusterDataStreams
+          ) should be(Denied(NotAuthorized))
         }
       }
-      "the data stream name is a pattern wider than the allowed indices" in {
+      "the data stream name is a pattern that matches a data stream that the rule does not allow" in {
         List(dataStreamNamePattern("logs-*"), DataStreamName.Wildcard, DataStreamName.All).foreach { dataStream =>
-          assertNotMatchRuleForDataStreamRequest(
+          checkDataStreamWriteRequest(
             configured = NonEmptySet.of(indexNameVar("logs-app")),
             action = deleteDataStreamAction,
-            requestDataStreams = Set(dataStream)
-          )
+            requestDataStreams = Set(dataStream),
+            clusterDataStreams = statsClusterDataStreams
+          ) should be(Denied(NotAuthorized))
         }
       }
       "only the backing indices of the data stream are allowed" in {
@@ -1314,6 +1316,41 @@ trait IndicesRuleDataStreamTests {
           blockContext.dataStreams should be(Set(fullDataStreamName("audit-events"), fullDataStreamName("logs-app")))
         }
       }
+      "the rule allows the only matched data stream, but not the text of the pattern" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-2024")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(dataStreamNamePattern("logs-2024*")),
+          clusterDataStreams = Set(fullDataStreamName("logs-2024"), fullDataStreamName("audit-events"))
+        )
+        inside(result) { case Permitted(blockContext) =>
+          blockContext.dataStreams should be(Set(fullDataStreamName("logs-2024")))
+        }
+      }
+      "the rule allows each matched data stream by its full name" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-app"), indexNameVar("logs-db")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(dataStreamNamePattern("logs-*")),
+          clusterDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("logs-db"))
+        )
+        inside(result) { case Permitted(blockContext) =>
+          blockContext.dataStreams should be(Set(fullDataStreamName("logs-app"), fullDataStreamName("logs-db")))
+        }
+      }
+      "the request asks for all data streams and the rule allows each of them" in {
+        List(DataStreamName.All, DataStreamName.Wildcard).foreach { dataStream =>
+          val result = checkDataStreamWriteRequest(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            action = deleteDataStreamAction,
+            requestDataStreams = Set(dataStream),
+            clusterDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("logs-db"))
+          )
+          inside(result) { case Permitted(blockContext) =>
+            blockContext.dataStreams should be(Set(fullDataStreamName("logs-app"), fullDataStreamName("logs-db")))
+          }
+        }
+      }
       "the request excludes a data stream" in {
         val result = checkDataStreamWriteRequest(
           configured = NonEmptySet.of(indexNameVar("logs-*")),
@@ -1373,6 +1410,15 @@ trait IndicesRuleDataStreamTests {
           configured = NonEmptySet.of(indexNameVar("logs-*")),
           action = deleteDataStreamAction,
           requestDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("-logs-db")),
+          clusterDataStreams = statsClusterDataStreams
+        )
+        result should be(Denied(NotAuthorized))
+      }
+      "the request asks for all data streams and the rule does not allow one of them" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(DataStreamName.All),
           clusterDataStreams = statsClusterDataStreams
         )
         result should be(Denied(NotAuthorized))

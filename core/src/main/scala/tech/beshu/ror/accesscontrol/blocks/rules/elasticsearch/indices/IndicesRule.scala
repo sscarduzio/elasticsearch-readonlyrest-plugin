@@ -278,8 +278,13 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     } else {
       val allowedIndices = allowedIndicesFor(blockContext)
       val requested = requestedDataStreamsOf(blockContext)
-      areDataStreamWritesAllowed(blockContext, allowedIndices, requested.included.map(asLocalIndexName)).flatMap {
-        case true  => resolveDataStreamPatternsOfWriteRequest(blockContext, requested, allowedIndices)
+      val (fullNames, patterns) = requested.included.partition {
+        case _: DataStreamName.Full                                                   => true
+        case DataStreamName.Pattern(_) | DataStreamName.All | DataStreamName.Wildcard => false
+      }
+      areDataStreamWritesAllowed(blockContext, allowedIndices, fullNames.map(asLocalIndexName)).flatMap {
+        case true =>
+          resolveDataStreamPatternsOfWriteRequest(blockContext, requested, fullNames, patterns, allowedIndices)
         case false => Task.now(reject())
       }
     }
@@ -305,19 +310,17 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     }
   }
 
-  // Each data stream that a requested pattern matches must also be allowed. The request then gets the names of these data
-  // streams instead of the pattern, without the excluded ones. When the pattern matches no data stream, the request gets
-  // a name that matches nothing.
+  // The rule does not check the text of a requested pattern. Each data stream that the pattern matches must be allowed.
+  // The request then gets the names of these data streams instead of the pattern, without the excluded ones. When the
+  // pattern matches no data stream, the request gets a name that matches nothing.
   private def resolveDataStreamPatternsOfWriteRequest(
       blockContext: DataStreamRequestBlockContext,
       requested: RequestedDataStreams,
+      fullNames: Set[DataStreamName],
+      patterns: Set[DataStreamName],
       allowedIndices: AllowedClusterIndices
   ): Task[Decision[DataStreamRequestBlockContext]] = {
     given RequestId = blockContext.requestContext.id.toRequestId
-    val (fullNames, patterns) = requested.included.partition {
-      case _: DataStreamName.Full                                                   => true
-      case DataStreamName.Pattern(_) | DataStreamName.All | DataStreamName.Wildcard => false
-    }
     if (patterns.isEmpty) {
       Task.now(Permitted(blockContext))
     } else {
