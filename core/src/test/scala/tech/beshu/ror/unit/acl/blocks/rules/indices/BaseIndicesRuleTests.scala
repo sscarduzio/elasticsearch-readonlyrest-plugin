@@ -45,7 +45,10 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
 import tech.beshu.ror.accesscontrol.blocks.{Block, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWithAliases
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{
+  FullLocalDataStreamWithAliases,
+  FullRemoteDataStreamWithAliases
+}
 import tech.beshu.ror.accesscontrol.domain.Template.{ComponentTemplate, IndexTemplate, LegacyTemplate}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, RandomBasedUniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
@@ -412,6 +415,36 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
       mustInvolveIndices = false,
       kibanaIndex = None,
       esServicesWith(clusterDataStreams)
+    )
+  }
+
+  // A data stream request in a cluster whose data streams have the given backing indices. With no requested indices,
+  // it is a request without backing indices (stats, create, delete, promote).
+  protected def checkDataStreamRequestInCluster(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      requestIndices: Set[RequestedIndex[ClusterIndexName]],
+      clusterDataStreams: Set[FullLocalDataStreamWithAliases]
+  ): Decision[DataStreamRequestBlockContext] = {
+    val esServices = MockEsServices.`with`(
+      MockEsClusterService(
+        allIndicesAndAliases =
+          requestIndices.map(index => fullLocalIndexWithAliases(fullIndexName(index.name.stringify))),
+        allDataStreamsAndAliases = clusterDataStreams
+      )
+    )
+    val backingIndices =
+      if (requestIndices.isEmpty) BackingIndices.IndicesNotInvolved
+      else BackingIndices.IndicesInvolved(requestIndices, Set(ClusterIndexName.Local.wildcard))
+    checkDataStreamRequest(
+      configured,
+      action,
+      requestDataStreams,
+      mustInvolveIndices = false,
+      kibanaIndex = None,
+      esServices,
+      backingIndices
     )
   }
 

@@ -21,7 +21,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
-import tech.beshu.ror.accesscontrol.domain.{Action, DataStreamName}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
+import tech.beshu.ror.accesscontrol.domain.{Action, ClusterIndexName, DataStreamName, IndexName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockEsServices
@@ -1682,6 +1684,55 @@ trait IndicesRuleDataStreamTests {
       }
     }
   }
+
+  "An IndicesRule for a data stream with two backing indices" should {
+    "allow the data stream" when {
+      "the rule allows both backing indices" in {
+        val configured =
+          NonEmptySet.of(indexNameVar("logs-*"), indexNameVar(auditBackingIndex1), indexNameVar(auditBackingIndex2))
+        inside(statsOfAuditEvents(configured)) { case Permitted(blockContext) =>
+          blockContext.dataStreams should be(Set(fullDataStreamName("audit-events")))
+        }
+        inside(modifyOfAuditEvents(configured)) { case Permitted(_) => }
+      }
+    }
+    "not allow the data stream" when {
+      "the rule allows only one of the backing indices" in {
+        val configured = NonEmptySet.of(indexNameVar("logs-*"), indexNameVar(auditBackingIndex1))
+        inside(statsOfAuditEvents(configured)) { case Permitted(blockContext) =>
+          blockContext.dataStreams should not contain fullDataStreamName("audit-events")
+        }
+        modifyOfAuditEvents(configured) should be(Denied(NotAuthorized))
+      }
+    }
+  }
+
+  private lazy val auditBackingIndex1: NonEmptyString = ".ds-audit-events-2026.11.01-000001"
+  private lazy val auditBackingIndex2: NonEmptyString = ".ds-audit-events-2026.11.24-000002"
+
+  private lazy val auditEventsWithTwoBackingIndices = FullLocalDataStreamWithAliases(
+    dataStreamName = fullDataStreamName("audit-events"),
+    aliasesNames = Set.empty,
+    backingIndices = Set(IndexName.Full(auditBackingIndex1), IndexName.Full(auditBackingIndex2))
+  )
+
+  private def statsOfAuditEvents(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]) =
+    checkDataStreamRequestInCluster(
+      configured = configured,
+      action = Action("indices:monitor/data_stream/stats"),
+      requestDataStreams = Set(fullDataStreamName("audit-events")),
+      requestIndices = Set.empty,
+      clusterDataStreams = Set(auditEventsWithTwoBackingIndices)
+    )
+
+  private def modifyOfAuditEvents(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]) =
+    checkDataStreamRequestInCluster(
+      configured = configured,
+      action = modifyDataStreamsAction,
+      requestDataStreams = Set(fullDataStreamName("audit-events")),
+      requestIndices = Set(requestedIndex("logs-x")),
+      clusterDataStreams = Set(auditEventsWithTwoBackingIndices)
+    )
 
   private def modifyRequest(dataStream: NonEmptyString, index: NonEmptyString) =
     checkDataStreamRequestWithIndices(
