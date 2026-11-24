@@ -273,12 +273,9 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
       blockContext: DataStreamRequestBlockContext
   ): Task[Decision[DataStreamRequestBlockContext]] = {
     val allowedIndices = allowedIndicesFor(blockContext)
-    areDataStreamWritesAllowed(
-      blockContext,
-      allowedIndices,
-      blockContext.dataStreams.orWildcardWhenEmpty.map(asLocalIndexName)
-    ).flatMap {
-      case true  => resolveDataStreamPatternsOfWriteRequest(blockContext, allowedIndices)
+    val requested = requestedDataStreamsOf(blockContext)
+    areDataStreamWritesAllowed(blockContext, allowedIndices, requested.included.map(asLocalIndexName)).flatMap {
+      case true  => resolveDataStreamPatternsOfWriteRequest(blockContext, requested, allowedIndices)
       case false => Task.now(reject())
     }
   }
@@ -304,13 +301,15 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
   }
 
   // Each data stream that a requested pattern matches must also be allowed. The request then gets the names of these data
-  // streams instead of the pattern. When the pattern matches no data stream, the request gets a name that matches nothing.
+  // streams instead of the pattern, without the excluded ones. When the pattern matches no data stream, the request gets
+  // a name that matches nothing.
   private def resolveDataStreamPatternsOfWriteRequest(
       blockContext: DataStreamRequestBlockContext,
+      requested: RequestedDataStreams,
       allowedIndices: AllowedClusterIndices
   ): Task[Decision[DataStreamRequestBlockContext]] = {
     given RequestId = blockContext.requestContext.id.toRequestId
-    val (fullNames, patterns) = blockContext.dataStreams.orWildcardWhenEmpty.partition {
+    val (fullNames, patterns) = requested.included.partition {
       case _: DataStreamName.Full                                                   => true
       case DataStreamName.Pattern(_) | DataStreamName.All | DataStreamName.Wildcard => false
     }
@@ -320,11 +319,12 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
       val patternsMatcher = PatternsMatcher.create(patterns.map(asLocalIndexName))
       for {
         allDataStreams <- localIndicesManager(blockContext, allowedIndices).allDataStreams
-        matchedDataStreams = allDataStreams.filter(patternsMatcher.`match`)
+        matchedDataStreams = allDataStreams.filter(patternsMatcher.`match`).filterNot(requested.isExcluded)
         allowed <- areDataStreamWritesAllowed(blockContext, allowedIndices, matchedDataStreams)
       } yield {
         val dataStreams =
-          fullNames ++ matchedDataStreams.flatMap(dataStream => DataStreamName.fromString(dataStream.stringify))
+          fullNames.filterNot(fullName => requested.isExcluded(asLocalIndexName(fullName))) ++
+            matchedDataStreams.flatMap(dataStream => DataStreamName.fromString(dataStream.stringify))
         if (!allowed) reject()
         else if (dataStreams.nonEmpty) Permitted(blockContext.withDataStreams(dataStreams))
         else Permitted(blockContext.withDataStreams(Set(nonexistentDataStreamPattern)))
@@ -348,21 +348,23 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
   ): Task[Decision[DataStreamRequestBlockContext]] = {
     given RequestId = blockContext.requestContext.id.toRequestId
     val allowedIndices = allowedIndicesFor(blockContext)
-    val requestedMatcher = PatternsMatcher.create(blockContext.dataStreams.orWildcardWhenEmpty.map(asLocalIndexName))
+    val requested = requestedDataStreamsOf(blockContext)
+    val requestedMatcher = PatternsMatcher.create(requested.included.map(asLocalIndexName))
     val indicesManager = localIndicesManager(blockContext, allowedIndices)
     for {
       allDataStreams <- indicesManager.allDataStreams
       backingIndicesPerDataStream <- indicesManager.backingIndicesPerDataStreamMap
     } yield {
       def isAllowed(dataStream: ClusterIndexName.Local) =
-        isDataStreamAllowed(dataStream, allowedIndices, backingIndicesPerDataStream, kibanaIndexFrom(blockContext))
+        !requested.isExcluded(dataStream) &&
+          isDataStreamAllowed(dataStream, allowedIndices, backingIndicesPerDataStream, kibanaIndexFrom(blockContext))
       val allowedExistingDataStreams =
         allDataStreams
           .filter(requestedMatcher.`match`)
           .filter(isAllowed)
           .flatMap(dataStream => DataStreamName.fromString(dataStream.stringify))
       val allowedRequestedFullNames: Set[DataStreamName] =
-        blockContext.dataStreams.collect {
+        requested.included.collect {
           case fullName: DataStreamName.Full if isAllowed(asLocalIndexName(fullName)) => fullName
         }
       val allowedDataStreams = allowedExistingDataStreams ++ allowedRequestedFullNames
@@ -411,6 +413,23 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
       backingIndices.nonEmpty && backingIndices.forall(allowedIndices.localMatcher.`match`)
     } ||
     kibanaIndex.exists(dataStream.isRelatedToKibanaIndex)
+  }
+
+  // ES reads a name with a leading `-` as an exclusion when the request also has a wildcard. The rule does not check an
+  // exclusion as a name. It removes the data streams that the exclusion matches, so ES gets no exclusion.
+  private def requestedDataStreamsOf(blockContext: DataStreamRequestBlockContext): RequestedDataStreams = {
+    val requestedDataStreams = blockContext.dataStreams.orWildcardWhenEmpty
+    val (exclusions, included) = requestedDataStreams.partition(_.stringify.startsWith("-"))
+    val hasWildcard = included.exists {
+      case _: DataStreamName.Full                                                   => false
+      case DataStreamName.Pattern(_) | DataStreamName.All | DataStreamName.Wildcard => true
+    }
+    if (hasWildcard) {
+      val excluded = exclusions.flatMap(exclusion => DataStreamName.fromString(exclusion.stringify.drop(1)))
+      RequestedDataStreams(included, excluded.map(asLocalIndexName))
+    } else {
+      RequestedDataStreams(requestedDataStreams, Set.empty)
+    }
   }
 
   private def localIndicesManager(blockContext: BlockContext, allowedIndices: AllowedClusterIndices) =
@@ -473,6 +492,15 @@ object IndicesRule {
     lazy val remoteClusterNamesMatcher: PatternsMatcher[ClusterName] = PatternsMatcher.create(remote.map(_.cluster))
 
     def isLocalClusterAllowed: Boolean = local.nonEmpty
+  }
+
+  private final case class RequestedDataStreams(
+      included: Set[DataStreamName],
+      excluded: Set[ClusterIndexName.Local]
+  ) {
+    private lazy val excludedMatcher = PatternsMatcher.create(excluded)
+
+    def isExcluded(dataStream: ClusterIndexName.Local): Boolean = excludedMatcher.`match`(dataStream)
   }
 
   private def asLocalIndexName(dataStream: DataStreamName): ClusterIndexName.Local = dataStream match {

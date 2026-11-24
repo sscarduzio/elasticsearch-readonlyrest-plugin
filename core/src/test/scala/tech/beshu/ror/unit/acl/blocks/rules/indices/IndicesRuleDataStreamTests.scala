@@ -1320,8 +1320,44 @@ trait IndicesRuleDataStreamTests {
           blockContext.dataStreams should be(Set(fullDataStreamName("audit-events"), fullDataStreamName("logs-app")))
         }
       }
+      "the request excludes a data stream" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(dataStreamNamePattern("logs-*"), fullDataStreamName("-logs-db")),
+          clusterDataStreams = statsClusterDataStreams
+        )
+        inside(result) { case Permitted(blockContext) =>
+          blockContext.dataStreams should be(Set(fullDataStreamName("logs-app")))
+        }
+      }
+      "the request excludes a data stream that is not allowed" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-?")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(dataStreamNamePattern("logs-*"), dataStreamNamePattern("-logs-s*")),
+          clusterDataStreams = Set(fullDataStreamName("logs-a"), fullDataStreamName("logs-secret"))
+        )
+        inside(result) { case Permitted(blockContext) =>
+          blockContext.dataStreams should be(Set(fullDataStreamName("logs-a")))
+        }
+      }
     }
     "get a name that matches nothing" when {
+      "the request excludes all matched data streams" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(dataStreamNamePattern("logs-*"), dataStreamNamePattern("-logs-*")),
+          clusterDataStreams = statsClusterDataStreams
+        )
+        inside(result) { case Permitted(blockContext) =>
+          inside(blockContext.dataStreams.toList) { case (pattern: DataStreamName.Pattern) :: Nil =>
+            val patternMatcher = PatternsMatcher.create[DataStreamName](Set(pattern))
+            statsClusterDataStreams.filter(patternMatcher.`match`) should be(empty)
+          }
+        }
+      }
       "the pattern matches no data stream" in {
         val result = checkDataStreamWriteRequest(
           configured = NonEmptySet.of(indexNameVar("metrics-*")),
@@ -1338,6 +1374,15 @@ trait IndicesRuleDataStreamTests {
       }
     }
     "not match" when {
+      "the request has an exclusion but no pattern" in {
+        val result = checkDataStreamWriteRequest(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          action = deleteDataStreamAction,
+          requestDataStreams = Set(fullDataStreamName("logs-app"), fullDataStreamName("-logs-db")),
+          clusterDataStreams = statsClusterDataStreams
+        )
+        result should be(Denied(NotAuthorized))
+      }
       "the pattern matches a data stream that is not allowed" in {
         val result = checkDataStreamWriteRequest(
           configured = NonEmptySet.of(indexNameVar("logs-?")),
@@ -1418,6 +1463,44 @@ trait IndicesRuleDataStreamTests {
           clusterDataStreams = statsClusterDataStreams,
           expectedDataStreams =
             Set(fullDataStreamName("logs-app"), fullDataStreamName("logs-db"), fullDataStreamName("logs-unknown"))
+        )
+      }
+      "the request excludes a data stream" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set(dataStreamNamePattern("logs-*"), fullDataStreamName("-logs-db")),
+          clusterDataStreams = statsClusterDataStreams,
+          expectedDataStreams = Set(fullDataStreamName("logs-app"))
+        )
+      }
+      "the request excludes a data stream that the requested pattern matches" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set(dataStreamNamePattern("logs-2*"), fullDataStreamName("-logs-2c")),
+          clusterDataStreams =
+            Set(fullDataStreamName("logs-2a"), fullDataStreamName("logs-2b"), fullDataStreamName("logs-2c")),
+          expectedDataStreams = Set(fullDataStreamName("logs-2a"), fullDataStreamName("logs-2b"))
+        )
+      }
+      "the request excludes with a pattern a part of the data streams that the requested pattern matches" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set(dataStreamNamePattern("logs-2*"), dataStreamNamePattern("-logs-22*")),
+          clusterDataStreams = Set(
+            fullDataStreamName("logs-2a"),
+            fullDataStreamName("logs-2b"),
+            fullDataStreamName("logs-22a"),
+            fullDataStreamName("logs22b")
+          ),
+          expectedDataStreams = Set(fullDataStreamName("logs-2a"), fullDataStreamName("logs-2b"))
+        )
+      }
+      "the request excludes data streams with a pattern" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar("*-*")),
+          requestDataStreams = Set(DataStreamName.All, dataStreamNamePattern("-logs-*")),
+          clusterDataStreams = statsClusterDataStreams,
+          expectedDataStreams = Set(fullDataStreamName("audit-events"))
         )
       }
     }
@@ -1540,6 +1623,20 @@ trait IndicesRuleDataStreamTests {
           )
           inside(result) { case Permitted(blockContext) =>
             blockContext.dataStreams should be(Set(fullDataStreamName("logs-unknown")))
+          }
+        }
+      }
+      "the request excludes a data stream" in {
+        List(getDataStreamAction, getDataStreamLifecycleAction).foreach { action =>
+          val result = checkDataStreamRequestWithIndices(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            action = action,
+            requestDataStreams = Set(dataStreamNamePattern("logs-*"), fullDataStreamName("-logs-db")),
+            requestIndices = Set.empty,
+            clusterDataStreams = statsClusterDataStreams
+          )
+          inside(result) { case Permitted(blockContext) =>
+            blockContext.dataStreams should be(Set(fullDataStreamName("logs-app")))
           }
         }
       }
