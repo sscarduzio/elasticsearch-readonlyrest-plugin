@@ -3,8 +3,8 @@
 #
 # mirror.gcr.io is a pull-through cache for docker.io. A job pulls by digest, and a digest names the
 # bytes. A cache cannot answer a digest with the wrong image. So the script asks one question: can
-# the mirror serve this digest? TOOLCHAINS_DIGEST_FILE holds the digest of the last push. No request
-# goes to Docker Hub.
+# the mirror serve this digest? TOOLCHAINS_DIGEST_FILE holds the digest that ci/toolchains/ensure-image.sh
+# read from Docker Hub or got from its push.
 #
 # A mirrored name carries the digest, not the tag, because a tag can move between this check and
 # the pull. A Docker Hub name keeps the tag: no digest is proven in that case.
@@ -12,8 +12,8 @@
 # main() holds the steps. Docker Hub is the answer when the mirror cannot serve the digest, so a
 # wrong choice costs speed only.
 #
-# INPUT   TOOLCHAINS_IMAGE        repository:tag, no registry host. See ci/toolchains/image.env
-#         TOOLCHAINS_DIGEST_FILE  the digest of the last push. record_digest caches it.
+# INPUT   TOOLCHAINS_IMAGE        repository:tag, no registry host. ci/toolchains/ensure-image.sh gives it
+#         TOOLCHAINS_DIGEST_FILE  the digest of that tag, from the same script.
 #                                 Default .toolchains-digest. An absent file means no digest.
 #         ROR_DOCKER_HUB_MIRROR   false skips the mirror
 # OUTPUT  image=<name>            the name to pull. Mirrored names end in @sha256:...
@@ -36,14 +36,14 @@ main() {
   local image="${TOOLCHAINS_IMAGE:-}"
   local pushed
 
-  [ -n "$image" ] || fail "TOOLCHAINS_IMAGE is empty. ci/toolchains/image.env must set it."
+  [ -n "$image" ] || fail "TOOLCHAINS_IMAGE is empty. ci/toolchains/ensure-image.sh must set it."
 
   has_tag "$image" || use_docker_hub "$image" "the image name has no tag."
   mirror_is_on     || use_docker_hub "$image" "ROR_DOCKER_HUB_MIRROR is false."
 
   pushed="$(recorded_digest)"
   [ -n "$pushed" ] || use_docker_hub "$image" \
-    "no digest recorded for this tag. Run 'Build toolchains image'."
+    "no digest for this tag."
 
   mirror_has_digest "$image" "$pushed" || use_docker_hub "$image" \
     "${MIRROR_HOST} cannot serve ${pushed}."
@@ -69,7 +69,7 @@ mirror_is_on() {
   [ "$flag" != "false" ]
 }
 
-# build-toolchains-image.yml found this digest. The Actions cache carried it here.
+# ci/toolchains/ensure-image.sh wrote this digest.
 recorded_digest() {
   local file="${TOOLCHAINS_DIGEST_FILE:-.toolchains-digest}"
   [ -r "$file" ] && tr -d '[:space:]' < "$file"

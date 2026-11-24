@@ -221,7 +221,7 @@ tasks.register('downloadEsVersionedDependencyJars') {
 }
 
 // Resolves, without building, the ES-versioned jars of every supported version and the compile classpath of
-// every version that verifyRepackageBytecode compiles. ci/fill-gradle-cache.sh runs it.
+// every version that verifyRepackageBytecode compiles. The toolchains image build runs it.
 tasks.register('resolveEsVersionedDependencies') {
     group = 'ci'
     doLast {

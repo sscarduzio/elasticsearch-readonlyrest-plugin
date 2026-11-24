@@ -52,7 +52,7 @@ jobs:
         github.event.workflow_run.conclusion == 'success'
       )
     runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
-    timeout-minutes: 10
+    timeout-minutes: 60
     outputs:
       image: ${{ steps.toolchains.outputs.image }}
     steps:
@@ -80,6 +80,9 @@ jobs:
           fi
       - id: toolchains
         uses: ./.github/actions/resolve-toolchains-image
+        with:
+          docker-user: ${{ secrets.DOCKER_HUB_USER }}
+          docker-token: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
       - name: Summarise the run
         run: |
           # The Actions graph does not link the CI run to this one. The summary does.

@@ -18,21 +18,16 @@
 # to `java.version` in plugin-descriptor.properties, so it is the minimum JVM that ES accepts.
 #
 # Build context MUST be the repo root (the build needs settings.gradle/*/build.gradle to
-# resolve dependencies during the priming step). Built & pushed by the Build toolchains image
-# workflow, .github/workflows/build-toolchains-image.yml — weekly on a schedule, which keeps the
-# baked cache fresh, or by hand — or locally:
-#
-#   . ci/toolchains/image.env
-#   docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
-#   docker push "$TOOLCHAINS_IMAGE"
+# resolve dependencies during the priming step). ci/toolchains/build-image.sh builds and pushes it:
+# the CI setup job when this commit's tag (ci/toolchains/image-tag.sh) is missing, and the weekly
+# rebuild in .github/workflows/build-toolchains-image.yml.
 #
 # (BuildKit is required: the build context is filtered by the sibling
 # ci/toolchains/JdkToolchains.Dockerfile.dockerignore file.)
 #
-# The tag encodes the two things that force a rebuild: the JDK set and the Gradle version.
-# Bump it and the `TOOLCHAINS_IMAGE` anchor in .github/workflows/ci.yml when a supported ES major
-# adds a new JVM, the Gradle version changes (gradle/wrapper/gradle-wrapper.properties), or
-# dependencies drift enough that the primed offline cache misses often.
+# The tag is TOOLCHAINS_IMAGE of ci/toolchains/image.env (the JDK set and the Gradle version) plus a
+# hash of the build files, so a dependency change gets a new image. Edit image.env when a supported
+# ES major adds a new JVM or the Gradle version changes.
 
 # Every FROM below names a Docker Hub image, and Docker Hub rejects a pull with a bare
 # `429 Too Many Requests` when the runner's address is over the abuse rate limit. MIRROR puts a
@@ -123,7 +118,7 @@ RUN cd /tmp/ror-src \
       --init-script ci/toolchains/resolve-deps.init.gradle \
       -Dorg.gradle.java.installations.auto-download=false \
       -Dorg.gradle.java.installations.paths=/opt/java/jdk8,/opt/java/jdk11,/opt/java/openjdk,/opt/java/jdk21 \
-      help resolveCiDependencies \
+      help resolveCiDependencies resolveEsVersionedDependencies \
  # Cache the full classpath of every download-free task the pipeline runs (run-pipeline.sh):
  #   compile_codebase_check -> `classes`     (every module's compile deps, incl. per-ES-version
  #                                            transport-netty4 etc. — and the Scala compiler bridge,
@@ -150,7 +145,7 @@ RUN cd /tmp/ror-src \
  # hijack any dev's relocated Gradle home). Written only after offline validation passed.
  && touch "$GRADLE_USER_HOME/.ror-ci-baked" \
  && rm -rf "$GRADLE_USER_HOME"/caches/*/scripts "$GRADLE_USER_HOME"/daemon \
- && find "$GRADLE_USER_HOME" -name "*.lock" -delete 2>/dev/null || true \
+ && { find "$GRADLE_USER_HOME" -name "*.lock" -delete 2>/dev/null || true; } \
  # Container jobs may run as a non-root user; make the baked Gradle home writable so Gradle can
  # write lockfiles and outputs without needing a copy-to-workspace step.
  && chmod -R a+rwX "$GRADLE_USER_HOME"

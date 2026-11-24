@@ -1,6 +1,5 @@
 .idea/
 .gradle/
-.gradle-ro-cache/
 build/
 out/
 tmp/*
@@ -73,6 +72,6 @@ docker-envs/eck/kind-cluster/subst-ror
 .dependency-check-data/
 
 // CI
-// ci/resolve-toolchains-image.sh reads this file. The cache restore in the setup job writes it.
+// ci/resolve-toolchains-image.sh reads this file. The resolve-toolchains-image action writes it.
 /.toolchains-digest
 

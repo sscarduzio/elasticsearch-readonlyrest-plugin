@@ -52,6 +52,8 @@ jobs:
   # `if:` cannot read the `env` context.
   ci_setup:
     runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
+    # A toolchains image build takes about 20 minutes.
+    timeout-minutes: 60
     permissions:
       contents: read
       # To read the base branch of the PR.
@@ -70,8 +72,13 @@ jobs:
         with: { fetch-depth: 1, persist-credentials: false }
       - name: Free host disk
         run: ci/free-host-disk.sh
+      # Builds the toolchains image when this commit's build files have none. See ci/CI.md.
       - id: toolchains
         uses: ./.github/actions/resolve-toolchains-image
+        with:
+          docker-user: ${{ secrets.DOCKER_HUB_USER }}
+          docker-token: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          push-base-tag: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
       - id: flags
         env:
           IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}
@@ -136,7 +143,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: ./.github/actions/restore-gradle-ro-cache
       - name: Free host disk
         run: ci/free-host-disk.sh
       # One gradle call for both tasks. Each writes its answer to a file under build/.
@@ -242,7 +248,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: ./.github/actions/restore-gradle-ro-cache
       - name: Start host telemetry
         uses: ./.github/actions/host-telemetry-start
         with:
@@ -282,7 +287,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: ./.github/actions/restore-gradle-ro-cache
       - name: Start host telemetry
         uses: ./.github/actions/host-telemetry-start
         with:
@@ -319,7 +323,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: ./.github/actions/restore-gradle-ro-cache
       - name: Start host telemetry
         uses: ./.github/actions/host-telemetry-start
         with:
@@ -366,7 +369,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: ./.github/actions/restore-gradle-ro-cache
       - name: Start host telemetry
         uses: ./.github/actions/host-telemetry-start
         with:
@@ -576,7 +578,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: ./.github/actions/restore-gradle-ro-cache
       - name: Start host telemetry
         uses: ./.github/actions/host-telemetry-start
         with:
@@ -711,7 +712,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
-      - uses: ./.github/actions/restore-gradle-ro-cache
       - name: Start host telemetry
         uses: ./.github/actions/host-telemetry-start
         with:

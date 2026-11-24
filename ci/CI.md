@@ -12,7 +12,7 @@ shared `CI_RUNS_ON`, `LIGHT_RUNS_ON` and the others of `readonlyrest_kbn` into t
 
 | Variable | Default | Jobs |
 |---|---|---|
-| `ES_LIGHT_RUNS_ON` | `["ubuntu-latest"]` | `ci_setup`, `toolchains_verify`, `discover`, `e2e_order_kbn_images`, `release_setup`, the `discover` of `release.yml`, `record_digest`, and the small workflows (`pr-conventions`, `claude`, `claude-code-review`, `flake-ledger`, `actionstrings_gen`, `verify-publish-credentials`) |
+| `ES_LIGHT_RUNS_ON` | `["ubuntu-latest"]` | `ci_setup`, `toolchains_verify`, `discover`, `e2e_order_kbn_images`, `release_setup`, the `discover` of `release.yml`, the `cleanup` of `build-toolchains-image.yml`, and the small workflows (`pr-conventions`, `claude`, `claude-code-review`, `flake-ledger`, `actionstrings_gen`, `verify-publish-credentials`) |
 | `ES_CI_RUNS_ON` | `["ubuntu-latest"]` | `optional_checks`, `required_checks`, `unit_tests_linux`, `it_linux`, `e2e_build_es_images`, `e2e_tests`, `build_ror` |
 | `ES_WINDOWS_RUNS_ON` | `["windows-2025"]` | `it_windows`, `unit_tests_windows` |
 | `ES_PUBLISH_RUNS_ON` | `["self-hosted","Linux","X64"]` | `upload_pre_ror`, `release_ror`, `publish_mvn` |
@@ -23,8 +23,8 @@ A value is a JSON array of labels. Do not set them in this public repo: a pull r
 runs its own code on the runner these variables name.
 
 `ubuntu-latest` is 4 vCPU / 16 GB. It is slower per core than the paid runners these jobs can also
-use, and the repo is public, so it costs nothing. `ci/toolchains/image.env` holds the toolchains
-image tag, and every workflow that needs it sources that file.
+use, and the repo is public, so it costs nothing. `ci/toolchains/image-tag.sh` gives the toolchains
+image tag; see [The `container:` image](#the-container-image).
 
 The concurrency limit is **per account**, and `readonlyrest_kbn` shares it. `it_linux` and
 `e2e_tests` set no `max-parallel`: a cap equal to the number of legs never binds, and it starts
@@ -129,7 +129,7 @@ Both workflows share two composite actions rather than two copies:
 
 | Action | What it does | Used by |
 |---|---|---|
-| `resolve-toolchains-image` | picks the mirror or Docker Hub, and returns the image | `ci_setup`, `release_setup` |
+| `resolve-toolchains-image` | builds a missing toolchains image, picks the mirror or Docker Hub, and returns the image | `ci_setup`, `release_setup` |
 | `verify-toolchains-image` | proves the baked Gradle home works | `toolchains_verify` (a whole job, to fail fast before the CI matrices), `discover` in `release.yml` (a step, being its first container job) |
 
 ### The tag is the publish record
@@ -193,8 +193,8 @@ Two runs, and the Actions graph does not link them. The summary of the release r
 back to the CI run instead.
 
 Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
-above: `build-toolchains-image.yml` (rebuilds the image every CI job runs in — weekly cron and
-manual; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml` (mirrors ES jars
+above: `build-toolchains-image.yml` (rebuilds the image every CI job runs in from fresh base images, and
+deletes old image tags — weekly cron and manual; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml` (mirrors ES jars
 into the libs store — see [S3 stores](#s3-stores)), `disk-probe.yml` (manually reports runner and
 Docker disk usage), `pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml`
 (regenerates the ES action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand
@@ -554,6 +554,7 @@ change to all three.
 |---|---|
 | `ROR_S3_ACCESS_KEY_ID` / `ROR_S3_SECRET_ACCESS_KEY` | the one S3 key pair; writes `builds/`, `libs/` and `e2e_reports/` |
 | `DOCKER_HUB_USER` / `DOCKER_HUB_RW_TOKEN` | the push account. It pushes the ROR and toolchains images, and authenticates the pulls of the same job. A job maps it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which is the one pair `configure-docker.sh` reads |
+| `DOCKER_HUB_DELETE_TOKEN` | a Docker Hub token with the Delete scope. The `cleanup` job of `build-toolchains-image.yml` deletes old toolchains image tags with it. Without it, the job lists them only |
 | `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | the read-only token; it cannot push — it is refused push scope. `unit_tests_linux`, `it_linux` and `upload_pre_ror` map it into `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD`, which authenticates the pulls their steps make. No `container:` pull uses it, because the runner makes that pull before step 1. Without it, a pull request from a fork continues with anonymous pulls, and every other event stops |
 | `ROR_ENT_ACTIVATION_TOKEN` | ROR PRO/Enterprise key the e2e stack boots with. **The secret is renamed; the env var handed to the container stays `ROR_ACTIVATION_KEY`, which is the customer-facing name** |
 | `ROR_GH_TOKEN` | cross-repo GitHub PAT: dispatches the ROR KBN image build, reads run status, pushes docs |
@@ -698,57 +699,44 @@ A mirrored name carries the digest, not the tag: `mirror.gcr.io/beshultd/ror-ci-
 The jobs of one run start hours apart, and a tag can move between the check and a pull. A Docker Hub
 name keeps the tag, because no digest is proven in that case.
 
-So `ci_setup` asks the mirror about the digest, not about the tag. A digest names the bytes,
-and a cache cannot answer it with the wrong image. The rebuild records the digest of its push in the
-Actions cache. `ci_setup` then sends the mirror one HEAD request for that digest. The request downloads
-no image, and it reaches no Docker Hub:
+The image bakes the Gradle dependencies, so one image fits one state of the build files. Its tag is
+`TOOLCHAINS_IMAGE` of `ci/toolchains/image.env` (the JDK set and the Gradle version) plus
+`-deps-<hash>`. `ci/toolchains/image-tag.sh` hashes the Gradle build files, `build-base/src/main`
+and `ci/toolchains/`. The hash leaves out the `pluginVersion` and `publishedPluginVersion` lines, so a
+version bump keeps the image. The image holds every dependency CI resolves: `resolveCiDependencies`,
+the ES-versioned jars of every supported ES version and the compile classpath of every version that
+`verifyRepackageBytecode` compiles (`resolveEsVersionedDependencies`). A job thus downloads nothing
+from Maven Central, which rate-limits the shared GitHub-hosted addresses.
+
+`ci/toolchains/ensure-image.sh` runs in `ci_setup` (and in `release_setup`):
+
+| What it finds | What the run takes |
+|---|---|
+| the tag exists on Docker Hub | that tag |
+| no tag, and Docker Hub push credentials | a new build of that tag (about 20 minutes), pushed |
+| no tag, no credentials (a fork pull request) | `TOOLCHAINS_IMAGE`; Gradle downloads what it lacks |
+
+A build reuses the JDK and tool layers of `TOOLCHAINS_IMAGE` (`ci/toolchains/build-image.sh`), and
+only the Gradle home layer is new. A build on a `develop` push also moves `TOOLCHAINS_IMAGE` to the
+new image, so the fork fallback follows `develop`. The script asks Docker Hub with a HEAD request,
+which does not count against the pull limit, and it gets the digest of the tag from the same answer.
+
+`build-toolchains-image.yml` rebuilds the tag of `develop` every week from fresh base images, for JDK
+and OS patches. Its `cleanup` job deletes the `-deps-` tags last pushed more than 30 days ago, except
+the newest (`ci/toolchains/cleanup-tags.sh`). The Docker Hub RW token cannot delete, so the job needs
+`DOCKER_HUB_DELETE_TOKEN`; without it, the job only lists the tags.
+
+`ci_setup` then asks the mirror about the digest, not about the tag. A digest names the bytes, and a
+cache cannot answer it with the wrong image. One HEAD request goes to the mirror; it downloads no image:
 
 | What the script finds | What the run pulls |
 |---|---|
-| no digest on record | Docker Hub |
 | the mirror cannot serve the digest | Docker Hub |
 | the mirror serves the digest | the mirror |
 
 Docker Hub is the safe answer, so a miss costs speed only. `ci_setup` writes the choice to the step
-summary, so the run page shows which registry a run used, and why.
-
-The mirror fetches a digest it has never held. So a run keeps the mirror in the hours after a
-rebuild, before the mirror knows the new tag. A question about the tag would lose the mirror in that
-window, where the recorded digest is newest.
-
-The cache key holds the tag and the rebuild's run id. A key is write-once, so each rebuild adds an
-entry and `ci_setup` restores the newest by prefix. GitHub drops an entry that nothing reads for 7 days,
-and `ci_setup` reads this one every run. A new tag matches no entry, so its runs use Docker Hub until
-the next rebuild. The same holds now: run **Build toolchains image** once, on `develop`, to write the
-first digest.
-
-The key and the prefix put two hyphens after the tag. One hyphen keeps `9.2.1` apart from `9.2.10`,
-but not from `9.2.1-arm64`: that key starts with the prefix of `9.2.1`. The runs of the shorter tag
-could then restore the digest of the longer one, and the mirror serves any digest of the repository,
-so those jobs would run the wrong image. Two hyphens keep the two apart, because no tag here ends
-with a hyphen.
-
-An entry belongs to the ref that saved it. Every run also reads the default branch, `develop`. A
-pull request run reads its merge ref and the base branch, but never the head branch. A rebuild
-dispatched from a feature branch therefore writes an entry that no pull request run finds.
-
-A dispatch off `develop` stays allowed. The image bakes the commit's Gradle dependencies, so a
-branch that bumps one needs its own tag and its own build, and the push is what that branch needs.
-Only the cache entry goes to waste, so `record_digest` raises a `::warning::` instead of a refusal.
-Dispatch the workflow again on `develop` after the merge.
-
-The rebuild does not save that entry. `ES_IMAGE_BUILD_RUNS_ON` can move it to a pool with its own
-Actions cache, such as Ubicloud, and `ci_setup` cannot read that cache. So the digest travels as a
-job output to `record_digest`, a small job on the runner of `ci_setup`, which saves it. Both ends
-then read one store.
-
-The rebuild lives in `build-toolchains-image.yml`, not in `ci.yml`. It takes up to four hours, and
-no test run waits for it. A rebuild in `ci.yml` would also hold the `develop` concurrency group for
-those hours, and every push to `develop` would queue behind it.
-
-The rebuild keeps a concurrency group of its own, `build-toolchains-image`. Two rebuilds push one
-tag and file two cache entries, and `ci_setup` takes the newest entry, which need not hold the manifest
-that Docker Hub keeps. A second run waits instead, because cancelling a four-hour build wastes it.
+summary, so the run page shows which registry a run used, and why. The mirror fetches a digest it has
+never held, so a new image takes the mirror at once.
 
 The pull sends no credentials, on either path. `mirror.gcr.io` refuses a Docker Hub login, so the
 `credentials:` block must be absent when the name is mirrored. An empty value does not remove it.
@@ -758,34 +746,11 @@ therefore absent on both paths.
 
 Docker Hub counts an anonymous pull against the runner's address, and an authenticated pull against
 the account. So the fallback pull shares an address limit with every other anonymous puller. That
-path is rare. It opens when a tag has no recorded digest, and the next rebuild closes it.
+path is rare. It opens when the mirror cannot serve a digest.
 
 Every run now pulls this image the way a fork always did, and a fork gains the most. It has no
 secrets, so Docker Hub always answered it anonymously. It now reads `mirror.gcr.io`, which sets no
-limit. A fork run reads the base branch, so it finds the digest that a `develop` rebuild saved.
+limit.
 
 One limit. The choice is made once, for the whole run. If the mirror stops answering during a run,
 the jobs that already took the mirrored name fail. The runner's pull has no fallback of its own.
-
-`ghcr.io` is the other direction. It would remove the digest bookkeeping, because the pull would no
-longer cross a cache, and a public package needs no `credentials:` block at all. It costs a tag in
-`image.env`, a `docker login ghcr.io` with `GITHUB_TOKEN`, `packages: write`, and a package the org
-makes public. It would not retire the mirror, which `buildx`, the test suite and the toolchains
-build still need for their own Docker Hub pulls. This change does not settle that question.
-
-### Gradle read-only cache
-
-The Gradle jobs of `ci.yml` read from a Gradle read-only cache every dependency that the toolchains
-image lacks, so they do not download it from Maven Central. Maven Central rate-limits the shared
-GitHub-hosted addresses, and a `429` fails the build. The cache holds:
-
-- the dependencies that changed after the image build;
-- the ES-versioned jars of every supported ES version (`downloadEsVersionedDependencyJars`);
-- the compile classpath of every ES version that `verifyRepackageBytecode` compiles.
-
-`fill-gradle-ro-cache.yml` fills it with `ci/fill-gradle-cache.sh` and saves it as an Actions cache
-entry. `.github/actions/restore-gradle-ro-cache` restores it and sets `GRADLE_RO_DEP_CACHE`.
-
-The key (`ci/gradle-ro-cache-key.sh`) changes with the build files. The workflow runs on a `develop` or
-`master` push that changes them, every day, and by hand; a run whose key has an entry stops after the
-lookup. A job without an exact entry restores the newest older one, and Gradle downloads the rest.
