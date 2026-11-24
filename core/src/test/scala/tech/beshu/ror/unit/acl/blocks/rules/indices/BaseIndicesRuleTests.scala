@@ -26,6 +26,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, Inside, Succeeded}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
@@ -44,9 +45,12 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
 import tech.beshu.ror.accesscontrol.blocks.{Block, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWithAliases
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{
+  FullLocalDataStreamWithAliases,
+  FullRemoteDataStreamWithAliases
+}
 import tech.beshu.ror.accesscontrol.domain.Template.{ComponentTemplate, IndexTemplate, LegacyTemplate}
-import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, RandomBasedUniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.es.EsServices
 import tech.beshu.ror.mocks.*
@@ -57,6 +61,7 @@ import tech.beshu.ror.utils.TestsUtils.{
   clusterIndexName,
   fullDataStreamName,
   fullIndexName,
+  fullLocalDataStreamWithAliases,
   fullLocalIndexWithAliases,
   indexPattern,
   unsafeNes
@@ -310,9 +315,206 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with Insid
     ruleResult should be(Denied(specialCause))
   }
 
-  private def createIndicesRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]) = {
+  protected def assertMatchRuleForDataStreamRequest(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      mustInvolveIndices: Boolean = false,
+      kibanaIndex: Option[KibanaIndexName] = None
+  ): Unit = {
+    val result = checkDataStreamRequest(configured, action, requestDataStreams, mustInvolveIndices, kibanaIndex)
+    inside(result) { case Permitted(blockContext) =>
+      blockContext.dataStreams should be(requestDataStreams)
+    }
+  }
+
+  // A data stream stats request: the rule leaves only the allowed data streams of the cluster in the request
+  protected def assertDataStreamStatsRequestNarrowed(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      requestDataStreams: Set[DataStreamName],
+      clusterDataStreams: Set[DataStreamName.Full],
+      expectedDataStreams: Set[DataStreamName],
+      kibanaIndex: Option[KibanaIndexName] = None
+  ): Unit = {
+    val result = checkDataStreamStatsRequest(
+      configured,
+      requestDataStreams,
+      clusterDataStreams,
+      mustInvolveIndices = false,
+      kibanaIndex
+    )
+    inside(result) { case Permitted(blockContext) =>
+      blockContext.dataStreams should be(expectedDataStreams)
+    }
+  }
+
+  // A data stream stats request: no data stream is allowed, so the request gets a pattern that matches nothing
+  protected def assertDataStreamStatsRequestGetsNoDataStream(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      requestDataStreams: Set[DataStreamName],
+      clusterDataStreams: Set[DataStreamName.Full]
+  ): Unit = {
+    val result =
+      checkDataStreamStatsRequest(configured, requestDataStreams, clusterDataStreams, mustInvolveIndices = false, None)
+    inside(result) { case Permitted(blockContext) =>
+      inside(blockContext.dataStreams.toList) { case (pattern: DataStreamName.Pattern) :: Nil =>
+        val patternMatcher = PatternsMatcher.create[DataStreamName](Set(pattern))
+        clusterDataStreams.filter(patternMatcher.`match`) should be(empty)
+      }
+    }
+  }
+
+  protected def assertDataStreamStatsRequestRejected(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      requestDataStreams: Set[DataStreamName],
+      clusterDataStreams: Set[DataStreamName.Full],
+      mustInvolveIndices: Boolean
+  ): Unit = {
+    val result =
+      checkDataStreamStatsRequest(configured, requestDataStreams, clusterDataStreams, mustInvolveIndices, None)
+    result should be(Denied(NotAuthorized))
+  }
+
+  // A data stream request with indices: _modify, migrate, get or lifecycle get
+  protected def checkDataStreamRequestWithIndices(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      requestIndices: Set[RequestedIndex[ClusterIndexName]],
+      clusterDataStreams: Set[DataStreamName.Full]
+  ): Decision[DataStreamRequestBlockContext] = {
+    val esServices = MockEsServices.`with`(
+      MockEsClusterService(
+        allIndicesAndAliases =
+          requestIndices.map(index => fullLocalIndexWithAliases(fullIndexName(index.name.stringify))),
+        allDataStreamsAndAliases = clusterDataStreams.map(fullLocalDataStreamWithAliases)
+      )
+    )
+    checkDataStreamRequest(
+      configured,
+      action,
+      requestDataStreams.orWildcardWhenEmpty,
+      mustInvolveIndices = false,
+      kibanaIndex = None,
+      esServices,
+      BackingIndices.IndicesInvolved(requestIndices, Set(ClusterIndexName.Local.wildcard))
+    )
+  }
+
+  // A data stream create, delete or promote request in a cluster with the given data streams
+  protected def checkDataStreamWriteRequest(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      clusterDataStreams: Set[DataStreamName.Full]
+  ): Decision[DataStreamRequestBlockContext] = {
+    checkDataStreamRequest(
+      configured,
+      action,
+      requestDataStreams,
+      mustInvolveIndices = false,
+      kibanaIndex = None,
+      esServicesWith(clusterDataStreams)
+    )
+  }
+
+  // A data stream request in a cluster whose data streams have the given backing indices. With no requested indices,
+  // it is a request without backing indices (stats, create, delete, promote).
+  protected def checkDataStreamRequestInCluster(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      requestIndices: Set[RequestedIndex[ClusterIndexName]],
+      clusterDataStreams: Set[FullLocalDataStreamWithAliases]
+  ): Decision[DataStreamRequestBlockContext] = {
+    val esServices = MockEsServices.`with`(
+      MockEsClusterService(
+        allIndicesAndAliases =
+          requestIndices.map(index => fullLocalIndexWithAliases(fullIndexName(index.name.stringify))),
+        allDataStreamsAndAliases = clusterDataStreams
+      )
+    )
+    val backingIndices =
+      if (requestIndices.isEmpty) BackingIndices.IndicesNotInvolved
+      else BackingIndices.IndicesInvolved(requestIndices, Set(ClusterIndexName.Local.wildcard))
+    checkDataStreamRequest(
+      configured,
+      action,
+      requestDataStreams,
+      mustInvolveIndices = false,
+      kibanaIndex = None,
+      esServices,
+      backingIndices
+    )
+  }
+
+  private def checkDataStreamStatsRequest(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      requestDataStreams: Set[DataStreamName],
+      clusterDataStreams: Set[DataStreamName.Full],
+      mustInvolveIndices: Boolean,
+      kibanaIndex: Option[KibanaIndexName]
+  ): Decision[DataStreamRequestBlockContext] = {
+    checkDataStreamRequest(
+      configured,
+      Action("indices:monitor/data_stream/stats"),
+      requestDataStreams,
+      mustInvolveIndices,
+      kibanaIndex,
+      esServicesWith(clusterDataStreams)
+    )
+  }
+
+  private def esServicesWith(clusterDataStreams: Set[DataStreamName.Full]): EsServices =
+    MockEsServices.`with`(
+      MockEsClusterService(
+        allIndicesAndAliases = Set.empty,
+        allDataStreamsAndAliases = clusterDataStreams.map(fullLocalDataStreamWithAliases)
+      )
+    )
+
+  protected def assertNotMatchRuleForDataStreamRequest(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      mustInvolveIndices: Boolean = false
+  ): Unit = {
+    val result = checkDataStreamRequest(configured, action, requestDataStreams, mustInvolveIndices, kibanaIndex = None)
+    result should be(Denied(NotAuthorized))
+  }
+
+  // A data stream request without backing indices: a data stream create, delete, promote or stats
+  private def checkDataStreamRequest(
+      configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      action: Action,
+      requestDataStreams: Set[DataStreamName],
+      mustInvolveIndices: Boolean,
+      kibanaIndex: Option[KibanaIndexName],
+      esServices: EsServices = MockEsServices.dummy,
+      backingIndices: BackingIndices = BackingIndices.IndicesNotInvolved
+  ): Decision[DataStreamRequestBlockContext] = {
+    val rule = createIndicesRule(configured, mustInvolveIndices)
+    val requestContext =
+      MockRequestContext.dataStreams.copy(action = action, dataStreams = requestDataStreams, esServices = esServices)
+    val blockMetadata = BlockMetadata.from(requestContext)
+    val blockContext = DataStreamRequestBlockContext(
+      block = mock[Block],
+      requestContext = requestContext,
+      blockMetadata = kibanaIndex.map(blockMetadata.withKibanaIndex).getOrElse(blockMetadata),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      dataStreams = requestDataStreams,
+      backingIndices = backingIndices
+    )
+    rule.check(blockContext).runSyncUnsafe()
+  }
+
+  private def createIndicesRule(
+      configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+      mustInvolveIndices: Boolean = false
+  ) = {
     new IndicesRule(
-      settings = IndicesRule.Settings(configuredValues, mustInvolveIndices = false),
+      settings = IndicesRule.Settings(configuredValues, mustInvolveIndices),
       identifierGenerator = (_: Refined[Int, Positive]) => "0000000000"
     )
   }
