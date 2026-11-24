@@ -735,8 +735,8 @@ cache cannot answer it with the wrong image. One HEAD request goes to the mirror
 | the mirror serves the digest | the mirror |
 
 Docker Hub is the safe answer, so a miss costs speed only. `ci_setup` writes the choice to the step
-summary, so the run page shows which registry a run used, and why. The mirror fetches a digest it has
-never held, so a new image takes the mirror at once.
+summary, so the run page shows which registry a run used, and why. A new image is not on the mirror
+at once: the run that built it pulls from Docker Hub (seen on the first build, 2026-11-24).
 
 The pull sends no credentials, on either path. `mirror.gcr.io` refuses a Docker Hub login, so the
 `credentials:` block must be absent when the name is mirrored. An empty value does not remove it.
