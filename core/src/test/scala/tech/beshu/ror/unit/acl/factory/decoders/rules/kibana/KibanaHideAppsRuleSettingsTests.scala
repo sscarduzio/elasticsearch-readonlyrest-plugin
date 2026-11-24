@@ -145,10 +145,11 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
           assertion = errors => {
             errors should have size 1
             errors.head should be(
-              RulesLevelCreationError(MalformedValue.fromString("""kibana_hide_apps:
-                                                                  |- "/^(?!(Analytics\\|Management).*$).*$/"
-                                                                  |- "/^(?!(Analytics\\|Maps).*$.*$/"
-                                                                  |""".stripMargin))
+              RulesLevelCreationError(
+                Message(
+                  "Cannot compile [/^(?!(Analytics\\|Maps).*$.*$/] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions): SyntaxError: Unterminated parenthetical"
+                )
+              )
             )
           }
         )

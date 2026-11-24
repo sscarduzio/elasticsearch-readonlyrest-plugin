@@ -32,7 +32,7 @@ class KibanaAccessRule(override val settings: Settings) extends BaseKibanaRule(s
 
   override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     val kibanaIndex = kibanaIndexFrom(blockContext)
-    if (shouldMatch(blockContext, kibanaIndex))
+    if (isAllowed(blockContext, kibanaIndex))
       matched(blockContext, kibanaIndex)
     else
       Denied[B](Cause.NotAuthorized)

@@ -30,7 +30,7 @@ import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, Heade
 import tech.beshu.ror.implicits.*
 
 import java.time.Instant
-import scala.collection.immutable.Set as ScalaSet
+import scala.collection.immutable.{Set as ScalaSet, VectorMap}
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](
     requestContext: RequestContext.Aux[B],
@@ -74,15 +74,16 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](
   override val matchedBlockNames: Option[List[String]] = matchedBlocks.map(_.map(_.name.value).toList)
   override lazy val history: String = iterableLikeShow(blockHistoryShow(showHeader)).show(aclProcessingHistory.blocks)
 
+  // VectorMap keeps the order of the evaluation. A plain Map loses it with more than 4 blocks.
   override lazy val blocksHistory: Map[String, (Boolean, Option[String])] =
-    aclProcessingHistory.blocks.map { h =>
+    VectorMap.from(aclProcessingHistory.blocks.map { h =>
       val blockName = h.block.name.value
       val matchedAndCause = h match {
         case BlockHistory.Permitted(_, _, _)   => true -> None
         case BlockHistory.Denied(_, denied, _) => false -> Some(denied.cause.show)
       }
       blockName -> matchedAndCause
-    }.toMap
+    })
 
   override lazy val content: String = requestContext.restRequest.content
   override lazy val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt

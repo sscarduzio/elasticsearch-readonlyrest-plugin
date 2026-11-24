@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 import cats.Order
 import cats.data.{EitherT, NonEmptyList}
 import com.unboundid.ldap.sdk.*
-import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
+import com.unboundid.util.ssl.{HostNameSSLSocketVerifier, SSLUtil, TrustAllTrustManager}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.UrlWithAuthority
@@ -119,6 +119,7 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
       connectionTimeout: PositiveFiniteDuration,
       requestTimeout: PositiveFiniteDuration,
       trustAllCerts: Boolean,
+      sslHostnameVerification: Boolean,
       bindRequestUser: BindRequestUser,
       ignoreLdapConnectivityProblems: Boolean
   )
@@ -275,7 +276,7 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
         case Left(ex) =>
           Task {
             noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
-            Left(CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod))
+            Left(CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod, ex))
           }
       }
   }
@@ -295,6 +296,10 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
     val options = new LDAPConnectionOptions()
     options.setConnectTimeoutMillis(connectionConfig.connectionTimeout.value.toMillis.toInt)
     options.setResponseTimeoutMillis(connectionConfig.requestTimeout.value.toMillis.toInt)
+    // When the host name check is off, the SDK default verifier applies. A JVM property of the SDK can change it.
+    if (connectionConfig.sslHostnameVerification) {
+      options.setSSLSocketVerifier(new HostNameSSLSocketVerifier(true))
+    }
     options
   }
 
@@ -408,7 +413,7 @@ object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
   sealed trait ConnectionError
 
   object ConnectionError {
-    final case class CannotConnectError(ldap: LdapService.Name, connectionMethod: ConnectionMethod)
+    final case class CannotConnectError(ldap: LdapService.Name, connectionMethod: ConnectionMethod, cause: Throwable)
         extends ConnectionError
     final case class HostResolvingError(ldap: LdapService.Name, hosts: NonEmptyList[LdapHost]) extends ConnectionError
     final case class BindingTestError(ldap: LdapService.Name) extends ConnectionError

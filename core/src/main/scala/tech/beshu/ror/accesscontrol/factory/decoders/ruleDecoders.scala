@@ -90,9 +90,11 @@ object ruleDecoders {
       case IndicesRule.Name.name              =>
         Some(new IndicesRuleDecoders(variableCreator, systemContext.uniqueIdentifierGenerator))
       case KibanaUserDataRule.Name.name =>
-        Some(new KibanaUserDataRuleDecoder(globalSettings.settingsIndex, variableCreator)(systemContext.jsCompiler))
+        Some(
+          new KibanaUserDataRuleDecoder(globalSettings.settingsIndex, variableCreator)(systemContext.jsRegexCompiler)
+        )
       case KibanaAccessRule.Name.name        => Some(new KibanaAccessRuleDecoder(globalSettings.settingsIndex))
-      case KibanaHideAppsRule.Name.name      => Some(new KibanaHideAppsRuleDecoder()(systemContext.jsCompiler))
+      case KibanaHideAppsRule.Name.name      => Some(new KibanaHideAppsRuleDecoder()(systemContext.jsRegexCompiler))
       case KibanaIndexRule.Name.name         => Some(new KibanaIndexRuleDecoder(variableCreator))
       case KibanaTemplateIndexRule.Name.name => Some(new KibanaTemplateIndexRuleDecoder(variableCreator))
       case LocalHostsRule.Name.name          => Some(new LocalHostsRuleDecoder(variableCreator))

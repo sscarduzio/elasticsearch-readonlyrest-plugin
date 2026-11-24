@@ -40,14 +40,21 @@ java {
 }
 
 dependencies {
-    shadowCompile group: 'com.fasterxml.jackson.dataformat',    name: 'jackson-dataformat-yaml',    version: '2.22.1'
-    shadowCompile group: 'com.fasterxml.jackson.core',          name: 'jackson-databind',           version: '2.22.1'
-    shadowCompile group: 'org.yaml',                            name: 'snakeyaml',                  version: '2.5'
+    shadowCompile group: 'com.fasterxml.jackson.dataformat',    name: 'jackson-dataformat-yaml',    version: '2.23.0'
+    shadowCompile group: 'com.fasterxml.jackson.core',          name: 'jackson-databind',           version: '2.23.0'
+    shadowCompile group: 'org.yaml',                            name: 'snakeyaml',                  version: '2.7'
+    // json-path 3.x needs Java 17. ES 6.x and 7.x run on Java 11.
     shadowCompile group: 'com.jayway.jsonpath',                 name: 'json-path',                  version: '2.10.0'
+    shadowCompile group: 'net.minidev',                         name: 'json-smart',                 version: '2.6.1'
 
     api(group: 'org.apache.logging.log4j',      name: 'log4j-slf4j-impl',                    version: '2.11.2') {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     }
+}
+
+dependencyCheck {
+    // The plugin ships the shaded jars from shadowCompile, so the scan must check them too.
+    scanConfigurations = ['runtimeClasspath', 'shadowCompile']
 }
 
 shadowJar {

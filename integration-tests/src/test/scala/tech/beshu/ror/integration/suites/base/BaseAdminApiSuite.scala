@@ -65,6 +65,9 @@ trait BaseAdminApiSuite
   private lazy val adminIndexManager =
     new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
   private val testSettingsEsDocumentId = "2"
+  // The cause after the prefix is the text of the LDAP SDK. It contains the SDK version and the resolved address.
+  private val ldapConnectionErrorMessagePrefix =
+    "Cannot reload new settings: Errors:\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389. Cause: "
   protected val settingsReloadInterval: FiniteDuration = 5 seconds
 
   override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
@@ -145,16 +148,8 @@ trait BaseAdminApiSuite
 
           val result = rorWithNoIndexSettingsAdminActionManager.reloadRorSettings()
           result should have statusCode 200
-          result.responseJson should be(
-            ujson.read(
-              """
-                |{
-                |  "status": "ko",
-                |  "message": "Cannot reload new settings: Errors:\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
-                |}
-                |""".stripMargin
-            )
-          )
+          result.responseJson("status").str should be("ko")
+          result.responseJson("message").str should startWith(ldapConnectionErrorMessagePrefix)
         }
       }
     }
@@ -287,16 +282,8 @@ trait BaseAdminApiSuite
             .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
 
           result should have statusCode 200
-          result.responseJson should be(
-            ujson.read(
-              """
-                |{
-                |  "status": "ko",
-                |  "message": "Cannot reload new settings: Errors:\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
-                |}
-                |""".stripMargin
-            )
-          )
+          result.responseJson("status").str should be("ko")
+          result.responseJson("message").str should startWith(ldapConnectionErrorMessagePrefix)
         }
       }
     }
@@ -894,16 +881,8 @@ trait BaseAdminApiSuite
               .updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
 
             result should have statusCode 200
-            result.responseJson should be(
-              ujson.read(
-                s"""
-                   |{
-                   |  "status": "FAILED",
-                   |  "message": "Cannot reload new settings: Errors:\\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
-                   |}
-                   |""".stripMargin
-              )
-            )
+            result.responseJson("status").str should be("FAILED")
+            result.responseJson("message").str should startWith(ldapConnectionErrorMessagePrefix)
           }
         }
       }

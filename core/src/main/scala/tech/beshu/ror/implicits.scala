@@ -216,6 +216,31 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   }
 
   implicit val kibanaIndexNameShow: Show[KibanaIndexName] = Show.show(_.underlying.show)
+
+  implicit val kibanaAccessShow: Show[KibanaAccess] = Show.show {
+    case KibanaAccess.RO           => "ro"
+    case KibanaAccess.ROStrict     => "ro_strict"
+    case KibanaAccess.RW           => "rw"
+    case KibanaAccess.Admin        => "admin"
+    case KibanaAccess.ApiOnly      => "api_only"
+    case KibanaAccess.Unrestricted => "unrestricted"
+  }
+
+  implicit val kibanaAccessTableTargetShow: Show[KibanaRequest.Target] = Show.show {
+    case KibanaRequest.Target.KibanaIndices    => "Kibana indices"
+    case KibanaRequest.Target.DataIndices      => "data indices"
+    case KibanaRequest.Target.KibanaSampleData => "Kibana sample data"
+    case KibanaRequest.Target.NoIndices        => "no indices"
+  }
+
+  implicit val kibanaAccessTableDecisionShow: Show[KibanaAccessTable.Decision] = Show.show {
+    case KibanaAccessTable.Decision.AllowUserMetadataRequest =>
+      "ROR allows the ROR user metadata request for every kibana access level."
+    case KibanaAccessTable.Decision.Cell(access, target, isAllowed) =>
+      s"ROR classifies the request as '${target.show}' (a column of the kibana access table). " +
+        s"The access level '${access.show}' ${if (isAllowed) "allows" else "does not allow"} it."
+  }
+
   implicit val fullIndexNameShow: Show[IndexName.Full] = Show.show(_.name.value)
   implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.show)
   implicit val fullDataStreamShow: Show[DataStreamName.Full] = Show.show(_.value.value)

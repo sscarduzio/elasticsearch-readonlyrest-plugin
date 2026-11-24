@@ -73,7 +73,7 @@ import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
+import tech.beshu.ror.utils.js.{JsRegexCompiler, MozillaJsRegexCompiler}
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -140,7 +140,7 @@ object TestsUtils {
   def kibanaIndexName(str: NonEmptyString): KibanaIndexName = KibanaIndexName(localIndexName(str))
 
   def kibanaAppRegex(str: NonEmptyString): KibanaAppRegex = {
-    implicit val compiler: JsCompiler = MozillaJsCompiler
+    implicit val compiler: JsRegexCompiler = MozillaJsRegexCompiler
     JsRegex.compile(str) match {
       case Right(jsRegex) => KibanaAppRegex(jsRegex)
       case Left(error) => throw new IllegalArgumentException(s"Cannot create KibanaAppRegex from '$str'; Cause: $error")

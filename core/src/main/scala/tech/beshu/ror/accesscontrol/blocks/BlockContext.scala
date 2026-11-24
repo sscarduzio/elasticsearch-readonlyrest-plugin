@@ -590,6 +590,25 @@ object BlockContext {
       }
     }
 
+    // The names of the templates that the request uses. A get or a delete request can name them with a wildcard.
+    def templateNames: Set[TemplateNamePattern] =
+      templateOperation.map(templateNamesOf).getOrElse(Set.empty)
+
+  }
+
+  private def templateNamesOf(operation: TemplateOperation): Set[TemplateNamePattern] = operation match {
+    case TemplateOperation.AddingLegacyTemplate(name, _, _)                    => Set(TemplateNamePattern.from(name))
+    case TemplateOperation.AddingIndexTemplate(name, _, _)                     => Set(TemplateNamePattern.from(name))
+    case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(name, _, _, _) => Set(TemplateNamePattern.from(name))
+    case TemplateOperation.AddingComponentTemplate(name, _)                    => Set(TemplateNamePattern.from(name))
+    case TemplateOperation.GettingLegacyTemplates(namePatterns)                => namePatterns.toList.toCovariantSet
+    case TemplateOperation.GettingIndexTemplates(namePatterns)                 => namePatterns.toList.toCovariantSet
+    case TemplateOperation.GettingComponentTemplates(namePatterns)             => namePatterns.toList.toCovariantSet
+    case TemplateOperation.DeletingLegacyTemplates(namePatterns)               => namePatterns.toList.toCovariantSet
+    case TemplateOperation.DeletingIndexTemplates(namePatterns)                => namePatterns.toList.toCovariantSet
+    case TemplateOperation.DeletingComponentTemplates(namePatterns)            => namePatterns.toList.toCovariantSet
+    case TemplateOperation.GettingLegacyAndIndexTemplates(legacyTemplates, indexTemplates) =>
+      templateNamesOf(legacyTemplates) ++ templateNamesOf(indexTemplates)
   }
 
   implicit class FieldLevelSecurityFromBlockContext(val blockContext: BlockContext) extends AnyVal {

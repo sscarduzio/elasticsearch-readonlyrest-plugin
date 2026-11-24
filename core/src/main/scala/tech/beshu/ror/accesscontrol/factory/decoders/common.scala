@@ -48,7 +48,7 @@ import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
-import tech.beshu.ror.utils.js.JsCompiler
+import tech.beshu.ror.utils.js.JsRegexCompiler
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -308,7 +308,7 @@ object common extends RequestIdAwareLogging {
       .decoder
 
   implicit def kibanaAppDecoder(
-      implicit jsCompiler: JsCompiler
+      implicit jsRegexCompiler: JsRegexCompiler
   ): Decoder[KibanaApp] =
     nonEmptyStringDecoder.toSyncDecoder
       .emapE[KibanaApp](str =>

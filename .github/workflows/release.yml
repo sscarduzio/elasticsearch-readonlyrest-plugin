@@ -51,7 +51,7 @@ jobs:
         github.event.workflow_run.event == 'push' &&
         github.event.workflow_run.conclusion == 'success'
       )
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 10
     outputs:
       image: ${{ steps.toolchains.outputs.image }}
@@ -93,7 +93,7 @@ jobs:
   # What to publish, and for which ES majors.
   discover:
     needs: release_setup
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     container: &toolchains_container
       image: ${{ needs.release_setup.outputs.image }}
     timeout-minutes: 10
@@ -161,7 +161,7 @@ jobs:
     if: >-
       needs.discover.outputs.publish == 'pre_release' &&
       github.event_name == 'workflow_run'
-    runs-on: &self_hosted_runner [ self-hosted, Linux, X64 ]
+    runs-on: &self_hosted_runner ${{ fromJSON(vars.ES_PUBLISH_RUNS_ON || '["self-hosted","Linux","X64"]') }}
     container: *toolchains_container
     timeout-minutes: 600
     strategy:

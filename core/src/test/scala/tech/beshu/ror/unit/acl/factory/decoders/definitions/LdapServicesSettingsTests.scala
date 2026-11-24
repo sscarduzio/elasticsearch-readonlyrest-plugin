@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.joor.Reflect.on
 import org.scalatest.compatible.Assertion
@@ -27,6 +28,7 @@ import org.scalatest.{Assertions, BeforeAndAfterAll, Checkpoints}
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
@@ -44,13 +46,14 @@ import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 import tech.beshu.ror.utils.misc.OsUtils.{doNotCreateOnWindows, ignoreOnWindows}
 
 import java.time.Clock
+import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
-class LdapServicesSettingsTests private (ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
+class LdapServicesSettingsTests private (ldapConnectionPoolProvider: ConfigRecordingLdapConnectionPoolProvider)
     extends BaseDecoderTest(
       LdapServicesDecoder.ldapServicesDefinitionsDecoder(
         using ldapConnectionPoolProvider,
@@ -62,7 +65,7 @@ class LdapServicesSettingsTests private (ldapConnectionPoolProvider: UnboundidLd
     with Checkpoints {
 
   def this() = {
-    this(new UnboundidLdapConnectionPoolProvider)
+    this(new ConfigRecordingLdapConnectionPoolProvider)
   }
 
   override protected def afterAll(): Unit = {
@@ -1837,6 +1840,30 @@ class LdapServicesSettingsTests private (ldapConnectionPoolProvider: UnboundidLd
           }
         )
       }
+      "SSL host name verification is not configured and ssl_trust_all_certs is false" in {
+        assertSslHostnameVerification(
+          sslSettings = "",
+          expectedSslHostnameVerification = true
+        )
+      }
+      "SSL host name verification is not configured and ssl_trust_all_certs is true" in {
+        assertSslHostnameVerification(
+          sslSettings = "ssl_trust_all_certs: true",
+          expectedSslHostnameVerification = false
+        )
+      }
+      "SSL host name verification is enabled explicitly" in {
+        assertSslHostnameVerification(
+          sslSettings = "ssl_trust_all_certs: true\n    ssl_hostname_verification: true",
+          expectedSslHostnameVerification = true
+        )
+      }
+      "SSL host name verification is disabled explicitly" in {
+        assertSslHostnameVerification(
+          sslSettings = "ssl_hostname_verification: false",
+          expectedSslHostnameVerification = false
+        )
+      }
     }
     "not be able to be loaded from settings" when {
       "circuit breaker settings are malformed" in {
@@ -2287,11 +2314,12 @@ class LdapServicesSettingsTests private (ldapConnectionPoolProvider: UnboundidLd
                     |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(
-              CoreCreationError.DefinitionsLevelCreationError(
-                Message("There was a problem with 'ldap1' LDAP connection to: ldaps://localhost:12345")
+            // The cause text comes from the OS socket layer, so the test checks only the start of the message.
+            inside(error) { case CoreCreationError.DefinitionsLevelCreationError(Message(message)) =>
+              message should startWith(
+                "There was a problem with 'ldap1' LDAP connection to: ldaps://localhost:12345. Cause: "
               )
-            )
+            }
           }
         )
       }
@@ -2332,13 +2360,32 @@ class LdapServicesSettingsTests private (ldapConnectionPoolProvider: UnboundidLd
                     |    connection_timeout_in_sec: 2
             """.stripMargin,
           assertion = { error =>
-            error should be(
-              CoreCreationError.DefinitionsLevelCreationError(
-                Message(
-                  "There was a problem with 'ldap1' LDAP connection to: ldaps://localhost:12345, ldaps://localhost:12346"
-                )
+            // The cause text comes from the OS socket layer, so the test checks only the start of the message.
+            inside(error) { case CoreCreationError.DefinitionsLevelCreationError(Message(message)) =>
+              message should startWith(
+                "There was a problem with 'ldap1' LDAP connection to: ldaps://localhost:12345, ldaps://localhost:12346. Cause: "
               )
-            )
+            }
+          }
+        )
+      }
+      "the certificate of the LDAPS server does not contain the configured host name" in {
+        // The certificate of the OpenLDAP container contains only the container ID.
+        assertDecodingFailure(
+          yaml = s"""
+                    |  ldaps:
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapSSLPort}
+                    |    ssl_trust_all_certs: true
+                    |    ssl_hostname_verification: true
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+            """.stripMargin,
+          assertion = { error =>
+            inside(error) { case CoreCreationError.DefinitionsLevelCreationError(Message(message)) =>
+              message should startWith("There was a problem with 'ldap1' LDAP connection to: ")
+              message should include("Hostname verification failed")
+            }
           }
         )
       }
@@ -2517,6 +2564,25 @@ class LdapServicesSettingsTests private (ldapConnectionPoolProvider: UnboundidLd
     }
   }
 
+  private def assertSslHostnameVerification(sslSettings: String, expectedSslHostnameVerification: Boolean) = {
+    assertDecodingSuccess(
+      yaml = s"""
+                |  ldaps:
+                |  - name: ldap1
+                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                |    ssl_enabled: false
+                |    $sslSettings
+                |    search_user_base_DN: "ou=People,dc=example,dc=com"
+        """.stripMargin,
+      assertion = { _ =>
+        ldapConnectionPoolProvider.lastConnectionConfig.map(_.sslHostnameVerification) should be(
+          Some(expectedSslHostnameVerification)
+        )
+      }
+    )
+  }
+
   private def assertLdapService(ldapService: LdapService)(
       ldapServiceAssertion: LdapService => Assertion,
       underlyingLdapServiceAssertions: (LdapService => Assertion)*
@@ -2655,6 +2721,19 @@ class LdapServicesSettingsTests private (ldapConnectionPoolProvider: UnboundidLd
       on(ldapService).get[FiniteDuration]("ttl")
     }
 
+  }
+
+}
+
+private class ConfigRecordingLdapConnectionPoolProvider extends UnboundidLdapConnectionPoolProvider {
+
+  private val lastConfig = new AtomicReference[Option[LdapConnectionConfig]](None)
+
+  def lastConnectionConfig: Option[LdapConnectionConfig] = lastConfig.get()
+
+  override def connect(connectionConfig: LdapConnectionConfig): Task[UnboundidLdapConnectionPool] = {
+    lastConfig.set(Some(connectionConfig))
+    super.connect(connectionConfig)
   }
 
 }

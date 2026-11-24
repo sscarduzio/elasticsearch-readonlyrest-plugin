@@ -16,115 +16,352 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
+import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
-import tech.beshu.ror.accesscontrol.domain.{Action, ClusterIndexName, DataStreamName, IndexName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.utils.RefinedUtils.*
 
+// The action groups of the kibana rule. Each group names the ES actions in full, with no wildcard: an action that ES
+// adds in a new version is allowed only for `unrestricted` until it is added to a group. Source of the names: the ES
+// action lists of `readonlyrest-docs/actionstrings`, ES 6.7.0 to 9.5.6.
 object KibanaActionMatchers {
 
-  val roActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+  // The reads of indices, data streams and aliases, and the cluster reads that Kibana needs for the read only access
+  // levels
+  val readActions: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
-      "indices:admin/exists",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/mappings/get*",
-      "indices:admin/validate/query",
-      "indices:admin/get",
-      "indices:admin/refresh*",
-      "indices:data/read/*",
-      "indices:admin/resolve/*",
-      "indices:admin/aliases/get",
-      "indices:admin/data_stream/get",
-      "indices:admin/data_stream/lifecycle/get",
       "cluster:admin/component_template/get",
-      "indices:admin/index_template/get",
+      "cluster:admin/ilm/get",
+      "cluster:admin/ingest/pipeline/get",
+      "cluster:admin/ingest/pipeline/simulate",
+      "cluster:admin/ingest/processor/grok/get",
+      "cluster:admin/repository/get",
       "cluster:admin/scripts/painless/context",
-      "indices:admin/*/explain",
-      "indices:data/read/xpack/rollup/get/*",
-      "indices:monitor/*",
+      "cluster:admin/xpack/enrich/get",
+      "cluster:admin/xpack/esql/view/get",
+      "cluster:admin/xpack/inference/get",
+      "cluster:admin/xpack/ml/filters/get",
+      "cluster:admin/xpack/security/user/authenticate",
+      "cluster:admin/xpack/security/user/has_privileges",
+      "cluster:monitor/health",
+      "cluster:monitor/main",
+      "cluster:monitor/nodes/info",
+      "cluster:monitor/nodes/stats",
+      "cluster:monitor/remote/info",
+      "cluster:monitor/settings",
+      "cluster:monitor/state",
+      "cluster:monitor/task/get",
+      "cluster:monitor/transform/get",
+      "cluster:monitor/transform/stats/get",
+      "cluster:monitor/xpack/inference",
+      "cluster:monitor/xpack/inference/get",
+      "cluster:monitor/xpack/inference/post",
+      "cluster:monitor/xpack/inference/services/get",
+      "cluster:monitor/xpack/info",
+      "cluster:monitor/xpack/license/get",
+      "cluster:monitor/xpack/ml/calendars/events/get",
+      "cluster:monitor/xpack/ml/calendars/get",
+      "cluster:monitor/xpack/ml/data_frame/analytics/get",
+      "cluster:monitor/xpack/ml/data_frame/analytics/stats/get",
+      "cluster:monitor/xpack/ml/data_frame/evaluate",
+      "cluster:monitor/xpack/ml/datafeeds/get",
+      "cluster:monitor/xpack/ml/datafeeds/stats/get",
+      "cluster:monitor/xpack/ml/inference/get",
+      "cluster:monitor/xpack/ml/inference/stats/get",
+      "cluster:monitor/xpack/ml/info/get",
+      "cluster:monitor/xpack/ml/job/get",
+      "cluster:monitor/xpack/ml/job/model_snapshots/get",
+      "cluster:monitor/xpack/ml/job/results/buckets/get",
+      "cluster:monitor/xpack/ml/job/results/categories/get",
+      "cluster:monitor/xpack/ml/job/results/influencers/get",
+      "cluster:monitor/xpack/ml/job/results/overall_buckets/get",
+      "cluster:monitor/xpack/ml/job/results/records/get",
+      "cluster:monitor/xpack/ml/job/stats/get",
+      "cluster:monitor/xpack/ml/memory/stats/get",
+      "indices:admin/aliases/exists",
+      "indices:admin/aliases/get",
+      "indices:admin/analyze",
+      "indices:admin/data_stream/get",
+      "indices:admin/data_stream/lifecycle/explain",
+      "indices:admin/data_stream/lifecycle/get",
+      "indices:admin/data_stream/options/get",
+      "indices:admin/dlm/explain",
+      "indices:admin/dlm/get",
+      "indices:admin/esql/dataset/get",
+      "indices:admin/esql/view/get",
+      "indices:admin/exists",
+      "indices:admin/get",
+      "indices:admin/ilm/explain",
+      "indices:admin/index_template/get",
+      "indices:admin/mappings/fields/get",
+      "indices:admin/mappings/get",
+      "indices:admin/migration/reindex_status",
+      "indices:admin/refresh",
+      "indices:admin/resolve/cluster",
+      "indices:admin/resolve/index",
+      "indices:admin/sample",
+      "indices:admin/sample/stats",
+      "indices:admin/search/search_shards",
+      "indices:admin/shards/search_shards",
+      "indices:admin/template/get",
+      "indices:admin/types/exists",
+      "indices:admin/validate/query",
+      "indices:admin/xpack/rollup/search",
+      "indices:data/read/async_search/delete",
+      "indices:data/read/async_search/get",
+      "indices:data/read/async_search/submit",
+      "indices:data/read/close_point_in_time",
+      "indices:data/read/eql",
+      "indices:data/read/eql/async/get",
+      "indices:data/read/esql",
+      "indices:data/read/esql/async/get",
+      "indices:data/read/esql/async/stop",
+      "indices:data/read/explain",
+      "indices:data/read/field_caps",
+      "indices:data/read/get",
+      "indices:data/read/mget",
+      "indices:data/read/msearch",
+      "indices:data/read/msearch/template",
+      "indices:data/read/mtv",
+      "indices:data/read/open_point_in_time",
+      "indices:data/read/profiling",
+      "indices:data/read/profiling/flamegraph",
+      "indices:data/read/profiling/stack_traces",
+      "indices:data/read/profiling/topn/functions",
+      "indices:data/read/rank_eval",
+      "indices:data/read/scroll",
+      "indices:data/read/scroll/clear",
+      "indices:data/read/search",
+      "indices:data/read/search/template",
+      "indices:data/read/sql",
+      "indices:data/read/sql/async/get",
+      "indices:data/read/sql/close_cursor",
+      "indices:data/read/sql/translate",
+      "indices:data/read/tv",
+      "indices:data/read/xpack/application/search_application/search",
+      "indices:data/read/xpack/graph/explore",
+      "indices:data/read/xpack/rollup/get/index/caps",
+      "indices:data/read/xpack/rollup/search",
+      "indices:data/read/xpack/termsenum/list",
+      "indices:monitor/data_stream/mappings/get",
+      "indices:monitor/data_stream/settings/get",
+      "indices:monitor/data_stream/stats",
+      "indices:monitor/field_usage_stats",
+      "indices:monitor/fleet/global_checkpoints",
+      "indices:monitor/recovery",
+      "indices:monitor/sample/config/get",
+      "indices:monitor/sample/config/get_all",
+      "indices:monitor/segments",
+      "indices:monitor/settings/get",
+      "indices:monitor/shard_stores",
+      "indices:monitor/stats",
+      "indices:monitor/upgrade"
     ).map(Action.apply)
   }
 
-  val rwActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
-    RorAction.writeActions ++
-      Set(
-        "indices:admin/create",
-        "indices:admin/create_index",
-        "indices:admin/mapping/put",
-        "indices:data/write/delete*",
-        "indices:data/write/index",
-        "indices:data/write/update*",
-        "indices:data/write/bulk*",
-        "indices:admin/template/*",
-        "cluster:admin/settings/*",
-        "indices:admin/aliases/*",
-        "indices:admin/data_stream/*",
-        "indices:admin/index_template/*",
-        "cluster:admin/component_template/*",
-        "cluster:admin/migration/get_system_feature",
-        "cluster:admin/scripts/painless/execute"
-      ).map(Action.apply)
-  }
+  // The writes of the Kibana UI that the read only access levels need, together with a non-strict path. They are
+  // document writes, so `writeActions` contains them.
+  private val nonStrictActionNames: Set[Action] = Set(
+    "indices:data/write/bulk",
+    "indices:data/write/delete",
+    "indices:data/write/delete/byquery",
+    "indices:data/write/index",
+    "indices:data/write/otlp/logs",
+    "indices:data/write/otlp/metrics",
+    "indices:data/write/otlp/traces",
+    "indices:data/write/prometheus/remote_write",
+    "indices:data/write/reindex",
+    "indices:data/write/reindex/resume",
+    "indices:data/write/simulate/bulk",
+    "indices:data/write/update",
+    "indices:data/write/update/byquery"
+  ).map(Action.apply)
 
-  val clusterActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
-    Set(
-      "cluster:monitor/*",
-      "cluster:*/xpack/*",
-      "indices:admin/template/get*",
-      "cluster:*/info",
-      "cluster:*/get",
-      "cluster:*/simulate"
+  val nonStrictActions: PatternsMatcher[Action] = PatternsMatcher.create(nonStrictActionNames)
+
+  // The writes of indices, data streams and aliases: the non-strict actions, the index and data stream creation, and
+  // the mapping updates
+  val writeActions: PatternsMatcher[Action] = PatternsMatcher.create {
+    nonStrictActionNames ++ Set(
+      "indices:admin/create",
+      "indices:admin/data_stream/create",
+      "indices:admin/data_stream/mappings/update",
+      "indices:admin/mapping/put"
     ).map(Action.apply)
   }
 
-  val adminActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
-    RorAction.adminActions ++
-      Set(
-        "cluster:internal_ror/*",
-        "indices:data/write/*", // <-- DEPRECATED!
-        "indices:admin/create",
-        "indices:admin/create_index",
-        "indices:admin/ilm/*",
-        "cluster:admin/ingest/pipeline/put",
-        "cluster:admin/ingest/pipeline/delete",
-        "indices:admin/data_stream/get",
-        "indices:admin/settings/update",
-        "cluster:admin/ilm/put",
-        "cluster:admin/ilm/delete",
-        "cluster:admin/repository/put",
-        "cluster:admin/repository/delete",
-        "indices:data/write/update/byquery",
-        "indices:admin/data_stream/delete",
-        "cluster:admin/component_template/get",
-        "cluster:admin/component_template/delete",
-        "cluster:admin/component_template/put",
-        "indices:admin/delete",
-        "indices:admin/index_template/get",
-        "indices:admin/index_template/delete",
-        "indices:admin/index_template/put",
-        "indices:admin/index_template/simulate",
-        "cluster:admin/slm/put",
-        "cluster:admin/slm/execute",
-        "cluster:admin/slm/delete"
-      ).map(Action.apply)
+  // The reads of the cluster management: the cluster configuration and state. The reads of secret values and the
+  // cluster reads that return index data are not in the group. The group also has the Painless script execution of
+  // the Dev Tools "Painless Lab", because the script runs code.
+  val clusterManagementReadActions: PatternsMatcher[Action] = PatternsMatcher.create {
+    Set(
+      "cluster:admin/autoscaling/get_autoscaling_capacity",
+      "cluster:admin/autoscaling/get_autoscaling_decision",
+      "cluster:admin/autoscaling/get_autoscaling_policy",
+      "cluster:admin/desired_balance/get",
+      "cluster:admin/desired_nodes/get",
+      "cluster:admin/esql/data_source/get",
+      "cluster:admin/features/get",
+      "cluster:admin/idp/saml/metadata",
+      "cluster:admin/idp/saml/validate",
+      "cluster:admin/ilm/operation_mode/get",
+      "cluster:admin/indices/dangling/find",
+      "cluster:admin/indices/dangling/list",
+      "cluster:admin/ingest/geoip/database/get",
+      "cluster:admin/logstash/pipeline/get",
+      "cluster:admin/migration/get_system_feature",
+      "cluster:admin/repository/stats",
+      "cluster:admin/script/get",
+      "cluster:admin/script_context/get",
+      "cluster:admin/script_language/get",
+      "cluster:admin/scripts/painless/execute",
+      "cluster:admin/shutdown/get",
+      "cluster:admin/shutdown/prevalidate_removal",
+      "cluster:admin/slm/get",
+      "cluster:admin/slm/stats",
+      "cluster:admin/slm/status",
+      "cluster:admin/snapshot/get",
+      "cluster:admin/snapshot/status",
+      "cluster:admin/synonym_rules/get",
+      "cluster:admin/synonyms/get",
+      "cluster:admin/synonyms_sets/get",
+      "cluster:admin/transform/node_stats",
+      "cluster:admin/transform/validate",
+      "cluster:admin/xpack/application/analytics/get",
+      "cluster:admin/xpack/application/search_application/get",
+      "cluster:admin/xpack/application/search_application/list",
+      "cluster:admin/xpack/application/search_application/render_query",
+      "cluster:admin/xpack/ccr/auto_follow_pattern/get",
+      "cluster:admin/xpack/connector/get",
+      "cluster:admin/xpack/connector/list",
+      "cluster:admin/xpack/connector/sync_job/get",
+      "cluster:admin/xpack/connector/sync_job/list",
+      "cluster:admin/xpack/deprecation/info",
+      "cluster:admin/xpack/deprecation/nodes/info",
+      "cluster:admin/xpack/enrich/coordinator_stats",
+      "cluster:admin/xpack/enrich/stats",
+      "cluster:admin/xpack/license/basic_status",
+      "cluster:admin/xpack/license/feature_usage",
+      "cluster:admin/xpack/license/trial_status",
+      "cluster:admin/xpack/ml/data_frame/analytics/estimate_memory_usage",
+      "cluster:admin/xpack/ml/data_frame/analytics/explain",
+      "cluster:admin/xpack/ml/job/estimate_model_memory",
+      "cluster:admin/xpack/ml/job/validate",
+      "cluster:admin/xpack/ml/job/validate/detector",
+      "cluster:admin/xpack/query_rules/get",
+      "cluster:admin/xpack/query_rules/list",
+      "cluster:admin/xpack/query_rules/rule/get",
+      "cluster:admin/xpack/query_rules/test",
+      "cluster:admin/xpack/searchable_snapshots/cache/stats",
+      "cluster:admin/xpack/security/api_key/get",
+      "cluster:admin/xpack/security/api_key/query",
+      "cluster:admin/xpack/security/privilege/builtin/get",
+      "cluster:admin/xpack/security/privilege/get",
+      "cluster:admin/xpack/security/profile/get",
+      "cluster:admin/xpack/security/profile/has_privileges",
+      "cluster:admin/xpack/security/profile/suggest",
+      "cluster:admin/xpack/security/role/get",
+      "cluster:admin/xpack/security/role/query",
+      "cluster:admin/xpack/security/role_mapping/get",
+      "cluster:admin/xpack/security/service_account/credential/get",
+      "cluster:admin/xpack/security/service_account/get",
+      "cluster:admin/xpack/security/settings/get",
+      "cluster:admin/xpack/security/user/get",
+      "cluster:admin/xpack/security/user/list_privileges",
+      "cluster:admin/xpack/security/user/query",
+      "cluster:admin/xpack/upgrade/info",
+      "cluster:admin/xpack/watcher/settings/get",
+      "cluster:monitor/allocation/explain",
+      "cluster:monitor/allocation/stats",
+      "cluster:monitor/async_search/status",
+      "cluster:monitor/ccr/follow_info",
+      "cluster:monitor/ccr/follow_stats",
+      "cluster:monitor/ccr/stats",
+      "cluster:monitor/data_frame/get",
+      "cluster:monitor/data_frame/stats/get",
+      "cluster:monitor/data_stream/global_retention/get",
+      "cluster:monitor/data_stream/lifecycle/stats",
+      "cluster:monitor/eql/async/status",
+      "cluster:monitor/health_api",
+      "cluster:monitor/health_api/stats",
+      "cluster:monitor/ingest/geoip/stats",
+      "cluster:monitor/nodes/capabilities",
+      "cluster:monitor/nodes/data_tier_usage",
+      "cluster:monitor/nodes/features",
+      "cluster:monitor/nodes/hot_threads",
+      "cluster:monitor/nodes/usage",
+      "cluster:monitor/profiling/status/get",
+      "cluster:monitor/reindex/get",
+      "cluster:monitor/reindex/list",
+      "cluster:monitor/seek_stats",
+      "cluster:monitor/stats",
+      "cluster:monitor/stats/remote",
+      "cluster:monitor/task",
+      "cluster:monitor/tasks/lists",
+      "cluster:monitor/text_structure/find_message_structure",
+      "cluster:monitor/text_structure/findstructure",
+      "cluster:monitor/text_structure/test_grok_pattern",
+      "cluster:monitor/xpack/analytics/stats",
+      "cluster:monitor/xpack/enrich/coordinator_stats",
+      "cluster:monitor/xpack/enrich/stats",
+      "cluster:monitor/xpack/eql/stats/dist",
+      "cluster:monitor/xpack/esql/get_query",
+      "cluster:monitor/xpack/esql/list_queries",
+      "cluster:monitor/xpack/esql/stats/dist",
+      "cluster:monitor/xpack/gpu_vector_indexing/stats/dist",
+      "cluster:monitor/xpack/inference/ccm/get",
+      "cluster:monitor/xpack/inference/diagnostics/get",
+      "cluster:monitor/xpack/inference/region_policy/get",
+      "cluster:monitor/xpack/ml/autoscaling/stats/get",
+      "cluster:monitor/xpack/ml/findfilestructure",
+      "cluster:monitor/xpack/ml/inference/infer",
+      "cluster:monitor/xpack/ml/job/model_snapshots/upgrade/stats/get",
+      "cluster:monitor/xpack/ml/trained_models/deployment/infer",
+      "cluster:monitor/xpack/rollup/get",
+      "cluster:monitor/xpack/rollup/get/caps",
+      "cluster:monitor/xpack/security/saml/metadata",
+      "cluster:monitor/xpack/security/stats",
+      "cluster:monitor/xpack/spatial/stats",
+      "cluster:monitor/xpack/sql/async/status",
+      "cluster:monitor/xpack/sql/stats/dist",
+      "cluster:monitor/xpack/ssl/certificates/get",
+      "cluster:monitor/xpack/usage",
+      "cluster:monitor/xpack/watcher/stats",
+      "cluster:monitor/xpack/watcher/stats/dist",
+      "cluster:monitor/xpack/watcher/watch/get",
+      "cluster:monitor/xpack/watcher/watch/query",
+      "indices:admin/analyze_disk_usage",
+      "indices:admin/index_template/simulate",
+      "indices:admin/index_template/simulate_index",
+      "indices:data/read/xpack/connector/get",
+      "indices:data/read/xpack/connector/list",
+      "indices:data/read/xpack/connector/sync_job/get",
+      "indices:data/read/xpack/connector/sync_job/list"
+    ).map(Action.apply)
   }
 
-  val nonStrictActions: PatternsMatcher[Action] = PatternsMatcher.create(
+  val rorAdminActions: PatternsMatcher[Action] = PatternsMatcher.create(Set.empty[Action] ++ RorAction.adminActions)
+
+  // The actions that the Kibana "Sample data" page sends to add and remove a sample data set: the create and the delete
+  // of its index, its data stream and the index template of the data stream, and the bulk of its documents
+  val sampleDataActions: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
-      Action("indices:data/write/*"),
-      Action("indices:admin/template/put")
-    )
-  )
+      "indices:admin/create",
+      "indices:admin/data_stream/create",
+      "indices:admin/data_stream/delete",
+      "indices:admin/delete",
+      "indices:admin/index_template/delete",
+      "indices:admin/index_template/put",
+      "indices:data/write/bulk"
+    ).map(Action.apply)
+  }
 
-  val indicesWriteAction: PatternsMatcher[Action] = PatternsMatcher.create(Set(Action("indices:data/write/*")))
-
-  val kibanaSampleDataIndexMatcher: PatternsMatcher[ClusterIndexName] = PatternsMatcher.create(
-    Set(Local(IndexName.Pattern.unsafeFromNes(nes("kibana_sample_data_*"))))
-  )
-
-  val kibanaSampleDataStreamMatcher: PatternsMatcher[DataStreamName] = PatternsMatcher.create(
-    Set(DataStreamName.Pattern.fromNes(nes("kibana_sample_data_*")))
+  // The names of the Kibana sample data sets. Kibana uses the name of a set for its index or data stream, and for the
+  // index template of the data stream.
+  val kibanaSampleDataSetNames: Set[String] = Set(
+    "kibana_sample_data_ecommerce",
+    "kibana_sample_data_flights",
+    "kibana_sample_data_logs",
+    "kibana_sample_data_logstsdb"
   )
 
 }
