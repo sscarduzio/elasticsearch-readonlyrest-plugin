@@ -17,13 +17,23 @@
 package tech.beshu.ror.unit.utils
 
 import io.netty.channel.embedded.EmbeddedChannel
-import io.netty.channel.{ChannelHandlerContext, ChannelInboundHandlerAdapter, ChannelOutboundHandlerAdapter}
+import io.netty.channel.{
+  ChannelDuplexHandler,
+  ChannelHandler,
+  ChannelHandlerContext,
+  ChannelInboundHandlerAdapter,
+  ChannelOutboundHandlerAdapter,
+  ChannelPipeline
+}
 import io.netty.handler.flow.FlowControlHandler
+import org.apache.logging.log4j.Level
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.utils.LogEventsCapture.captureLogEvents
 import tech.beshu.ror.utils.ReadDemandRestorer
 
 import scala.collection.mutable
+import scala.jdk.CollectionConverters.*
 
 class ReadDemandRestorerTest extends AnyWordSpec {
 
@@ -61,8 +71,56 @@ class ReadDemandRestorerTest extends AnyWordSpec {
     }
   }
 
+  "ReadDemandRestorer.installIn" should {
+    "add the handler directly after the netty FlowControlHandler" in {
+      val pipeline = pipelineWith("flow_control" -> new FlowControlHandler(), "recorder" -> new MessageRecorder())
+
+      val events = captureLogEvents(installerLoggerName) {
+        ReadDemandRestorer.installIn(pipeline)
+      }
+
+      handlerNamesOf(pipeline) should be(List("flow_control", "ror_read_demand_restorer", "recorder"))
+      events should be(List.empty)
+    }
+
+    "add no handler and log nothing when the pipeline has the ES flow control handler" in {
+      val pipeline =
+        pipelineWith("decoder_flow_control" -> new ChannelDuplexHandler(), "recorder" -> new MessageRecorder())
+
+      val events = captureLogEvents(installerLoggerName) {
+        ReadDemandRestorer.installIn(pipeline)
+      }
+
+      handlerNamesOf(pipeline) should be(List("decoder_flow_control", "recorder"))
+      events should be(List.empty)
+    }
+
+    "add no handler and log a warning when the pipeline has no flow control handler" in {
+      val pipeline = pipelineWith("recorder" -> new MessageRecorder())
+
+      val events = captureLogEvents(installerLoggerName) {
+        ReadDemandRestorer.installIn(pipeline)
+      }
+
+      handlerNamesOf(pipeline) should be(List("recorder"))
+      events.map(_.level) should be(List(Level.WARN))
+    }
+  }
+
   // the ES channel initializer asks for one read before ROR adds its handler
   private lazy val initialReads = 1
+
+  private lazy val installerLoggerName = ReadDemandRestorer.getClass.getName
+
+  private def pipelineWith(handlers: (String, ChannelHandler)*) = {
+    val pipeline = new EmbeddedChannel().pipeline()
+    handlers.foreach { case (name, handler) => pipeline.addLast(name, handler) }
+    pipeline
+  }
+
+  private def handlerNamesOf(pipeline: ChannelPipeline) = {
+    pipeline.toMap.keySet.asScala.toList
+  }
 
   private def channelWithFlowControl(withReadDemandRestorer: Boolean) = {
     val channel = new EmbeddedChannel()

@@ -76,7 +76,6 @@ class SSLNetty4HttpServerTransport(
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       ch.pipeline().addFirst("ssl_netty4_handler", serverSslContext.newHandler(ch.alloc()))
-      // ROR's netty drops the read demand that the ES pipeline needs. See ReadDemandRestorer.
       ReadDemandRestorer.installIn(ch.pipeline())
     }
 
