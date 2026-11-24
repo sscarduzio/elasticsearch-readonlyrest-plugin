@@ -177,37 +177,67 @@ tasks.register('toJar', Jar) {
 // same across patch versions and gets reused by repackageRorPluginForVersion.
 //
 // Usage: -PtargetVersion=9.2.1  -PesJarsDir=<dir>   ->   <dir>/9.2.1/<artifact>-9.2.1.jar
+//
+// These jars carry the ES version (e.g. elasticsearch-rest-client-9.3.5). ROR's own modules also sit under
+// `org.elasticsearch.plugin` but carry pluginVersion; distJars resolves to baselineEsVersion (the base we
+// compiled), so matching on it picks the ES-versioned jars and skips ROR's own.
+def esVersionedArtifacts = { ->
+    configurations.distJars.resolvedConfiguration.resolvedArtifacts
+            .findAll {
+                it.moduleVersion.id.group.startsWith('org.elasticsearch') &&
+                        it.moduleVersion.id.version == project.ext.baselineEsVersion
+            }
+            .collect { [group: it.moduleVersion.id.group, name: it.moduleVersion.id.name] }
+            .unique()
+}
+def esVersionedJars = { art, String esVer ->
+    def detached = configurations.detachedConfiguration(dependencies.create("${art.group}:${art.name}:${esVer}"))
+    detached.transitive = false
+    detached.resolve()
+}
+
 tasks.register('downloadEsVersionedDependencyJars') {
     outputs.upToDateWhen { false }
     doLast {
         def target = project.findProperty('targetVersion') ?: project.ext.esVersion
         def esJarsDirProp = resolveEsJarsDir()
-
-        // These jars carry the ES version (e.g. elasticsearch-rest-client-9.3.5). ROR's own modules also
-        // sit under `org.elasticsearch.plugin` but carry pluginVersion; distJars resolves to baselineEsVersion
-        // (the base we compiled), so matching on it picks the ES-versioned jars and skips ROR's own.
-        def esVersionedArtifacts = configurations.distJars.resolvedConfiguration.resolvedArtifacts
-                .findAll {
-                    it.moduleVersion.id.group.startsWith('org.elasticsearch') &&
-                            it.moduleVersion.id.version == project.ext.baselineEsVersion
-                }
-                .collect { [group: it.moduleVersion.id.group, name: it.moduleVersion.id.name] }
-                .unique()
+        def artifacts = esVersionedArtifacts()
 
         logger.lifecycle("Downloading ES-versioned dependency jars {} for ES {} into {}",
-                esVersionedArtifacts.collect { it.name }, target, esJarsDirProp)
+                artifacts.collect { it.name }, target, esJarsDirProp)
 
         def destDir = file("${esJarsDirProp}/${target}")
         destDir.mkdirs()
-        esVersionedArtifacts.each { art ->
-            def detached = configurations.detachedConfiguration(dependencies.create("${art.group}:${art.name}:${target}"))
-            detached.transitive = false
-            detached.resolve().each { jarFile ->
+        artifacts.each { art ->
+            esVersionedJars(art, target).each { jarFile ->
                 copy {
                     from jarFile
                     into destDir
                 }
             }
+        }
+    }
+}
+
+// Resolves, without building, what the ES-version tasks download: the ES-versioned jars of every supported
+// version (downloadEsVersionedDependencyJars), and the compile classpath of every version that
+// verifyRepackageBytecode compiles. ci/fill-gradle-cache.sh runs it to fill the CI dependency cache.
+tasks.register('resolveEsVersionedDependencies') {
+    group = 'ci'
+    doLast {
+        def artifacts = esVersionedArtifacts()
+        EsVersions.of(project).all.each { esVer -> artifacts.each { art -> esVersionedJars(art, esVer) } }
+
+        (EsVersions.baseVersions(project) + EsVersions.groupNewest(project)).unique().each { esVer ->
+            def classpath = configurations.compileClasspath.copyRecursive()
+            classpath.resolutionStrategy.eachDependency { details ->
+                if (details.requested.group.startsWith('org.elasticsearch') && details.requested.version == project.ext.esVersion) {
+                    details.useVersion(esVer)
+                }
+            }
+            classpath.incoming.artifactView {
+                componentFilter { it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+            }.files.files
         }
     }
 }

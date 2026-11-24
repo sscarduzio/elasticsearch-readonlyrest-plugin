@@ -1,0 +1,26 @@
+name: Restore the Gradle read-only cache
+description: >-
+  Restores the Gradle dependencies that the toolchains image lacks, which the Fill Gradle read-only cache
+  workflow saves, and points GRADLE_RO_DEP_CACHE at them. Gradle then reads them instead of downloading
+  them. Without an entry the job goes on and Gradle downloads what it needs. The caller must check the
+  repo out first.
+
+runs:
+  using: composite
+  steps:
+    - id: key
+      shell: bash
+      run: echo "key=$(ci/gradle-ro-cache-key.sh)" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: .gradle-ro-cache
+        key: ${{ steps.key.outputs.key }}
+        # A build-file change gives a new key. The newest older entry still holds most dependencies.
+        restore-keys: gradle-ro-cache-
+    - shell: bash
+      run: |
+        if [ -d .gradle-ro-cache/modules-2 ]; then
+          echo "GRADLE_RO_DEP_CACHE=$PWD/.gradle-ro-cache" >> "$GITHUB_ENV"
+        else
+          echo "No Gradle read-only cache. Gradle downloads the dependencies that the image lacks."
+        fi

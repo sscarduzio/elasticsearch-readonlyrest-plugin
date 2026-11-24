@@ -1,5 +1,6 @@
 .idea/
 .gradle/
+.gradle-ro-cache/
 build/
 out/
 tmp/*

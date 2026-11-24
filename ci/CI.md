@@ -772,3 +772,24 @@ longer cross a cache, and a public package needs no `credentials:` block at all.
 `image.env`, a `docker login ghcr.io` with `GITHUB_TOKEN`, `packages: write`, and a package the org
 makes public. It would not retire the mirror, which `buildx`, the test suite and the toolchains
 build still need for their own Docker Hub pulls. This change does not settle that question.
+
+### Gradle read-only cache
+
+The toolchains image holds the Gradle dependencies of the commit it was built from. A job downloads,
+from Maven Central, every dependency that the image does not hold:
+
+- a dependency that changed after the image build;
+- the ES-versioned jars of the ES version a job builds (`downloadEsVersionedDependencyJars`);
+- the compile classpath of the ES version that `verifyRepackageBytecode` compiles.
+
+Maven Central rate-limits the shared GitHub-hosted addresses, and a `429` fails the build. So the
+Fill Gradle read-only cache workflow (`fill-gradle-ro-cache.yml`) runs `ci/fill-gradle-cache.sh` in
+the toolchains image. The script resolves those dependencies, for every supported ES version, into a
+Gradle home that reads the image cache, so it downloads only what the image lacks. The workflow saves
+the result as an Actions cache entry. Each Gradle job of `ci.yml` restores it
+(`.github/actions/restore-gradle-ro-cache`) and points `GRADLE_RO_DEP_CACHE` at it.
+
+`ci/gradle-ro-cache-key.sh` gives the key. It changes with any build file, Gradle property or Gradle
+version. The workflow runs on a `develop` or `master` push that changes one of them, every day, and by
+hand. A run whose key already has an entry stops after the lookup. A job that finds no exact entry
+restores the newest older one, and Gradle downloads the rest.
