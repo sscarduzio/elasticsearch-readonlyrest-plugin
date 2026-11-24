@@ -340,8 +340,9 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     else narrowDataStreams(blockContext)
   }
 
-  // A data stream read request gets only the requested data streams that the rule allows. When the rule allows none of
-  // them, the request gets a name that matches nothing, because ES reads no names as all data streams.
+  // A data stream read request gets only the requested data streams that the rule allows. A requested full name that
+  // the rule allows stays also when the data stream does not exist, so ES returns 404 for it. When the rule allows none
+  // of them, the request gets a name that matches nothing, because ES reads no names as all data streams.
   private def narrowDataStreams(
       blockContext: DataStreamRequestBlockContext
   ): Task[Decision[DataStreamRequestBlockContext]] = {
@@ -353,11 +354,18 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
       allDataStreams <- indicesManager.allDataStreams
       backingIndicesPerDataStream <- indicesManager.backingIndicesPerDataStreamMap
     } yield {
-      val allowedDataStreams =
+      def isAllowed(dataStream: ClusterIndexName.Local) =
+        isDataStreamAllowed(dataStream, allowedIndices, backingIndicesPerDataStream, kibanaIndexFrom(blockContext))
+      val allowedExistingDataStreams =
         allDataStreams
           .filter(requestedMatcher.`match`)
-          .filter(isDataStreamAllowed(_, allowedIndices, backingIndicesPerDataStream, kibanaIndexFrom(blockContext)))
+          .filter(isAllowed)
           .flatMap(dataStream => DataStreamName.fromString(dataStream.stringify))
+      val allowedRequestedFullNames: Set[DataStreamName] =
+        blockContext.dataStreams.collect {
+          case fullName: DataStreamName.Full if isAllowed(asLocalIndexName(fullName)) => fullName
+        }
+      val allowedDataStreams = allowedExistingDataStreams ++ allowedRequestedFullNames
       if (allowedDataStreams.nonEmpty) Permitted(blockContext.withDataStreams(allowedDataStreams))
       else Permitted(blockContext.withDataStreams(Set(nonexistentDataStreamPattern)))
     }

@@ -1403,6 +1403,23 @@ trait IndicesRuleDataStreamTests {
           kibanaIndex = Some(kibanaIndexName(".kibana"))
         )
       }
+      "the requested data stream does not exist and the rule allows its name" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set(fullDataStreamName("logs-unknown")),
+          clusterDataStreams = statsClusterDataStreams,
+          expectedDataStreams = Set(fullDataStreamName("logs-unknown"))
+        )
+      }
+      "the request has a pattern and an allowed name of a data stream that does not exist" in {
+        assertDataStreamStatsRequestNarrowed(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set(dataStreamNamePattern("logs-*"), fullDataStreamName("logs-unknown")),
+          clusterDataStreams = statsClusterDataStreams,
+          expectedDataStreams =
+            Set(fullDataStreamName("logs-app"), fullDataStreamName("logs-db"), fullDataStreamName("logs-unknown"))
+        )
+      }
     }
     "leave a data stream name that matches nothing" when {
       "the rule allows none of the requested data streams" in {
@@ -1412,10 +1429,17 @@ trait IndicesRuleDataStreamTests {
           clusterDataStreams = statsClusterDataStreams
         )
       }
-      "the requested data stream does not exist" in {
+      "the requested data stream does not exist and the rule does not allow its name" in {
         assertDataStreamStatsRequestGetsNoDataStream(
           configured = NonEmptySet.of(indexNameVar("logs-*")),
-          requestDataStreams = Set(fullDataStreamName("logs-unknown")),
+          requestDataStreams = Set(fullDataStreamName("audit-unknown")),
+          clusterDataStreams = statsClusterDataStreams
+        )
+      }
+      "the requested pattern matches no data stream" in {
+        assertDataStreamStatsRequestGetsNoDataStream(
+          configured = NonEmptySet.of(indexNameVar("logs-*")),
+          requestDataStreams = Set(dataStreamNamePattern("logs-unknown-*")),
           clusterDataStreams = statsClusterDataStreams
         )
       }
@@ -1502,6 +1526,20 @@ trait IndicesRuleDataStreamTests {
           )
           inside(result) { case Permitted(blockContext) =>
             blockContext.dataStreams should be(Set(fullDataStreamName("logs-app")))
+          }
+        }
+      }
+      "the requested data stream does not exist and the rule allows its name" in {
+        List(getDataStreamAction, getDataStreamLifecycleAction).foreach { action =>
+          val result = checkDataStreamRequestWithIndices(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            action = action,
+            requestDataStreams = Set(fullDataStreamName("logs-unknown")),
+            requestIndices = Set.empty,
+            clusterDataStreams = statsClusterDataStreams
+          )
+          inside(result) { case Permitted(blockContext) =>
+            blockContext.dataStreams should be(Set(fullDataStreamName("logs-unknown")))
           }
         }
       }
