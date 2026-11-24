@@ -1209,14 +1209,6 @@ trait IndicesRuleDataStreamTests {
           kibanaIndex = Some(kibanaIndexName(".kibana"))
         )
       }
-      "the indices must be involved and the data stream name matches the allowed indices" in {
-        assertMatchRuleForDataStreamRequest(
-          configured = NonEmptySet.of(indexNameVar("logs-*")),
-          action = deleteDataStreamAction,
-          requestDataStreams = Set(fullDataStreamName("logs-app")),
-          mustInvolveIndices = true
-        )
-      }
     }
     "not match" when {
       "the data stream name does not match the allowed indices" in {
@@ -1274,13 +1266,15 @@ trait IndicesRuleDataStreamTests {
           requestDataStreams = Set(fullDataStreamName(".kibana-reporting-.kibana"))
         )
       }
-      "the indices must be involved and the data stream name does not match the allowed indices" in {
-        assertNotMatchRuleForDataStreamRequest(
-          configured = NonEmptySet.of(indexNameVar("logs-*")),
-          action = deleteDataStreamAction,
-          requestDataStreams = Set(fullDataStreamName("audit-events")),
-          mustInvolveIndices = true
-        )
+      "the indices must be involved, also when the data stream name matches the allowed indices" in {
+        dataStreamWriteActions.foreach { action =>
+          assertNotMatchRuleForDataStreamRequest(
+            configured = NonEmptySet.of(indexNameVar("logs-*")),
+            action = action,
+            requestDataStreams = Set(fullDataStreamName("logs-app")),
+            mustInvolveIndices = true
+          )
+        }
       }
     }
   }

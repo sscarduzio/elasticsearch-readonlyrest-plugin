@@ -268,15 +268,20 @@ class IndicesRule(override val settings: Settings, override val identifierGenera
     }
 
   // A data stream create, delete or promote passes only when the rule allows each data stream name. The rule checks a
-  // bulk write to the data stream the same way. No names means all data streams.
+  // bulk write to the data stream the same way. No names means all data streams. The request involves no indices, so
+  // `must_involve_indices` rejects it.
   private def processDataStreamWriteRequest(
       blockContext: DataStreamRequestBlockContext
   ): Task[Decision[DataStreamRequestBlockContext]] = {
-    val allowedIndices = allowedIndicesFor(blockContext)
-    val requested = requestedDataStreamsOf(blockContext)
-    areDataStreamWritesAllowed(blockContext, allowedIndices, requested.included.map(asLocalIndexName)).flatMap {
-      case true  => resolveDataStreamPatternsOfWriteRequest(blockContext, requested, allowedIndices)
-      case false => Task.now(reject())
+    if (settings.mustInvolveIndices) {
+      Task.now(reject())
+    } else {
+      val allowedIndices = allowedIndicesFor(blockContext)
+      val requested = requestedDataStreamsOf(blockContext)
+      areDataStreamWritesAllowed(blockContext, allowedIndices, requested.included.map(asLocalIndexName)).flatMap {
+        case true  => resolveDataStreamPatternsOfWriteRequest(blockContext, requested, allowedIndices)
+        case false => Task.now(reject())
+      }
     }
   }
 
