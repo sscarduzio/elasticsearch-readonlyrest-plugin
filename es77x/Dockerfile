@@ -4,8 +4,8 @@ ARG ROR_VERSION
 # gosu is pulled from the upstream, maintainer-authoritative image (tianon == the gosu author; this is a
 # Docker official-images build, multi-arch, binary at /usr/local/bin/gosu). This replaces re-running the
 # alpine + GPG download/verify on every per-version build, with no base image of our own to build/push.
-# Pinned by digest for integrity/reproducibility (1.17 multi-arch index).
-FROM tianon/gosu:1.17@sha256:5591f02c16be4ca3530ac4b517be8fa3bbdb256b13429eea2cc577a47f6da99a AS gosu
+# Pinned by digest for integrity/reproducibility (1.20 multi-arch index).
+FROM tianon/gosu:1.20@sha256:e2bba3ccdb5e9fe330a875caf827d0897c682a489b5d3cfea2b64cb55d10d2ad AS gosu
 
 FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
 COPY --from=gosu /usr/local/bin/gosu /usr/local/bin/gosu
