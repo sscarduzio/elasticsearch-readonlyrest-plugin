@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Deletes the toolchains image tags (<TOOLCHAINS_IMAGE tag>-deps-<hash>) last pushed more than
-# MAX_AGE_DAYS (30) ago. It never deletes TOOLCHAINS_IMAGE itself or the newest -deps- tag.
+# Deletes the toolchains image tags (<prefix>-deps-<hash>, ci/toolchains/deps-tag.sh) last pushed more than
+# MAX_AGE_DAYS (30) ago. It never deletes <prefix>-develop or the newest -deps- tag.
 # Env: DOCKER_HUB_USER, DOCKER_HUB_DELETE_TOKEN (a token with the Delete scope). Without the token it
 #      only lists the tags. NOW_EPOCH overrides the clock (tests).
 set -euo pipefail
@@ -9,7 +9,7 @@ cd "$(dirname "$0")/../.."
 # shellcheck source=ci/log.sh
 source ci/log.sh
 
-repo=${TOOLCHAINS_IMAGE%:*} prefix="${TOOLCHAINS_IMAGE##*:}-deps-"
+repo=${TOOLCHAINS_TAG_PREFIX%:*} prefix="${TOOLCHAINS_TAG_PREFIX##*:}-deps-"
 api="https://hub.docker.com/v2/namespaces/${repo%%/*}/repositories/${repo#*/}/tags"
 cutoff=$(( ${NOW_EPOCH:-$(date -u +%s)} - ${MAX_AGE_DAYS:-30} * 86400 ))
 

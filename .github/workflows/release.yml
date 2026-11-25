@@ -78,11 +78,14 @@ jobs:
             echo "::error::You typed '$CONFIRM_VERSION'. $RELEASE_BRANCH carries '$ACTUAL'."
             exit 1
           fi
+      # A release needs the exact image, so this job builds a missing deps tag and waits for it.
+      - name: Build the toolchains image when it is missing
+        env:
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+        run: ci/toolchains/build-deps-image.sh
       - id: toolchains
         uses: ./.github/actions/resolve-toolchains-image
-        with:
-          docker-user: ${{ secrets.DOCKER_HUB_USER }}
-          docker-token: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
       - name: Summarise the run
         run: |
           # The Actions graph does not link the CI run to this one. The summary does.

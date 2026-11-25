@@ -18,14 +18,14 @@
 # to `java.version` in plugin-descriptor.properties, so it is the minimum JVM that ES accepts.
 #
 # Build context MUST be the repo root (the build needs settings.gradle/*/build.gradle to
-# resolve dependencies during the priming step). ci/toolchains/build-image.sh builds and pushes it:
-# the CI setup job when this commit's tag (ci/toolchains/image-tag.sh) is missing, and the weekly
-# rebuild in .github/workflows/build-toolchains-image.yml.
+# resolve dependencies during the priming step). ci/toolchains/build-deps-image.sh builds and pushes it:
+# the toolchains_image_build job of ci.yml when this commit's tag (ci/toolchains/deps-tag.sh) is missing,
+# release_setup, and the weekly rebuild in .github/workflows/build-toolchains-image.yml.
 #
 # (BuildKit is required: the build context is filtered by the sibling
 # ci/toolchains/JdkToolchains.Dockerfile.dockerignore file.)
 #
-# The tag is TOOLCHAINS_IMAGE of ci/toolchains/image.env (the JDK set and the Gradle version) plus a
+# The tag is TOOLCHAINS_TAG_PREFIX of ci/toolchains/image.env (the JDK set and the Gradle version) plus a
 # hash of the build files, so a dependency change gets a new image. Edit image.env when a supported
 # ES major adds a new JVM or the Gradle version changes.
 
@@ -42,6 +42,8 @@
 # to Docker Hub. Should the mirror stop serving one of them, set ROR_DOCKER_HUB_MIRROR=false on the
 # build job of build-toolchains-image.yml.
 ARG MIRROR=
+# The image whose Gradle home starts the prime, so a build downloads only new jars. Default: an empty home.
+ARG GRADLE_HOME_SEED=base
 
 # ---- JDK sources (all temurin images install to /opt/java/openjdk) ----------------------
 FROM ${MIRROR}library/eclipse-temurin:8-jdk   AS jdk8
@@ -87,6 +89,9 @@ COPY --from=jdk11 /opt/java/openjdk /opt/java/jdk11
 COPY --from=jdk21 /opt/java/openjdk /opt/java/jdk21
 
 ENV GRADLE_USER_HOME=/opt/gradle-home
+RUN mkdir -p /opt/gradle-home
+
+FROM ${GRADLE_HOME_SEED} AS gradle-home-seed
 
 # ---- prime a baked GRADLE_USER_HOME: Gradle distribution + plugins + dependencies ----------
 # Done in a separate stage so the repo sources (`COPY . /tmp/ror-src`) never become a layer of
@@ -103,12 +108,12 @@ ENV GRADLE_USER_HOME=/opt/gradle-home
 # misses at CI time (e.g. a dep bumped since the last rebuild) falls back to the network; the
 # weekly scheduled rebuild of this image keeps that stale window short.
 FROM base AS gradle-prime
+COPY --from=gradle-home-seed /opt/gradle-home /opt/gradle-home
 # Bake the image's JDK locations into the GRADLE_USER_HOME gradle.properties. This is read reliably
 # at CI time (installations.paths via GRADLE_OPTS is NOT reliably honoured), applies only to jobs
 # that use this baked Gradle home (the Linux container jobs), and is never seen by the bare Windows
 # jobs (they use a workspace-local GRADLE_USER_HOME) — so the Linux paths can't break Windows.
-RUN mkdir -p /opt/gradle-home \
- && printf '%s\n' \
+RUN printf '%s\n' \
       'org.gradle.java.installations.auto-download=false' \
       'org.gradle.java.installations.paths=/opt/java/jdk8,/opt/java/jdk11,/opt/java/openjdk,/opt/java/jdk21' \
       > /opt/gradle-home/gradle.properties

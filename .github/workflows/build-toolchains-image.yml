@@ -1,8 +1,8 @@
 name: Build toolchains image
 
-# Rebuilds the toolchains image of this commit from fresh base images, and deletes old image tags.
-# The CI setup job builds a missing image itself (ci/toolchains/ensure-image.sh). This weekly run picks
-# up JDK and OS patches. See "The container: image" in ci/CI.md.
+# Rebuilds the deps tag of develop from fresh base images and an empty Gradle home, for JDK and OS
+# patches, and deletes old deps tags. The toolchains_image_build job of ci.yml builds a missing deps tag.
+# See "The container: image" in ci/CI.md.
 
 on:
   schedule:
@@ -38,17 +38,7 @@ jobs:
         env:
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-          IS_DEVELOP: ${{ github.ref == 'refs/heads/develop' }}
-        run: |
-          set -e
-          # Source before the build: it logs in, and it sets the mirror of the FROM lines.
-          source ci/configure-docker.sh
-          . ci/toolchains/image.env
-          TAGS=("$(ci/toolchains/image-tag.sh)")
-          # TOOLCHAINS_IMAGE follows develop. A fork pull request, which cannot build, takes it.
-          [ "$IS_DEVELOP" = true ] && TAGS+=("$TOOLCHAINS_IMAGE")
-          echo ">>> Building ${TAGS[*]}"
-          echo ">>> Pushed digest: $(ci/toolchains/build-image.sh --fresh "${TAGS[@]}")"
+        run: ci/toolchains/build-deps-image.sh --fresh ${{ github.ref == 'refs/heads/develop' && '--develop' || '' }}
 
   # ── CLEANUP ───────────────────────────────────────────────────────────────
   cleanup:

@@ -1,42 +1,32 @@
 name: Resolve the toolchains image
 description: >-
-  Makes sure the toolchains image of this commit exists (ci/toolchains/ensure-image.sh builds a
-  missing one), then picks the name every `container:` job pulls: the Docker Hub mirror on the normal
-  path, Docker Hub itself on the fallback. The caller must check the repo out first, and must not be a
-  container job: a runner pulls a container image before step 1, so a job cannot resolve its own.
-
-inputs:
-  docker-user:
-    description: Docker Hub push account. Without it, a missing image is not built.
-    required: false
-    default: ''
-  docker-token:
-    description: Docker Hub push token.
-    required: false
-    default: ''
-  push-base-tag:
-    description: "'true' also moves TOOLCHAINS_IMAGE of image.env to a new build."
-    required: false
-    default: 'false'
+  Selects the toolchains image of this commit (ci/toolchains/select-image.sh): its deps tag, or the
+  develop tag when the deps tag is missing. Then picks the name every `container:` job pulls: the
+  Docker Hub mirror on the normal path, Docker Hub itself on the fallback. Needs no credentials. The
+  caller must check the repo out first, and must not be a container job: a runner pulls a container
+  image before step 1, so a job cannot resolve its own.
 
 outputs:
   image:
     description: The image reference to put in `container:`. Carries a digest on the mirrored path.
     value: ${{ steps.toolchains.outputs.image }}
+  deps-tag:
+    description: The deps tag of this commit.
+    value: ${{ steps.select.outputs.deps_tag }}
+  deps-missing:
+    description: "'true' when the deps tag does not exist and the run takes the develop tag."
+    value: ${{ steps.select.outputs.deps_missing }}
 
 runs:
   using: composite
   steps:
-    - id: ensure
+    - id: select
       shell: bash
-      env:
-        DOCKER_REGISTRY_USER: ${{ inputs.docker-user }}
-        DOCKER_REGISTRY_PASSWORD: ${{ inputs.docker-token }}
-        PUSH_BASE_TAG: ${{ inputs.push-base-tag }}
       run: |
         set -euo pipefail
-        out=$(ci/toolchains/ensure-image.sh)
+        out=$(ci/toolchains/select-image.sh)
         echo "$out"
+        grep -E '^(deps_tag|deps_missing)=' <<<"$out" >> "$GITHUB_OUTPUT"
         echo "TOOLCHAINS_IMAGE=$(sed -n 's/^image=//p' <<<"$out")" >> "$GITHUB_ENV"
         sed -n 's/^digest=//p' <<<"$out" > .toolchains-digest
     - id: toolchains
