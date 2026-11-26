@@ -47,8 +47,8 @@ env:
 jobs:
 
   # ── CI_SETUP ──────────────────────────────────────────────────────────────
-  # Resolves the toolchains image to pull, and the facts about this run: the branch it is on, and
-  # whether an operator started it. These are job outputs, not workflow `env`, because a job-level
+  # Resolves the toolchains image to pull, starts the build of a missing one, and sets the facts about
+  # this run: the branch it is on, and whether an operator started it. These are job outputs, not workflow `env`, because a job-level
   # `if:` cannot read the `env` context.
   ci_setup:
     runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
@@ -56,10 +56,10 @@ jobs:
       contents: read
       # To read the base branch of the PR.
       pull-requests: read
+      # To start build-toolchains-image.yml.
+      actions: write
     outputs:
       image:                      ${{ steps.toolchains.outputs.image }}
-      toolchains_deps_tag:        ${{ steps.toolchains.outputs.deps-tag }}
-      toolchains_deps_missing:    ${{ steps.toolchains.outputs.deps-missing }}
       is_release_branch:          ${{ steps.flags.outputs.is_release_branch }}
       is_epic_branch:             ${{ steps.flags.outputs.is_epic_branch }}
       is_merge_back:              ${{ steps.flags.outputs.is_merge_back }}
@@ -74,6 +74,17 @@ jobs:
         run: ci/free-host-disk.sh
       - id: toolchains
         uses: ./.github/actions/resolve-toolchains-image
+      # No job waits for the build: the next run takes the new image. A develop push also moves the develop tag.
+      # A fork pull request has a read-only token and skips it. A failed start does not fail the run.
+      - name: Start the build of the deps tag
+        if: >-
+          (steps.toolchains.outputs.deps-missing == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')) &&
+          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_REF: ${{ github.head_ref || github.ref_name }}
+        run: gh workflow run build-toolchains-image.yml --repo "$GITHUB_REPOSITORY" --ref "$BUILD_REF" -f commit="$GITHUB_SHA"
       - id: flags
         env:
           IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}
@@ -104,30 +115,6 @@ jobs:
             echo "is_merge_back=$MERGE_BACK"
             echo "base_branch=$BASE_BRANCH"
           } >> "$GITHUB_OUTPUT"
-
-  # ── TOOLCHAINS_IMAGE_BUILD ──────────────────────────────────────────────
-  # Builds the missing deps tag for the next run; no job waits for it. A develop push also moves the
-  # develop tag. A fork pull request has no push credentials and skips it.
-  toolchains_image_build:
-    needs: ci_setup
-    if: >-
-      (needs.ci_setup.outputs.toolchains_deps_missing == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')) &&
-      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON(vars.ES_IMAGE_BUILD_RUNS_ON || '["ubuntu-latest"]') }}
-    timeout-minutes: 60
-    concurrency:
-      group: toolchains-${{ needs.ci_setup.outputs.toolchains_deps_tag }}
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { fetch-depth: 1, persist-credentials: false }
-      - name: Free host disk
-        run: ci/free-host-disk.sh
-      - name: Build and push the deps tag
-        env:
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-        run: ci/toolchains/build-deps-image.sh ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' && '--develop' || '' }}
 
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
   # Fails fast when the toolchains image is broken: one cheap job runs the checks that every heavy

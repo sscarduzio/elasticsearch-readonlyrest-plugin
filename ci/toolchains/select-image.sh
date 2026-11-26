@@ -2,7 +2,7 @@
 # Selects the toolchains image of this run. It needs no credentials: registry-digest.sh reads anonymously.
 # Prints:  image=<repository>:<tag>  digest=sha256:...  deps_tag=<prefix>-deps-<hash>  deps_missing=true|false
 # The image is the deps tag of this commit. When that tag is missing, it is <prefix>-develop: Gradle then
-# downloads only the changed jars, and a separate job builds the deps tag for the next run.
+# downloads only the changed jars, and a separate workflow builds the deps tag for the next run.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 . ci/toolchains/image.env

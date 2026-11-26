@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Builds and pushes the deps tag of this commit (ci/toolchains/deps-tag.sh) when it is missing.
-# Usage: ci/toolchains/build-deps-image.sh [--fresh] [--develop]
+# Usage: ci/toolchains/build-deps-image.sh [--fresh]
 #   --fresh    builds even when the tag exists, from fresh base images and an empty Gradle home (weekly rebuild).
-#   --develop  also points <prefix>-develop at the deps tag.
+# It points <prefix>-develop at the deps tag only when HEAD is the head of develop (ci/toolchains/is-develop-head.sh).
 # Otherwise the build reuses the layers and the Gradle home of <prefix>-develop, so it downloads only new jars.
 # Needs DOCKER_REGISTRY_USER / DOCKER_REGISTRY_PASSWORD with push rights.
 set -euo pipefail
@@ -11,12 +11,11 @@ cd "$(dirname "$0")/../.."
 # shellcheck source=ci/log.sh
 source ci/log.sh
 
-fresh=false develop=false
+fresh=false
 for arg in "$@"; do
   case "$arg" in
     --fresh) fresh=true ;;
-    --develop) develop=true ;;
-    *) echo "Usage: $0 [--fresh] [--develop]" >&2; exit 1 ;;
+    *) echo "Usage: $0 [--fresh]" >&2; exit 1 ;;
   esac
 done
 deps_tag=$(ci/toolchains/deps-tag.sh)
@@ -44,7 +43,7 @@ else
   ci_log "$deps_tag exists."
 fi
 
-if [ "$develop" = true ] && [ "$(ci/toolchains/registry-digest.sh "$develop_tag")" != "$digest" ]; then
+if ci/toolchains/is-develop-head.sh && [ "$(ci/toolchains/registry-digest.sh "$develop_tag")" != "$digest" ]; then
   ci_log "Pointing $develop_tag at $deps_tag."
   docker buildx imagetools create -t "$develop_tag" "${deps_tag%:*}@$digest" >&2
 fi

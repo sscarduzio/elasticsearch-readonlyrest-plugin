@@ -12,12 +12,12 @@ shared `CI_RUNS_ON`, `LIGHT_RUNS_ON` and the others of `readonlyrest_kbn` into t
 
 | Variable | Default | Jobs |
 |---|---|---|
-| `ES_LIGHT_RUNS_ON` | `["ubuntu-latest"]` | `ci_setup`, `toolchains_verify`, `discover`, `e2e_order_kbn_images`, `release_setup`, the `discover` of `release.yml`, the `cleanup` of `build-toolchains-image.yml`, and the small workflows (`pr-conventions`, `claude`, `claude-code-review`, `flake-ledger`, `actionstrings_gen`, `verify-publish-credentials`) |
+| `ES_LIGHT_RUNS_ON` | `["ubuntu-latest"]` | `ci_setup`, `toolchains_verify`, `discover`, `e2e_order_kbn_images`, `release_setup`, the `discover` of `release.yml`, the `plan` and `cleanup` jobs of `build-toolchains-image.yml`, and the small workflows (`pr-conventions`, `claude`, `claude-code-review`, `flake-ledger`, `actionstrings_gen`, `verify-publish-credentials`) |
 | `ES_CI_RUNS_ON` | `["ubuntu-latest"]` | `optional_checks`, `required_checks`, `unit_tests_linux`, `it_linux`, `e2e_build_es_images`, `e2e_tests`, `build_ror` |
 | `ES_WINDOWS_RUNS_ON` | `["windows-2025"]` | `it_windows`, `unit_tests_windows` |
 | `ES_PUBLISH_RUNS_ON` | `["self-hosted","Linux","X64"]` | `upload_pre_ror`, `release_ror`, `publish_mvn` |
 | `ES_PUBLISH_RUNS_ON` | `["ubuntu-latest"]` | `mirror-es-libs.yml`, `publish-pre-builds.yml` |
-| `ES_IMAGE_BUILD_RUNS_ON` | `["ubuntu-latest"]` | `toolchains_image_build`, the `build` job of `build-toolchains-image.yml`, `disk-probe.yml` |
+| `ES_IMAGE_BUILD_RUNS_ON` | `["ubuntu-latest"]` | the `build` job of `build-toolchains-image.yml`, `disk-probe.yml` |
 
 A value is a JSON array of labels. Do not set them in this public repo: a pull request from a fork
 runs its own code on the runner these variables name.
@@ -77,8 +77,7 @@ that stops the plugin reading `/usr/share/elasticsearch` to verify its own patch
 
 | Job | What it does | When |
 |---|---|---|
-| `ci_setup` | chooses where every `container:` job pulls the toolchains image from, and publishes the run flags the later `if:` conditions read | always |
-| `toolchains_image_build` | builds the missing deps tag of the toolchains image for the next run; no job waits for it | a missing deps tag, and every `develop` push (it moves the develop tag); never a fork pull request |
+| `ci_setup` | chooses where every `container:` job pulls the toolchains image from, starts `build-toolchains-image.yml` for a missing deps tag (no job waits for it), and publishes the run flags the later `if:` conditions read | always |
 | `toolchains_verify` | sanity-checks the toolchains image | always (stops the run early when the image is broken) |
 | `discover` | decides which tests this run covers, and derives every matrix: the ES majors to build, and the ES modules each test matrix covers; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
@@ -194,8 +193,8 @@ Two runs, and the Actions graph does not link them. The summary of the release r
 back to the CI run instead.
 
 Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
-above: `build-toolchains-image.yml` (rebuilds the deps tag of `develop` from fresh base images, and
-deletes old image tags — weekly cron and manual; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml` (mirrors ES jars
+above: `build-toolchains-image.yml` (builds the deps tag of a commit for `ci_setup`; weekly cron and manual: rebuilds the deps tag of `develop` from fresh base images and
+deletes old image tags; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml` (mirrors ES jars
 into the libs store — see [S3 stores](#s3-stores)), `disk-probe.yml` (manually reports runner and
 Docker disk usage), `pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml`
 (regenerates the ES action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand
@@ -723,15 +722,21 @@ request, which does not count against the pull limit and gives the digest of the
 | the deps tag exists | the deps tag |
 | no deps tag | the develop tag; Gradle downloads only the changed jars |
 
-On a miss, `toolchains_image_build` builds the deps tag with `ci/toolchains/build-deps-image.sh`, and no
-job waits for it: the next run takes it. Only this job gets the Docker Hub RW token. Its concurrency
-group is the tag, so two runs do not build the same tag. The build starts from the layers and the Gradle
-home of the develop tag, so it downloads only the new jars. On a `develop` push the job also points the
-develop tag at the deps tag. `release_setup` builds a missing deps tag itself and waits, because a
-release needs the exact image.
+On a miss, and on every `develop` push, `ci_setup` starts `build-toolchains-image.yml` with
+`workflow_dispatch` and the input `commit` (`github.sha`; in a pull request run, the merge commit, so the
+built tag is the tag of the next run). It uses `GITHUB_TOKEN` with `actions: write`. The run is separate, so
+no CI job waits for the build, and the next run takes the new image. A fork pull request has a read-only
+token and starts no build. A failed start is a warning, not a failure. The `plan` job names the deps tag,
+and the `build` job runs `ci/toolchains/build-deps-image.sh` under the concurrency group of that tag, so
+two runs do not build one tag. Only the `build` job gets the Docker Hub RW token. The build starts from
+the layers and the Gradle home of the develop tag, so it downloads only the new jars.
 
-`build-toolchains-image.yml` rebuilds the deps tag of `develop` every week from fresh base images and an
-empty Gradle home, for JDK and OS patches, and moves the develop tag. Its `cleanup` job deletes the
+The build points the develop tag at the deps tag only when the built commit is the current head of
+`develop` (`ci/toolchains/is-develop-head.sh`). A pull request cannot move it, whatever its workflow files say.
+`release_setup` builds a missing deps tag itself and waits, because a release needs the exact image.
+
+Without `commit` (every week, or by hand), `build-toolchains-image.yml` rebuilds the deps tag of `develop`
+from fresh base images and an empty Gradle home, for JDK and OS patches. Its `cleanup` job deletes the
 `-deps-` tags last pushed more than 30 days ago, except the newest (`ci/toolchains/cleanup-tags.sh`). The
 Docker Hub RW token cannot delete, so the job needs `DOCKER_HUB_DELETE_TOKEN`; without it, the job only
 lists the tags.

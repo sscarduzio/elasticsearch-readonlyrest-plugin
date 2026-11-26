@@ -19,8 +19,8 @@
 #
 # Build context MUST be the repo root (the build needs settings.gradle/*/build.gradle to
 # resolve dependencies during the priming step). ci/toolchains/build-deps-image.sh builds and pushes it:
-# the toolchains_image_build job of ci.yml when this commit's tag (ci/toolchains/deps-tag.sh) is missing,
-# release_setup, and the weekly rebuild in .github/workflows/build-toolchains-image.yml.
+# build-toolchains-image.yml (started by ci_setup of ci.yml when this commit's tag (ci/toolchains/deps-tag.sh) is missing),
+# release_setup, and the weekly rebuild in that workflow.
 #
 # (BuildKit is required: the build context is filtered by the sibling
 # ci/toolchains/JdkToolchains.Dockerfile.dockerignore file.)

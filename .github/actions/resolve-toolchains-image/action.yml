@@ -10,9 +10,6 @@ outputs:
   image:
     description: The image reference to put in `container:`. Carries a digest on the mirrored path.
     value: ${{ steps.toolchains.outputs.image }}
-  deps-tag:
-    description: The deps tag of this commit.
-    value: ${{ steps.select.outputs.deps_tag }}
   deps-missing:
     description: "'true' when the deps tag does not exist and the run takes the develop tag."
     value: ${{ steps.select.outputs.deps_missing }}
@@ -26,7 +23,7 @@ runs:
         set -euo pipefail
         out=$(ci/toolchains/select-image.sh)
         echo "$out"
-        grep -E '^(deps_tag|deps_missing)=' <<<"$out" >> "$GITHUB_OUTPUT"
+        grep -E '^deps_missing=' <<<"$out" >> "$GITHUB_OUTPUT"
         echo "TOOLCHAINS_IMAGE=$(sed -n 's/^image=//p' <<<"$out")" >> "$GITHUB_ENV"
         sed -n 's/^digest=//p' <<<"$out" > .toolchains-digest
     - id: toolchains
