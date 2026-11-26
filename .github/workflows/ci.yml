@@ -84,7 +84,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_REF: ${{ github.head_ref || github.ref_name }}
-        run: gh workflow run build-toolchains-image.yml --repo "$GITHUB_REPOSITORY" --ref "$BUILD_REF" -f commit="$GITHUB_SHA"
+        run: gh workflow run build-toolchains-image.yml --repo "$GITHUB_REPOSITORY" --ref "$BUILD_REF" -f ref="$GITHUB_SHA"
       - id: flags
         env:
           IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}

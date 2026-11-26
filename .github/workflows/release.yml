@@ -52,7 +52,7 @@ jobs:
         github.event.workflow_run.conclusion == 'success'
       )
     runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
-    timeout-minutes: 60
+    timeout-minutes: 10
     outputs:
       image: ${{ steps.toolchains.outputs.image }}
     steps:
@@ -78,12 +78,6 @@ jobs:
             echo "::error::You typed '$CONFIRM_VERSION'. $RELEASE_BRANCH carries '$ACTUAL'."
             exit 1
           fi
-      # A release needs the exact image, so this job builds a missing deps tag and waits for it.
-      - name: Build the toolchains image when it is missing
-        env:
-          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-        run: ci/toolchains/build-deps-image.sh
       - id: toolchains
         uses: ./.github/actions/resolve-toolchains-image
       - name: Summarise the run

@@ -17,17 +17,14 @@
 # An ES module's toolchain comes from its `ext.javaLanguageVersion`. The build also writes that value
 # to `java.version` in plugin-descriptor.properties, so it is the minimum JVM that ES accepts.
 #
-# Build context MUST be the repo root (the build needs settings.gradle/*/build.gradle to
-# resolve dependencies during the priming step). ci/toolchains/build-deps-image.sh builds and pushes it:
-# build-toolchains-image.yml (started by ci_setup of ci.yml when this commit's tag (ci/toolchains/deps-tag.sh) is missing),
-# release_setup, and the weekly rebuild in that workflow.
+# Build context MUST be the repo root: the priming step resolves dependencies from settings.gradle and
+# the */build.gradle files. `ci/toolchains/toolchains-image.sh build` builds and pushes it.
 #
 # (BuildKit is required: the build context is filtered by the sibling
 # ci/toolchains/JdkToolchains.Dockerfile.dockerignore file.)
 #
-# The tag is TOOLCHAINS_TAG_PREFIX of ci/toolchains/image.env (the JDK set and the Gradle version) plus a
-# hash of the build files, so a dependency change gets a new image. Edit image.env when a supported
-# ES major adds a new JVM or the Gradle version changes.
+# The tag is the JDK set and the Gradle version plus a hash of the build files, so a dependency change
+# gets a new image. The tag rules live in `ci/toolchains/toolchains-image.sh`.
 
 # Every FROM below names a Docker Hub image, and Docker Hub rejects a pull with a bare
 # `429 Too Many Requests` when the runner's address is over the abuse rate limit. MIRROR puts a

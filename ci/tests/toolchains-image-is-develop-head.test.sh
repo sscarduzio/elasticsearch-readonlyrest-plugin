@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Runs ci/toolchains/is-develop-head.sh in a clone of a local origin. Only the head of develop passes.
+# Runs `toolchains-image.sh is-develop-head` in a clone of a local origin. Only the head of develop passes.
 
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-TOOL="$SCRIPT_DIR/../../../ci/toolchains/is-develop-head.sh"
+REPO_ROOT="$SCRIPT_DIR/../.."
 TEST_ROOT=$(mktemp -d)
 trap 'rm -rf "$TEST_ROOT"' EXIT
 
@@ -17,7 +17,8 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 git init --quiet --bare "$TEST_ROOT/origin.git"
 git init --quiet -b develop "$TEST_ROOT/work"
 mkdir -p "$TEST_ROOT/work/ci/toolchains"
-cp "$TOOL" "$TEST_ROOT/work/ci/toolchains/is-develop-head.sh"
+cp "$REPO_ROOT/ci/toolchains/toolchains-image.sh" "$TEST_ROOT/work/ci/toolchains/"
+cp "$REPO_ROOT/ci/log.sh" "$TEST_ROOT/work/ci/"
 cd "$TEST_ROOT/work"
 git remote add origin "$TEST_ROOT/origin.git"
 git add . && git commit --quiet -m develop
@@ -26,7 +27,7 @@ develop_sha=$(git rev-parse HEAD)
 
 check() { # <expected: 0|1> <case>
   local code=0
-  ci/toolchains/is-develop-head.sh || code=$?
+  ci/toolchains/toolchains-image.sh is-develop-head || code=$?
   [ "$code" = "$1" ] || fail "$2: exit $code, expected $1"
 }
 

@@ -1,20 +1,21 @@
 name: Build toolchains image
 
-# Builds the deps tag of a commit. ci_setup of ci.yml starts it with `commit` when the tag is missing, so the
-# CI run does not wait for the build. Weekly (and by hand, without `commit`) it rebuilds the deps tag of
-# develop from fresh base images and an empty Gradle home, and deletes old deps tags.
-# See "The container: image" in ci/CI.md.
+# Builds the deps tag of a ref, and moves the develop tag when the ref is the head of develop.
+# The weekly run also rebuilds from fresh base images and deletes old deps tags.
 
 on:
   schedule:
     - cron: '0 3 * * 1'   # weekly rebuild
   workflow_dispatch:
     inputs:
-      commit:
-        description: 'The commit to build the image for. Empty: the head of develop, built fresh.'
+      ref:
+        description: The branch, tag or commit to build the image for.
         type: string
-        required: false
-        default: ''
+        default: develop
+      fresh:
+        description: Build from fresh base images and an empty Gradle home, then delete old deps tags.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -26,17 +27,18 @@ defaults:
 jobs:
 
   # ── PLAN ──────────────────────────────────────────────────────────────────
-  # Job-level concurrency cannot read a step output, so this job names the tag first.
+  # The concurrency group of `build` needs the tag, and job-level `concurrency` cannot read a step output.
   plan:
     runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 10
     outputs:
       deps_tag: ${{ steps.tag.outputs.deps_tag }}
+      fresh: ${{ github.event_name == 'schedule' || inputs.fresh }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { ref: "${{ inputs.commit || 'refs/heads/develop' }}", fetch-depth: 1, persist-credentials: false }
+        with: { ref: "${{ inputs.ref || 'develop' }}", fetch-depth: 1, persist-credentials: false }
       - id: tag
-        run: echo "deps_tag=$(ci/toolchains/deps-tag.sh)" >> "$GITHUB_OUTPUT"
+        run: echo "deps_tag=$(ci/toolchains/toolchains-image.sh deps-tag)" >> "$GITHUB_OUTPUT"
 
   # ── BUILD ─────────────────────────────────────────────────────────────────
   build:
@@ -49,20 +51,19 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { ref: "${{ inputs.commit || 'refs/heads/develop' }}", fetch-depth: 1, persist-credentials: false }
+        with: { ref: "${{ inputs.ref || 'develop' }}", fetch-depth: 1, persist-credentials: false }
       - name: Free host disk
         run: ci/free-host-disk.sh
-      # The script moves the develop tag only when this commit is the head of develop.
       - name: docker build & push
         env:
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-        run: ci/toolchains/build-deps-image.sh ${{ inputs.commit == '' && '--fresh' || '' }}
+        run: ci/toolchains/toolchains-image.sh build ${{ needs.plan.outputs.fresh == 'true' && '--fresh' || '' }}
 
   # ── CLEANUP ───────────────────────────────────────────────────────────────
   cleanup:
-    needs: build
-    if: inputs.commit == ''
+    needs: [plan, build]
+    if: needs.plan.outputs.fresh == 'true'
     runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 10
     steps:
@@ -71,6 +72,6 @@ jobs:
       - name: Delete old toolchains image tags
         env:
           DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          # The RW token has no Delete scope. Without this token the step lists the tags only.
+          # The RW token has no Delete scope.
           DOCKER_HUB_DELETE_TOKEN: ${{ secrets.DOCKER_HUB_DELETE_TOKEN }}
-        run: ci/toolchains/cleanup-tags.sh
+        run: ci/toolchains/toolchains-image.sh cleanup
