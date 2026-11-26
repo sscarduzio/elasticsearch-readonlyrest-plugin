@@ -181,6 +181,14 @@ order_e2e_kbn_images() {
     return 2
   fi
 
+  # Repo variable E2E_KBN_IMAGES=published: build nothing in the KBN repo, take its published dev images.
+  if [ "${E2E_KBN_IMAGES:-}" = published ]; then
+    local MAP
+    MAP=$(pick_published_kbn_images "$ELK_VERSIONS" "$FALLBACK_BRANCH") || return $?
+    [ -n "${GITHUB_OUTPUT:-}" ] && echo "kbn_tag_by_elk=$MAP" >> "$GITHUB_OUTPUT"
+    return 0
+  fi
+
   # How long to wait for the WHOLE order. One run builds the versions one after another. A wait
   # that outlasts the caller can report nothing: the caller is stopped at its own timeout, and the
   # diagnosis below never reaches the log. So the caller sets ROR_KBN_WAIT_TIMEOUT_SECONDS, and
@@ -215,6 +223,36 @@ order_e2e_kbn_images() {
     _report_kbn_order_failure wait "$STATUS" "${ROR_KBN_PREBUILD_RUN_URL:-}"
     return "$STATUS"
   fi
+}
+
+# Prints {"<elk version>": "<kbn sha12>"}: the newest commit of KBN's base branch (master for master,
+# develop otherwise) with a published KBN dev image for each version. Reads only.
+# Args: <elk versions> <fallback branch>
+pick_published_kbn_images() {
+  local BASE=develop REPO=beshultd/kibana-readonlyrest-dev SHAS TOKEN MAP='{}' V SHA FOUND CODE
+  [ "$2" = master ] && BASE=master
+  SHAS=$(GH_TOKEN="${ROR_GH_TOKEN:?ROR_GH_TOKEN is not set}" \
+         gh api "repos/sscarduzio/readonlyrest_kbn/commits?sha=${BASE}&per_page=50" --jq '.[].sha[:12]') || {
+    ci_log "Cannot read the commits of the KBN repo branch $BASE."; return 3; }
+  TOKEN=$(curl -fsS "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${REPO}:pull" | jq -r .token) || {
+    ci_log "Cannot get a Docker Hub pull token."; return 7; }
+  for V in $1; do
+    FOUND=""
+    for SHA in $SHAS; do
+      # A HEAD request does not count against the Docker Hub pull limit.
+      CODE=$(curl -s -o /dev/null -w '%{http_code}' -I -H "Authorization: Bearer $TOKEN" \
+        -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+        "https://registry-1.docker.io/v2/${REPO}/manifests/${V}-ror-${SHA}")
+      if [ "$CODE" = 200 ]; then FOUND=$SHA; break; fi
+    done
+    if [ -z "$FOUND" ]; then
+      ci_log "No KBN dev image for ELK $V among the last 50 commits of KBN $BASE. Run its pre-build there."
+      return 5
+    fi
+    ci_log "KBN dev image for ELK $V: ${REPO}:${V}-ror-${FOUND} (KBN $BASE)."
+    MAP=$(jq -c --arg v "$V" --arg t "$FOUND" '. + {($v): $t}' <<<"$MAP")
+  done
+  echo "$MAP"
 }
 
 # Publishes this repo's ROR ES dev image under the per-run tag. Call it one time for each ELK
@@ -264,6 +302,11 @@ run_e2e_against_dev_images() {
     apply_limits=true
   fi
   ci_log "Running the e2e tests: ELK $ELK_VERSION, image tag $RUN_TAG (MemTotal=${mem_kb}kB, APPLY_RESOURCE_LIMITS=$apply_limits)."
+  # The e2e repo pulls the default dev image name. With another registry, give it a local copy under that name.
+  if [ "${ES_DEV_IMAGE_REPO:?source ci/ci-lib.sh first}" != "$ES_DEV_IMAGE_REPO_DEFAULT" ]; then
+    docker pull --quiet "$ES_DEV_IMAGE_REPO:${ELK_VERSION}-ror-${RUN_TAG}" >&2 || { ci_log "Cannot pull $ES_DEV_IMAGE_REPO:${ELK_VERSION}-ror-${RUN_TAG}."; return 3; }
+    docker tag "$ES_DEV_IMAGE_REPO:${ELK_VERSION}-ror-${RUN_TAG}" "$ES_DEV_IMAGE_REPO_DEFAULT:${ELK_VERSION}-ror-${RUN_TAG}" || return 3
+  fi
   (
     cd "$E2E_DIR" || exit 1
     APPLY_RESOURCE_LIMITS="$apply_limits" ./runner.sh \
@@ -271,7 +314,7 @@ run_e2e_against_dev_images() {
       --env docker \
       --elk "$ELK_VERSION" \
       --ror-es "$RUN_TAG" \
-      --ror-kbn "$RUN_TAG" \
+      --ror-kbn "${E2E_KBN_TAG:-$RUN_TAG}" \
       --mode dev
   )
 }

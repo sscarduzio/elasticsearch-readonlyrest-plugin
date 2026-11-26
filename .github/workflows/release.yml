@@ -44,12 +44,16 @@ jobs:
 
   # ── RELEASE_SETUP ─────────────────────────────────────────────────────────
   # May this run publish, and from which branch?
+  # ES_PUBLISH_ENABLED=false: this repo releases nothing.
   release_setup:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      vars.ES_PUBLISH_ENABLED != 'false' &&
       (
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.conclusion == 'success'
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.conclusion == 'success'
+        )
       )
     runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 10

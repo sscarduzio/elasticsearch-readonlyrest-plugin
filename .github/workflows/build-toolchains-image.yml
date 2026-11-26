@@ -35,7 +35,8 @@ jobs:
     # A GitHub schedule fires on the default branch. The guard holds if that branch ever changes.
     # A dispatch stays open to every branch. The image bakes this commit's Gradle dependencies, so a
     # branch that bumps one needs its own tag and its own build. record_digest warns about the cost.
-    if: github.event_name != 'schedule' || github.ref == 'refs/heads/develop'
+    # ES_PUBLISH_ENABLED=false: this repo pushes no image to Docker Hub.
+    if: vars.ES_PUBLISH_ENABLED != 'false' && (github.event_name != 'schedule' || github.ref == 'refs/heads/develop')
     runs-on: ${{ fromJSON(vars.ES_IMAGE_BUILD_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 240
     # record_digest reads these. A digest is public, so an output carries it safely.

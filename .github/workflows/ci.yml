@@ -43,6 +43,9 @@ env:
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
   IT_PARALLELISM: '4'
+  # Repo switches. An empty value keeps the default.
+  ES_DEV_IMAGE_REPO: ${{ vars.ES_DEV_IMAGE_REPO }}
+  E2E_KBN_IMAGES: ${{ vars.E2E_KBN_IMAGES }}
 
 jobs:
 
@@ -420,8 +423,8 @@ jobs:
   it_windows:
     name: it_win_${{ matrix.ES_MODULE }}
     needs: [ discover, toolchains_verify ]
-    # Same reason as it_linux.
-    if: needs.discover.outputs.it_windows_matrix != '{"include":[]}'
+    # Same reason as it_linux. ES_WINDOWS_ENABLED=false turns off the Windows legs (GitHub-hosted minutes).
+    if: vars.ES_WINDOWS_ENABLED != 'false' && needs.discover.outputs.it_windows_matrix != '{"include":[]}'
     runs-on: ${{ fromJSON(vars.ES_WINDOWS_RUNS_ON || '["windows-2025"]') }}
     timeout-minutes: 150
     # Clears the Linux toolchains-image Gradle settings: /opt/gradle-home resolves to an empty
@@ -473,7 +476,7 @@ jobs:
   # ── TEST: unit tests on Windows ───────────────────────────────────────────
   unit_tests_windows:
     needs: ci_setup
-    if: needs.ci_setup.outputs.manual_action == 'run_all_tests_on_windows'
+    if: vars.ES_WINDOWS_ENABLED != 'false' && needs.ci_setup.outputs.manual_action == 'run_all_tests_on_windows'
     runs-on: ${{ fromJSON(vars.ES_WINDOWS_RUNS_ON || '["windows-2025"]') }}
     timeout-minutes: 150
     # Same reason as it_windows, and the same reason it cannot live in setup-windows-job.
@@ -506,6 +509,8 @@ jobs:
     timeout-minutes: 150
     outputs:
       elk_version_by_module: ${{ steps.versions.outputs.elk_version_by_module }}
+      # Set only with E2E_KBN_IMAGES=published: the published KBN dev image of each ELK version.
+      kbn_tag_by_elk: ${{ steps.order.outputs.kbn_tag_by_elk }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { fetch-depth: 1, persist-credentials: false }
@@ -541,7 +546,7 @@ jobs:
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           ROR_KBN_WAIT_TIMEOUT_SECONDS: 7200
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_PASSWORD: ${{ vars.E2E_KBN_IMAGES == 'published' && secrets.DOCKER_HUB_RO_TOKEN || secrets.DOCKER_HUB_RW_TOKEN }}
         run: |
           set -e
           E2E_ELK_VERSIONS=$(jq -r '[.[]] | join(" ")' <<<"$ELK_VERSION_BY_MODULE")
@@ -565,6 +570,10 @@ jobs:
     runs-on: ${{ fromJSON(vars.ES_CI_RUNS_ON || '["ubuntu-latest"]') }}
     container: *toolchains_container
     timeout-minutes: 120
+    # packages: the dev image goes to ghcr.io when ES_DEV_IMAGE_REPO names it.
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.e2e_matrix) }}
@@ -585,7 +594,10 @@ jobs:
           ROR_CUSTOM_DOCKER_PLATFORMS: linux/amd64
           E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          # Docker Hub needs write only when the dev images go there.
+          DOCKER_REGISTRY_PASSWORD: ${{ vars.ES_DEV_IMAGE_REPO && secrets.DOCKER_HUB_RO_TOKEN || secrets.DOCKER_HUB_RW_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ startsWith(vars.ES_DEV_IMAGE_REPO, 'ghcr.io/') && github.token || '' }}
         run: |
           set -e
           source ci/configure-docker.sh
@@ -613,6 +625,10 @@ jobs:
     # holds no node, yarn or Cypress browser.
     env:
       E2E_ELK_VERSION: ${{ fromJSON(needs.e2e_order_kbn_images.outputs.elk_version_by_module)[matrix.ES_MODULE] }}
+    # packages: the dev image comes from ghcr.io when ES_DEV_IMAGE_REPO names it.
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.e2e_matrix) }}
@@ -635,10 +651,14 @@ jobs:
           E2E_TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
           E2E_FALLBACK_BRANCH: ${{ needs.ci_setup.outputs.base_branch }}
           E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
+          # Empty: the KBN image has the run tag. E2E_KBN_IMAGES=published: the tag of the published image.
+          E2E_KBN_TAG: ${{ fromJSON(needs.e2e_order_kbn_images.outputs.kbn_tag_by_elk || '{}')[fromJSON(needs.e2e_order_kbn_images.outputs.elk_version_by_module)[matrix.ES_MODULE]] }}
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_PASSWORD: ${{ vars.ES_DEV_IMAGE_REPO && secrets.DOCKER_HUB_RO_TOKEN || secrets.DOCKER_HUB_RW_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ startsWith(vars.ES_DEV_IMAGE_REPO, 'ghcr.io/') && github.token || '' }}
           # Do not let corepack ask before it downloads yarn. CI has no operator.
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
@@ -656,8 +676,17 @@ jobs:
           if [ -n "${E2E_TESTS_DIR:-}" ] && [ -f "$SUMMARY" ]; then
             cat "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
           fi
+      # Without ROR_S3_PATH_E2E_REPORTS the reports stay in the run artifacts.
+      - name: Upload Cypress artifacts on failure
+        if: failure() && vars.ROR_S3_PATH_E2E_REPORTS == '' && env.E2E_TESTS_DIR != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e2e-${{ matrix.ES_MODULE }}-cypress
+          path: ${{ env.E2E_TESTS_DIR }}/results
+          retention-days: 14
       - name: Upload Cypress artifacts to S3 on failure
-        if: failure()
+        if: failure() && vars.ROR_S3_PATH_E2E_REPORTS != ''
         continue-on-error: true
         env:
           ROR_S3_ENDPOINT_URL: ${{ vars.ROR_S3_ENDPOINT_URL }}

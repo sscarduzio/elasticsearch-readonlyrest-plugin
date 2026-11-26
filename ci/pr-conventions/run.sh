@@ -21,7 +21,7 @@ if [ "$#" -ne 1 ]; then
   exit 2
 fi
 PR="$1"
-REPO="${GH_REPO:-sscarduzio/elasticsearch-readonlyrest-plugin}"
+REPO="${GH_REPO:-${GITHUB_REPOSITORY:-sscarduzio/elasticsearch-readonlyrest-plugin}}"
 CHECKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/checks"
 
 # The data goes in files, not in the environment: a big pull request produces hundreds of kilobytes,

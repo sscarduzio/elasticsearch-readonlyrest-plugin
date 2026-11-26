@@ -195,7 +195,13 @@ _ror_docker_auth() {
   # `base64 -w0` gives one line, but -w is GNU only, and the BSD base64 of macOS refuses it. This
   # file also runs by hand, on a developer machine, so `tr` removes the line breaks instead.
   auth=$(printf '%s:%s' "$user" "$token" | base64 | tr -d '\n')
-  export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$auth\"}}}"
+  # A job that gives GHCR_TOKEN also reads or pushes dev images on ghcr.io (repo variable ES_DEV_IMAGE_REPO).
+  local ghcr_auth="" ghcr_entry=""
+  if [ -n "${GHCR_TOKEN:-}" ]; then
+    ghcr_auth=$(printf '%s:%s' "${GHCR_USER:-x-access-token}" "$GHCR_TOKEN" | base64 | tr -d '\n')
+    ghcr_entry=",\"ghcr.io\":{\"auth\":\"$ghcr_auth\"}"
+  fi
+  export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$auth\"}$ghcr_entry}}"
 
   # Hide the value from the log first, because it contains base64(user:token). Mask before anything
   # can print it, and thus before the login below.
@@ -204,6 +210,7 @@ _ror_docker_auth() {
   # stands, so the shell that sourced the file is authenticated.
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
     echo "::add-mask::$auth"
+    [ -n "$ghcr_auth" ] && echo "::add-mask::$ghcr_auth"
     echo "::add-mask::$DOCKER_AUTH_CONFIG"
   fi
 
@@ -217,6 +224,11 @@ _ror_docker_auth() {
   # token.
   if ! printf '%s' "$token" | docker login -u "$user" --password-stdin >/dev/null; then
     _ror_docker_auth_failed "the docker login failed for the user '$user'"
+    return $?
+  fi
+  if [ -n "${GHCR_TOKEN:-}" ] &&
+     ! printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USER:-x-access-token}" --password-stdin >/dev/null; then
+    _ror_docker_auth_failed "the docker login to ghcr.io failed"
     return $?
   fi
 

@@ -1,0 +1,46 @@
+name: Purge dev images
+
+# Deletes old ROR ES dev images when ES_DEV_IMAGE_REPO names a ghcr.io package. The script holds the rule.
+# A scheduled run deletes only while GHCR_PURGE_ENABLED is 'true'.
+on:
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'List the deletes only'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: purge-dev-images
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    if: startsWith(vars.ES_DEV_IMAGE_REPO, 'ghcr.io/')
+    runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Purge
+        env:
+          # A token with delete:packages, or the job token when this repo has the Admin role on the package.
+          GH_TOKEN: ${{ secrets.GHCR_PURGE_TOKEN || github.token }}
+          ES_DEV_IMAGE_REPO: ${{ vars.ES_DEV_IMAGE_REPO }}
+          PURGE_DELETE: ${{ (github.event_name == 'workflow_dispatch' && !inputs.dry_run) || (github.event_name == 'schedule' && vars.GHCR_PURGE_ENABLED == 'true') }}
+        run: |
+          set -euo pipefail
+          path=${ES_DEV_IMAGE_REPO#ghcr.io/}
+          owner=${path%%/*}
+          kind=$([ "$(gh api "users/$owner" --jq .type)" = Organization ] && echo orgs || echo users)
+          DRY_RUN=$([ "$PURGE_DELETE" = "true" ] && echo false || echo true) \
+          PURGE_OWNER=$owner PURGE_OWNER_KIND=$kind \
+            .github/scripts/ghcr-purge-dev-images.sh "${path#*/}"

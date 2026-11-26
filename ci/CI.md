@@ -569,6 +569,20 @@ The `ROR_S3_PATH_LIBS` value is optional —
 unset (or empty, which is what an undefined `vars.X` expands to) falls back to the defaults in
 `LibsStore`, which is also what a local build resolves against.
 
+### Repo switches
+
+These repo variables change what CI does. An unset variable keeps the behaviour in the right column.
+
+| Variable | When set | Unset |
+|---|---|---|
+| `ES_DEV_IMAGE_REPO` | The dev images go to this repository. For a `ghcr.io/` name, the jobs log in with the job token, Docker Hub needs only `DOCKER_HUB_RO_TOKEN`, and `purge-dev-images.yml` deletes old images (only while `GHCR_PURGE_ENABLED` is `true` on a schedule). The e2e job tags its pull with the default name, because the e2e repo pulls that name | `<dockerImageNamespace>/elasticsearch-readonlyrest-dev` on Docker Hub |
+| `ES_PUBLISH_ENABLED=false` | No release, no Maven publish, no Sonatype check, no action-strings push, no toolchains image build | publishing on |
+| `ES_WINDOWS_ENABLED=false` | No `it_windows` and no `unit_tests_windows` (GitHub-hosted minutes) | Windows legs on |
+| `E2E_KBN_IMAGES=published` | The e2e jobs build nothing in the KBN repo. They take the KBN dev image of the newest commit of KBN's base branch (`master` for `master`, `develop` otherwise) | one KBN build per run |
+
+The Cypress reports of a failed e2e job go to S3 when `ROR_S3_PATH_E2E_REPORTS` is set, and to the run
+artifacts otherwise. `ci/pr-conventions/run.sh` reads the repo name from `GITHUB_REPOSITORY`.
+
 Release tags push via the checkout token (`release_ror` has `permissions: contents: write`)
 — no SSH deploy key. Fork PRs get no secrets (GitHub default); `cve_check` and docker auth
 degrade instead of failing.

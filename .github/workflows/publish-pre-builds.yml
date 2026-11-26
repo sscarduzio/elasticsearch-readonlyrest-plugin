@@ -48,7 +48,12 @@ jobs:
     name: Publishing
     runs-on: ${{ fromJSON(vars.ES_PUBLISH_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 600
+    # packages: the dev images go to ghcr.io when ES_DEV_IMAGE_REPO names it.
+    permissions:
+      contents: read
+      packages: write
     env:
+      ES_DEV_IMAGE_REPO: ${{ vars.ES_DEV_IMAGE_REPO }}
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
       GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=true'
     steps:
@@ -94,7 +99,10 @@ jobs:
           FORCE_REBUILD: ${{ inputs.force_rebuild }}
           ROR_CUSTOM_DOCKER_PLATFORMS: ${{ inputs.custom_platforms }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          # Docker Hub needs write only when the dev images go there.
+          DOCKER_REGISTRY_PASSWORD: ${{ vars.ES_DEV_IMAGE_REPO && secrets.DOCKER_HUB_RO_TOKEN || secrets.DOCKER_HUB_RW_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ startsWith(vars.ES_DEV_IMAGE_REPO, 'ghcr.io/') && github.token || '' }}
         run: |
           set -e
 
@@ -107,4 +115,6 @@ jobs:
       # in ~/.docker/config.json, where every later job on the box can read it.
       - name: Log out of Docker Hub
         if: always()
-        run: docker logout || true
+        run: |
+          docker logout || true
+          docker logout ghcr.io || true
