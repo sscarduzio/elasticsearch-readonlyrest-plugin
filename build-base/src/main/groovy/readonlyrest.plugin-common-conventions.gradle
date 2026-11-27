@@ -196,6 +196,8 @@ def esVersionedJars = { art, String esVer ->
     detached.transitive = false
     detached.resolve()
 }
+project.ext.esVersionedArtifacts = esVersionedArtifacts
+project.ext.esVersionedJars = esVersionedJars
 
 tasks.register('downloadEsVersionedDependencyJars') {
     outputs.upToDateWhen { false }
@@ -216,28 +218,6 @@ tasks.register('downloadEsVersionedDependencyJars') {
                     into destDir
                 }
             }
-        }
-    }
-}
-
-// Resolves, without building, the ES-versioned jars of every supported version and the compile classpath of
-// every version that verifyRepackageBytecode compiles. The toolchains image build runs it.
-tasks.register('resolveEsVersionedDependencies') {
-    group = 'ci'
-    doLast {
-        def artifacts = esVersionedArtifacts()
-        EsVersions.of(project).all.each { esVer -> artifacts.each { art -> esVersionedJars(art, esVer) } }
-
-        (EsVersions.baseVersions(project) + EsVersions.groupNewest(project)).unique().each { esVer ->
-            def classpath = configurations.compileClasspath.copyRecursive()
-            classpath.resolutionStrategy.eachDependency { details ->
-                if (details.requested.group.startsWith('org.elasticsearch') && details.requested.version == project.ext.esVersion) {
-                    details.useVersion(esVer)
-                }
-            }
-            classpath.incoming.artifactView {
-                componentFilter { it instanceof ModuleComponentIdentifier }
-            }.files.files
         }
     }
 }

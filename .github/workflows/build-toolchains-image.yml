@@ -1,7 +1,9 @@
 name: Build toolchains image
 
-# Builds the deps tag of a ref, and moves the develop tag when the ref is the head of develop.
-# The weekly run also rebuilds from fresh base images and deletes old deps tags.
+# Produces the toolchains image of one commit and pushes it to Docker Hub.
+# The image holds the JDKs, Gradle and all Gradle dependencies of that commit.
+# For the latest develop commit, the image also becomes the develop toolchains image.
+# The weekly run rebuilds the develop toolchains image from scratch and deletes images older than 30 days.
 
 on:
   schedule:
@@ -12,8 +14,12 @@ on:
         description: The branch, tag or commit to build the image for.
         type: string
         default: develop
-      fresh:
-        description: Build from fresh base images and an empty Gradle home, then delete old deps tags.
+      full-rebuild:
+        description: Build the image again from new base images and an empty Gradle home, even when it exists.
+        type: boolean
+        default: false
+      cleanup:
+        description: Delete commit images older than 30 days after the build.
         type: boolean
         default: false
 
@@ -32,13 +38,14 @@ jobs:
     runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 10
     outputs:
-      deps_tag: ${{ steps.tag.outputs.deps_tag }}
-      fresh: ${{ github.event_name == 'schedule' || inputs.fresh }}
+      commit_tag: ${{ steps.tag.outputs.commit_tag }}
+      full_rebuild: ${{ github.event_name == 'schedule' || inputs.full-rebuild }}
+      cleanup: ${{ github.event_name == 'schedule' || inputs.cleanup }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ inputs.ref || 'develop' }}", fetch-depth: 1, persist-credentials: false }
       - id: tag
-        run: echo "deps_tag=$(ci/toolchains/toolchains-image.sh deps-tag)" >> "$GITHUB_OUTPUT"
+        run: echo "commit_tag=$(ci/toolchains/toolchains-image.sh commit-tag)" >> "$GITHUB_OUTPUT"
 
   # ── BUILD ─────────────────────────────────────────────────────────────────
   build:
@@ -47,7 +54,7 @@ jobs:
     timeout-minutes: 120
     # Two builds of one tag would push it twice. A second run waits, because cancelling one wastes its build.
     concurrency:
-      group: toolchains-${{ needs.plan.outputs.deps_tag }}
+      group: toolchains-${{ needs.plan.outputs.commit_tag }}
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -58,12 +65,12 @@ jobs:
         env:
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
-        run: ci/toolchains/toolchains-image.sh build ${{ needs.plan.outputs.fresh == 'true' && '--fresh' || '' }}
+        run: ci/toolchains/toolchains-image.sh build ${{ needs.plan.outputs.full_rebuild == 'true' && '--full-rebuild' || '' }}
 
   # ── CLEANUP ───────────────────────────────────────────────────────────────
   cleanup:
     needs: [plan, build]
-    if: needs.plan.outputs.fresh == 'true'
+    if: needs.plan.outputs.cleanup == 'true'
     runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
     timeout-minutes: 10
     steps:

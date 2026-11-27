@@ -98,9 +98,9 @@ FROM ${GRADLE_HOME_SEED} AS gradle-home-seed
 #   1) `help` downloads the Gradle distribution into the wrapper/dists layout ./gradlew expects
 #      (so CI never re-downloads it -> kills the services.gradle.org/github 504s) and applies
 #      every project's plugins, resolving plugin classpaths into the cache.
-#   2) `resolveCiDependencies` (registered by the ci/toolchains/resolve-deps.init.gradle init
-#      script -- which has zero footprint on the shipped build) resolves all resolvable
-#      configurations of all projects into caches/modules-2 without compiling.
+#   2) `prefetchDependenciesForAllEsVersions` resolves every project's dependency configurations,
+#      the ES-versioned jars of every supported ES version and the compile classpath of every
+#      version that verifyRepackageBytecode compiles.
 # Both run with toolchain auto-download off (all JDKs are already baked in). Anything that still
 # misses at CI time (e.g. a dep bumped since the last rebuild) falls back to the network; the
 # weekly scheduled rebuild of this image keeps that stale window short.
@@ -117,10 +117,9 @@ RUN printf '%s\n' \
 COPY . /tmp/ror-src
 RUN cd /tmp/ror-src \
  && ./gradlew --no-daemon --console=plain \
-      --init-script ci/toolchains/resolve-deps.init.gradle \
       -Dorg.gradle.java.installations.auto-download=false \
       -Dorg.gradle.java.installations.paths=/opt/java/jdk8,/opt/java/jdk11,/opt/java/openjdk,/opt/java/jdk21 \
-      help resolveCiDependencies resolveEsVersionedDependencies \
+      help prefetchDependenciesForAllEsVersions \
  # Cache the full classpath of every download-free task the pipeline runs (run-pipeline.sh):
  #   compile_codebase_check -> `classes`     (every module's compile deps, incl. per-ES-version
  #                                            transport-netty4 etc. — and the Scala compiler bridge,

@@ -73,12 +73,12 @@ jobs:
       - name: Free host disk
         run: ci/free-host-disk.sh
       - id: toolchains
-        uses: ./.github/actions/resolve-toolchains-image
+        run: ci/toolchains/toolchains-image.sh select
       # No job waits for the build: the next run takes the new image. A develop push also moves the develop tag.
       # A fork pull request has a read-only token and skips it. A failed start does not fail the run.
-      - name: Start the build of the deps tag
+      - name: Start the build of the commit toolchains image
         if: >-
-          (steps.toolchains.outputs.deps-missing == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')) &&
+          (steps.toolchains.outputs.commit_image_missing == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')) &&
           (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         continue-on-error: true
         env:

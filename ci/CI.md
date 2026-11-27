@@ -77,7 +77,7 @@ that stops the plugin reading `/usr/share/elasticsearch` to verify its own patch
 
 | Job | What it does | When |
 |---|---|---|
-| `ci_setup` | chooses where every `container:` job pulls the toolchains image from, starts `build-toolchains-image.yml` for a missing deps tag (no job waits for it), and publishes the run flags the later `if:` conditions read | always |
+| `ci_setup` | chooses where every `container:` job pulls the toolchains image from, starts `build-toolchains-image.yml` when the commit image is missing (no job waits for it), and publishes the run flags the later `if:` conditions read | always |
 | `toolchains_verify` | sanity-checks the toolchains image | always (stops the run early when the image is broken) |
 | `discover` | decides which tests this run covers, and derives every matrix: the ES majors to build, and the ES modules each test matrix covers; see the [test matrix policy](#test-matrix-policy) | always |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
@@ -125,11 +125,10 @@ flags let a job read one of them. The last row is the merge-back: it hands `deve
 pushes must publish nothing. A `-pre` on `master` is a state the branching rules forbid, and
 `discover` is the first place that sees the branch and the version together.
 
-Both workflows share two composite actions rather than two copies:
+Both workflows share one composite action:
 
 | Action | What it does | Used by |
 |---|---|---|
-| `resolve-toolchains-image` | selects the toolchains image, picks the mirror or Docker Hub, and returns the image; needs no credentials | `ci_setup`, `release_setup` |
 | `verify-toolchains-image` | proves the baked Gradle home works | `toolchains_verify` (a whole job, to fail fast before the CI matrices), `discover` in `release.yml` (a step, being its first container job) |
 
 ### The tag is the publish record
@@ -193,8 +192,8 @@ Two runs, and the Actions graph does not link them. The summary of the release r
 back to the CI run instead.
 
 Other workflows in `.github/workflows/`, all manual or event-driven and independent of the
-above: `build-toolchains-image.yml` (builds the deps tag of a commit for `ci_setup`; weekly cron and manual: rebuilds the deps tag of `develop` from fresh base images and
-deletes old image tags; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml` (mirrors ES jars
+above: `build-toolchains-image.yml` (builds the toolchains image of a commit for `ci_setup`; weekly cron and manual: rebuilds the develop toolchains image from scratch and
+deletes old commit images; see [The `container:` image](#the-container-image)), `mirror-es-libs.yml` (mirrors ES jars
 into the libs store — see [S3 stores](#s3-stores)), `disk-probe.yml` (manually reports runner and
 Docker disk usage), `pr-conventions.yml` (PR title/changelog checks), `actionstrings_gen.yml`
 (regenerates the ES action-string lists in the docs repo), `publish-pre-builds.yml` (on-demand
@@ -691,9 +690,9 @@ working tree that belongs to another user, thus a command such as `git rev-parse
 repository, so every script that sources the lib can use git. Each job gets a new container, so the
 exception ends with the job.
 
-`container: image:` can read a job output. The `ci_setup` job runs
-`ci/resolve-toolchains-image.sh` once, and the `&toolchains_container` anchor reads its output: the
-name to pull. That job holds no container itself, and it cannot: it is the job that picks one.
+`container: image:` can read a job output. `ci_setup` and `release_setup` run
+`ci/toolchains/toolchains-image.sh select` once, and the `&toolchains_container` anchor reads its
+output: the name to pull. Neither setup job holds a container itself: it is the job that picks one.
 
 A mirrored name carries the digest, not the tag: `mirror.gcr.io/beshultd/ror-ci-toolchains@sha256:…`.
 The jobs of one run start hours apart, and a tag can move between the check and a pull. A Docker Hub
@@ -701,58 +700,60 @@ name keeps the tag, because no digest is proven in that case.
 
 The image bakes the Gradle dependencies, so one image fits one state of the build files. Two tags,
 both with the prefix `PREFIX` of `ci/toolchains/toolchains-image.sh` (the JDK set and the Gradle version).
-That script holds every tag rule and every Docker Hub call, as subcommands: `deps-tag`, `select`, `build [--fresh]`, `cleanup` and `is-develop-head`.
+That script holds every tag rule and every registry call, as subcommands: `commit-tag`, `select`, `build [--full-rebuild]`, `cleanup` and `is-develop-head`.
 
 | Tag | What it holds | Who uses it |
 |---|---|---|
-| `<prefix>-deps-<hash>` | the dependencies of one state of the build files | normal CI runs |
-| `<prefix>-develop` | the dependencies of the newest `develop` | fork pull requests, runs whose deps tag is not built yet, and new builds as layer and Gradle-home cache |
+| `<prefix>-commit-<hash>` | the dependencies of one commit's build files | normal CI runs |
+| `<prefix>-develop` | the dependencies of the newest `develop` commit | fork pull requests, runs whose commit image is not built yet, and new builds as layer and Gradle-home cache |
 
-`toolchains-image.sh deps-tag` hashes the `*.gradle` files, `es*/gradle.properties`,
+`toolchains-image.sh commit-tag` hashes the `*.gradle` files, `es*/gradle.properties`,
 `gradle-wrapper.properties`, `build-base/src/main` and the image build files, without comment and blank
-lines. Each new hash costs a build, so the hash reads nothing else. The image holds every dependency CI
-resolves: `resolveCiDependencies`, the ES-versioned jars of every supported ES version and the compile
-classpath of every version that `verifyRepackageBytecode` compiles (`resolveEsVersionedDependencies`).
-A job thus downloads nothing from Maven Central, which rate-limits the shared GitHub-hosted addresses.
+lines. Each new hash costs a build, so the hash reads nothing else. The image holds every dependency
+that `./gradlew prefetchDependenciesForAllEsVersions` resolves: all resolvable configurations of every
+project, the ES-versioned jars of every supported ES version, and the compile classpath of every
+version that `verifyRepackageBytecode` compiles. A job thus downloads nothing from Maven Central,
+which rate-limits the shared GitHub-hosted addresses.
 
-`ci_setup` runs `toolchains-image.sh select`, without credentials. It asks Docker Hub with a HEAD
-request, which does not count against the pull limit and gives the digest of the tag:
+`toolchains-image.sh select` runs without credentials. It asks Docker Hub with a HEAD request, which
+does not count against the pull limit and gives the digest of the tag:
 
 | What it finds | What the run takes |
 |---|---|
-| the deps tag exists | the deps tag |
-| no deps tag | the develop tag; Gradle downloads only the changed jars |
+| the commit image exists | the commit image |
+| no commit image | the develop image; Gradle downloads only the changed jars |
 
 On a miss, and on every `develop` push, `ci_setup` starts `build-toolchains-image.yml` with
 `workflow_dispatch` and the input `ref` (`github.sha`; in a pull request run, the merge commit, so the
-built tag is the tag of the next run). It uses `GITHUB_TOKEN` with `actions: write`. The run is separate, so
+built image matches the next run). It uses `GITHUB_TOKEN` with `actions: write`. The run is separate, so
 no CI job waits for the build, and the next run takes the new image. A fork pull request has a read-only
-token and starts no build. A failed start is a warning, not a failure. The `plan` job names the deps tag,
+token and starts no build. A failed start is a warning, not a failure. The `plan` job names the commit tag,
 and the `build` job runs `toolchains-image.sh build` under the concurrency group of that tag, so
 two runs do not build one tag. Only the `build` job gets the Docker Hub RW token. The build starts from
-the layers and the Gradle home of the develop tag, so it downloads only the new jars.
+the layers and the Gradle home of the develop image, so it downloads only the new jars.
 
-The build points the develop tag at the deps tag only when the built commit is the current head of
+The build points the develop tag at the commit image only when the built commit is the current head of
 `develop` (`toolchains-image.sh is-develop-head`). A pull request cannot move it, whatever its workflow files say.
 `release_setup` only selects the image and builds nothing. The image is a dependency cache, so it does not change the release
-artifacts. The CI run of the same commit already started the build of its deps tag. When the tag is still missing, the release
-takes the develop tag and Gradle downloads the changed jars.
+artifacts. The CI run of the same commit already started the build of its commit image. When the image is still missing, the release
+takes the develop image and Gradle downloads the changed jars.
 
-Every week, or by hand with the input `fresh`, `build-toolchains-image.yml` rebuilds the deps tag of its `ref` (default `develop`)
-from fresh base images and an empty Gradle home, for JDK and OS patches. Its `cleanup` job deletes the
-`-deps-` tags last pushed more than 30 days ago, except the newest (`toolchains-image.sh cleanup`). The
-Docker Hub RW token cannot delete, so the job needs `DOCKER_HUB_DELETE_TOKEN`; without it, the job only
-lists the tags.
+Every week, `build-toolchains-image.yml` rebuilds the develop toolchains image from new base images and
+an empty Gradle home, for JDK and OS patches, and deletes commit tags last pushed more than 30 days ago
+except the newest (`toolchains-image.sh cleanup`). Manual runs take separate `full-rebuild` and `cleanup`
+inputs, so a full rebuild does not delete images unless `cleanup` is also set. The Docker Hub RW token
+cannot delete, so the job needs `DOCKER_HUB_DELETE_TOKEN`; without it, the job only lists the tags.
 
-`ci_setup` then asks the mirror about the digest, not about the tag. A digest names the bytes, and a
-cache cannot answer it with the wrong image. One HEAD request goes to the mirror; it downloads no image:
+`toolchains-image.sh select` then asks the mirror about the digest, not about the tag. A digest names
+the bytes, and a cache cannot answer it with the wrong image. One HEAD request goes to the mirror; it
+downloads no image:
 
 | What the script finds | What the run pulls |
 |---|---|
 | the mirror cannot serve the digest | Docker Hub |
 | the mirror serves the digest | the mirror |
 
-Docker Hub is the safe answer, so a miss costs speed only. `ci_setup` writes the choice to the step
+Docker Hub is the safe answer, so a miss costs speed only. `select` writes the choice to the step
 summary, so the run page shows which registry a run used, and why. A new image is not on the mirror
 at once: the run that built it pulls from Docker Hub (seen on the first build, 2026-11-24).
 

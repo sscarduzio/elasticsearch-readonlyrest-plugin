@@ -79,7 +79,7 @@ jobs:
             exit 1
           fi
       - id: toolchains
-        uses: ./.github/actions/resolve-toolchains-image
+        run: ci/toolchains/toolchains-image.sh select
       - name: Summarise the run
         run: |
           # The Actions graph does not link the CI run to this one. The summary does.
