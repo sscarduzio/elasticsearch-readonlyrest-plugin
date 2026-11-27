@@ -753,8 +753,8 @@ downloads no image:
 | the mirror cannot serve the digest | Docker Hub |
 | the mirror serves the digest | the mirror |
 
-Docker Hub is the safe answer, so a miss costs speed only. `select` writes the choice to the step
-summary, so the run page shows which registry a run used, and why. A new image is not on the mirror
+Docker Hub is the safe answer, so a miss costs speed only. `ci_setup` and `release_setup` write the
+chosen image to the step summary, so the run page shows which registry a run used. A new image is not on the mirror
 at once: the run that built it pulls from Docker Hub (seen on the first build, 2026-11-24).
 
 The pull sends no credentials, on either path. `mirror.gcr.io` refuses a Docker Hub login, so the

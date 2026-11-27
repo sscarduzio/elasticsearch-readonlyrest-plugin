@@ -64,14 +64,10 @@ tag3=$(ci/toolchains/toolchains-image.sh commit-tag)
 [ "$tag1" != "$tag3" ] || fail "real change did not change commit-tag"
 
 run_select() {
-  local out_file="$TEST_ROOT/out" sum_file="$TEST_ROOT/sum"
-  : > "$out_file"
-  : > "$sum_file"
-  GITHUB_OUTPUT="$out_file" GITHUB_STEP_SUMMARY="$sum_file" \
-    ci/toolchains/toolchains-image.sh select >/dev/null
-  IMAGE=$(sed -n 's/^image=//p' "$out_file")
-  MISSING=$(sed -n 's/^commit_image_missing=//p' "$out_file")
-  SUMMARY=$(cat "$sum_file")
+  local out
+  out=$(ci/toolchains/toolchains-image.sh select)
+  IMAGE=$(sed -n 's/^image=//p' <<<"$out")
+  MISSING=$(sed -n 's/^commit_image_missing=//p' <<<"$out")
 }
 
 # 2. Commit image exists and mirror serves it.
@@ -79,13 +75,11 @@ STUB_COMMIT_STATUS=200 STUB_MIRROR_STATUS=200 run_select
 [ "$IMAGE" = "mirror.gcr.io/beshultd/ror-ci-toolchains@sha256:1111111111111111111111111111111111111111111111111111111111111111" ] \
   || fail "case 2 image=$IMAGE"
 [ "$MISSING" = "false" ] || fail "case 2 missing=$MISSING"
-grep -q "mirror.gcr.io" <<<"$SUMMARY" || fail "case 2 summary missing mirror note"
 
 # 3. Mirror off -> Docker Hub commit tag.
 STUB_COMMIT_STATUS=200 ROR_DOCKER_HUB_MIRROR=false run_select
 [ "$IMAGE" = "$tag3" ] || fail "case 3 image=$IMAGE expected=$tag3"
 [ "$MISSING" = "false" ] || fail "case 3 missing=$MISSING"
-grep -q "Docker Hub" <<<"$SUMMARY" || fail "case 3 summary missing Docker Hub note"
 
 # 4. Mirror 404 -> falls back to Docker Hub commit tag.
 STUB_COMMIT_STATUS=200 STUB_MIRROR_STATUS=404 run_select

@@ -73,7 +73,10 @@ jobs:
       - name: Free host disk
         run: ci/free-host-disk.sh
       - id: toolchains
-        run: ci/toolchains/toolchains-image.sh select
+        run: |
+          out=$(ci/toolchains/toolchains-image.sh select)
+          echo "$out" >> "$GITHUB_OUTPUT"
+          printf '### Toolchains image\n\n`%s`\n' "$(sed -n 's/^image=//p' <<<"$out")" >> "$GITHUB_STEP_SUMMARY"
       # No job waits for the build: the next run takes the new image. A develop push also moves the develop tag.
       # A fork pull request has a read-only token and skips it. A failed start does not fail the run.
       - name: Start the build of the commit toolchains image

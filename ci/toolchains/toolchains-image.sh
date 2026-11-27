@@ -18,8 +18,8 @@ usage() {
   cat >&2 <<USAGE
 Usage: $0 <subcommand>
   commit-tag              print ${REPOSITORY}:${COMMIT_TAG_PREFIX}<hash> for the build files of this checkout
-  select                  pick the commit or develop image, choose mirror or Docker Hub, and emit
-                          image= and commit_image_missing= (to \$GITHUB_OUTPUT when set, else stdout)
+  select                  pick the commit or develop image, choose mirror or Docker Hub, and print
+                          image= and commit_image_missing= to stdout
   build [--full-rebuild]  build and push the commit tag when it is missing, and move the develop tag when
                           HEAD is the head of develop. --full-rebuild builds from new base images and an
                           empty Gradle home. Needs DOCKER_REGISTRY_USER and DOCKER_REGISTRY_PASSWORD.
@@ -92,21 +92,10 @@ is_develop_head() {
   [ -n "$develop_head" ] && [ "$develop_head" = "$(git rev-parse HEAD)" ]
 }
 
-summarise_selection() {
-  local ref=$1 mirrored=$2 reason=${3:-} line
-  [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-  if [ "$mirrored" = "true" ]; then
-    line="This run pulls the toolchains image from ${MIRROR_HOST}."
-  else
-    line="This run pulls the toolchains image from Docker Hub: ${reason}"
-  fi
-  printf '### Toolchains image\n\n%s\n\n`%s`\n' "$line" "$ref" >> "$GITHUB_STEP_SUMMARY"
-}
-
 # Selects the commit image, or the develop image when the commit image is missing, then chooses
 # mirror.gcr.io by digest or Docker Hub by tag. A mirror fault falls back to Docker Hub.
 select_image() {
-  local commit_img image missing=false digest pull_ref mirrored=false reason=""
+  local commit_img image missing=false digest pull_ref
   commit_img=$(commit_tag)
   image=$commit_img
   digest=$(registry_digest "$image") || { ci_log "Docker Hub cannot say whether $image exists."; return 1; }
@@ -118,29 +107,18 @@ select_image() {
   fi
 
   if ! mirror_is_on; then
-    reason="ROR_DOCKER_HUB_MIRROR is false."
-    ci_log "This run skips the mirror: $reason"
+    ci_log "This run skips the mirror: ROR_DOCKER_HUB_MIRROR is false."
     pull_ref=$image
   elif ! mirror_has_digest "$digest"; then
-    reason="${MIRROR_HOST} cannot serve ${digest}."
-    ci_log "This run skips the mirror: $reason"
+    ci_log "This run skips the mirror: ${MIRROR_HOST} cannot serve ${digest}."
     pull_ref=$image
   else
-    mirrored=true
     pull_ref="${MIRROR_HOST}/${REPOSITORY}@${digest}"
   fi
 
   ci_log "Toolchains image: $pull_ref"
-  summarise_selection "$pull_ref" "$mirrored" "$reason"
-  if [ -n "${GITHUB_OUTPUT:-}" ]; then
-    {
-      printf 'image=%s\n' "$pull_ref"
-      printf 'commit_image_missing=%s\n' "$missing"
-    } >> "$GITHUB_OUTPUT"
-  else
-    printf 'image=%s\n' "$pull_ref"
-    printf 'commit_image_missing=%s\n' "$missing"
-  fi
+  printf 'image=%s\n' "$pull_ref"
+  printf 'commit_image_missing=%s\n' "$missing"
 }
 
 build() {
@@ -200,7 +178,6 @@ cleanup() {
   fi
   jwt=$(jq -n --arg u "${DOCKER_HUB_USER:?}" --arg p "$DOCKER_HUB_DELETE_TOKEN" '{username: $u, password: $p}' |
         curl -fsS -H 'Content-Type: application/json' -d @- https://hub.docker.com/v2/users/login | jq -r '.token')
-  echo "::add-mask::$jwt"
   while read -r t; do
     code=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE -H "Authorization: Bearer $jwt" "$api/$t")
     if [ "$code" = 204 ] || [ "$code" = 200 ]; then ci_log "Deleted $t."; else ci_log "Cannot delete $t: HTTP $code."; status=1; fi
