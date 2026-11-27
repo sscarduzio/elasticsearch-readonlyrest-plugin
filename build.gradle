@@ -14,9 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import tech.beshu.ror.gradle.RorTaskFinder
 import tech.beshu.ror.gradle.PrintEsModulesTask
 import tech.beshu.ror.gradle.PrintTestMatricesTask
+import tech.beshu.ror.gradle.utils.EsVersions
 
 plugins {
     id 'base'
@@ -110,6 +112,40 @@ tasks.register("printAllSupportedEsVersions") {
         def versionsFile = layout.buildDirectory.file("es-modules/es-versions.txt").get().asFile
         versionsFile.parentFile.mkdirs()
         versionsFile.text = versions.collect { "$it\n" }.join()
+    }
+}
+
+// Resolves, without building, every external dependency the toolchains image needs:
+// all resolvable configurations of every project, the ES-versioned jars of every supported
+// ES version, and the compile classpath of every version that verifyRepackageBytecode compiles.
+tasks.register('prefetchDependenciesForAllEsVersions') {
+    group = 'ci'
+    description = 'Resolves all external dependencies for every project and supported ES version'
+    doLast {
+        allprojects.each { p ->
+            p.configurations.findAll { it.canBeResolved }.each { cfg ->
+                cfg.incoming.artifactView {
+                    componentFilter { it instanceof ModuleComponentIdentifier }
+                }.files.files
+            }
+            if (p.plugins.hasPlugin('readonlyrest.plugin-common-conventions')) {
+                def artifacts = p.ext.esVersionedArtifacts()
+                EsVersions.of(p).all.each { esVer ->
+                    artifacts.each { art -> p.ext.esVersionedJars(art, esVer) }
+                }
+                (EsVersions.baseVersions(p) + EsVersions.groupNewest(p)).unique().each { esVer ->
+                    def classpath = p.configurations.compileClasspath.copyRecursive()
+                    classpath.resolutionStrategy.eachDependency { details ->
+                        if (details.requested.group.startsWith('org.elasticsearch') && details.requested.version == p.ext.esVersion) {
+                            details.useVersion(esVer)
+                        }
+                    }
+                    classpath.incoming.artifactView {
+                        componentFilter { it instanceof ModuleComponentIdentifier }
+                    }.files.files
+                }
+            }
+        }
     }
 }
 
