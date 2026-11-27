@@ -17,22 +17,14 @@
 # An ES module's toolchain comes from its `ext.javaLanguageVersion`. The build also writes that value
 # to `java.version` in plugin-descriptor.properties, so it is the minimum JVM that ES accepts.
 #
-# Build context MUST be the repo root (the build needs settings.gradle/*/build.gradle to
-# resolve dependencies during the priming step). Built & pushed by the Build toolchains image
-# workflow, .github/workflows/build-toolchains-image.yml — weekly on a schedule, which keeps the
-# baked cache fresh, or by hand — or locally:
-#
-#   . ci/toolchains/image.env
-#   docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
-#   docker push "$TOOLCHAINS_IMAGE"
+# Build context MUST be the repo root: the priming step resolves dependencies from settings.gradle and
+# the */build.gradle files. `ci/toolchains/toolchains-image.sh build` builds and pushes it.
 #
 # (BuildKit is required: the build context is filtered by the sibling
 # ci/toolchains/JdkToolchains.Dockerfile.dockerignore file.)
 #
-# The tag encodes the two things that force a rebuild: the JDK set and the Gradle version.
-# Bump it and the `TOOLCHAINS_IMAGE` anchor in .github/workflows/ci.yml when a supported ES major
-# adds a new JVM, the Gradle version changes (gradle/wrapper/gradle-wrapper.properties), or
-# dependencies drift enough that the primed offline cache misses often.
+# The tag is the JDK set and the Gradle version plus a hash of the build files, so a dependency change
+# gets a new image. The tag rules live in `ci/toolchains/toolchains-image.sh`.
 
 # Every FROM below names a Docker Hub image, and Docker Hub rejects a pull with a bare
 # `429 Too Many Requests` when the runner's address is over the abuse rate limit. MIRROR puts a
@@ -47,6 +39,8 @@
 # to Docker Hub. Should the mirror stop serving one of them, set ROR_DOCKER_HUB_MIRROR=false on the
 # build job of build-toolchains-image.yml.
 ARG MIRROR=
+# The image whose Gradle home starts the prime, so a build downloads only new jars. Default: an empty home.
+ARG GRADLE_HOME_SEED=base
 
 # ---- JDK sources (all temurin images install to /opt/java/openjdk) ----------------------
 FROM ${MIRROR}library/eclipse-temurin:8-jdk   AS jdk8
@@ -92,6 +86,9 @@ COPY --from=jdk11 /opt/java/openjdk /opt/java/jdk11
 COPY --from=jdk21 /opt/java/openjdk /opt/java/jdk21
 
 ENV GRADLE_USER_HOME=/opt/gradle-home
+RUN mkdir -p /opt/gradle-home
+
+FROM ${GRADLE_HOME_SEED} AS gradle-home-seed
 
 # ---- prime a baked GRADLE_USER_HOME: Gradle distribution + plugins + dependencies ----------
 # Done in a separate stage so the repo sources (`COPY . /tmp/ror-src`) never become a layer of
@@ -101,29 +98,28 @@ ENV GRADLE_USER_HOME=/opt/gradle-home
 #   1) `help` downloads the Gradle distribution into the wrapper/dists layout ./gradlew expects
 #      (so CI never re-downloads it -> kills the services.gradle.org/github 504s) and applies
 #      every project's plugins, resolving plugin classpaths into the cache.
-#   2) `resolveCiDependencies` (registered by the ci/toolchains/resolve-deps.init.gradle init
-#      script -- which has zero footprint on the shipped build) resolves all resolvable
-#      configurations of all projects into caches/modules-2 without compiling.
+#   2) `prefetchDependenciesForAllEsVersions` resolves every project's dependency configurations,
+#      the ES-versioned jars of every supported ES version and the compile classpath of every
+#      version that verifyRepackageBytecode compiles.
 # Both run with toolchain auto-download off (all JDKs are already baked in). Anything that still
 # misses at CI time (e.g. a dep bumped since the last rebuild) falls back to the network; the
 # weekly scheduled rebuild of this image keeps that stale window short.
 FROM base AS gradle-prime
+COPY --from=gradle-home-seed /opt/gradle-home /opt/gradle-home
 # Bake the image's JDK locations into the GRADLE_USER_HOME gradle.properties. This is read reliably
 # at CI time (installations.paths via GRADLE_OPTS is NOT reliably honoured), applies only to jobs
 # that use this baked Gradle home (the Linux container jobs), and is never seen by the bare Windows
 # jobs (they use a workspace-local GRADLE_USER_HOME) — so the Linux paths can't break Windows.
-RUN mkdir -p /opt/gradle-home \
- && printf '%s\n' \
+RUN printf '%s\n' \
       'org.gradle.java.installations.auto-download=false' \
       'org.gradle.java.installations.paths=/opt/java/jdk8,/opt/java/jdk11,/opt/java/openjdk,/opt/java/jdk21' \
       > /opt/gradle-home/gradle.properties
 COPY . /tmp/ror-src
 RUN cd /tmp/ror-src \
  && ./gradlew --no-daemon --console=plain \
-      --init-script ci/toolchains/resolve-deps.init.gradle \
       -Dorg.gradle.java.installations.auto-download=false \
       -Dorg.gradle.java.installations.paths=/opt/java/jdk8,/opt/java/jdk11,/opt/java/openjdk,/opt/java/jdk21 \
-      help resolveCiDependencies \
+      help prefetchDependenciesForAllEsVersions \
  # Cache the full classpath of every download-free task the pipeline runs (run-pipeline.sh):
  #   compile_codebase_check -> `classes`     (every module's compile deps, incl. per-ES-version
  #                                            transport-netty4 etc. — and the Scala compiler bridge,
@@ -150,7 +146,7 @@ RUN cd /tmp/ror-src \
  # hijack any dev's relocated Gradle home). Written only after offline validation passed.
  && touch "$GRADLE_USER_HOME/.ror-ci-baked" \
  && rm -rf "$GRADLE_USER_HOME"/caches/*/scripts "$GRADLE_USER_HOME"/daemon \
- && find "$GRADLE_USER_HOME" -name "*.lock" -delete 2>/dev/null || true \
+ && { find "$GRADLE_USER_HOME" -name "*.lock" -delete 2>/dev/null || true; } \
  # Container jobs may run as a non-root user; make the baked Gradle home writable so Gradle can
  # write lockfiles and outputs without needing a copy-to-workspace step.
  && chmod -R a+rwX "$GRADLE_USER_HOME"

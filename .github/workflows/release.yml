@@ -79,13 +79,14 @@ jobs:
             exit 1
           fi
       - id: toolchains
-        uses: ./.github/actions/resolve-toolchains-image
+        run: ci/toolchains/toolchains-image.sh select >> "$GITHUB_OUTPUT"
       - name: Summarise the run
         run: |
           # The Actions graph does not link the CI run to this one. The summary does.
           {
             echo "Branch: $RELEASE_BRANCH"
             echo "Commit: $RELEASE_SHA"
+            echo "Toolchains image: \`${{ steps.toolchains.outputs.image }}\`"
             echo "${{ github.event.workflow_run.html_url && format('Triggered by CI run {0}', github.event.workflow_run.html_url) || 'Dispatched by hand. No tests ran.' }}"
           } >> "$GITHUB_STEP_SUMMARY"
 

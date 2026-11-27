@@ -47,8 +47,8 @@ env:
 jobs:
 
   # ── CI_SETUP ──────────────────────────────────────────────────────────────
-  # Resolves the toolchains image to pull, and the facts about this run: the branch it is on, and
-  # whether an operator started it. These are job outputs, not workflow `env`, because a job-level
+  # Resolves the toolchains image to pull, starts the build of a missing one, and sets the facts about
+  # this run: the branch it is on, and whether an operator started it. These are job outputs, not workflow `env`, because a job-level
   # `if:` cannot read the `env` context.
   ci_setup:
     runs-on: ${{ fromJSON(vars.ES_LIGHT_RUNS_ON || '["ubuntu-latest"]') }}
@@ -56,6 +56,8 @@ jobs:
       contents: read
       # To read the base branch of the PR.
       pull-requests: read
+      # To start build-toolchains-image.yml.
+      actions: write
     outputs:
       image:                      ${{ steps.toolchains.outputs.image }}
       is_release_branch:          ${{ steps.flags.outputs.is_release_branch }}
@@ -71,7 +73,21 @@ jobs:
       - name: Free host disk
         run: ci/free-host-disk.sh
       - id: toolchains
-        uses: ./.github/actions/resolve-toolchains-image
+        run: |
+          out=$(ci/toolchains/toolchains-image.sh select)
+          echo "$out" >> "$GITHUB_OUTPUT"
+          printf '### Toolchains image\n\n`%s`\n' "$(sed -n 's/^image=//p' <<<"$out")" >> "$GITHUB_STEP_SUMMARY"
+      # No job waits for the build: the next run takes the new image. A develop push also moves the develop tag.
+      # A fork pull request has a read-only token and skips it. A failed start does not fail the run.
+      - name: Start the build of the commit toolchains image
+        if: >-
+          (steps.toolchains.outputs.commit_image_missing == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')) &&
+          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_REF: ${{ github.head_ref || github.ref_name }}
+        run: gh workflow run build-toolchains-image.yml --repo "$GITHUB_REPOSITORY" --ref "$BUILD_REF" -f ref="$GITHUB_SHA"
       - id: flags
         env:
           IS_RELEASE_BRANCH: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' }}
