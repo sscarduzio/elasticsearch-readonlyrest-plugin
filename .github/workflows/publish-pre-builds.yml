@@ -94,7 +94,8 @@ jobs:
           FORCE_REBUILD: ${{ inputs.force_rebuild }}
           ROR_CUSTOM_DOCKER_PLATFORMS: ${{ inputs.custom_platforms }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
         run: |
           set -e
 
@@ -103,8 +104,10 @@ jobs:
           echo ">>> Publishing pre-build docker images for: $BUILD_ROR_ES_VERSIONS"
           ci/run-pipeline.sh
 
-      # configure-docker.sh logs in with the Docker Hub RW token. On a self-hosted runner it would stay
-      # in ~/.docker/config.json, where every later job on the box can read it.
-      - name: Log out of Docker Hub
+      # configure-docker.sh logs in to Docker Hub and ghcr.io. On a self-hosted runner the tokens
+      # would stay in ~/.docker/config.json, where every later job on the box can read them.
+      - name: Log out of Docker registries
         if: always()
-        run: docker logout || true
+        run: |
+          docker logout || true
+          docker logout ghcr.io || true

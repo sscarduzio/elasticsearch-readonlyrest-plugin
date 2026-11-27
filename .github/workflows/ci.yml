@@ -557,7 +557,8 @@ jobs:
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           ROR_KBN_WAIT_TIMEOUT_SECONDS: 7200
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
         run: |
           set -e
           E2E_ELK_VERSIONS=$(jq -r '[.[]] | join(" ")' <<<"$ELK_VERSION_BY_MODULE")
@@ -601,7 +602,8 @@ jobs:
           ROR_CUSTOM_DOCKER_PLATFORMS: linux/amd64
           E2E_BUILD_ID: ${{ needs.ci_setup.outputs.unique_build_id }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
         run: |
           set -e
           source ci/configure-docker.sh
@@ -654,7 +656,8 @@ jobs:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RW_TOKEN }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           # Do not let corepack ask before it downloads yarn. CI has no operator.
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
         run: |
