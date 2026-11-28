@@ -55,6 +55,8 @@
 #
 # The job supplies one pair of credentials:
 #   DOCKER_REGISTRY_USER / DOCKER_REGISTRY_PASSWORD
+# and optionally a GHCR token when it pulls or pushes ghcr.io images:
+#   GHCR_TOKEN (with optional GHCR_USER, default x-access-token)
 #
 # FAILURE
 # The script never falls back to anonymous pulls when the job supplied credentials. If it cannot
@@ -178,7 +180,7 @@ _ror_docker_auth_failed() {
 }
 
 _ror_docker_auth() {
-  local user token auth
+  local user token auth ghcr_user ghcr_token ghcr_auth auths_json
 
   if ! _ror_docker_auth_isset "${DOCKER_REGISTRY_USER:-}" ||
      ! _ror_docker_auth_isset "${DOCKER_REGISTRY_PASSWORD:-}"; then
@@ -187,6 +189,8 @@ _ror_docker_auth() {
   fi
   user=$DOCKER_REGISTRY_USER
   token=$DOCKER_REGISTRY_PASSWORD
+  ghcr_user=${GHCR_USER:-x-access-token}
+  ghcr_token=${GHCR_TOKEN:-}
 
   # Set DOCKER_AUTH_CONFIG here only. When the script finds no credentials, the variable must stay
   # unset, and it must not become empty. testcontainers reads the value as JSON if the value is not
@@ -195,7 +199,12 @@ _ror_docker_auth() {
   # `base64 -w0` gives one line, but -w is GNU only, and the BSD base64 of macOS refuses it. This
   # file also runs by hand, on a developer machine, so `tr` removes the line breaks instead.
   auth=$(printf '%s:%s' "$user" "$token" | base64 | tr -d '\n')
-  export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$auth\"}}}"
+  auths_json="\"https://index.docker.io/v1/\":{\"auth\":\"$auth\"}"
+  if _ror_docker_auth_isset "$ghcr_token"; then
+    ghcr_auth=$(printf '%s:%s' "$ghcr_user" "$ghcr_token" | base64 | tr -d '\n')
+    auths_json="$auths_json,\"ghcr.io\":{\"auth\":\"$ghcr_auth\"}"
+  fi
+  export DOCKER_AUTH_CONFIG="{\"auths\":{$auths_json}}"
 
   # Hide the value from the log first, because it contains base64(user:token). Mask before anything
   # can print it, and thus before the login below.
@@ -204,6 +213,9 @@ _ror_docker_auth() {
   # stands, so the shell that sourced the file is authenticated.
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
     echo "::add-mask::$auth"
+    if _ror_docker_auth_isset "$ghcr_token"; then
+      echo "::add-mask::$ghcr_auth"
+    fi
     echo "::add-mask::$DOCKER_AUTH_CONFIG"
   fi
 
@@ -220,6 +232,13 @@ _ror_docker_auth() {
     return $?
   fi
 
+  if _ror_docker_auth_isset "$ghcr_token"; then
+    if ! printf '%s' "$ghcr_token" | docker login ghcr.io -u "$ghcr_user" --password-stdin >/dev/null; then
+      _ror_docker_auth_failed "the ghcr.io login failed for the user '$ghcr_user'"
+      return $?
+    fi
+  fi
+
   # Give the value to the later steps of the job, and only now. A step is its own process, so the
   # export above dies with the step that sourced this file. A job that sources the file in a step of
   # its own therefore needs this write, or testcontainers in a later step reads no value and pulls
@@ -234,7 +253,11 @@ _ror_docker_auth() {
     echo "DOCKER_AUTH_CONFIG=$DOCKER_AUTH_CONFIG" >> "$GITHUB_ENV"
   fi
 
-  ci_log "Docker authentication is ON. User '$user'. The docker CLI and testcontainers use them."
+  if _ror_docker_auth_isset "$ghcr_token"; then
+    ci_log "Docker authentication is ON. Docker Hub user '$user' and ghcr.io user '$ghcr_user'. The docker CLI and testcontainers use them."
+  else
+    ci_log "Docker authentication is ON. User '$user'. The docker CLI and testcontainers use them."
+  fi
   return 0
 }
 

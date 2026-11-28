@@ -82,10 +82,14 @@ is_pre_release_version() {
 
 # True when HEAD carries the same tree as master's tip: on a develop push, only a merge-back does
 # that. The tree, not the commit, because a merge-back through a PR gets a merge commit.
-# Fetches master from origin; needs no token on a public repo. False on any failure.
+# Fetches master from origin, using GH_TOKEN when set. False on any failure.
 is_merge_back_of_master() {
   local master_tree here_tree
-  git fetch --quiet --no-tags --depth=1 origin master 2>/dev/null || return 1
+  local -a auth_args=()
+  if [ -n "${GH_TOKEN:-}" ]; then
+    auth_args=(-c "http.https://github.com/.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')")
+  fi
+  git "${auth_args[@]}" fetch --quiet --no-tags --depth=1 origin master 2>/dev/null || return 1
   master_tree=$(git rev-parse --verify --quiet 'FETCH_HEAD^{tree}') || return 1
   here_tree=$(git rev-parse --verify --quiet 'HEAD^{tree}') || return 1
   ci_log "HEAD tree $here_tree, master tree $master_tree."
@@ -265,7 +269,7 @@ reap_ci_job_containers() {
   [ -n "$ids" ] && docker rm -f $ids 2>/dev/null || true
 }
 
-ES_DEV_IMAGE_REPO="$(gradle_property dockerImageNamespace)/elasticsearch-readonlyrest-dev" || exit 1
+ES_DEV_IMAGE_REPO="ghcr.io/beshu-tech/elasticsearch-readonlyrest-dev"
 
 # Copies a registry image manifest to a new tag without pulling/rebuilding (multi-platform safe).
 retag_dev_image() {
